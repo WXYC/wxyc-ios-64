@@ -3,9 +3,10 @@
 //  WXYC
 //
 //  The song-like heart shared by every toggle surface (#492): the playcut row's
-//  trailing slot, the detail card's title line, and the Liked tab's rows. One
-//  component keeps the 44pt target, glyph scale, like-red fill, celebratory
-//  burst, and accessibility semantics identical everywhere a heart appears.
+//  trailing slot, the detail cover's chrome, and the Liked tab's rows. One
+//  component keeps the glyph scale, like-red fill, celebratory burst, and
+//  accessibility semantics identical everywhere a heart appears; only the frame
+//  varies by `Style` (the 44pt bare tap target vs. the frosted-circle chrome).
 //
 //  Created by Jake Bromberg on 07/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -22,8 +23,18 @@ struct LikeHeartButton: View {
     /// (docs/ideas/artist-likes-interactions.html, `--heart: #ff5c8a`).
     static let likeColor = Color(red: 1.0, green: 92 / 255, blue: 138 / 255)
 
+    /// How the heart is framed. `.bare` is the 44pt tappable glyph the playcut
+    /// row and the Liked tab use; `.chrome` seats the same heart in the detail
+    /// cover's frosted-circle chrome (``DetailPresentation/chromeCircle``) so it
+    /// reads as a peer of the back / share buttons pinned across from it.
+    enum Style {
+        case bare
+        case chrome
+    }
+
     let isLiked: Bool
     let action: () -> Void
+    var style: Style = .bare
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -41,11 +52,7 @@ struct LikeHeartButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: isLiked ? "heart.fill" : "heart")
-                .font(.title3)
-                .foregroundStyle(isLiked ? Self.likeColor : Color.white.opacity(0.8))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
+            heartGlyph
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isLiked ? "Unlike" : "Like")
@@ -55,6 +62,26 @@ struct LikeHeartButton: View {
         .onChange(of: isLiked) { wasLiked, nowLiked in
             if Self.shouldCelebrate(from: wasLiked, to: nowLiked, reduceMotion: reduceMotion) {
                 celebration += 1
+            }
+        }
+    }
+
+    /// The heart glyph, framed per ``style``. The tint (like-red when liked,
+    /// white 80% otherwise) and the celebratory burst are identical across
+    /// styles; only the surrounding frame changes.
+    @ViewBuilder
+    private var heartGlyph: some View {
+        let symbol = Image(systemName: isLiked ? "heart.fill" : "heart")
+            .foregroundStyle(isLiked ? Self.likeColor : Color.white.opacity(0.8))
+        switch style {
+        case .bare:
+            symbol
+                .font(.title3)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        case .chrome:
+            DetailPresentation.chromeCircle {
+                symbol.font(.headline.weight(.semibold))
             }
         }
     }

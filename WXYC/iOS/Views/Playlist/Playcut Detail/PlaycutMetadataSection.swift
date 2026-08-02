@@ -106,9 +106,7 @@ struct PlaycutMetadataSection: View {
         hideArtwork: false,
         artworkNamespace: previewNamespace,
         artworkGeometryID: "preview-artwork",
-        onArtworkTap: {},
-        isLiked: { false },
-        onToggleLike: {}
+        onArtworkTap: {}
     )
     
     PlaycutMetadataSection(

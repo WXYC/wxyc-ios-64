@@ -34,4 +34,17 @@ struct LikeHeartButtonTests {
     func stayingLikedDoesNotCelebrate() {
         #expect(LikeHeartButton.shouldCelebrate(from: true, to: true, reduceMotion: false) == false)
     }
+
+    /// The `.chrome` frame belongs only to the detail cover, where the heart sits
+    /// parallel with the back button. Every other surface (the row's trailing
+    /// slot, the Liked tab) must keep the bare 44pt glyph, so the default has to
+    /// stay `.bare` — a flipped default would frost a circle behind every heart.
+    @Test("Style defaults to bare so non-chrome surfaces stay unframed")
+    func styleDefaultsToBare() {
+        let button = LikeHeartButton(isLiked: false, action: {})
+        guard case .bare = button.style else {
+            Issue.record("Expected default style .bare, got \(button.style)")
+            return
+        }
+    }
 }

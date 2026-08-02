@@ -2,9 +2,10 @@
 //  PlaycutHeaderSection.swift
 //  WXYC
 //
-//  Header section showing artwork and track info, with the song-like heart
-//  beside the title. Store-agnostic: like state and the toggle arrive as a
-//  closure pair from PlaycutDetailView, which owns the store access.
+//  Header section showing artwork and track info. The song-like heart now lives
+//  in the detail cover's top-trailing chrome (PlaycutDetailView), parallel with
+//  the back button, rather than on the title line — so this section is purely
+//  presentational and holds no like state.
 //
 //  Created by Jake Bromberg on 12/06/25.
 //  Copyright © 2025 WXYC. All rights reserved.
@@ -23,12 +24,6 @@ struct PlaycutHeaderSection: View {
     let artworkNamespace: Namespace.ID
     let artworkGeometryID: String
     let onArtworkTap: () -> Void
-    /// Whether the playcut's song is currently liked. A closure rather than a
-    /// value so the heart re-renders when the store changes underneath (a like
-    /// toggled from the row while the card is open stays in sync).
-    let isLiked: () -> Bool
-    /// Toggles the like. The parent owns the store call and the analytics.
-    let onToggleLike: () -> Void
 
     var body: some View {
         VStack {
@@ -61,17 +56,11 @@ struct PlaycutHeaderSection: View {
             
             // Song info
             VStack {
-                // The heart sits beside the title (study verdict: the detail
-                // card keeps its heart next to the song title in all cases).
-                HStack(alignment: .center, spacing: 4) {
-                    Text(playcut.songTitle)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.center)
-
-                    LikeHeartButton(isLiked: isLiked(), action: onToggleLike)
-                }
+                Text(playcut.songTitle)
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.center)
 
                 Text(DiscogsMarkupParser.stripDisambiguationSuffix(from: playcut.artistName))
                     .font(.title3)

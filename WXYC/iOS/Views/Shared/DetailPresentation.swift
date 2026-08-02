@@ -34,15 +34,25 @@ enum DetailPresentation {
         }
     }
 
+    /// The frosted-circle chrome frame, without a glyph — so a control that needs
+    /// its own foreground (the like heart's like-red fill) can sit in the exact
+    /// same circle as the plain glyph buttons and never drift from them.
+    @ViewBuilder
+    static func chromeCircle(@ViewBuilder content: () -> some View) -> some View {
+        content()
+            .frame(width: 38, height: 38)
+            .background(.ultraThinMaterial, in: .circle)
+            .overlay(Circle().stroke(.white.opacity(0.18), lineWidth: 1))
+    }
+
     /// The frosted-circle treatment shared by the covers' chrome buttons (back /
     /// close, share, add-to-calendar).
     @ViewBuilder
     static func chromeGlyph(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.white)
-            .frame(width: 38, height: 38)
-            .background(.ultraThinMaterial, in: .circle)
-            .overlay(Circle().stroke(.white.opacity(0.18), lineWidth: 1))
+        chromeCircle {
+            Image(systemName: systemName)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white)
+        }
     }
 }

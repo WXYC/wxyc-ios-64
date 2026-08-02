@@ -71,14 +71,7 @@ struct PlaycutDetailView: View {
                     hideArtwork: hideHeaderArtwork,
                     artworkNamespace: artworkNamespace,
                     artworkGeometryID: artworkGeometryID,
-                    onArtworkTap: presentArtworkLightbox,
-                    isLiked: {
-                        appState.likedSongsStore.isLiked(
-                            artistName: playcut.artistName,
-                            songTitle: playcut.songTitle
-                        )
-                    },
-                    onToggleLike: toggleLike
+                    onArtworkTap: presentArtworkLightbox
                 )
                 .padding(.top, 30)
 
@@ -179,6 +172,10 @@ struct PlaycutDetailView: View {
         // it. Pinned top-leading under the safe-area inset, like the concert
         // detail's back chevron.
         .overlay(alignment: .topLeading) { closeButton }
+        // The song-like heart, pinned top-trailing under the same inset so it sits
+        // parallel with the close chevron — a peer chrome control, matching the
+        // concert detail's trailing share/calendar buttons.
+        .overlay(alignment: .topTrailing) { likeButton }
         .onAppear {
             StructuredPostHogAnalytics.shared.capture(PlaycutDetailViewPresented(
                 artist: playcut.artistName,
@@ -215,6 +212,24 @@ struct PlaycutDetailView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Close")
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+    }
+
+    /// The song-like heart in the cover's top-trailing chrome — the same shared
+    /// ``LikeHeartButton`` (like-red fill, celebratory burst, a11y) the row and
+    /// Liked tab use, in its `.chrome` frame so it matches the close chevron.
+    /// Reads the store directly so a like toggled from the row while the cover is
+    /// open stays in sync.
+    private var likeButton: some View {
+        LikeHeartButton(
+            isLiked: appState.likedSongsStore.isLiked(
+                artistName: playcut.artistName,
+                songTitle: playcut.songTitle
+            ),
+            action: toggleLike,
+            style: .chrome
+        )
         .padding(.horizontal, 14)
         .padding(.top, 8)
     }
