@@ -27,8 +27,9 @@ struct OnAirBannerView: View {
     /// Tunable design parameters: indicator color/glow, handle font variation, and spacing.
     var theme: OnAirBannerTheme = .default
 
-    /// When set, tapping the banner invokes this — used to present the debug controls sheet.
-    /// `nil` in release, so the banner is inert.
+    /// When set, tapping the handle invokes this — used to present the debug
+    /// controls sheet. `nil` in release, where the tap instead replays the
+    /// sign-on grade wave (see ``handleTapped()``).
     var onDebugTapped: (() -> Void)? = nil
 
     /// When set, a "say hi" chip is shown beside the handle; tapping it invokes
@@ -109,18 +110,29 @@ struct OnAirBannerView: View {
         }
     }
 
-    /// The DJ handle, filling the space left of the chip, wrapped in the debug
-    /// tap target when one is provided. The debug tap covers only the handle so
-    /// the say-hi chip beside it stays a separate control (no Button-in-Button).
-    @ViewBuilder
+    /// The DJ handle, filling the space left of the chip, wrapped in a tap
+    /// target. The tap covers only the handle so the say-hi chip beside it stays
+    /// a separate control (no Button-in-Button). In debug builds the tap presents
+    /// the on-air controls sheet (``onDebugTapped``); in release it replays the
+    /// sign-on grade wave. ``NoHighlightButtonStyle`` renders the label unchanged
+    /// when pressed — the handle is banner chrome, so it must not flash a
+    /// button's press-dimming on tap.
     private var handleTapTarget: some View {
+        Button(action: handleTapped) { handle }
+            .buttonStyle(NoHighlightButtonStyle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Responds to a tap on the DJ handle: presents the on-air controls sheet
+    /// when a debug handler is wired (debug builds), otherwise replays the
+    /// sign-on wave — the release affordance to re-trigger the animation on
+    /// demand. A replay while the wave is disabled is a no-op (``playWave()``
+    /// guards it), so the handle only reacts when there's an animation to play.
+    private func handleTapped() {
         if let onDebugTapped {
-            Button(action: onDebugTapped) { handle }
-                .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            onDebugTapped()
         } else {
-            handle
-                .frame(maxWidth: .infinity, alignment: .leading)
+            playWave()
         }
     }
 
