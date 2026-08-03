@@ -10,9 +10,9 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-#if canImport(UIKit)
 import Foundation
-import UIKit
+import CoreGraphics
+import Core
 import Playlist
 
 /// Owns per-playcut artwork loading state. Rows observe `state(for:)` rather than
@@ -33,7 +33,7 @@ public final class ArtworkLoader {
     public enum State: Equatable {
         case unloaded
         case loading
-        case loaded(UIImage)
+        case loaded(Core.Image)
         case failed
         /// The MD has flagged this release "Not on Discogs" (#390), so the
         /// loader never attempted a fetch. Distinct from `.failed` — this is
@@ -100,7 +100,7 @@ public final class ArtworkLoader {
         Task { [weak self] in
             do {
                 let cg = try await service.fetchArtwork(for: playcut)
-                self?.entries[key]?.state = .loaded(cg.toUIImage())
+                self?.entries[key]?.state = .loaded(cg.toImage())
             } catch {
                 self?.entries[key]?.state = .failed
             }
@@ -132,5 +132,3 @@ public final class ArtworkLoader {
         entries = entries.filter { currentKeys.contains($0.key) }
     }
 }
-
-#endif

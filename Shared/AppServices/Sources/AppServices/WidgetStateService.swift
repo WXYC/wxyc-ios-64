@@ -18,6 +18,8 @@ import Playlist
 import WidgetKit
 #if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
 #endif
 
 /// Centralized service for managing widget state.
@@ -53,6 +55,11 @@ public final class WidgetStateService {
         #if canImport(UIKit) && !os(watchOS)
         appTerminationObservation = NotificationCenter.default
             .addMainActorObserver(of: UIApplication.shared, for: ApplicationWillTerminateMessage.self) { _ in
+                self.clearPlaybackState()
+            }
+        #elseif canImport(AppKit)
+        appTerminationObservation = NotificationCenter.default
+            .addMainActorObserver(of: NSApplication.shared, for: ApplicationWillTerminateMessage.self) { _ in
                 self.clearPlaybackState()
             }
         #endif

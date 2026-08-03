@@ -31,4 +31,27 @@ public struct ApplicationWillTerminateMessage: MainActorNotificationMessage {
         Notification(name: name, object: object)
     }
 }
+#elseif canImport(AppKit)
+import Foundation
+import AppKit
+
+public struct ApplicationWillTerminateMessage: MainActorNotificationMessage {
+    // AppKit posts this with the NSApplication instance as the notification object.
+    public typealias Subject = NSApplication
+
+    // Bridge to the existing Notification.Name
+    public nonisolated static var name: Notification.Name { NSApplication.willTerminateNotification }
+
+    // Convert Notification -> Message
+    public static func makeMessage(_ notification: sending Notification) -> Self? {
+        guard notification.name == name else { return nil }
+        return Self()
+    }
+
+    // Convert Message -> Notification (mostly useful for testing / interoperability)
+    @MainActor
+    public static func makeNotification(_ message: Self, object: Subject?) -> Notification {
+        Notification(name: name, object: object)
+    }
+}
 #endif
