@@ -40,7 +40,22 @@ public extension CGImage {
         UIImage(cgImage: self)
     }
 }
+#elseif canImport(AppKit)
+import AppKit
 #endif
+
+public extension CGImage {
+    /// Converts the CGImage to the platform `Image` type (`UIImage` on UIKit,
+    /// `NSImage` on AppKit), sized to the CGImage's pixel dimensions.
+    /// Safe to call from any thread.
+    func toImage() -> Core.Image {
+        #if canImport(UIKit)
+        UIImage(cgImage: self)
+        #elseif canImport(AppKit)
+        NSImage(cgImage: self, size: NSSize(width: width, height: height))
+        #endif
+    }
+}
 
 // TODO: Rename to CompositeArtworkService and conform it to `ArtworkService`
 public final actor MultisourceArtworkService: ArtworkService {

@@ -134,6 +134,12 @@ extension PlaybackReason {
              PlaybackReason.handoff.rawValue:
             return .app
 
+        // macOS in-app controls: the MenuBarExtra mini player and the Dock
+        // right-click menu are the Mac app's own transport surfaces.
+        case PlaybackReason.menuBar.rawValue,
+             PlaybackReason.dockMenu.rawValue:
+            return .app
+
         // Siri / Shortcuts / App Intents.
         case PlaybackReason.siriIntent.rawValue,
              PlaybackReason.playIntent.rawValue,

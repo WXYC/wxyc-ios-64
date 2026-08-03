@@ -18,6 +18,10 @@ let package = Package(
     targets: [
         .target(
             name: "WXUI",
+        ),
+        .testTarget(
+            name: "WXUITests",
+            dependencies: ["WXUI"]
         )
     ]
 )

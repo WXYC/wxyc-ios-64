@@ -73,6 +73,12 @@ extension PlaybackReason {
     /// cross-device handoff is distinguishable in analytics.
     public static let handoff = PlaybackReason(rawValue: "handoff")
 
+    // macOS in-app controls
+    /// The macOS MenuBarExtra mini-player's play/pause control.
+    public static let menuBar = PlaybackReason(rawValue: "menu bar")
+    /// The macOS Dock right-click menu's play/pause item.
+    public static let dockMenu = PlaybackReason(rawValue: "dock menu")
+
     // Intents
     public static let playIntent = PlaybackReason(rawValue: "PlayWXYC intent")
     public static let pauseIntent = PlaybackReason(rawValue: "PauseWXYC intent")

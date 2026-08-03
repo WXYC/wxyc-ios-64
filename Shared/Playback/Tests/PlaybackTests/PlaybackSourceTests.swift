@@ -39,6 +39,10 @@ struct PlaybackSourceTests {
         (PlaybackReason.deepLink, PlaybackSource.app),
         (PlaybackReason.handoff, PlaybackSource.app),
 
+        // macOS-only in-app controls (MenuBarExtra mini player, Dock menu).
+        (PlaybackReason.menuBar, PlaybackSource.app),
+        (PlaybackReason.dockMenu, PlaybackSource.app),
+
         // Siri / Shortcuts / App Intents.
         (PlaybackReason.siriIntent, PlaybackSource.siri),
         (PlaybackReason.playIntent, PlaybackSource.siri),
@@ -83,6 +87,7 @@ struct PlaybackSourceTests {
             .interruptionBegan, .resumeAfterInterruption, .routeDisconnected, .resumeAfterRouteReconnect,
             .foregroundNotPlaying, .foregroundToggle, .resumeAfterForeground,
             .watchPlayPause, .tvOSCommand, .carPlay, .quickAction, .deepLink,
+            .menuBar, .dockMenu,
             .siriIntent, .playIntent, .pauseIntent, .toggleIntent, .playAudioSchemaIntent,
             .widgetToggle, .test, .testToggle, .userTappedPlay, .userStartedStream, .initial, .errorHandlingTest,
         ].map(\.playbackSource).reduce(into: Set<PlaybackSource>()) { $0.insert($1) }
