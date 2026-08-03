@@ -43,8 +43,12 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
     public var bandcampUrl: String?
     /** SoundCloud search URL */
     public var soundcloudUrl: String?
+    /** True when a music director has marked this release as not on Discogs; downstream render surfaces should suppress Discogs-derived artwork/links/tracklist. Mirrors the `Album` schema's MD-set marker (WXYC/wiki plans/rotation-discogs-unavailable.md). */
+    public var discogsUnavailable: Bool?
+    /** Optional free-text reason for `discogsUnavailable`. */
+    public var discogsUnavailableNote: String?
 
-    public init(discogsReleaseId: Int? = nil, discogsUrl: String? = nil, releaseYear: Int? = nil, artworkUrl: String? = nil, genres: [String]? = nil, styles: [String]? = nil, label: String? = nil, discogsArtistId: Int? = nil, fullReleaseDate: String? = nil, tracklist: [TrackListItem]? = nil, criticReviews: [CriticReviewItem]? = nil, wxycReviews: [WxycReviewItem]? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil) {
+    public init(discogsReleaseId: Int? = nil, discogsUrl: String? = nil, releaseYear: Int? = nil, artworkUrl: String? = nil, genres: [String]? = nil, styles: [String]? = nil, label: String? = nil, discogsArtistId: Int? = nil, fullReleaseDate: String? = nil, tracklist: [TrackListItem]? = nil, criticReviews: [CriticReviewItem]? = nil, wxycReviews: [WxycReviewItem]? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil) {
         self.discogsReleaseId = discogsReleaseId
         self.discogsUrl = discogsUrl
         self.releaseYear = releaseYear
@@ -62,6 +66,8 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
         self.youtubeMusicUrl = youtubeMusicUrl
         self.bandcampUrl = bandcampUrl
         self.soundcloudUrl = soundcloudUrl
+        self.discogsUnavailable = discogsUnavailable
+        self.discogsUnavailableNote = discogsUnavailableNote
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -82,6 +88,8 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
         case youtubeMusicUrl
         case bandcampUrl
         case soundcloudUrl
+        case discogsUnavailable
+        case discogsUnavailableNote
     }
 
     // Encodable protocol methods
@@ -105,6 +113,8 @@ public struct AlbumMetadataResponse: Sendable, Codable, Hashable {
         try container.encodeIfPresent(youtubeMusicUrl, forKey: .youtubeMusicUrl)
         try container.encodeIfPresent(bandcampUrl, forKey: .bandcampUrl)
         try container.encodeIfPresent(soundcloudUrl, forKey: .soundcloudUrl)
+        try container.encodeIfPresent(discogsUnavailable, forKey: .discogsUnavailable)
+        try container.encodeIfPresent(discogsUnavailableNote, forKey: .discogsUnavailableNote)
     }
 }
 
