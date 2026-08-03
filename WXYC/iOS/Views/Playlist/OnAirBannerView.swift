@@ -71,6 +71,20 @@ struct OnAirBannerView: View {
     /// wave supersedes it.
     @State private var waveTask: Task<Void, Never>?
 
+    /// The app's scene phase. A wave requested while the app is backgrounded is
+    /// held until it returns to ``ScenePhase/active`` (see ``PendingHandleWave``).
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// Whether the handle is on-screen within the enclosing scroll view. The banner
+    /// sits at the top, so it starts visible; scrolling the playlist past it flips
+    /// this to `false`. A wave only plays while it's `true`, so a sign-on that lands
+    /// while the handle is scrolled off waits until it scrolls back into view.
+    @State private var isHandleVisible = true
+
+    /// Holds a wave requested while the handle can't be seen — app backgrounded or
+    /// scrolled off — and replays it once it becomes visible again.
+    @State private var pendingWave = PendingHandleWave()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             eyebrow
@@ -153,10 +167,20 @@ struct OnAirBannerView: View {
             .lineLimit(theme.adaptiveWidth ? 2 : nil)
             .frame(maxWidth: .infinity, alignment: .leading)
             // Play the wave a beat after the handle first appears (see
-            // `launchWaveDelay`) and again, immediately, whenever it changes to a
-            // new DJ. `waveReplayToken` is the debug replay hook.
-            .onAppear { playWave(afterDelay: Self.launchWaveDelay) }
-            .onChange(of: headline) { playWave() }
+            // `launchWaveDelay`) and again, without the settle delay, whenever it
+            // changes to a new DJ — but only while the handle can actually be seen.
+            // Both requests route through `pendingWave`, which defers the wave when
+            // the app is backgrounded or the handle is scrolled off and replays it
+            // once it's visible again, so a sign-on is never spent unseen.
+            .onAppear { requestWave(afterDelay: Self.launchWaveDelay) }
+            .onChange(of: headline) { requestWave() }
+            // Track visibility within the scroll view and re-evaluate a deferred
+            // wave whenever the handle scrolls back in or the app foregrounds.
+            .onScrollVisibilityChange { isHandleVisible = $0 }
+            .onChange(of: isHandleVisible) { resumePendingWave() }
+            .onChange(of: scenePhase) { resumePendingWave() }
+            // The debug replay is always immediate: the design panel drives it with
+            // the banner in view, and it must not be gated behind the sheet.
             .onChange(of: theme.waveReplayToken) { playWave() }
     }
 
@@ -291,6 +315,29 @@ struct OnAirBannerView: View {
     /// The wave model folds this into the individual sweeps.
     private func waveProgress(now: Date, start: Date) -> Double {
         handleWaveProgress(elapsed: now.timeIntervalSince(start), totalDuration: waveTotalDuration)
+    }
+
+    /// Whether a wave can be seen right now: the app is foregrounded and the handle
+    /// is on-screen. When false, a requested wave is deferred rather than spent.
+    private var canPlayWave: Bool {
+        scenePhase == .active && isHandleVisible
+    }
+
+    /// Requests the automatic (launch or DJ-change) wave. Plays it now when the
+    /// handle is visible, otherwise hands it to ``pendingWave`` to replay once the
+    /// app foregrounds and the handle scrolls back into view.
+    private func requestWave(afterDelay delay: TimeInterval = 0) {
+        if let ready = pendingWave.request(delay: delay, canPlayNow: canPlayWave) {
+            playWave(afterDelay: ready)
+        }
+    }
+
+    /// Re-checks a deferred wave after the app foregrounds or the handle scrolls
+    /// into view, playing it if one was waiting and it can now be seen.
+    private func resumePendingWave() {
+        if let ready = pendingWave.resume(canPlayNow: canPlayWave) {
+            playWave(afterDelay: ready)
+        }
     }
 
     /// Starts the one-shot wave: mark it running so the handle renders per-letter,
