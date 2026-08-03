@@ -90,12 +90,13 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// (the "Not on Discogs" flag epic, Backend-Service#1280). When `true`,
     /// artwork rendering suppresses the Discogs-derived artwork/URL and falls
     /// back to a placeholder — see `isDiscogsUnavailable` and `PlaycutDetailView.
-    /// loadMetadata()`'s artwork-fetch gate. Currently only ever populated from
-    /// the inline V2 flowsheet row (`Playcut.discogsUnavailable`, itself always
-    /// `nil` on real feeds today); the `/proxy/metadata/album` decode path
-    /// cannot yet carry it — `WXYCAPIModels.AlbumMetadataResponse` doesn't
-    /// declare the field because wxyc-shared's `api.yaml` schema for it hasn't
-    /// added the trio the `Album` schema already has. See issue #390.
+    /// loadMetadata()`'s artwork-fetch gate. Populated from either the inline
+    /// V2 flowsheet row (`Playcut.discogsUnavailable`) or the
+    /// `/proxy/metadata/album` decode path (`WXYCAPIModels.AlbumMetadataResponse
+    /// .discogsUnavailable`, wired in `PlaycutMetadataService.mergeAlbum`,
+    /// proxy preferred — #731); the flowsheet path's own embed of this field
+    /// (`FlowsheetV2TrackEntry.discogsUnavailable`) is contract-reserved but
+    /// not yet emitted by Backend (WXYC/Backend-Service#1908).
     public let discogsUnavailable: Bool?
 
     /// Optional free-text reason for ``discogsUnavailable``, surfaced as
