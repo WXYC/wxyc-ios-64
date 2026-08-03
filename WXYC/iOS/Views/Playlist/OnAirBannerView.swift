@@ -51,6 +51,12 @@ struct OnAirBannerView: View {
     /// minus the say-hi chip and its gap. Drives the adaptive width solve.
     @State private var handleAvailableWidth: CGFloat = 0
 
+    /// How long the launch wave waits after the banner first appears before it
+    /// plays, so the crest sweeps across the handle a beat *after* the playlist
+    /// has settled in rather than the instant the banner mounts. Only the
+    /// appearance wave is delayed; a DJ change or a tap replays immediately.
+    private static let launchWaveDelay: TimeInterval = 0.5
+
     /// When the current one-shot grade wave began, or `nil` when the handle is at
     /// rest. While set, the handle renders per-letter and animates; the stop task
     /// clears it once the wave completes so the resting handle costs nothing.
@@ -60,9 +66,10 @@ struct OnAirBannerView: View {
     /// replay's animation out from under it.
     @State private var waveRunID = 0
 
-    /// The pending "return to rest" task for the active wave, cancelled when a new
+    /// The pending task for the active wave — a deferred start (when the launch
+    /// wave is delayed) followed by the return to rest — cancelled when a new
     /// wave supersedes it.
-    @State private var waveStopTask: Task<Void, Never>?
+    @State private var waveTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -145,9 +152,10 @@ struct OnAirBannerView: View {
             // so long it overflows even at the width floor.
             .lineLimit(theme.adaptiveWidth ? 2 : nil)
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Play the wave once when the handle first appears and again whenever
-            // it changes to a new DJ. `waveReplayToken` is the debug replay hook.
-            .onAppear { playWave() }
+            // Play the wave a beat after the handle first appears (see
+            // `launchWaveDelay`) and again, immediately, whenever it changes to a
+            // new DJ. `waveReplayToken` is the debug replay hook.
+            .onAppear { playWave(afterDelay: Self.launchWaveDelay) }
             .onChange(of: headline) { playWave() }
             .onChange(of: theme.waveReplayToken) { playWave() }
     }
@@ -287,17 +295,29 @@ struct OnAirBannerView: View {
 
     /// Starts the one-shot wave: mark it running so the handle renders per-letter,
     /// then schedule a return to the resting `Text` once the duration elapses.
-    /// A no-op when the wave is disabled or has no duration.
-    private func playWave() {
+    /// When `delay` is positive the handle is held at rest for that long before
+    /// the wave starts — used at launch so it plays a beat after the playlist
+    /// loads in, not the instant the banner mounts. A no-op when the wave is
+    /// disabled or has no duration.
+    private func playWave(afterDelay delay: TimeInterval = 0) {
         guard theme.waveEnabled, theme.waveDuration > 0 else {
             waveStart = nil
             return
         }
         waveRunID += 1
         let runID = waveRunID
-        waveStart = .now
-        waveStopTask?.cancel()
-        waveStopTask = Task { @MainActor in
+        waveTask?.cancel()
+        // Start now unless a launch delay asks us to hold the handle at rest
+        // first; the deferred (or immediate) start and the stop share one
+        // cancellable task keyed to this run.
+        waveStart = delay > 0 ? nil : .now
+        waveTask = Task { @MainActor in
+            if delay > 0 {
+                try? await Task.sleep(for: .seconds(delay))
+                // A tap or DJ change during the delay supersedes this launch wave.
+                guard waveRunID == runID else { return }
+                waveStart = .now
+            }
             try? await Task.sleep(for: .seconds(waveTotalDuration))
             // Only retire this run — a newer replay may already be playing.
             if waveRunID == runID { waveStart = nil }
