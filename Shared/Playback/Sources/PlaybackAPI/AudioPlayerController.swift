@@ -593,20 +593,28 @@ public final class AudioPlayerController {
         #endif
     }
 
+    /// Prepares the audio session for playback without actually starting playback.
+    /// Call this at the start of an intent to signal to iOS that audio playback is
+    /// imminent, which helps prevent the app from being suspended during stream
+    /// connection.
+    ///
+    /// On macOS (native AppKit) and watchOS there is no `AVAudioSession` to
+    /// configure, so this is a no-op. The method stays available on every platform
+    /// so the shared intent call sites (`IntentPlayback`, `ToggleWXYC`,
+    /// `WidgetToggleWXYC`) need no `#if` branch of their own.
+    public func prepareForPlayback() {
+        #if os(iOS) || os(tvOS)
+        configureAudioSessionIfNeeded()
+        activateAudioSession()
+        #endif
+    }
+
     // MARK: - Audio Session (iOS/tvOS only)
 
     #if os(iOS) || os(tvOS)
     /// Audio session category is configured lazily on first play() to avoid
     /// interrupting other apps' audio during app launch.
     private var audioSessionConfigured = false
-    
-    /// Prepares the audio session for playback without actually starting playback.
-    /// Call this at the start of an intent to signal to iOS that audio playback is imminent,
-    /// which helps prevent the app from being suspended during stream connection.
-    public func prepareForPlayback() {
-        configureAudioSessionIfNeeded()
-        activateAudioSession()
-    }
 
     private func configureAudioSessionIfNeeded() {
         guard !audioSessionConfigured, let session = audioSession else { return }
