@@ -30,7 +30,7 @@ let package = Package(
                 "Caching",
                 "Playback",
                 .product(name: "PlaybackCore", package: "Playback"),
-                "Wallpaper",
+                .product(name: "WallpaperTheme", package: "Wallpaper"),
                 "WXUI",
             ],
         ),

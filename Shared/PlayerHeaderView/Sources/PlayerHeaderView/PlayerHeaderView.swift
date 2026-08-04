@@ -12,7 +12,7 @@ import AVFoundation
 import SwiftUI
 import Playback
 import PlaybackCore
-import Wallpaper
+import WallpaperTheme
 import WXUI
 
 // MARK: - Player Header View
