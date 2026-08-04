@@ -273,15 +273,23 @@ struct WXYCApp: App {
 
     /// Fire-and-forget: everything below — including building the interaction,
     /// which touches `UIImage.placeholder` — runs inside this `Task`, off the
-    /// main actor, so `init()` never blocks on it. `donateSiriIntent()` itself
-    /// is `nonisolated`, so the `Task` it creates inherits no actor isolation
-    /// and is dispatched to the cooperative thread pool rather than the main
-    /// thread. Building the interaction on `init()`'s thread directly used to
-    /// force `UIImage.placeholder`'s first-access CoreImage/Metal compositing
-    /// synchronously on the main thread, hanging launch for >2s (#740, Sentry
-    /// IOS-3M/IOS-14/IOS-19).
-    static func donateSiriIntent() {
+    /// main actor, so `init()` never blocks on it.
+    ///
+    /// The explicit `nonisolated` is load-bearing, not decorative: this
+    /// module builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`
+    /// (Xcode's Swift 6 "approachable concurrency" default), so a plain
+    /// `static func` here — and the `Task { }` it creates, which inherits
+    /// its *lexical* declaration's isolation — would otherwise default to
+    /// running on the main actor. Verified empirically (#740): with no
+    /// `nonisolated`, `MainActor.assertIsolated()` inside the `Task` did not
+    /// trap, i.e. the placeholder compositing was still happening on the
+    /// main actor, just one async hop later — a relocated hang, not a fixed
+    /// one. `isolationProbe` exists solely so
+    /// `WXYCAppDonationEscapesMainActorTests` can confirm the real `Task`
+    /// stays off the main actor without resorting to a crash-based check.
+    nonisolated static func donateSiriIntent(isolationProbe: (@Sendable ((any Actor)?) -> Void)? = nil) {
         Task {
+            isolationProbe?(#isolation)
             let interaction = makeSiriIntentInteraction()
 
             do {
@@ -312,11 +320,13 @@ struct WXYCApp: App {
 
     /// Builds the `INInteraction` `donateSiriIntent()` donates, including the
     /// placeholder artwork. Factored out of `donateSiriIntent()` so it runs —
-    /// and can be tested — off the main actor: neither this function nor
-    /// `UIImage.placeholder` requires main-actor isolation, so calling it from
-    /// `donateSiriIntent()`'s `Task` keeps the compositing work off the main
-    /// thread (#740).
-    static func makeSiriIntentInteraction() -> INInteraction {
+    /// and can be tested — off the main actor. Explicitly `nonisolated` for
+    /// the same reason as `donateSiriIntent()`: this module's
+    /// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` would otherwise isolate it
+    /// to the main actor by default, which would force `donateSiriIntent()`'s
+    /// (also `nonisolated`) `Task` to hop back onto the main actor just to
+    /// call it — silently reintroducing the compositing work there (#740).
+    nonisolated static func makeSiriIntentInteraction() -> INInteraction {
         let placeholder = UIImage.placeholder
         let mediaItem = INMediaItem(
             identifier: "Play \(RadioStation.WXYC.name)",

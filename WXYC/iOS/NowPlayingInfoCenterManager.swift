@@ -148,20 +148,32 @@ extension Dictionary {
 }
 
 extension UIImage {
-    static let placeholder: UIImage = {
+    // `nonisolated` here (and throughout the rest of this file's UIImage/CGImage
+    // extensions) is load-bearing, not decorative: this module builds with
+    // `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`, so a plain `static let`/
+    // `func` would otherwise default to the main actor, forcing every access —
+    // including this property's first-access CoreImage/Metal compositing —
+    // onto the main actor's executor regardless of which thread the caller is
+    // on. That was the actual root cause of #740 (Sentry IOS-3M/IOS-14/IOS-19):
+    // `WXYCApp.donateSiriIntent()` deferring its work to a `Task` wasn't
+    // sufficient on its own, because this property (and everything it calls)
+    // was still implicitly main-actor isolated underneath it. Verified
+    // empirically: without these annotations, `MainActor.assertIsolated()`
+    // inside `donateSiriIntent()`'s `Task` did not trap.
+    nonisolated static let placeholder: UIImage = {
         let backgroundImage: CGImage = #imageLiteral(resourceName: "background").cgImage!
         let overlayImage = logoImage.cgImage!
             .resize(to: backgroundImage.size)
         return UIImage(cgImage: backgroundImage.overlay(with: overlayImage)!)
     }()
-    
-    static let logoImage = UIImage(named: "logo.pdf")!
+
+    nonisolated static let logoImage = UIImage(named: "logo.pdf")!
         .withRenderingMode(.alwaysOriginal)
         .scaleAndCenter(scale: 0.90)
 }
-    
+
 extension CGImage {
-    func overlay(with overlay: CGImage) -> CGImage? {
+    nonisolated func overlay(with overlay: CGImage) -> CGImage? {
         Log(.info, "overlaying \(overlay.size) with \(size)")
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
@@ -197,7 +209,7 @@ extension CGImage {
         return context.makeImage()
     }
     
-    func resize(to newSize: CGSize) -> CGImage {
+    nonisolated func resize(to newSize: CGSize) -> CGImage {
         guard let filter = CIFilter(name: "CILanczosScaleTransform") else {
             return self
         }
@@ -216,13 +228,13 @@ extension CGImage {
 
     }
 
-    var size: CGSize {
+    nonisolated var size: CGSize {
         .init(width: CGFloat(width), height: CGFloat(height))
     }
 }
 
 extension UIImage {
-    func scaleAndCenter(scale: CGFloat) -> UIImage {
+    nonisolated func scaleAndCenter(scale: CGFloat) -> UIImage {
         // Use the original image size as the canvas size.
         let canvasSize = self.size
         // Compute the scaled size by multiplying the original dimensions by the scale.
