@@ -271,30 +271,70 @@ struct WXYCApp: App {
 
     // MARK: - Siri Intents
 
-    /// Fire-and-forget: everything below — including building the interaction,
-    /// which touches `UIImage.placeholder` — runs inside this `Task`, off the
+    /// Fire-and-forget: `makeSiriIntentInteraction()` — including the
+    /// `UIImage.placeholder` compositing — runs inside this `Task`, off the
     /// main actor, so `init()` never blocks on it.
     ///
-    /// The explicit `nonisolated` is load-bearing, not decorative: this
+    /// Only the interaction-building half is `nonisolated`. `performDonation`
+    /// hops back onto the main actor before touching `NSUserActivity`,
+    /// because `becomeCurrent()` is a side effect on app-global system state
+    /// that this codebase already models as main-actor work — see
+    /// `HandoffActivityManager`'s `@MainActor CurrentActivityControlling`.
+    /// Both `HandoffActivityManager.setPlaybackState(isPlaying:)` and this
+    /// donation call `becomeCurrent()` on the same `WXYCUserActivity.play`
+    /// activity type; leaving them unserialized across threads would let a
+    /// cold-launch playback start race the still-in-flight donation and
+    /// silently lose the Handoff-eligible activity to a last-writer-wins
+    /// `becomeCurrent()` from a background thread (#740 review, finding 1).
+    ///
+    /// The explicit `nonisolated` on this function and on
+    /// `makeSiriIntentInteraction()` is load-bearing, not decorative: this
     /// module builds with `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`
     /// (Xcode's Swift 6 "approachable concurrency" default), so a plain
     /// `static func` here — and the `Task { }` it creates, which inherits
     /// its *lexical* declaration's isolation — would otherwise default to
     /// running on the main actor. Verified empirically (#740): with no
-    /// `nonisolated`, `MainActor.assertIsolated()` inside the `Task` did not
-    /// trap, i.e. the placeholder compositing was still happening on the
-    /// main actor, just one async hop later — a relocated hang, not a fixed
-    /// one. `isolationProbe` exists solely so
-    /// `WXYCAppDonationEscapesMainActorTests` can confirm the real `Task`
-    /// stays off the main actor without resorting to a crash-based check.
-    nonisolated static func donateSiriIntent(isolationProbe: (@Sendable ((any Actor)?) -> Void)? = nil) {
+    /// `nonisolated` anywhere in this chain, `MainActor.assertIsolated()`
+    /// inside the `Task` did not trap, i.e. the placeholder compositing was
+    /// still happening on the main actor, just one async hop later — a
+    /// relocated hang, not a fixed one.
+    ///
+    /// `isolationProbe` and `donate` exist solely for
+    /// `WXYCAppDonationEscapesMainActorTests`: `isolationProbe` confirms the
+    /// real `Task` stays off the main actor without resorting to a
+    /// crash-based check, and `donate` lets the test skip the real SiriKit
+    /// donation / `becomeCurrent()` / PostHog capture entirely rather than
+    /// firing them on every test run. Neither parameter changes production
+    /// behavior — both default to exactly what shipped before they existed.
+    nonisolated static func donateSiriIntent(
+        isolationProbe: (@Sendable ((any Actor)?) -> Void)? = nil,
+        donate: @escaping @Sendable (INInteraction) async -> Void = Self.performDonation
+    ) {
         Task {
             isolationProbe?(#isolation)
+            // Warm the placeholder here, first, so this Task — not
+            // NowPlayingInfoCenterManager.mediaItemArtwork() on the main
+            // actor (reached whenever a NowPlayingItem with nil artwork
+            // arrives) — is the thread that pays for UIImage.placeholder's
+            // first-access compositing. Whichever thread touches the
+            // static let first absorbs the cost inside its swift_once; this
+            // makes that thread a guarantee rather than a race (#740
+            // review, finding 2).
+            _ = UIImage.placeholder
             let interaction = makeSiriIntentInteraction()
+            await donate(interaction)
+        }
+    }
 
-            do {
-                try await interaction.donate()
+    /// The real donation behavior `donateSiriIntent()` defaults to: donate
+    /// to SiriKit, then hop onto the main actor to make the Handoff/Siri
+    /// activity current and capture analytics. Factored out so tests can
+    /// substitute a no-op instead (see `donateSiriIntent(isolationProbe:donate:)`).
+    nonisolated private static func performDonation(_ interaction: INInteraction) async {
+        do {
+            try await interaction.donate()
 
+            await MainActor.run {
                 let activity = NSUserActivity(activityType: WXYCUserActivity.play)
                 activity.title = "Play \(RadioStation.WXYC.name)"
                 activity.isEligibleForPrediction = true
@@ -312,9 +352,9 @@ struct WXYCApp: App {
                 StructuredPostHogAnalytics.shared.capture(SiriIntentDonated(
                     intentData: activity.description
                 ))
-            } catch {
-                ErrorReporting.shared.report(error, context: "WXYCApp: Failed to donate Siri intent")
             }
+        } catch {
+            ErrorReporting.shared.report(error, context: "WXYCApp: Failed to donate Siri intent")
         }
     }
 
@@ -326,6 +366,12 @@ struct WXYCApp: App {
     /// to the main actor by default, which would force `donateSiriIntent()`'s
     /// (also `nonisolated`) `Task` to hop back onto the main actor just to
     /// call it — silently reintroducing the compositing work there (#740).
+    /// This only pins the `Task`'s own isolation and this function's; it does
+    /// not by itself guarantee every function `UIImage.placeholder` calls
+    /// stays `nonisolated` — the compiler catches the naive regression
+    /// (calling main-actor-isolated code from here fails to build), but a
+    /// more indirect regression is out of this check's reach (#740 review,
+    /// finding 5).
     nonisolated static func makeSiriIntentInteraction() -> INInteraction {
         let placeholder = UIImage.placeholder
         let mediaItem = INMediaItem(
