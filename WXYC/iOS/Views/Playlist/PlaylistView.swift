@@ -12,6 +12,7 @@
 import Analytics
 import AppIntents
 import DebugPanel
+import MusicShareKit
 import PartyHorn
 import PlayerHeaderView
 import Playlist
@@ -68,6 +69,7 @@ struct PlaylistView: View {
     @State private var showingSiriTip = false
     @State private var showingThemeTip = false
     @State private var showingRequestLine = false
+    @State private var requestOutcome: RequestSentOutcome?
 
     /// Captured from `ScrollViewReader` on appearance, so the deep-link
     /// scroll (#434) can reach it from the `.task` modifiers below without
@@ -200,8 +202,11 @@ struct PlaylistView: View {
                 }
         }
         .sheet(isPresented: $showingRequestLine) {
-            RequestLineSheet(requestLine: requestLine, source: "banner")
+            RequestLineSheet(requestLine: requestLine, source: "banner") {
+                requestOutcome = .sent
+            }
         }
+        .requestSentHUD(outcome: $requestOutcome)
         #if DEBUG || DEBUG_TESTFLIGHT
         .sheet(isPresented: $showVisualizerDebug) {
             VisualizerDebugView(

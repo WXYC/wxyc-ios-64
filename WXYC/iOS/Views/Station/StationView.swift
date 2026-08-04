@@ -31,6 +31,7 @@ import WXUI
 struct StationView: View {
     @State private var onAir: OnAir = .unknown
     @State private var showingRequestLine = false
+    @State private var requestOutcome: RequestSentOutcome?
     @State private var showingLogPrompt = false
     @State private var showingMailComposer = false
     @State private var showingBugReport = false
@@ -115,8 +116,11 @@ struct StationView: View {
             }
         }
         .sheet(isPresented: $showingRequestLine) {
-            RequestLineSheet(requestLine: requestLine, source: "station")
+            RequestLineSheet(requestLine: requestLine, source: "station") {
+                requestOutcome = .sent
+            }
         }
+        .requestSentHUD(outcome: $requestOutcome)
         .alert("Is this a bug?", isPresented: $showingLogPrompt) {
             Button("Yes!") {
                 showingBugReport = true
