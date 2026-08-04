@@ -78,11 +78,13 @@ struct WXYCAppShortcutsTests {
 /// (CoreImage/Metal) on the main thread while building the legacy SiriKit
 /// donation. `donateSiriIntent()` now defers that work to a `Task` inside a
 /// `nonisolated` function; see `WXYCAppDonationEscapesMainActorTests` below
-/// for the runtime proof that the `Task` actually runs off the main actor —
-/// this module's `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` means merely
-/// calling these functions from a non-`@MainActor` test context (as this
-/// suite does) proves nothing about where they *actually* run, since
-/// `nonisolated` code is callable from anywhere regardless of isolation.
+/// for the runtime proof that the `Task` actually runs off the main actor.
+/// This suite is `@MainActor` — like every type in `WXYCTests` that doesn't
+/// opt out, since this module (including the test target) builds with
+/// `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` — so merely calling these
+/// `nonisolated` functions here and having it compile proves nothing about
+/// where they *actually* run: `nonisolated` code is callable from any
+/// isolation context, main actor included.
 @Suite("WXYCApp Siri donation interaction")
 struct WXYCAppSiriIntentInteractionTests {
     @Test("makeSiriIntentInteraction builds an INPlayMediaIntent")
@@ -106,24 +108,37 @@ struct WXYCAppSiriIntentInteractionTests {
 /// context (see the note on `WXYCAppSiriIntentInteractionTests` above for why
 /// that alone is not sufficient under this module's default actor isolation).
 ///
-/// `donateSiriIntent(isolationProbe:)`'s probe parameter exists solely for
-/// this test: it captures `#isolation` — the *actual* isolation of the
-/// `Task`'s closure — as its very first statement and reports it back
-/// through a checked continuation, deterministically suspending this test
-/// until the real, unstructured `Task` actually runs (no `Task.sleep`
-/// guessing, no crash-based assertion). `#isolation` is `nil` for a
-/// non-isolated context and non-nil (`MainActor.shared`) if the `Task` is
-/// main-actor isolated, so this fails as an ordinary assertion — not a
-/// process crash — if the isolation ever regresses.
+/// `donateSiriIntent(isolationProbe:donate:)`'s two parameters exist solely
+/// for this test. `isolationProbe` captures `#isolation` — the *actual*
+/// isolation of the `Task`'s closure — as its very first statement and
+/// reports it back through a checked continuation, deterministically
+/// suspending this test until the real, unstructured `Task` actually runs
+/// (no `Task.sleep` guessing, no crash-based assertion). `#isolation` is
+/// `nil` for a non-isolated context and non-nil (`MainActor.shared`) if the
+/// `Task` is main-actor isolated, so this fails as an ordinary assertion —
+/// not a process crash — if the isolation ever regresses.
+///
+/// `donate` is a no-op here so this test never fires a real SiriKit
+/// donation, a real `becomeCurrent()`, or a real PostHog capture — all of
+/// which the production default (`WXYCApp.performDonation`) does for real,
+/// against `AppConfiguration`'s live PostHog key. `isolationProbe` alone
+/// isn't enough to prevent that: it fires as the `Task`'s first statement,
+/// so the continuation above resumes and this test returns while the
+/// `Task` keeps running unawaited in the background — anything after the
+/// probe still executes for real unless `donate` is also stubbed out
+/// (#740 review, finding 3).
 @Suite("WXYCApp Siri donation escapes the main actor (#740)")
 @MainActor
 struct WXYCAppDonationEscapesMainActorTests {
     @Test("donateSiriIntent's Task is not main-actor isolated")
     func donationTaskIsNotMainActorIsolated() async {
         let isolation: (any Actor)? = await withCheckedContinuation { continuation in
-            WXYCApp.donateSiriIntent(isolationProbe: { isolation in
-                continuation.resume(returning: isolation)
-            })
+            WXYCApp.donateSiriIntent(
+                isolationProbe: { isolation in
+                    continuation.resume(returning: isolation)
+                },
+                donate: { _ in }
+            )
         }
 
         #expect(isolation == nil, "donateSiriIntent()'s Task must not be main-actor isolated, or its UIImage.placeholder compositing hangs the main thread again (#740)")
