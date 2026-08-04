@@ -59,7 +59,7 @@ public struct ShareExtensionView: View {
             .foregroundStyle(.white)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .requestSentHUD(isPresented: $viewModel.showRequestSentHUD)
+        .requestSentHUD(outcome: $viewModel.requestOutcome)
         .task {
             await viewModel.extractAndProcessURL()
         }
@@ -269,7 +269,7 @@ class ShareExtensionViewModel {
     var state: State = .loading
     var artworkImage: UIImage?
     var isLoadingArtwork = false
-    var showRequestSentHUD = false
+    var requestOutcome: RequestSentOutcome?
 
     private weak var extensionContext: NSExtensionContext?
     private let serviceRegistry = MusicServiceRegistry.shared
@@ -314,25 +314,30 @@ class ShareExtensionViewModel {
     
     func submit() {
         guard let track = musicTrack else { return }
-        
+
         Task {
+            let outcome: RequestSentOutcome
             do {
                 try await RequestService.shared.sendRequest(
                     title: track.title ?? track.displayTitle,
                     artist: track.artist ?? "Unknown Artist",
                     album: track.album
                 )
-                withAnimation {
-                    showRequestSentHUD = true
-                }
-                // Delay dismissal to show the HUD
-                try? await Task.sleep(for: .seconds(1.5))
-                extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+                outcome = .sent
             } catch {
                 print("Failed to submit request: \(error)")
-                // Still complete the extension even on error to avoid hanging
-                extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+                outcome = .failed
             }
+
+            // Unlike the in-app Request Line — which keeps its sheet up so a
+            // failed request can be retried without retyping — the extension
+            // has nowhere to retry into and must not hang the host app. So it
+            // reports the outcome either way and then completes.
+            withAnimation {
+                requestOutcome = outcome
+            }
+            try? await Task.sleep(for: outcome.autoDismissDelay)
+            extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
         }
     }
     
