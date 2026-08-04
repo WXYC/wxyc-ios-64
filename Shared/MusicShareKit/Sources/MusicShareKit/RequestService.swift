@@ -41,6 +41,20 @@ protocol RequestSession: Sendable {
 
 extension URLSession: RequestSession {}
 
+/// The act of sending a song request, abstracted from how it's delivered.
+///
+/// Callers that only care whether a request landed — ``RequestLineComposer``,
+/// notably — depend on this rather than on `RequestService`, whose URL and
+/// device fingerprint come from the process-wide `MusicShareKit.configuration`.
+/// That keeps their tests off the global.
+public protocol RequestSending: Sendable {
+    /// Sends a request message to the booth.
+    /// - Throws: `RequestServiceError` if the request did not land.
+    func sendRequest(message: String) async throws
+}
+
+extension RequestService: RequestSending {}
+
 /// A service for sending song requests to WXYC
 public struct RequestService: Sendable {
     public static let shared = RequestService()
