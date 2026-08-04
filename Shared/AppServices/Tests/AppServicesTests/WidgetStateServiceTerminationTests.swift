@@ -32,6 +32,20 @@ struct WidgetStateServiceTerminationTests {
 
     @Test("App-termination notification clears the persisted isPlaying flag")
     func terminationClearsIsPlaying() async throws {
+        // `UserDefaults.wxyc` is a process-global app-group suite shared with
+        // every other suite, and `.serialized` only orders tests within this
+        // one — so snapshot the flag and restore it, leaving the shared store
+        // exactly as it was found.
+        let defaults = UserDefaults.wxyc
+        let originalIsPlaying = defaults.object(forKey: "isPlaying")
+        defer {
+            if let originalIsPlaying {
+                defaults.set(originalIsPlaying, forKey: "isPlaying")
+            } else {
+                defaults.removeObject(forKey: "isPlaying")
+            }
+        }
+
         let service = WidgetStateService(
             playbackController: MockPlaybackController(),
             playlistService: makeTerminationTestPlaylistService(),
@@ -42,7 +56,7 @@ struct WidgetStateServiceTerminationTests {
         // Simulate an active session persisted to the app-group defaults (init
         // clears it, so set it after construction), then let the OS post its
         // app-termination notification.
-        UserDefaults.wxyc.set(true, forKey: "isPlaying")
+        defaults.set(true, forKey: "isPlaying")
 
         #if canImport(UIKit) && !os(watchOS)
         NotificationCenter.default.post(
@@ -56,9 +70,14 @@ struct WidgetStateServiceTerminationTests {
         )
         #endif
 
-        // Observer delivery is async on the main queue; poll until it lands.
-        try await waitUntil { UserDefaults.wxyc.bool(forKey: "isPlaying") == false }
-        #expect(UserDefaults.wxyc.bool(forKey: "isPlaying") == false)
+        // The service registers its observer with `queue: .main`, so the handler
+        // is enqueued on `OperationQueue.main` rather than run synchronously by
+        // `post`. Drain that serial queue deterministically instead of polling:
+        // the handler sits ahead of our barrier in FIFO order, so it has cleared
+        // the flag by the time this returns — no timeout, no flake.
+        await drainMainQueue()
+
+        #expect(defaults.bool(forKey: "isPlaying") == false)
     }
 }
 
@@ -73,17 +92,15 @@ private func makeTerminationTestPlaylistService() -> PlaylistService {
     )
 }
 
-@MainActor
-private func waitUntil(
-    timeout: Duration = .seconds(2),
-    _ condition: () -> Bool
-) async throws {
-    let deadline = ContinuousClock.now.advanced(by: timeout)
-    while ContinuousClock.now < deadline {
-        if condition() { return }
-        await Task.yield()
+/// Waits for work already enqueued on `OperationQueue.main` to finish. The main
+/// queue is serial and FIFO, so a barrier operation appended after the post
+/// resolves only once the `queue: .main` observer block ahead of it has run.
+private func drainMainQueue() async {
+    await withCheckedContinuation { continuation in
+        OperationQueue.main.addOperation {
+            continuation.resume()
+        }
     }
-    Issue.record("timed out waiting for isPlaying to clear")
 }
 
 #endif
