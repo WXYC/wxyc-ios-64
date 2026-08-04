@@ -28,21 +28,27 @@ struct RequestLineSheet: View {
     /// The entry point that opened the sheet: `"banner"` or `"station"`.
     let source: String
 
+    /// Raised when the booth has the request. The sheet dismisses itself on
+    /// success, so the confirmation HUD has to be presented by whoever
+    /// presented the sheet — see `requestSentHUD(outcome:)`.
+    let onSent: () -> Void
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.themeAppearance) private var appearance
 
-    @State private var requestText = ""
-    @State private var isSending = false
-    @State private var didSend = false
+    @State private var composer: RequestLineComposer
     @FocusState private var composerFocused: Bool
+
+    init(requestLine: RequestLine, source: String, onSent: @escaping () -> Void) {
+        self.requestLine = requestLine
+        self.source = source
+        self.onSent = onSent
+        _composer = State(initialValue: RequestLineComposer(source: source))
+    }
 
     private var accent: Color {
         appearance.accentColor.color(brightness: appearance.accentColor.brightness)
-    }
-
-    private var trimmedRequest: String {
-        requestText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var body: some View {
@@ -54,7 +60,7 @@ struct RequestLineSheet: View {
                     .font(.subheadline.bold())
                     .foregroundStyle(.secondary)
 
-                TextField("Song title and artist", text: $requestText, axis: .vertical)
+                TextField("Song title and artist", text: $composer.text, axis: .vertical)
                     .textFieldStyle(.plain)
                     .autocorrectionDisabled()
                     .focused($composerFocused)
@@ -62,22 +68,27 @@ struct RequestLineSheet: View {
                     .padding(12)
                     .background(.quaternary, in: .rect(cornerRadius: 12))
 
+                if let failure = composer.failure {
+                    RequestLineFailureLabel(message: failure)
+                }
+
                 Button {
                     Task { await send() }
                 } label: {
                     HStack {
-                        if isSending {
+                        if composer.isSending {
                             ProgressView().tint(.white)
                         }
-                        Text(didSend ? "Sent to the booth" : "Send to the booth").bold()
+                        Text("Send to the booth").bold()
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(accent)
-                .disabled(trimmedRequest.isEmpty || isSending || didSend)
+                .disabled(!composer.canSend)
             }
+            .animation(.default, value: composer.failure)
 
             Divider()
 
@@ -103,7 +114,9 @@ struct RequestLineSheet: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .presentationDetents([.height(380)])
+        // The detent is fixed, so the inline failure row has to be budgeted
+        // for — otherwise it pushes the "Dial a DJ" row past the bottom edge.
+        .presentationDetents([.height(composer.failure == nil ? 380 : 424)])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("requestLineSheet")
         .onAppear {
@@ -111,24 +124,19 @@ struct RequestLineSheet: View {
         }
     }
 
-    /// Posts the typed request to request-o-matic, records the send, and
-    /// dismisses. Failures are reported but leave the sheet open so the text
-    /// isn't lost.
+    /// Posts the typed request to request-o-matic and routes the outcome.
+    ///
+    /// A success dismisses the sheet and hands the confirmation to the
+    /// presenter. A failure keeps the sheet up — the typed text is the whole
+    /// reason not to dismiss — and reports itself inline, where a HUD raised
+    /// behind the sheet would be occluded by it.
     private func send() async {
-        let message = trimmedRequest
-        guard !message.isEmpty else { return }
-
-        isSending = true
-        defer { isSending = false }
-
-        do {
-            try await RequestService.shared.sendRequest(message: message)
-            StructuredPostHogAnalytics.shared.capture(RequestLineSongRequested(source: source))
-            didSend = true
-            try? await Task.sleep(for: .milliseconds(600))
+        switch await composer.send() {
+        case .sent:
+            onSent()
             dismiss()
-        } catch {
-            ErrorReporting.shared.report(error, context: "RequestLine", category: .ui)
+        case .failed, nil:
+            break
         }
     }
 
@@ -137,6 +145,23 @@ struct RequestLineSheet: View {
     private func placeCall() {
         StructuredPostHogAnalytics.shared.capture(RequestLineCallPlaced(source: source))
         openURL(RadioStation.WXYC.requestLine)
+    }
+}
+
+/// The inline report for a request that didn't reach the booth. Lives in the
+/// sheet rather than in the confirmation HUD because the sheet stays up on
+/// failure — so the listener can retry without retyping — and would occlude a
+/// HUD raised behind it.
+struct RequestLineFailureLabel: View {
+    let message: String
+
+    var body: some View {
+        Label(message, systemImage: "exclamationmark.triangle.fill")
+            .font(.footnote)
+            .foregroundStyle(.orange)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .transition(.opacity)
+            .accessibilityLabel("\(message) Your request was not sent.")
     }
 }
 
@@ -173,7 +198,15 @@ struct RequestLinePresenceLabel: View {
 
 #Preview("Named DJ") {
     Color.black.sheet(isPresented: .constant(true)) {
-        RequestLineSheet(requestLine: RequestLine(onAir: .dj("DJ HOUNDSTOOTH")), source: "banner")
+        RequestLineSheet(requestLine: RequestLine(onAir: .dj("DJ HOUNDSTOOTH")), source: "banner", onSent: {})
             .environment(Singletonia.shared)
     }
+}
+
+#Preview("Send failed") {
+    VStack(spacing: 22) {
+        RequestLinePresenceLabel(requestLine: RequestLine(onAir: .dj("DJ HOUNDSTOOTH")))
+        RequestLineFailureLabel(message: "Couldn't reach the booth. Try again.")
+    }
+    .padding(24)
 }
