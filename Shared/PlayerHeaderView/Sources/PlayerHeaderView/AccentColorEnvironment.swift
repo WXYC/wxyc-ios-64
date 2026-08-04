@@ -9,7 +9,7 @@
 //
 
 import SwiftUI
-import Wallpaper
+import WallpaperTheme
 
 // MARK: - Environment Keys
 
