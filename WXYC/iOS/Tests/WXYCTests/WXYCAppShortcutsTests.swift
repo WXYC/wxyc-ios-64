@@ -14,11 +14,17 @@
 //  finding no more-robust public alternative, kept it with an expanded
 //  rationale next to `reflectionContains` below plus a metatype-aware match.
 //
+//  Also covers WXYCApp.makeSiriIntentInteraction() (#740): the legacy SiriKit
+//  donation built by WXYCApp.donateSiriIntent(), unrelated to the App Intents
+//  shortcuts above but colocated here as this file's other Siri-adjacent
+//  WXYCApp coverage.
+//
 //  Created by Jake Bromberg on 07/23/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import AppIntents
+import Intents
 import Testing
 @testable import WXYC
 @testable import WXYCIntents
@@ -61,6 +67,33 @@ struct WXYCAppShortcutsTests {
             WXYCAppShortcuts.appShortcuts.contains { reflectionContains(OpenConcert.self, in: $0) },
             "No AppShortcut is registered for the OpenConcert intent (#624)"
         )
+    }
+}
+
+// MARK: - Siri Donation Interaction Tests (#740)
+
+/// Regression coverage for #740 / Sentry IOS-3M (`CGImageRef.overlay`), IOS-14,
+/// and IOS-19 (`WXYCApp.donateSiriIntent`): a >2s app hang caused by
+/// `WXYCApp.init()` synchronously compositing `UIImage.placeholder`
+/// (CoreImage/Metal) on the main thread while building the legacy SiriKit
+/// donation. `donateSiriIntent()` now defers that work to a `Task`; this
+/// suite is deliberately not `@MainActor`, so a future regression that makes
+/// `makeSiriIntentInteraction()` (or something it calls) require main-actor
+/// isolation would fail to *compile* here, not just run slowly.
+@Suite("WXYCApp Siri donation interaction")
+struct WXYCAppSiriIntentInteractionTests {
+    @Test("makeSiriIntentInteraction builds an INPlayMediaIntent off the main actor")
+    func buildsPlayMediaIntentOffMainActor() async {
+        let interaction = WXYCApp.makeSiriIntentInteraction()
+        #expect(interaction.intent is INPlayMediaIntent)
+    }
+
+    @Test("makeSiriIntentInteraction's media item carries the composited placeholder artwork")
+    func mediaItemCarriesPlaceholderArtwork() async {
+        let interaction = WXYCApp.makeSiriIntentInteraction()
+        let mediaItem = (interaction.intent as? INPlayMediaIntent)?.mediaItems?.first
+
+        #expect(mediaItem?.artwork != nil, "Siri donation artwork must still be present after moving placeholder compositing off the launch path")
     }
 }
 

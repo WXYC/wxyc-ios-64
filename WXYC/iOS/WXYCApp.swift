@@ -90,7 +90,8 @@ struct WXYCApp: App {
         let appState = self.appState
         Task { await appState.fetchConfiguration() }
 
-        // Siri intent donation
+        // Siri intent donation. Schedules a Task and returns immediately — see
+        // donateSiriIntent()'s doc comment for why this can never block init().
         Self.donateSiriIntent()
     }
         
@@ -270,26 +271,19 @@ struct WXYCApp: App {
 
     // MARK: - Siri Intents
 
+    /// Fire-and-forget: everything below — including building the interaction,
+    /// which touches `UIImage.placeholder` — runs inside this `Task`, off the
+    /// main actor, so `init()` never blocks on it. `donateSiriIntent()` itself
+    /// is `nonisolated`, so the `Task` it creates inherits no actor isolation
+    /// and is dispatched to the cooperative thread pool rather than the main
+    /// thread. Building the interaction on `init()`'s thread directly used to
+    /// force `UIImage.placeholder`'s first-access CoreImage/Metal compositing
+    /// synchronously on the main thread, hanging launch for >2s (#740, Sentry
+    /// IOS-3M/IOS-14/IOS-19).
     static func donateSiriIntent() {
-        let placeholder = UIImage.placeholder
-        let mediaItem = INMediaItem(
-            identifier: "Play \(RadioStation.WXYC.name)",
-            title: "Play \(RadioStation.WXYC.name)",
-            type: .radioStation,
-            artwork: INImage(imageData: placeholder.pngData()!)
-        )
-        let intent = INPlayMediaIntent(
-            mediaItems: [mediaItem],
-            mediaContainer: nil,
-            playShuffled: nil,
-            resumePlayback: false,
-            playbackQueueLocation: .now,
-            playbackSpeed: nil
-        )
-        intent.suggestedInvocationPhrase = "Play \(RadioStation.WXYC.name)"
-        let interaction = INInteraction(intent: intent, response: nil)
-
         Task {
+            let interaction = makeSiriIntentInteraction()
+
             do {
                 try await interaction.donate()
 
@@ -314,6 +308,32 @@ struct WXYCApp: App {
                 ErrorReporting.shared.report(error, context: "WXYCApp: Failed to donate Siri intent")
             }
         }
+    }
+
+    /// Builds the `INInteraction` `donateSiriIntent()` donates, including the
+    /// placeholder artwork. Factored out of `donateSiriIntent()` so it runs —
+    /// and can be tested — off the main actor: neither this function nor
+    /// `UIImage.placeholder` requires main-actor isolation, so calling it from
+    /// `donateSiriIntent()`'s `Task` keeps the compositing work off the main
+    /// thread (#740).
+    static func makeSiriIntentInteraction() -> INInteraction {
+        let placeholder = UIImage.placeholder
+        let mediaItem = INMediaItem(
+            identifier: "Play \(RadioStation.WXYC.name)",
+            title: "Play \(RadioStation.WXYC.name)",
+            type: .radioStation,
+            artwork: INImage(imageData: placeholder.pngData()!)
+        )
+        let intent = INPlayMediaIntent(
+            mediaItems: [mediaItem],
+            mediaContainer: nil,
+            playShuffled: nil,
+            resumePlayback: false,
+            playbackQueueLocation: .now,
+            playbackSpeed: nil
+        )
+        intent.suggestedInvocationPhrase = "Play \(RadioStation.WXYC.name)"
+        return INInteraction(intent: intent, response: nil)
     }
 }
 
