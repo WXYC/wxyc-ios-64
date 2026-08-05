@@ -11,6 +11,7 @@
 import Foundation
 import Playlist
 
+#if DEBUG
 /// Shared debug state for the playlist "on air" banner.
 ///
 /// Lets you preview the banner between DJs (when no sign-on is present in the flowsheet)
@@ -20,6 +21,12 @@ import Playlist
 /// a single write-through helper rather than a property wrapper, because `@Observable`
 /// synthesizes its own storage for stored properties and a wrapper can't layer on top
 /// of that (WXYC/wxyc-ios-64#752).
+///
+/// Wrapped in `#if DEBUG` rather than left reachable-but-unused: both of its consumers
+/// (``OnAirBannerTheme/debugOverride`` and `OnAirBannerDebugView`) are already compile-gated
+/// the same way, so this removes the type from the Release binary outright instead of
+/// merely leaving it uncalled there. `Debug TestFlight` defines `DEBUG` too, so the debug
+/// panel is unaffected.
 @MainActor
 @Observable
 public final class OnAirDebugState {
@@ -192,7 +199,10 @@ public final class OnAirDebugState {
     /// Writes `value` to `UserDefaults.standard` under `key` — the shared write-through
     /// every persisted property's `didSet` calls. A plain method rather than a property
     /// wrapper: see the type-level doc comment for why a wrapper isn't an option here.
-    private func persist(_ value: Any?, forKey key: String) {
+    /// Constrained to ``PersistableDebugValue`` (the `Bool`/`Double`/`String` this type's
+    /// properties actually use) so it stays as type-safe as the individual
+    /// `set(_:forKey:)` calls it replaced, rather than silently widening to `Any?`.
+    private func persist<Value: PersistableDebugValue>(_ value: Value, forKey key: String) {
         UserDefaults.standard.set(value, forKey: key)
     }
 
@@ -222,3 +232,14 @@ public final class OnAirDebugState {
         self.waveSpacing = defaults.object(forKey: Keys.waveSpacing) as? Double ?? 0.66
     }
 }
+
+/// A `UserDefaults`-storable type ``OnAirDebugState`` persists. Conformance is
+/// deliberately closed to the exact set its properties use today — `Bool`, `Double`,
+/// and `String` — rather than opened to every plist-representable type, so `persist`
+/// can't silently accept something `UserDefaults.set(_:forKey:)` would accept but this
+/// type never actually stores.
+private protocol PersistableDebugValue {}
+extension Bool: PersistableDebugValue {}
+extension Double: PersistableDebugValue {}
+extension String: PersistableDebugValue {}
+#endif
