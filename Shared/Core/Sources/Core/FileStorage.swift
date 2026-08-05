@@ -1,12 +1,19 @@
 //
 //  FileStorage.swift
-//  LikedSongs
+//  Core
 //
-//  Minimal durable-file seam for the likes store: load-once, atomic
-//  write-through, never evicts. Deliberately NOT the Caching package —
-//  CacheCoordinator purges infinite-lifespan entries at init and TTL-expires
-//  finite ones, which is correct for re-derivable caches and data loss for
-//  user-curated likes. See docs/plans/492-liked-songs.md decision #6.
+//  Minimal durable-file seam: load-once, atomic write-through, never evicts.
+//  Deliberately NOT the Caching package — CacheCoordinator purges
+//  infinite-lifespan entries at init and TTL-expires finite ones, which is
+//  correct for re-derivable caches and data loss for user-curated state.
+//  See docs/plans/492-liked-songs.md decision #6.
+//
+//  Hoisted here from `LikedSongs` and `Concerts`, which each carried a
+//  byte-for-byte-identical copy (the second, in `Concerts`, was a deliberate
+//  mirror added in #555 to avoid a cross-feature dependency, with the
+//  Core-hoist explicitly deferred). Both packages, plus the app target's
+//  `-marketing` recording harness, now consume this one definition
+//  (WXYC/wxyc-ios-64#557).
 //
 //  Created by Jake Bromberg on 07/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -14,9 +21,9 @@
 
 import Foundation
 
-/// Synchronous durable storage for one file's worth of data. Payloads are KBs
-/// (lean snapshots), so synchronous read-at-init and write-through keep heart
-/// state correct at first paint with no load/toggle race.
+/// Synchronous durable storage for one file's worth of data. Payloads are
+/// small (lean snapshots or id sets), so synchronous read-at-init and
+/// write-through keep state correct at first paint with no load/mutate race.
 public protocol FileStorage: Sendable {
     /// Returns the stored bytes, or nil when nothing has been saved yet.
     func load() throws -> Data?
