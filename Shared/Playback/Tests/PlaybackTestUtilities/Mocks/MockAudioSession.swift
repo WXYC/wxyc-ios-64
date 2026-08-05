@@ -140,11 +140,11 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
         get { state.withLock { $0.shouldThrowOnDeactivate } }
         set { state.withLock { $0.shouldThrowOnDeactivate = newValue } }
     }
-    
+
     public init() {}
 
     // MARK: - AudioSessionProtocol
-        
+
     public func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {
         try state.withLock { state in
             state.setCategoryCallCount += 1

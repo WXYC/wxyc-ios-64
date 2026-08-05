@@ -99,11 +99,15 @@ struct AudioPlayerControllerTests {
 
         controller.play()
         controller.stop()
-        // stop() hands the session back off its own turn, so the count below is
-        // a race with the second play() unless we wait for it: a deactivation
-        // that loses is correctly skipped as stale and never calls setActive.
-        // See PauseResponsivenessTests.
-        await waitUntil { mockSession.lastActiveState == false }
+        // stop() hands the session back off its own turn, so the setActive count
+        // below is a race with the second play() unless we wait for it: a
+        // deactivation that loses is correctly skipped as stale and never calls
+        // setActive. Waiting on the handback having *settled* rather than on the
+        // mock recording the call — the mock records it while the controller is
+        // still holding the session lock, so a play() started then would defer
+        // and never activate at all. See PauseResponsivenessTests.
+        await waitUntil { controller.debugStateSnapshot.contains("sessionDeactivationInFlight=false") }
+        #expect(mockSession.lastActiveState == false, "precondition: the handback never landed")
         controller.play()
 
         // Category should only be set once (idempotent)
@@ -167,7 +171,7 @@ struct AudioPlayerControllerTests {
         // The snapshot exists so a future CI flake on PlayWXYCIntentTests can be
         // diagnosed without reproducing locally; assert the field names we're
         // committing to so a refactor that drops one is caught.
-        for field in ["playerState=", "playbackIntended=", "isPlaying=", "isLoading=", "audioSessionActivated=", "isForegrounded="] {
+        for field in ["playerState=", "playbackIntended=", "isPlaying=", "isLoading=", "audioSessionActivated=", "sessionDeactivationInFlight=", "isForegrounded="] {
             #expect(snapshot.contains(field), "debugStateSnapshot missing '\(field)': \(snapshot)")
         }
     }
