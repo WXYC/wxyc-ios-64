@@ -62,13 +62,20 @@ struct NowPlayingWidgetBundle: WidgetBundle {
     /// Registers read-only/no-op defaults here, not the app's real Spotlight
     /// indexers or network fetcher.
     ///
-    /// Manual verification (AppIntents' `@Dependency` only resolves inside
-    /// the real OS-driven intent/entity-query flow, so no unit test can
-    /// force this path — see `AppIntentsDependenciesTests.swift`): install
-    /// the widget on a simulator/device, add the "WXYC Now Playing" widget to
-    /// a home screen, and confirm it renders (or shows its placeholder/empty
-    /// state) with no crash in Console — filter for "AppDependency" to catch
-    /// a silent respawn.
+    /// `AppIntentsDependenciesBootstrapTests` (nested under `ReindexHandlerTests`
+    /// in `AppIntentsDependenciesTests.swift`) proves `registerForWidget()`
+    /// itself runs every registration without throwing. It deliberately does
+    /// NOT also assert that a subsequently-constructed `PlaycutEntityQuery`
+    /// resolves without trapping — that was tried and reverted: it traps
+    /// ("Test crashed with signal trap") both under a bare `swift test` run
+    /// and under `xcodebuild test -scheme WXYC` against a real iOS
+    /// Simulator, so it isn't a host-specific artifact — see that file's
+    /// header for the full account. Whether a real, OS-driven resolution
+    /// (as opposed to a directly-constructed instance) succeeds is therefore
+    /// unverified by any automated test here and is a manual check: install
+    /// the widget on a simulator/device, add "WXYC Now Playing" to a home
+    /// screen, and confirm no crash in Console — filter for "AppDependency"
+    /// to catch a silent respawn.
     init() {
         AppIntentsDependencies.registerForWidget()
     }
