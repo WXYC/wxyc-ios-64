@@ -563,6 +563,58 @@ private extension RadioPlayerController {
     // MARK: External playback command handlers
 
 #if os(iOS)
+    /// Hands the audio session back when the app backgrounds without playing.
+    ///
+    /// The `setActive(false, …)` below is deliberately left on the caller's
+    /// turn, unlike the equivalent in `AudioPlayerController`. That call is a
+    /// blocking XPC round-trip to `mediaserverd` which, because of
+    /// `.notifyOthersOnDeactivation`, also fans resume notifications out to
+    /// every other audio app before returning; #773 traced a roughly
+    /// one-second main-actor freeze to it, and #774 moved
+    /// `AudioPlayerController`'s copy onto a background executor behind an
+    /// activation/deactivation interlock.
+    ///
+    /// Leaving this one synchronous is safe only while **both** of the
+    /// following hold, and neither is visible from this line:
+    ///
+    /// 1. **No iOS scene instantiates this controller.** `WXYCApp` and
+    ///    `WXYCTVApp` both drive `AudioPlayerController.shared`; the only
+    ///    runtime consumer of `RadioPlayerController.shared` is `WatchXYCApp`
+    ///    (`WXYC/WatchXYC/WatchXYCApp.swift`). It was the iOS app's controller
+    ///    until 8114d5c9 (2025-11-30), so this is a recent arrangement rather
+    ///    than a long-standing one. Two caveats: `PlayerControllerType`'s
+    ///    `.radioPlayer` case selects a *player* inside `AudioPlayerController`
+    ///    and never this controller, so flipping that override does not reach
+    ///    here; and `WXYC/WatchXYC/PlayerPage.swift` — a member of the WXYC TV
+    ///    target as well as WatchXYC — names `.shared` in a `#Preview`, so the
+    ///    type links into tvOS even though a lazy static reached only from a
+    ///    preview registry is never instantiated by the shipping app.
+    /// 2. **This block is `#if os(iOS)`.** watchOS, the one platform that does
+    ///    instantiate the controller, compiles it out entirely, so the watch
+    ///    never performs a handback at all. The matching activation in
+    ///    `play(reason:)` sits inside a *wider* `#if os(iOS) || os(tvOS)` gate
+    ///    — the two halves do not share a platform condition, so widening
+    ///    either one does not implicitly widen the other.
+    ///
+    /// Either condition alone is insufficient. Widen this gate to watchOS and
+    /// the #773 stall lands on the watch's main actor; wire this controller
+    /// into an iOS scene and it lands on the phone's. Do either and port
+    /// #774's interlock rather than reinventing it — detached handback,
+    /// activation that defers instead of blocking, and a generation counter so
+    /// a stale handback cannot tear down a session `play()` just re-activated.
+    /// A port would also inherit the residual background-suspension race in
+    /// #776.
+    ///
+    /// One thing that is *not* shared with #773: that defect's blocking call
+    /// sat in `stop(reason:)`, on the pause-button tap path. This controller's
+    /// `stop(reason:)` touches the session not at all, and this handback runs
+    /// only from the backgrounding notification and only while stopped — so
+    /// even reachable, it would stall app suspension rather than freeze a
+    /// visible control. That lowers the severity; it does not change the
+    /// conclusion.
+    ///
+    /// `RadioPlayerControllerBackgroundBehaviorTests` pins the current
+    /// synchronous shape so that changing any of this is not silent. See #777.
     func handleApplicationDidEnterBackground() {
         isForegrounded = false
 
