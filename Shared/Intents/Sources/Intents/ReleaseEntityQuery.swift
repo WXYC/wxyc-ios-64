@@ -35,17 +35,13 @@ public struct ReleaseEntityQuery: EntityQuery {
     /// then looking up each requested id. Playcuts with no release title are
     /// skipped — there is nothing to key a release entity on. Preserves the
     /// input order and drops ids the source couldn't resolve, matching the
-    /// AppIntents `entities(for:)` contract.
+    /// AppIntents `entities(for:)` contract. See `EntityQueryResolution.swift`
+    /// for the shared derived-by-normalization resolution this delegates to.
     public func entities(for identifiers: [ReleaseID]) async throws -> [ReleaseEntity] {
-        let playcuts = await source()
-        let entitiesByID = Dictionary(
-            playcuts.compactMap { playcut -> ReleaseEntity? in
-                guard let releaseTitle = playcut.releaseTitle, !releaseTitle.isEmpty else { return nil }
-                return ReleaseEntity(artistName: playcut.artistName, releaseTitle: releaseTitle)
-            }.map { ($0.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        return identifiers.compactMap { entitiesByID[$0] }
+        await resolveEntities(identifiers: identifiers, from: source) { playcut in
+            guard let releaseTitle = playcut.releaseTitle, !releaseTitle.isEmpty else { return nil }
+            return ReleaseEntity(artistName: playcut.artistName, releaseTitle: releaseTitle)
+        }
     }
 
     public func suggestedEntities() async throws -> [ReleaseEntity] {

@@ -72,15 +72,16 @@ public struct ConcertEntityQuery: EntityQuery {
     /// id this app itself constructed. The result preserves the input order and
     /// drops ids the source couldn't resolve, matching the AppIntents
     /// `entities(for:)` contract. If the source returns duplicate ids the first
-    /// one wins — the query never traps.
+    /// one wins — the query never traps. See `EntityQueryResolution.swift` for
+    /// the shared keyed-by-backend-id resolution this delegates to.
     public func entities(for identifiers: [ConcertID]) async throws -> [ConcertEntity] {
-        let rawIDs = identifiers.compactMap(\.concertID)
-        let concerts = await source(rawIDs)
-        let byID = Dictionary(
-            concerts.compactMap { concert in ConcertEntity(concert: concert).map { (concert.id, $0) } },
-            uniquingKeysWith: { first, _ in first }
+        await resolveEntities(
+            identifiers: identifiers,
+            rawID: \.concertID,
+            from: source,
+            id: \.id,
+            makeEntity: ConcertEntity.init(concert:)
         )
-        return rawIDs.compactMap { byID[$0] }
     }
 
     public func suggestedEntities() async throws -> [ConcertEntity] {

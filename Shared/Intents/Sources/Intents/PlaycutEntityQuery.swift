@@ -69,15 +69,17 @@ public struct PlaycutEntityQuery: EntityQuery {
     /// `historyStore` (production). The result preserves the input order and
     /// drops ids that couldn't be resolved, matching the AppIntents
     /// `entities(for:)` contract. Duplicate ids in the resolved set collapse
-    /// to the first occurrence — the query never traps.
+    /// to the first occurrence — the query never traps. See
+    /// `EntityQueryResolution.swift` for the shared keyed-by-backend-id
+    /// resolution this delegates to.
     public func entities(for identifiers: [PlaycutID]) async throws -> [PlaycutEntity] {
-        let rawIDs = identifiers.map(\.value)
-        let playcuts = await resolvePlaycuts(for: rawIDs)
-        let byID = Dictionary(
-            playcuts.map { ($0.id, PlaycutEntity(playcut: $0)) },
-            uniquingKeysWith: { first, _ in first }
+        await resolveEntities(
+            identifiers: identifiers,
+            rawID: { $0.value },
+            from: resolvePlaycuts(for:),
+            id: \.id,
+            makeEntity: PlaycutEntity.init(playcut:)
         )
-        return rawIDs.compactMap { byID[$0] }
     }
 
     public func suggestedEntities() async throws -> [PlaycutEntity] {

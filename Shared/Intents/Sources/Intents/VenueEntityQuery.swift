@@ -38,15 +38,17 @@ public struct VenueEntityQuery: EntityQuery {
     /// never the case for an id this app itself constructed. The result
     /// preserves the input order and drops ids the source couldn't resolve,
     /// matching the AppIntents `entities(for:)` contract. If the source
-    /// returns duplicate ids the first one wins — the query never traps.
+    /// returns duplicate ids the first one wins — the query never traps. See
+    /// `EntityQueryResolution.swift` for the shared keyed-by-backend-id
+    /// resolution this delegates to.
     public func entities(for identifiers: [VenueID]) async throws -> [VenueEntity] {
-        let rawIDs = identifiers.compactMap(\.venueID)
-        let venues = await source(rawIDs)
-        let byID = Dictionary(
-            venues.compactMap { venue in VenueEntity(venue: venue).map { (venue.id, $0) } },
-            uniquingKeysWith: { first, _ in first }
+        await resolveEntities(
+            identifiers: identifiers,
+            rawID: \.venueID,
+            from: source,
+            id: \.id,
+            makeEntity: VenueEntity.init(venue:)
         )
-        return rawIDs.compactMap { byID[$0] }
     }
 
     public func suggestedEntities() async throws -> [VenueEntity] {
