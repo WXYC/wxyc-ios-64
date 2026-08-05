@@ -7,6 +7,15 @@
 //  Created by Jake Bromberg on 11/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
+//  The proxy request/decode pipeline is now a thin wrapper over
+//  `Core.WXYCProxyClient` (#761): the single `urlSession` field replaces the
+//  former dual `WebSession`/`URLSession` fields this type carried solely to
+//  branch on whether a token provider existed — `WXYCProxyClient` (via
+//  `URLSession.authedData(for:tokenProvider:)`) already sends a plain
+//  unauthenticated request when `tokenProvider` is `nil`, so that branch was
+//  never needed. `MetadataError.invalidURL` is gone too; that case is now
+//  `WXYCProxyClient.ProxyError.invalidURL`.
+//
 
 import Foundation
 import Artwork
@@ -47,10 +56,7 @@ public actor PlaycutMetadataService {
     /// being shadowed for a week.
     static let emptyStreamingLifespan: TimeInterval = 15 * 60
 
-    private let baseURL: URL
-    private let tokenProvider: SessionTokenProvider?
-    private let session: WebSession
-    private let urlSession: URLSession
+    private let client: WXYCProxyClient
     private let cache: CacheCoordinator
     private let errorReporter: any ErrorReporter
 
@@ -59,10 +65,7 @@ public actor PlaycutMetadataService {
         tokenProvider: SessionTokenProvider? = nil,
         errorReporter: any ErrorReporter = ErrorReporting.shared
     ) {
-        self.baseURL = baseURL
-        self.tokenProvider = tokenProvider
-        self.session = URLSession.shared
-        self.urlSession = .shared
+        self.client = WXYCProxyClient(baseURL: baseURL, tokenProvider: tokenProvider)
         self.cache = .Metadata
         self.errorReporter = errorReporter
     }
@@ -71,15 +74,11 @@ public actor PlaycutMetadataService {
     init(
         baseURL: URL = URL(string: "https://api.wxyc.org")!,
         tokenProvider: SessionTokenProvider? = nil,
-        session: WebSession,
         urlSession: URLSession = .shared,
         cache: CacheCoordinator = .Metadata,
         errorReporter: any ErrorReporter = ErrorReporting.shared
     ) {
-        self.baseURL = baseURL
-        self.tokenProvider = tokenProvider
-        self.session = session
-        self.urlSession = urlSession
+        self.client = WXYCProxyClient(baseURL: baseURL, session: urlSession, tokenProvider: tokenProvider)
         self.cache = cache
         self.errorReporter = errorReporter
     }
@@ -221,11 +220,11 @@ public actor PlaycutMetadataService {
             cache: cache,
             lifespan: .thirtyDays,
             fetch: {
-                let response = try await fetchFromProxy(
-                    path: "proxy/metadata/artist",
-                    queryItems: [URLQueryItem(name: "artistId", value: String(artistId))]
+                let response: WXYCAPIModels.ArtistMetadataResponse = try await client.get(
+                    "proxy/metadata/artist",
+                    query: [URLQueryItem(name: "artistId", value: String(artistId))]
                 )
-                return try JSONDecoder.shared.decode(WXYCAPIModels.ArtistMetadataResponse.self, from: response)
+                return response
             },
             transform: { apiResult in
                 ArtistMetadata(
@@ -280,8 +279,10 @@ public actor PlaycutMetadataService {
             }
             queryItems.append(URLQueryItem(name: "trackTitle", value: playcut.songTitle))
 
-            let data = try await fetchFromProxy(path: "proxy/metadata/album", queryItems: queryItems)
-            let apiResult = try JSONDecoder.shared.decode(WXYCAPIModels.AlbumMetadataResponse.self, from: data)
+            let apiResult: WXYCAPIModels.AlbumMetadataResponse = try await client.get(
+                "proxy/metadata/album",
+                query: queryItems
+            )
 
             // BS emits `discogsUnavailable`/`discogsUnavailableNote` on this
             // response (BS#1901), and `WXYCAPIModels.AlbumMetadataResponse`
@@ -324,32 +325,5 @@ public actor PlaycutMetadataService {
 
             return (album, streaming)
         }
-    }
-
-    // MARK: - Network
-
-    private func fetchFromProxy(path: String, queryItems: [URLQueryItem]) async throws -> Data {
-        var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false)!
-        components.queryItems = queryItems
-
-        guard let url = components.url else {
-            throw MetadataError.invalidURL
-        }
-
-        if let tokenProvider {
-            let request = URLRequest(url: url)
-            let (data, _) = try await urlSession.authedData(for: request, tokenProvider: tokenProvider)
-            return data
-        } else {
-            return try await session.data(from: url)
-        }
-    }
-}
-
-// MARK: - Errors
-
-extension PlaycutMetadataService {
-    enum MetadataError: Error {
-        case invalidURL
     }
 }
