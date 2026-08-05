@@ -123,7 +123,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
         // stop() should have deactivated session (playbackIntended is now false).
         // The deactivation is deferred off the caller's turn — see
         // PauseResponsivenessTests — so it is awaited rather than read inline.
-        await harness.waitUntil { harness.mockSession.lastActiveState == false }
+        await harness.waitUntil({ harness.mockSession.lastActiveState == false }, timeout: .seconds(5))
         #expect(harness.mockSession.setActiveCallCount >= 1,
                "stop() should deactivate session")
         #expect(harness.mockSession.lastActiveState == false,
@@ -163,7 +163,7 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
 
         // stop() itself should deactivate — off its own turn, but with no other
         // event needed to drive it. See PauseResponsivenessTests.
-        await harness.waitUntil { harness.mockSession.lastActiveState == false }
+        await harness.waitUntil({ harness.mockSession.lastActiveState == false }, timeout: .seconds(5))
         #expect(harness.mockSession.setActiveCallCount >= 1,
                "stop() should deactivate session")
         #expect(harness.mockSession.lastActiveState == false,

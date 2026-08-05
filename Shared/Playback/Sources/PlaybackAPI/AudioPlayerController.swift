@@ -114,7 +114,7 @@ public final class AudioPlayerController {
     /// that distinguish "audio session activation failed" from "stream took
     /// too long to start" — see #251.
     public var debugStateSnapshot: String {
-        "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), isForegrounded=\(isForegrounded), holdingPatternEngaged=\(holdingPatternEngaged), holdingReconnectInFlight=\(holdingReconnectInFlight), reachabilitySatisfied=\(lastReachabilitySatisfied.map(String.init(describing:)) ?? "nil"), holdingReconnectTrigger=\(holdingReconnectTrigger.rawValue)"
+        "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), sessionDeactivationInFlight=\(sessionDeactivationInFlight), isForegrounded=\(isForegrounded), holdingPatternEngaged=\(holdingPatternEngaged), holdingReconnectInFlight=\(holdingReconnectInFlight), reachabilitySatisfied=\(lastReachabilitySatisfied.map(String.init(describing:)) ?? "nil"), holdingReconnectTrigger=\(holdingReconnectTrigger.rawValue)"
     }
 
     /// Whether the CPU-usage aggregation session is currently open. Exposed for
@@ -150,7 +150,17 @@ public final class AudioPlayerController {
     private var wasPlayingBeforeRouteDisconnect = false
     /// Tracks if we intend to be playing (survives transient state changes)
     private var playbackIntended = false
-    /// Tracks whether the audio session has been activated (to avoid deactivating when never activated)
+    /// Whether a deferred deactivation is currently in flight. `audioSessionActivated`
+    /// can't serve this role: it stays set until the handback is confirmed, so a
+    /// second `stop()` (or a background transition) would otherwise stack a
+    /// redundant XPC call behind the first. Declared alongside
+    /// `audioSessionActivated` rather than with the rest of the iOS-only session
+    /// state so `debugStateSnapshot` can report it without a platform branch.
+    private var sessionDeactivationInFlight = false
+    /// Whether the audio session is activated, so we never try to deactivate one
+    /// that was never activated. Tracks confirmed state, not intent: it is cleared
+    /// only once a deferred deactivation reports the handback actually happened,
+    /// so a failed one leaves it set and the next attempt retries.
     private var audioSessionActivated = false
     /// Tracks when playback started for analytics duration reporting. Backed
     /// by the monotonic `Core.Timer` (`ContinuousClock`), not a wall-clock
@@ -257,6 +267,7 @@ public final class AudioPlayerController {
     /// `scheduleAudioSessionDeactivation()` for why deactivation doesn't run on
     /// the caller's turn.
     @ObservationIgnored private var sessionDeactivationTask: Task<Void, Never>?
+
 
     /// Serializes every `setActive` call on the session.
     ///
@@ -473,7 +484,7 @@ public final class AudioPlayerController {
         analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, source: reason.playbackSource, sessionID: sessionID))
         donatePlayIntent()
     }
-    
+
     /// Calculate how long playback has been active
     private var playbackDuration: TimeInterval {
         playbackTimer?.duration() ?? 0
@@ -665,10 +676,14 @@ public final class AudioPlayerController {
             clearPendingSessionActivation()
             Log(.info, category: .playback, "Audio session activated")
             return true
+        } catch is AudioSessionBusy {
+            Log(.info, category: .playback, "Audio session still being handed back; deferring activation")
+            scheduleSessionActivationRetry(cause: "deactivation in flight")
+            return false
         } catch {
             Log(.error, category: .playback, "Failed to activate audio session: \(error)")
             if isCannotInterruptOthers(error) {
-                scheduleSessionActivationRetry()
+                scheduleSessionActivationRetry(cause: "CannotInterruptOthers")
             }
             return false
         }
@@ -683,12 +698,17 @@ public final class AudioPlayerController {
             && nsError.code == cannotInterruptOthersErrorCode
     }
 
-    /// Schedules a bounded, delayed sequence of activation retries after a
-    /// `CannotInterruptOthers` failure. Deliberately does NOT busy-loop: it
-    /// spaces attempts out and stops after `maxSessionActivationRetries`, and an
-    /// interruption-ended notification can short-circuit the wait via
-    /// `reactivateAfterInterruptionIfPending()`.
-    private func scheduleSessionActivationRetry() {
+    /// Schedules a bounded, delayed sequence of activation retries after an
+    /// activation that could not proceed — either a `CannotInterruptOthers`
+    /// failure or a deferred deactivation still holding the session. Deliberately
+    /// does NOT busy-loop: it spaces attempts out and stops after
+    /// `maxSessionActivationRetries`, and an interruption-ended notification can
+    /// short-circuit the wait via `reactivateAfterInterruptionIfPending()`.
+    ///
+    /// - Parameter cause: What blocked the activation, for the log line. The two
+    ///   causes ride the same retry cadence but are very different diagnoses, so
+    ///   they must not be conflated in the field.
+    private func scheduleSessionActivationRetry(cause: String) {
         // Never activate while backgrounded — foregrounding drives its own
         // reactivation path — and only when playback is still intended.
         guard playbackIntended, isForegrounded else { return }
@@ -696,7 +716,7 @@ public final class AudioPlayerController {
         guard !sessionActivationPending else { return }
 
         sessionActivationPending = true
-        Log(.info, category: .playback, "Audio session activation deferred (CannotInterruptOthers); scheduling bounded retry")
+        Log(.info, category: .playback, "Audio session activation deferred (\(cause)); scheduling bounded retry")
 
         sessionActivationRetryTask?.cancel()
         sessionActivationRetryTask = Task { [weak self] in
@@ -758,9 +778,12 @@ public final class AudioPlayerController {
         sessionActivationRetryTask?.cancel()
         sessionActivationRetryTask = nil
         if !retrySessionActivation() {
-            // Still blocked — resume the bounded retry cadence.
+            // Still blocked — resume the bounded retry cadence. Reached only
+            // from an interruption-ended notification, so the interruption is
+            // the cause worth naming here rather than whatever `activate(_:)`
+            // last threw.
             sessionActivationPending = false
-            scheduleSessionActivationRetry()
+            scheduleSessionActivationRetry(cause: "still blocked after interruption ended")
         }
     }
 
@@ -772,11 +795,22 @@ public final class AudioPlayerController {
         sessionActivationRetryTask = nil
     }
 
+    /// Thrown by `activate(_:)` when a deferred deactivation currently owns the
+    /// session. Not a failure of the activation itself — the caller defers and
+    /// retries instead of treating it as an error.
+    private struct AudioSessionBusy: Error {}
+
     /// Activates the session under `sessionLock`, bumping the generation so any
     /// deactivation scheduled before this point recognises itself as stale.
     /// A failed activation deliberately leaves the generation alone.
+    ///
+    /// Takes the lock only if it is free. An unavailable lock means the deferred
+    /// deactivation is mid-`setActive(false, …)` — the very
+    /// hundreds-of-milliseconds XPC call this class moved off the main actor.
+    /// Blocking on it here would just relocate the freeze from the pause tap to
+    /// the play tap, so the caller defers to the bounded retry instead.
     private func activate(_ session: AudioSessionProtocol) throws {
-        sessionLock.lock()
+        guard sessionLock.lockIfAvailable() else { throw AudioSessionBusy() }
         defer { sessionLock.unlock() }
         try session.setActive(true, options: [])
         sessionActivationGeneration &+= 1
@@ -790,24 +824,36 @@ public final class AudioPlayerController {
     /// costs hundreds of milliseconds. Running it inline in `stop()` charged that
     /// latency to the caller — and because SwiftUI cannot render until the tap
     /// handler returns, the pause button and the LCD visualizer both stayed
-    /// frozen for the duration. Nothing in the UI depends on the deactivation
-    /// having completed, so it moves to a background executor.
+    /// frozen for the duration. Nothing the UI reads depends on the deactivation
+    /// having completed, so it moves to a background executor — and `activate(_:)`
+    /// declines to wait on it, deferring to the bounded retry instead, so the
+    /// freeze can't reappear on the play tap either.
     ///
-    /// `audioSessionActivated` flips here rather than on completion: it records
-    /// the intent to hand the session back, which is decided now. A subsequent
-    /// `play()` re-activates and sets it again.
+    /// `audioSessionActivated` is cleared only once the handback is *confirmed*,
+    /// so a failed deactivation leaves it set and the next `stop()` tries again
+    /// rather than early-returning on a session the OS still considers active.
+    /// `sessionDeactivationInFlight` covers the window in its place.
     private func scheduleAudioSessionDeactivation() {
         // Only deactivate if we previously activated - AVAudioSession has no isActive property
-        guard audioSessionActivated, audioSession != nil else { return }
-        audioSessionActivated = false
+        guard audioSessionActivated, !sessionDeactivationInFlight, audioSession != nil else { return }
+        sessionDeactivationInFlight = true
 
         sessionLock.lock()
         let generation = sessionActivationGeneration
         sessionLock.unlock()
 
-        sessionDeactivationTask?.cancel()
-        sessionDeactivationTask = Task.detached(priority: .userInitiated) { [self] in
-            deactivateAudioSession(ifGenerationIs: generation)
+        // The outer task inherits the main actor but doesn't run until this turn
+        // ends, and the blocking call happens on the detached one — so `stop()`
+        // still returns immediately, and the bookkeeping lands back here without
+        // a second hop.
+        sessionDeactivationTask = Task { [self] in
+            let handedBack = await Task.detached(priority: .userInitiated) {
+                self.deactivateAudioSession(ifGenerationIs: generation)
+            }.value
+            sessionDeactivationInFlight = false
+            if handedBack {
+                audioSessionActivated = false
+            }
         }
     }
 
@@ -815,13 +861,19 @@ public final class AudioPlayerController {
     /// since it was scheduled.
     ///
     /// Both halves of the check-then-act run under `sessionLock`, so a `play()`
-    /// racing this from the main actor either completes first (and this call
-    /// sees the bumped generation and declines) or waits (and re-activates
-    /// afterwards). `Task.cancel()` alone can't close that window: cancellation
-    /// is cooperative, and by the time `play()` runs this may already be blocked
-    /// inside `setActive`.
-    private nonisolated func deactivateAudioSession(ifGenerationIs expected: Int) {
-        guard let session = audioSession else { return }
+    /// racing this from the main actor either completes first — and this call
+    /// sees the bumped generation and declines — or finds the lock taken and
+    /// defers, re-activating on the bounded retry once this has finished.
+    /// `Task.cancel()` alone can't close that window: cancellation is
+    /// cooperative, and by the time `play()` runs this may already be inside
+    /// `setActive`.
+    ///
+    /// - Returns: Whether the session was actually handed back. `false` covers
+    ///   both a failure (the OS still holds it active, so the caller must keep
+    ///   `audioSessionActivated` set and retry later) and a stale attempt (a
+    ///   `play()` re-activated it, and already set the flag itself).
+    private nonisolated func deactivateAudioSession(ifGenerationIs expected: Int) -> Bool {
+        guard let session = audioSession else { return false }
 
         let outcome: DeactivationOutcome
         sessionLock.lock()
@@ -846,10 +898,13 @@ public final class AudioPlayerController {
         switch outcome {
         case .deactivated(let seconds):
             Log(.info, category: .playback, "Audio session deactivated in \(Int(seconds * 1000))ms")
+            return true
         case .failed(let error):
             Log(.error, category: .playback, "Failed to deactivate audio session: \(error)")
+            return false
         case .stale:
             Log(.info, category: .playback, "Skipped deferred audio session deactivation; session was re-activated")
+            return false
         }
     }
 
@@ -996,7 +1051,7 @@ public final class AudioPlayerController {
         
     #if os(iOS)
     /// Call this when the app enters the background (from SwiftUI scenePhase)
-    /// Only deactivates the audio session if playback is NOT intended
+    /// Only schedules the audio session handback if playback is NOT intended
     public func handleAppDidEnterBackground() {
         Log(.info, category: .playback, "App entered background (playbackIntended: \(playbackIntended))")
         isForegrounded = false
