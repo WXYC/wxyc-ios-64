@@ -741,7 +741,7 @@ struct AuthenticationServiceTests {
         }
 
         let failedEvents = mockAnalytics.typedEvents(ofType: RequestLineAuthFailedEvent.self)
-        let jwtExchangeFailure = failedEvents.first { $0.phase == .jwtExchange }
+        let jwtExchangeFailure = failedEvents.first { $0.phase == AuthFailurePhase.jwtExchange.rawValue }
         #expect(jwtExchangeFailure != nil)
     }
 
@@ -791,7 +791,7 @@ struct AuthenticationServiceTests {
         // ensureAuthenticated() deliberately suppresses RequestLineAuthFailedEvent
         // so ops can tell migration churn apart from real Keychain trouble.
         let failedEvents = mockAnalytics.typedEvents(ofType: RequestLineAuthFailedEvent.self)
-            .filter { $0.phase == .keychain }
+            .filter { $0.phase == AuthFailurePhase.keychain.rawValue }
         #expect(failedEvents.isEmpty)
     }
 
@@ -812,7 +812,7 @@ struct AuthenticationServiceTests {
         // the operational-failure event IS emitted.
         #expect(networkClient.signInCallCount == 1)
         let failedEvents = mockAnalytics.typedEvents(ofType: RequestLineAuthFailedEvent.self)
-            .filter { $0.phase == .keychain }
+            .filter { $0.phase == AuthFailurePhase.keychain.rawValue }
         #expect(failedEvents.count == 1)
     }
 }
