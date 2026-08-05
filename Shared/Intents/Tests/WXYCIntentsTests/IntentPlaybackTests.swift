@@ -7,6 +7,14 @@
 //  stream connects. The loop is the previously-duplicated, timeout-prone code;
 //  the injectable isPlaying seam lets us exercise it without a live audio session.
 //
+//  Also covers `toggleAndAwait`, the prepare/capture/toggle/wait sequence that
+//  `ToggleWXYC` and `WidgetToggleWXYC` were independently reimplementing
+//  byte-for-byte (#331). Its pre-toggle predicate is `isPlaybackRequested`, not
+//  `isPlaying` — the same predicate `AudioPlayerController.toggle(reason:)`
+//  branches on (see `readsPlaybackRequestedNotIsPlayingAsThePreToggleProbe`
+//  below), so an in-flight start no longer makes the wait misjudge which way
+//  the toggle went.
+//
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
@@ -127,5 +135,115 @@ final class FakeIntentPlaybackController: IntentPlaybackControlling {
 
     func play(reason: PlaybackReason) {
         playedReasons.append(reason)
+    }
+}
+
+@Suite("IntentPlayback toggleAndAwait")
+@MainActor
+struct IntentPlaybackToggleAndAwaitTests {
+    @Test("Prepares the audio session before toggling")
+    func preparesBeforeToggling() async {
+        var order: [String] = []
+
+        await IntentPlayback.toggleAndAwait(
+            reason: .testToggle,
+            context: "test",
+            prepareForPlayback: { order.append("prepare") },
+            isPlaybackRequested: { true },
+            isPlaying: { true },
+            toggle: { _ in order.append("toggle") }
+        )
+
+        #expect(order == ["prepare", "toggle"])
+    }
+
+    @Test("Passes the given reason through to toggle")
+    func passesReasonToToggle() async {
+        var capturedReason: PlaybackReason?
+
+        await IntentPlayback.toggleAndAwait(
+            reason: .widgetToggle,
+            context: "test",
+            prepareForPlayback: { },
+            isPlaybackRequested: { true },
+            isPlaying: { true },
+            toggle: { capturedReason = $0 }
+        )
+
+        #expect(capturedReason == .widgetToggle)
+    }
+
+    @Test("Skips the wait when playback was already requested before the toggle")
+    func skipsWaitWhenAlreadyRequested() async {
+        var isPlayingCallCount = 0
+
+        await IntentPlayback.toggleAndAwait(
+            reason: .testToggle,
+            context: "test",
+            prepareForPlayback: { },
+            isPlaybackRequested: { true },
+            isPlaying: {
+                isPlayingCallCount += 1
+                return true
+            },
+            toggle: { _ in }
+        )
+
+        // Since playback was already requested, toggling is turning it off,
+        // so there's nothing to wait for — isPlaying should never be polled.
+        #expect(isPlayingCallCount == 0)
+    }
+
+    @Test("Waits for playback to start when it was not already requested before the toggle")
+    func waitsWhenNotAlreadyRequested() async {
+        var isPlayingCallCount = 0
+        var isPlayingValue = false
+
+        await IntentPlayback.toggleAndAwait(
+            reason: .testToggle,
+            context: "test",
+            prepareForPlayback: { },
+            isPlaybackRequested: { false },
+            isPlaying: {
+                isPlayingCallCount += 1
+                return isPlayingValue
+            },
+            toggle: { _ in isPlayingValue = true }
+        )
+
+        // Post-toggle poll: isPlaying reports true immediately, so
+        // awaitPlaybackStart's loop exits on its first check.
+        #expect(isPlayingCallCount == 1)
+    }
+
+    @Test("Reads isPlaybackRequested, not isPlaying, as the pre-toggle probe")
+    func readsPlaybackRequestedNotIsPlayingAsThePreToggleProbe() async {
+        // Models a start that has been requested but has produced no audio yet
+        // (a buffering connect, or one parked on a dead network): isPlaying is
+        // still false, but isPlaybackRequested is already true — exactly the
+        // predicate `AudioPlayerController.toggle(reason:)` branches on. A tap
+        // in this window must cancel the in-flight start, not wait out the
+        // full timeout for audio that the toggle just stopped.
+        //
+        // A buggy implementation that reads `isPlaying` (false) instead of
+        // `isPlaybackRequested` (true) as the pre-toggle probe would conclude
+        // playback was *not* requested, fail to skip the wait, and poll
+        // isPlaying at least once. The correct implementation never polls it.
+        var isPlayingCallCount = 0
+
+        await IntentPlayback.toggleAndAwait(
+            reason: .testToggle,
+            context: "test",
+            timeout: .milliseconds(200),
+            prepareForPlayback: { },
+            isPlaybackRequested: { true },
+            isPlaying: {
+                isPlayingCallCount += 1
+                return false
+            },
+            toggle: { _ in }
+        )
+
+        #expect(isPlayingCallCount == 0)
     }
 }
