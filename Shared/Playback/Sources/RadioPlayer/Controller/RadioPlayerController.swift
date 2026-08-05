@@ -97,6 +97,7 @@ public final class RadioPlayerController: PlaybackController {
 
         setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: remoteCommandCenter)
         setUpPlayerStateObservation()
+        setUpHeartbeat()
     }
     #else
     init(
@@ -114,6 +115,7 @@ public final class RadioPlayerController: PlaybackController {
 
         setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: nil)
         setUpPlayerStateObservation()
+        setUpHeartbeat()
     }
     #endif
 
@@ -125,7 +127,7 @@ public final class RadioPlayerController: PlaybackController {
         #endif
         if let stallObservation { notificationCenter.removeObserver(stallObservation) }
         reconnectTask?.cancel()
-        heartbeatTask?.cancel()
+        heartbeat?.stop()
     }
 
     private func setUpObservations(
@@ -250,23 +252,23 @@ public final class RadioPlayerController: PlaybackController {
     /// Call sites should capture analytics BEFORE calling this method.
     /// - Parameter reason: Why playback was stopped (for analytics)
     public func stop(reason: PlaybackReason) {
-        reconnectTask?.cancel()
-        reconnectTask = nil
-        backoffTimer.reset()
-        // Immediate cancellation guarantee (#666), rather than waiting on the
-        // async state-stream round-trip below to notice the player went idle.
-        stopHeartbeat()
-        self.playbackIntended = false
-        if reason != .routeDisconnected {
-            self.wasPlayingBeforeRouteDisconnect = false
-        }
-        // Interruption/route-disconnect stops are an implementation detail of
-        // "pause, then auto-resume" — the listen itself isn't over, so the
-        // session id must survive them. Any other reason is a genuine end of
-        // the listen; the next `play()` mints a fresh id. See #665.
-        if reason != .interruptionBegan && reason != .routeDisconnected {
-            sessionID = nil
-        }
+        // Shared six-step teardown (#755): cancels the reconnect, resets
+        // backoff, stops the heartbeat (an immediate cancellation guarantee
+        // rather than waiting on the async state-stream round-trip below to
+        // notice the player went idle), clears playback intent, and applies
+        // the #665 sessionID-survival rule. See `PlaybackStopTeardown`.
+        PlaybackStopTeardown.run(
+            reason: reason,
+            cancelReconnect: {
+                reconnectTask?.cancel()
+                reconnectTask = nil
+            },
+            resetBackoff: { backoffTimer.reset() },
+            stopHeartbeat: { heartbeat?.stop() },
+            playbackIntended: &playbackIntended,
+            wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
+            sessionID: &sessionID
+        )
         self.radioPlayer.stop()
         self.state = .idle
     }
@@ -342,7 +344,14 @@ public final class RadioPlayerController: PlaybackController {
     /// `AudioPlayerController.heartbeatInterval` for the interval choice and
     /// budget rationale, which applies identically here.
     private let heartbeatInterval: Duration
-    private var heartbeatTask: Task<Void, Never>?
+    /// Owns the `playback_heartbeat` cancel-then-loop-sleep-emit task shape
+    /// (#666), extracted into `PlaybackCore` so both this controller and
+    /// `AudioPlayerController` compose the same implementation instead of
+    /// each maintaining a byte-identical copy (#755). Populated by
+    /// `setUpHeartbeat()`, called at the end of `init` — its `onTick`
+    /// closure captures `self` weakly, which Swift only permits once every
+    /// other stored property has a value.
+    private var heartbeat: PlaybackHeartbeat?
     /// Whether the app is foregrounded, read by `emitHeartbeat()` for the
     /// heartbeat's `context` field.
     ///
@@ -505,32 +514,28 @@ private extension RadioPlayerController {
 
     /// Starts (or restarts) the periodic `playback_heartbeat` cadence. Called
     /// only when the observed player state maps to `.playing` (see
-    /// `setUpPlayerStateObservation()`), mirroring
-    /// `AudioPlayerController.startHeartbeat()` — see that type for the full
-    /// design rationale (interval choice, budget, idempotency).
+    /// `setUpPlayerStateObservation()`). Delegates to the shared
+    /// `PlaybackHeartbeat` component (#755); see that type for the
+    /// cancel-then-loop-sleep-emit implementation and its lifetime guarantees.
     func startHeartbeat() {
-        heartbeatTask?.cancel()
-        heartbeatTask = Task { [weak self, interval = heartbeatInterval] in
-            while true {
-                do {
-                    try await Task.sleep(for: interval)
-                } catch {
-                    // Cancelled mid-sleep.
-                    return
-                }
-                guard !Task.isCancelled, let self else { return }
-                self.emitHeartbeat()
-            }
-        }
+        heartbeat?.start()
     }
 
-    /// Stops the heartbeat cadence and cancels its task. Idempotent. Called
-    /// on every transition away from `.playing` in
-    /// `setUpPlayerStateObservation()`, and explicitly from `stop(reason:)`
-    /// for an immediate cancellation guarantee.
+    /// Stops the heartbeat cadence. Idempotent. Called on every transition
+    /// away from `.playing` in `setUpPlayerStateObservation()`, and
+    /// explicitly from `stop(reason:)` for an immediate cancellation
+    /// guarantee.
     func stopHeartbeat() {
-        heartbeatTask?.cancel()
-        heartbeatTask = nil
+        heartbeat?.stop()
+    }
+
+    /// Creates the `PlaybackHeartbeat` component. Called at the end of
+    /// `init` because its `onTick` closure captures `self` weakly, which
+    /// Swift only permits once every stored property already has a value.
+    func setUpHeartbeat() {
+        heartbeat = PlaybackHeartbeat(interval: heartbeatInterval) { [weak self] in
+            self?.emitHeartbeat()
+        }
     }
 
     /// Captures one `PlaybackHeartbeatEvent` using the same monotonic
