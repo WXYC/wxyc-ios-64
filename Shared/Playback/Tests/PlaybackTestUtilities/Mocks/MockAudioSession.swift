@@ -10,84 +10,165 @@
 
 import Foundation
 import AVFoundation
+import os
 @testable import Playback
 
 #if os(iOS) || os(tvOS) || os(watchOS)
 
-/// Mock audio session for testing (iOS/tvOS/watchOS)
-public final class MockAudioSession: AudioSessionProtocol {
+/// Mock audio session for testing (iOS/tvOS/watchOS).
+///
+/// Every property is lock-protected because `AudioPlayerController` deactivates
+/// the session off the main actor (see `scheduleAudioSessionDeactivation()`), so
+/// a test's `waitUntil` reads these counters on the main actor while the
+/// deactivation writes them from a background executor. The real `AVAudioSession`
+/// is thread-safe; this stands in for it, so it has to be too.
+public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
+
+    /// Everything the mock records or is configured with, so one lock covers the
+    /// whole of it.
+    private struct State: @unchecked Sendable {
+        var setCategoryCallCount = 0
+        var setActiveCallCount = 0
+
+        var lastCategory: AVAudioSession.Category?
+        var lastMode: AVAudioSession.Mode?
+        var lastCategoryOptions: AVAudioSession.CategoryOptions?
+        var lastPolicy: AVAudioSession.RouteSharingPolicy?
+        var lastActiveState: Bool?
+        var lastActiveOptions: AVAudioSession.SetActiveOptions?
+
+        var shouldThrowOnSetCategory = false
+        var shouldThrowOnSetActive = false
+        var setActiveError: (any Error)?
+        var failSetActiveCount = 0
+        var outputLatency: TimeInterval = 0
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State())
 
     // MARK: - State Tracking
 
-    public var setCategoryCallCount = 0
-    public var setActiveCallCount = 0
+    public var setCategoryCallCount: Int {
+        get { state.withLock { $0.setCategoryCallCount } }
+        set { state.withLock { $0.setCategoryCallCount = newValue } }
+    }
 
-    public var lastCategory: AVAudioSession.Category?
-    public var lastMode: AVAudioSession.Mode?
-    public var lastCategoryOptions: AVAudioSession.CategoryOptions?
-    public var lastPolicy: AVAudioSession.RouteSharingPolicy?
-    public var lastActiveState: Bool?
-    public var lastActiveOptions: AVAudioSession.SetActiveOptions?
+    public var setActiveCallCount: Int {
+        get { state.withLock { $0.setActiveCallCount } }
+        set { state.withLock { $0.setActiveCallCount = newValue } }
+    }
 
-    public var shouldThrowOnSetCategory = false
-    public var shouldThrowOnSetActive = false
+    public var lastCategory: AVAudioSession.Category? {
+        get { state.withLock { $0.lastCategory } }
+        set { state.withLock { $0.lastCategory = newValue } }
+    }
+
+    public var lastMode: AVAudioSession.Mode? {
+        get { state.withLock { $0.lastMode } }
+        set { state.withLock { $0.lastMode = newValue } }
+    }
+
+    public var lastCategoryOptions: AVAudioSession.CategoryOptions? {
+        get { state.withLock { $0.lastCategoryOptions } }
+        set { state.withLock { $0.lastCategoryOptions = newValue } }
+    }
+
+    public var lastPolicy: AVAudioSession.RouteSharingPolicy? {
+        get { state.withLock { $0.lastPolicy } }
+        set { state.withLock { $0.lastPolicy = newValue } }
+    }
+
+    public var lastActiveState: Bool? {
+        get { state.withLock { $0.lastActiveState } }
+        set { state.withLock { $0.lastActiveState = newValue } }
+    }
+
+    public var lastActiveOptions: AVAudioSession.SetActiveOptions? {
+        get { state.withLock { $0.lastActiveOptions } }
+        set { state.withLock { $0.lastActiveOptions = newValue } }
+    }
+
+    public var shouldThrowOnSetCategory: Bool {
+        get { state.withLock { $0.shouldThrowOnSetCategory } }
+        set { state.withLock { $0.shouldThrowOnSetCategory = newValue } }
+    }
+
+    public var shouldThrowOnSetActive: Bool {
+        get { state.withLock { $0.shouldThrowOnSetActive } }
+        set { state.withLock { $0.shouldThrowOnSetActive = newValue } }
+    }
 
     /// When non-nil, `setActive(true, …)` throws this error instead of the
     /// generic `MockAudioSessionError.setActiveFailed`. Lets tests reproduce a
     /// specific `com.apple.coreaudio.avfaudio` `CannotInterruptOthers` failure.
-    public var setActiveError: Error?
+    public var setActiveError: (any Error)? {
+        get { state.withLock { $0.setActiveError } }
+        set { state.withLock { $0.setActiveError = newValue } }
+    }
 
     /// Number of leading `setActive(true, …)` calls that should fail before the
     /// session begins activating successfully. Decrements on each activation
     /// attempt. Used to model a transient "can't interrupt other audio" state
     /// that clears after a bounded retry. `shouldThrowOnSetActive` still forces
     /// every activation to fail when set.
-    public var failSetActiveCount = 0
+    public var failSetActiveCount: Int {
+        get { state.withLock { $0.failSetActiveCount } }
+        set { state.withLock { $0.failSetActiveCount = newValue } }
+    }
 
     /// Configurable output latency for testing AirPlay delay scenarios
-    public var outputLatency: TimeInterval = 0
-
+    public var outputLatency: TimeInterval {
+        get { state.withLock { $0.outputLatency } }
+        set { state.withLock { $0.outputLatency = newValue } }
+    }
+    
     public init() {}
 
     // MARK: - AudioSessionProtocol
-
+        
     public func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, options: AVAudioSession.CategoryOptions) throws {
-        setCategoryCallCount += 1
-        lastCategory = category
-        lastMode = mode
-        lastCategoryOptions = options
+        try state.withLock { state in
+            state.setCategoryCallCount += 1
+            state.lastCategory = category
+            state.lastMode = mode
+            state.lastCategoryOptions = options
 
-        if shouldThrowOnSetCategory {
-            throw MockAudioSessionError.setCategoryFailed
+            if state.shouldThrowOnSetCategory {
+                throw MockAudioSessionError.setCategoryFailed
+            }
         }
     }
 
     public func setCategory(_ category: AVAudioSession.Category, mode: AVAudioSession.Mode, policy: AVAudioSession.RouteSharingPolicy, options: AVAudioSession.CategoryOptions) throws {
-        setCategoryCallCount += 1
-        lastCategory = category
-        lastMode = mode
-        lastPolicy = policy
-        lastCategoryOptions = options
+        try state.withLock { state in
+            state.setCategoryCallCount += 1
+            state.lastCategory = category
+            state.lastMode = mode
+            state.lastPolicy = policy
+            state.lastCategoryOptions = options
 
-        if shouldThrowOnSetCategory {
-            throw MockAudioSessionError.setCategoryFailed
+            if state.shouldThrowOnSetCategory {
+                throw MockAudioSessionError.setCategoryFailed
+            }
         }
     }
 
     public func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
-        setActiveCallCount += 1
-        lastActiveState = active
-        lastActiveOptions = options
+        try state.withLock { state in
+            state.setActiveCallCount += 1
+            state.lastActiveState = active
+            state.lastActiveOptions = options
 
-        // Only activation (true) is subject to the transient-failure model;
-        // deactivation always succeeds.
-        if active {
-            if shouldThrowOnSetActive {
-                throw setActiveError ?? MockAudioSessionError.setActiveFailed
-            }
-            if failSetActiveCount > 0 {
-                failSetActiveCount -= 1
-                throw setActiveError ?? MockAudioSessionError.setActiveFailed
+            // Only activation (true) is subject to the transient-failure model;
+            // deactivation always succeeds.
+            if active {
+                if state.shouldThrowOnSetActive {
+                    throw state.setActiveError ?? MockAudioSessionError.setActiveFailed
+                }
+                if state.failSetActiveCount > 0 {
+                    state.failSetActiveCount -= 1
+                    throw state.setActiveError ?? MockAudioSessionError.setActiveFailed
+                }
             }
         }
     }
@@ -99,52 +180,59 @@ public final class MockAudioSession: AudioSessionProtocol {
     // MARK: - Test Helpers
 
     public func reset() {
-        setCategoryCallCount = 0
-        setActiveCallCount = 0
-        lastCategory = nil
-        lastMode = nil
-        lastCategoryOptions = nil
-        lastPolicy = nil
-        lastActiveState = nil
-        lastActiveOptions = nil
-        shouldThrowOnSetCategory = false
-        shouldThrowOnSetActive = false
-        setActiveError = nil
-        failSetActiveCount = 0
-        outputLatency = 0
+        state.withLock { $0 = State() }
     }
 }
 
 #else
 
 /// Mock audio session for testing (macOS)
-public final class MockAudioSession: AudioSessionProtocol {
-    
-    // MARK: - State Tracking
-    
-    public var setActiveCallCount = 0
-    public var lastActiveState: Bool?
-    public var shouldThrowOnSetActive = false
-        
-    public init() {}
-    
-    // MARK: - AudioSessionProtocol
-    
-    public func setActive(_ active: Bool) throws {
-        setActiveCallCount += 1
-        lastActiveState = active
+public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
 
-        if shouldThrowOnSetActive {
-            throw MockAudioSessionError.setActiveFailed
+    private struct State: Sendable {
+        var setActiveCallCount = 0
+        var lastActiveState: Bool?
+        var shouldThrowOnSetActive = false
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    // MARK: - State Tracking
+
+    public var setActiveCallCount: Int {
+        get { state.withLock { $0.setActiveCallCount } }
+        set { state.withLock { $0.setActiveCallCount = newValue } }
+    }
+
+    public var lastActiveState: Bool? {
+        get { state.withLock { $0.lastActiveState } }
+        set { state.withLock { $0.lastActiveState = newValue } }
+    }
+
+    public var shouldThrowOnSetActive: Bool {
+        get { state.withLock { $0.shouldThrowOnSetActive } }
+        set { state.withLock { $0.shouldThrowOnSetActive = newValue } }
+    }
+
+    public init() {}
+
+    // MARK: - AudioSessionProtocol
+
+    public func setActive(_ active: Bool) throws {
+        try state.withLock { state in
+            state.setActiveCallCount += 1
+            state.lastActiveState = active
+
+            if state.shouldThrowOnSetActive {
+                throw MockAudioSessionError.setActiveFailed
+            }
         }
     }
 
     // MARK: - Test Helpers
 
     public func reset() {
-        setActiveCallCount = 0
-        lastActiveState = nil
-        shouldThrowOnSetActive = false
+        state.withLock { $0 = State() }
     }
 }
 
