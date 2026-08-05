@@ -14,7 +14,7 @@
 import Foundation
 import Testing
 @testable import Concerts
-import ConcertsTesting
+import CoreTesting
 
 @MainActor
 @Suite("DismissedConcertsStore")
