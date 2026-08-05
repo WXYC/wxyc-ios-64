@@ -119,16 +119,39 @@ struct AppIntentsDependenciesManifestTests {
 
     /// `AppIntentsDependencySlot.dependencyType` normalized to the same
     /// source-text form the scan above produces: strip the
-    /// `AppDependency<...>` wrapper, then strip a leading `any `.
+    /// `AppDependency<...>` wrapper, strip a leading `any `, then rewrite the
+    /// runtime's spelling of a parameterized existential back to source form.
     private static func sourceTypeName(for slot: AppIntentsDependencySlot) -> String {
         let described = String(describing: slot.dependencyType) // e.g. "AppDependency<PlaycutHistoryStore>"
         let prefix = "AppDependency<"
         guard described.hasPrefix(prefix), described.hasSuffix(">") else { return described }
-        return Self.stripAny(String(described.dropFirst(prefix.count).dropLast()))
+        return Self.stripSameTypeConstraints(Self.stripAny(String(described.dropFirst(prefix.count).dropLast())))
     }
 
     private static func stripAny(_ typeName: String) -> String {
         typeName.hasPrefix("any ") ? String(typeName.dropFirst(4)) : typeName
+    }
+
+    /// Rewrites the runtime spelling of a parameterized existential's generic
+    /// arguments into the source spelling.
+    ///
+    /// `String(describing: (any SpotlightReindexer<PlaycutEntity>).self)` does
+    /// not round-trip: the runtime renders the primary associated type as the
+    /// same-type constraint it desugars to —
+    /// `SpotlightReindexer<Self.SpotlightReindexer.Source == PlaycutEntity>` —
+    /// while the source text this is compared against says
+    /// `SpotlightReindexer<PlaycutEntity>`. Dropping each `Self.Proto.Assoc == `
+    /// prefix reconciles them.
+    ///
+    /// This only started mattering when #758 replaced the two per-kind reindexer
+    /// protocols with one generic `SpotlightReindexer<Source>`: every slot's
+    /// type was a plain existential before, so the two spellings happened to
+    /// agree and nothing here had to normalize. Merging #751 and #758 is what
+    /// surfaced it — neither branch alone could.
+    private static func stripSameTypeConstraints(_ typeName: String) -> String {
+        // Extended `#/.../#` delimiters: a bare `/.../` literal may not end in
+        // a space, and this pattern's trailing space is load-bearing.
+        typeName.replacing(#/Self\.\w+\.\w+ == /#, with: "")
     }
 }
 
@@ -155,15 +178,19 @@ struct WidgetSafeConcertsFetchingTests {
 
 @Suite("Widget-safe no-op conformers")
 struct WidgetSafeNoOpConformerTests {
-    @Test("WidgetSafePlaycutReindexer discards a donation without throwing")
+    @Test("WidgetSafeSpotlightReindexer discards a playcut donation without throwing")
     func playcutReindexerDiscardsDonation() async throws {
         let playcut = Playcut.stub(id: 1, artistName: "Juana Molina")
-        try await WidgetSafePlaycutReindexer().donate([PlaycutEntity(playcut: playcut)])
+        try await WidgetSafeSpotlightReindexer<PlaycutEntity>().donate([PlaycutEntity(playcut: playcut)])
     }
 
-    @Test("WidgetSafeConcertReindexer discards a donation without throwing")
+    // Both kinds stay covered even though one generic type now serves both:
+    // the registration switch in `registerForWidget` instantiates it twice, at
+    // two different `Source` types, and a wrong type argument at either slot is
+    // what these two tests catch.
+    @Test("WidgetSafeSpotlightReindexer discards a concert donation without throwing")
     func concertReindexerDiscardsDonation() async throws {
-        try await WidgetSafeConcertReindexer().donate([.stub()])
+        try await WidgetSafeSpotlightReindexer<Concert>().donate([.stub()])
     }
 
     @Test("WidgetSafeAnalyticsService logs a captured event without throwing")
@@ -198,8 +225,8 @@ struct AppIntentsDependenciesBootstrapTests {
     func registerForAppCompletes() {
         AppIntentsDependencies.registerForApp(
             playcutHistoryStore: PlaycutEntityQueryTests.makeHistoryStore(),
-            playcutReindexer: WidgetSafePlaycutReindexer(),
-            concertReindexer: WidgetSafeConcertReindexer(),
+            playcutReindexer: WidgetSafeSpotlightReindexer<PlaycutEntity>(),
+            concertReindexer: WidgetSafeSpotlightReindexer<Concert>(),
             concertsFetching: WidgetSafeConcertsFetching(),
             analytics: WidgetSafeAnalyticsService()
         )

@@ -2,16 +2,19 @@
 //  ConcertSpotlightIndexer.swift
 //  AppServices
 //
-//  Injectable Spotlight indexing seam for `ConcertEntity`, targeting the
-//  named `wxyc.concerts` index (`ConcertSpotlightIndex`, WXYCIntents).
-//  Mirrors `SpotlightIndexer`/`CoreSpotlightIndexer`'s shape, but diverges in
-//  one load-bearing way: it does NOT go through
+//  The concert kind's Spotlight indexing path, targeting the named
+//  `wxyc.concerts` index (`SpotlightIndexName.concerts`, WXYCIntents). It
+//  shares `CoreSpotlightEntityIndexer<ConcertEntity>`'s stored index/name
+//  with the playcut and artist kinds (`CoreSpotlightEntityIndexer.swift`) but
+//  diverges in one load-bearing way, expressed here as a
+//  `where Entity == ConcertEntity` extension rather than a parallel type
+//  (#758): it does NOT go through
 //  `CSSearchableIndex.indexAppEntities(_:priority:)`. That convenience
 //  method builds each `CSSearchableItem` from `IndexedEntity.attributeSet`
 //  alone, and `CSSearchableItemAttributeSet` has no `expirationDate` —
 //  expiration lives on `CSSearchableItem` itself. Concerts need a
 //  per-concert `expirationDate` (the OT-F2 crux — see
-//  `ConcertSpotlightDonationService`), so this indexer builds each
+//  `ConcertSpotlightDonationService`), so this extension builds each
 //  `CSSearchableItem` explicitly, associates the `ConcertEntity` onto it via
 //  `CSSearchableItem.associateAppEntity(_:priority:)` (the documented path
 //  for a caller that already builds its own `CSSearchableItem`s rather than
@@ -29,7 +32,8 @@
 //  `WXYCIntents` (which vends `ConcertEntity`) isn't linked into either build
 //  graph — see AppServices/Package.swift.
 //
-//  F3: also conforms to `ConcertReindexer` (WXYCIntents) — see the extension
+//  F3: `ConcertEntity` also conforms to `SpotlightReindexStrategy` (the
+//  internal bridge to `SpotlightReindexer`, WXYCIntents) — see the extension
 //  below, at the bottom of this file.
 //
 //  Created by Jake Bromberg on 07/24/26.
@@ -75,24 +79,14 @@ public protocol ConcertSpotlightIndexer: Sendable {
     func deleteConcerts(withIdentifiers identifiers: [String]) async throws
 }
 
-/// Production `ConcertSpotlightIndexer` backed by a named `CSSearchableIndex`.
+/// The concert kind's divergent indexing strategy (#758) — see the
+/// file-level comment for why it can't reuse
+/// `CoreSpotlightEntityIndexer.index(_:priority:)`.
 ///
 /// A named index (rather than `.default()`) scopes deletes and reindex hooks
-/// to the WXYC concert catalogue, matching `CoreSpotlightIndexer`'s rationale
-/// for the playcut index.
-public struct CoreSpotlightConcertIndexer: ConcertSpotlightIndexer {
-    /// Name of the WXYC concert index. Aliases `ConcertSpotlightIndex.name`
-    /// (WXYCIntents) rather than redeclaring the literal, so this indexer and
-    /// any future OT-F3 reindex handler can never drift onto different index
-    /// names.
-    public static let indexName = ConcertSpotlightIndex.name
-
-    private let index: CSSearchableIndex
-
-    public init(indexName: String = Self.indexName) {
-        self.index = CSSearchableIndex(name: indexName)
-    }
-
+/// to the WXYC concert catalogue, matching the playcut/artist kinds'
+/// rationale in `CoreSpotlightEntityIndexer.swift`.
+extension CoreSpotlightEntityIndexer: ConcertSpotlightIndexer where Entity == ConcertEntity {
     public func indexConcerts(_ donations: [ConcertDonation]) async throws {
         guard !donations.isEmpty else { return }
         let items = donations.map { donation -> CSSearchableItem in
@@ -105,44 +99,31 @@ public struct CoreSpotlightConcertIndexer: ConcertSpotlightIndexer {
             item.expirationDate = donation.expirationDate
             return item
         }
-        try await index.indexSearchableItems(items)
+        try await searchableIndex.indexSearchableItems(items)
     }
 
     public func deleteConcerts(withIdentifiers identifiers: [String]) async throws {
         guard !identifiers.isEmpty else { return }
-        try await index.deleteSearchableItems(withIdentifiers: identifiers)
+        try await searchableIndex.deleteSearchableItems(withIdentifiers: identifiers)
     }
 }
 
-/// F3: the same named index doubles as the reindex handlers' donation seam
-/// (`ConcertEntityQuery+IndexedEntityQuery`, WXYCIntents). Mirrors
-/// `CoreSpotlightIndexer: PlaycutReindexer`'s shape — the reindexer
-/// conformance lives on the low-level indexer, not the higher-level
-/// `ConcertSpotlightDonationService` reconcile orchestrator — but see
-/// `ConcertReindexer`'s doc comment for why: a reindex ask is a wholesale,
-/// unconditional upsert, never a diff against `reconcile`'s persisted id set.
-extension CoreSpotlightConcertIndexer: ConcertReindexer {
-    public func donate(_ concerts: [Concert]) async throws {
-        let donations = Self.reindexDonations(for: concerts)
-        guard !donations.isEmpty else { return }
-        try await indexConcerts(donations)
-    }
-
-    /// Builds the reindex donation batch: `ConcertSpotlightDonationService
-    /// .defaultPriority` for every concert (no liked-artist/station-cap
-    /// context exists on a Spotlight-triggered reindex — this isn't
-    /// `ForYouShelf`-tiered the way `reconcile`'s own donations are) and a
-    /// freshly computed `endOfShowDay` expiration per concert, reusing that
-    /// service's constant and helper so the two paths' notion of "when does
-    /// a donated concert expire" can never drift. A concert whose id can't
-    /// bridge to `ConcertID` (see `EntityID.init?(concertID:)`) is dropped,
-    /// not fatal — defensive; never the case for a real backend row.
-    ///
-    /// Extracted as a pure, internal function (rather than inlined in
-    /// `donate(_:)`) so it's unit-testable without a real `CSSearchableIndex`
-    /// round-trip, mirroring how `ConcertSpotlightDonationServiceTests`
-    /// exercises `reconcile`'s own donation-building through
-    /// `MockConcertSpotlightIndexer`.
+/// Builds the reindex donation batch: `ConcertSpotlightDonationService
+/// .defaultPriority` for every concert (no liked-artist/station-cap context
+/// exists on a Spotlight-triggered reindex — this isn't `ForYouShelf`-tiered
+/// the way `reconcile`'s own donations are) and a freshly computed
+/// `endOfShowDay` expiration per concert, reusing that service's constant and
+/// helper so the two paths' notion of "when does a donated concert expire"
+/// can never drift. A concert whose id can't bridge to `ConcertID` (see
+/// `EntityID.init?(concertID:)`) is dropped, not fatal — defensive; never the
+/// case for a real backend row.
+///
+/// Extracted as a pure, internal function (rather than inlined in
+/// `ConcertEntity.reindexDonate(_:via:)` below) so it's unit-testable without
+/// a real `CSSearchableIndex` round-trip, mirroring how
+/// `ConcertSpotlightDonationServiceTests` exercises `reconcile`'s own
+/// donation-building through `MockConcertSpotlightIndexer`.
+extension CoreSpotlightEntityIndexer where Entity == ConcertEntity {
     static func reindexDonations(for concerts: [Concert]) -> [ConcertDonation] {
         concerts.compactMap { concert in
             guard let entity = ConcertEntity(concert: concert) else { return nil }
@@ -152,6 +133,24 @@ extension CoreSpotlightConcertIndexer: ConcertReindexer {
                 expirationDate: ConcertSpotlightDonationService.endOfShowDay(concert.startsOn)
             )
         }
+    }
+}
+
+/// F3: the same named index doubles as the reindex handlers' donation seam
+/// (`ConcertEntityQuery+IndexedEntityQuery`, WXYCIntents). `ConcertEntity`'s
+/// `SpotlightReindexStrategy` conformance (see that protocol's doc comment in
+/// `CoreSpotlightEntityIndexer.swift` for why this is a protocol conformance
+/// rather than a second `where Entity == ConcertEntity` extension conforming
+/// directly to `SpotlightReindexer`) mirrors the playcut kind's — the
+/// reindexer strategy lives on the low-level indexer, not the higher-level
+/// `ConcertSpotlightDonationService` reconcile orchestrator — but see
+/// `SpotlightReindexer`'s doc comment for why: a reindex ask is a wholesale,
+/// unconditional upsert, never a diff against `reconcile`'s persisted id set.
+extension ConcertEntity: SpotlightReindexStrategy {
+    public static func reindexDonate(_ concerts: [Concert], via indexer: CoreSpotlightEntityIndexer<ConcertEntity>) async throws {
+        let donations = CoreSpotlightEntityIndexer<ConcertEntity>.reindexDonations(for: concerts)
+        guard !donations.isEmpty else { return }
+        try await indexer.indexConcerts(donations)
     }
 }
 

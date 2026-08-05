@@ -52,11 +52,11 @@
 //  `uniqueIdentifier`, so donating a concert that's already indexed *replaces*
 //  its item rather than adding a duplicate row — there is no way for the two
 //  paths to produce two rows for one concert. They also share no mutable state:
-//  the reindex path (`ConcertReindexer.donate`) is a wholesale upsert that
-//  never touches this observer's persisted id -> status snapshot, and a
-//  subsequent `reconcile` simply re-donates idempotently. See
-//  `ConcertReindexer`'s doc comment for why the reindex path deliberately does
-//  *not* route through `reconcile`.
+//  the reindex path (`SpotlightReindexer<Concert>.donate`) is a wholesale
+//  upsert that never touches this observer's persisted id -> status snapshot,
+//  and a subsequent `reconcile` simply re-donates idempotently. See
+//  `SpotlightReindexer`'s doc comment for why the reindex path deliberately
+//  does *not* route through `reconcile`.
 //
 //  Privacy: the loved-tier intersection (a listener's liked artists matched
 //  against the window) happens entirely inside `reconcile`, on-device, against

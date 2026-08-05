@@ -26,6 +26,7 @@ import WXUI
 import AppServices  // Concert Spotlight inspector (OT-Q2, #632)
 import Caching       // UserDefaults.wxyc, for the debug ConcertSpotlightDonationService
 import Logger  // For You shelf debug diagnostic + seed (see recommendations(for:))
+import WXYCIntents  // ConcertEntity, for CoreSpotlightEntityIndexer<ConcertEntity>
 #endif
 
 /// The root view of the On Tour tab.
@@ -426,15 +427,19 @@ struct OnTourTabView: View {
 
     /// Builds a fresh `ConcertSpotlightDonationService` bound to the real
     /// production storage/indexer — `UserDefaults.wxyc` (the same persisted
-    /// donated-id set `reconcile` reads/writes) and a `CoreSpotlightConcertIndexer`
-    /// targeting the real `wxyc.concerts` index. Stateless besides that shared
-    /// storage, so a fresh instance per call is safe — there's nothing instance-local
-    /// to keep alive between presses. `Singletonia` has no long-lived instance of
+    /// donated-id set `reconcile` reads/writes) and a
+    /// `CoreSpotlightEntityIndexer<ConcertEntity>` targeting the real
+    /// `wxyc.concerts` index. Stateless besides that shared storage, so a
+    /// fresh instance per call is safe — there's nothing instance-local to
+    /// keep alive between presses. `Singletonia` has no long-lived instance of
     /// its own yet: wiring one in as an always-on observer is OT-C8 (#654); this
     /// debug inspector is the manual trigger that exercises the exact same
     /// production entry points ahead of that wiring landing.
     private func makeConcertSpotlightDebugService() -> ConcertSpotlightDonationService {
-        ConcertSpotlightDonationService(storage: UserDefaults.wxyc, indexer: CoreSpotlightConcertIndexer())
+        ConcertSpotlightDonationService(
+            storage: UserDefaults.wxyc,
+            indexer: CoreSpotlightEntityIndexer<ConcertEntity>(indexName: SpotlightIndexName.concerts)
+        )
     }
 
     /// Loads the Concert Spotlight inspector's dump: `AppServices

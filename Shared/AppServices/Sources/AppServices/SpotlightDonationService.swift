@@ -120,7 +120,7 @@ public actor SpotlightDonationService: Sendable {
     public init(
         storage: DefaultsStorage,
         indexer: SpotlightIndexer,
-        artistIndexer: ArtistSpotlightIndexer = CoreSpotlightArtistIndexer(),
+        artistIndexer: ArtistSpotlightIndexer = CoreSpotlightEntityIndexer<ArtistEntity>(indexName: SpotlightIndexName.artists),
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared
     ) {
         self.storage = storage

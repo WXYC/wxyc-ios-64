@@ -48,17 +48,18 @@ final class Singletonia {
     let reviewRequestService = ReviewRequestService(minimumVersionForReview: "1.0")
     let spotlightDonationService = SpotlightDonationService(
         storage: UserDefaults.wxyc,
-        indexer: CoreSpotlightIndexer()
+        indexer: CoreSpotlightEntityIndexer<PlaycutEntity>(indexName: SpotlightIndexName.playcuts)
     )
 
     /// The always-on concert Spotlight donor (OT-C8, #654) — the concert analogue
     /// of ``spotlightDonationService``. Bound to the same production storage
     /// (`UserDefaults.wxyc`, holding the reconcile id -> status snapshot) and the
-    /// real `wxyc.concerts` index (`CoreSpotlightConcertIndexer`). Driven from
-    /// ``startConcertSpotlightDonation()`` on every On Tour window refresh.
+    /// real `wxyc.concerts` index (`CoreSpotlightEntityIndexer<ConcertEntity>`).
+    /// Driven from ``startConcertSpotlightDonation()`` on every On Tour window
+    /// refresh.
     let concertSpotlightDonationService = ConcertSpotlightDonationService(
         storage: UserDefaults.wxyc,
-        indexer: CoreSpotlightConcertIndexer()
+        indexer: CoreSpotlightEntityIndexer<ConcertEntity>(indexName: SpotlightIndexName.concerts)
     )
 
     /// Owns the launch-empty-skip + no-op-refresh dedup that keeps the concert
@@ -251,10 +252,17 @@ final class Singletonia {
             playcutHistoryStore: self.playcutHistoryStore,
             // #445: the iOS 27 reindex handlers report `SpotlightReindexRequested`
             // through the same `@Dependency` seam as `playcutReindexer`.
-            playcutReindexer: CoreSpotlightIndexer(),
+            // #758 replaced the two per-kind indexer structs with one generic
+            // `CoreSpotlightEntityIndexer<Entity>`; the registration shape here
+            // is still #751's single call.
+            playcutReindexer: CoreSpotlightEntityIndexer<PlaycutEntity>(
+                indexName: SpotlightIndexName.playcuts
+            ),
             // OT-F3 (#622): same registration shape as the playcut reindex
             // seam above, for `ConcertEntityQuery`'s reindex handlers.
-            concertReindexer: CoreSpotlightConcertIndexer(),
+            concertReindexer: CoreSpotlightEntityIndexer<ConcertEntity>(
+                indexName: SpotlightIndexName.concerts
+            ),
             // Authenticated the same way `AppIntentServices.concertsFetcher()`
             // (WXYC/iOS/Intents.swift) authenticates `ToursNearMe`.
             concertsFetching: ConcertsFetcher(tokenProvider: MusicShareKit.tokenProvider),
