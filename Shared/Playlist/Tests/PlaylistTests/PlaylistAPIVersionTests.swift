@@ -177,4 +177,18 @@ struct PlaylistAPIVersionTests {
         #expect(PlaylistAPIVersion.v1.shortDescription == "wxyc.info/playlists/recentEntries")
         #expect(PlaylistAPIVersion.v2.shortDescription == "api.wxyc.org/flowsheet")
     }
+
+    // MARK: - supportsLiveUpdates (#749)
+
+    /// `supportsLiveUpdates` is a *ceiling* on live updates, not the sole
+    /// determinant — `PlaylistService` also requires the caller to opt in.
+    /// v1 (`wxyc.info/playlists/recentEntries`) has no SSE enrichment channel,
+    /// so it must report `false` regardless of caller intent; v2
+    /// (`api.wxyc.org/flowsheet`) is the only version with a `live-fs-topic`
+    /// stream to subscribe to.
+    @Test("Only v2 supports live updates")
+    func supportsLiveUpdatesIsTrueOnlyForV2() {
+        #expect(PlaylistAPIVersion.v1.supportsLiveUpdates == false)
+        #expect(PlaylistAPIVersion.v2.supportsLiveUpdates == true)
+    }
 }

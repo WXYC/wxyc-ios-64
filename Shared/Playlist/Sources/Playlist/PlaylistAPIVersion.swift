@@ -117,4 +117,26 @@ public enum PlaylistAPIVersion: String, CaseIterable, Identifiable, Hashable, Se
             "api.wxyc.org/flowsheet"
         }
     }
+
+    // MARK: - Live updates
+
+    /// Whether this API version has a `live-fs-topic` SSE channel to
+    /// subscribe to at all.
+    ///
+    /// This is a **ceiling** on live updates, not the sole determinant:
+    /// `PlaylistService` only actually opens a subscription when this is
+    /// `true` *and* the caller opted in (`liveUpdatesEnabled`). v1
+    /// (`wxyc.info/playlists/recentEntries`) has no push channel, so a poll
+    /// is the only way to get fresh data on v1 regardless of caller intent —
+    /// `false` here, unconditionally. v2 (`api.wxyc.org/flowsheet`) is the
+    /// only version with a `live-fs-topic` stream (see
+    /// `FlowsheetLiveEventSource`).
+    public var supportsLiveUpdates: Bool {
+        switch self {
+        case .v1:
+            false
+        case .v2:
+            true
+        }
+    }
 }

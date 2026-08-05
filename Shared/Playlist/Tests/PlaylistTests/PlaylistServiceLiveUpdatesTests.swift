@@ -8,6 +8,16 @@
 //  gated on the foreground state, and backgrounding tears the subscription down
 //  so a later foreground reconnects. See WXYC/wxyc-ios-64#269.
 //
+//  Every test below that injects a `liveEventSource` passes `apiVersion: .v2`
+//  explicitly (#749): whether that source is actually wired in is now the
+//  conjunction `apiVersion.supportsLiveUpdates && callerOptedIn`, so omitting
+//  the version falls through to `PlaylistAPIVersion.loadActive()` — which
+//  resolves to `.v1` (no PostHog flag, no manual override) in a test process
+//  — and the source would silently never connect. These tests are about the
+//  SSE-mechanics once a subscription IS active, so they force the version
+//  that has one rather than relying on `loadActive()`'s default. Don't
+//  "simplify" this back out.
+//
 //  Created by Jake Bromberg on 07/31/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
@@ -45,7 +55,8 @@ struct PlaylistServiceLiveUpdatesTests {
         ])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -70,7 +81,8 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.update(enriched)])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -95,7 +107,8 @@ struct PlaylistServiceLiveUpdatesTests {
         ])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -121,7 +134,8 @@ struct PlaylistServiceLiveUpdatesTests {
         ])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -141,7 +155,8 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.refetch(source: "etl")])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -165,12 +180,20 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, chronOrderID: 2))])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
         )
 
         var iterator = service.updates().makeAsyncIterator()
         #expect(await iterator.next()?.playcuts.map(\.id) == [1])
         _ = iterator
+
+        // Non-vacuity guard: `connectCount == 0` below must mean "foregrounding
+        // gates the loop", not "no source is wired in at all". Drop the
+        // `apiVersion: .v2` above and this fails, instead of the test quietly
+        // degenerating into a duplicate of the v1-inertness test in
+        // PlaylistServiceWiringTests.
+        #expect(await service.wiringSnapshot().liveUpdatesActive)
 
         // The consume loop provably hasn't started (it starts only from
         // setForegrounded(true)), so the snapshot is the baseline alone and the
@@ -188,7 +211,8 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, chronOrderID: 2))])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
         )
 
         var iterator = service.updates().makeAsyncIterator()

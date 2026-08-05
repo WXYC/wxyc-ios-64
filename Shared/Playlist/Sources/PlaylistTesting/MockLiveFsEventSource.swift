@@ -17,10 +17,18 @@ import Synchronization
 
 /// Test double for ``LiveFsEventSource`` that replays a fixed script of events.
 ///
+/// Pass an explicit `apiVersion:` that supports live updates. Omitting it
+/// resolves via `PlaylistAPIVersion.loadActive()`, which in a test process has
+/// no feature flag or debug override to read and so lands on `.v1` — a version
+/// with no push channel. The service then wires in no source at all, this mock
+/// is never connected, and the test passes while exercising nothing.
+/// See WXYC/wxyc-ios-64#749.
+///
 /// ```swift
 /// let source = MockLiveFsEventSource(events: [.insert(.stub(id: 42))])
 /// let service = PlaylistService(fetcher: fetcher, interval: 300,
-///                               cacheCoordinator: coordinator, liveEventSource: source)
+///                               cacheCoordinator: coordinator,
+///                               liveEventSource: source, apiVersion: .v2)
 /// await service.setForegrounded(true)
 /// ```
 public final class MockLiveFsEventSource: LiveFsEventSource, @unchecked Sendable {
