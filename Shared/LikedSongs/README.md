@@ -11,8 +11,8 @@ On-device liked-songs store for the WXYC app (#492). Listeners heart playcuts; t
 
 ## Persistence
 
-Codable JSON through the `FileStorage` seam — `AppSupportFileStorage` in production, `InMemoryFileStorage` (in `LikedSongsTesting`) in tests. Synchronous load at init and atomic write-through on mutation: heart state is correct at first paint, no load/toggle race, and the contract is **never evict**. Deliberately not the `Caching` package (`CacheCoordinator` purges infinite-lifespan entries at init and TTL-expires the rest — right for caches, data loss for user-curated likes) and not `DefaultsStorage` (unbounded snapshots in a launch-loaded plist). See `docs/plans/492-liked-songs.md` decision #6.
+Codable JSON through the `FileStorage` seam — `AppSupportFileStorage` in production, `InMemoryFileStorage` (in `CoreTesting`) in tests. Both live in `Core` (hoisted there in WXYC/wxyc-ios-64#557, which also folded in `Concerts`' identical copy), since the seam is a generic byte-file abstraction with no domain specifics; `LikedSongs` consumes it like any other `Core` dependency. Synchronous load at init and atomic write-through on mutation: heart state is correct at first paint, no load/toggle race, and the contract is **never evict**. Deliberately not the `Caching` package (`CacheCoordinator` purges infinite-lifespan entries at init and TTL-expires the rest — right for caches, data loss for user-curated likes) and not `DefaultsStorage` (unbounded snapshots in a launch-loaded plist). See `docs/plans/492-liked-songs.md` decision #6.
 
 ## Testing
 
-`swift test --package-path Shared/LikedSongs` (host-runnable; registered in `WXYC.xctestplan` and both affected-tests scripts). `LikedSongsTesting` ships `InMemoryFileStorage`; tests inject a manual clock to control `likedAt` ordering.
+`swift test --package-path Shared/LikedSongs` (host-runnable; registered in `WXYC.xctestplan` and both affected-tests scripts). `CoreTesting` ships `InMemoryFileStorage`; tests inject a manual clock to control `likedAt` ordering.

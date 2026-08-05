@@ -15,7 +15,7 @@
 import Foundation
 import Testing
 import Playlist
-import LikedSongsTesting
+import CoreTesting
 @testable import LikedSongs
 
 /// Injectable clock: tests advance it to control `likedAt` ordering.
