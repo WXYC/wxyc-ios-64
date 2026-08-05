@@ -7,16 +7,19 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 | Package | Purpose |
 |---------|---------|
 | **Analytics** | PostHog analytics wrapper |
-| **AppServices** | App-level services (NowPlayingInfoCenter, background refresh, AppConfiguration) |
+| **AnalyticsMacros** | `@AnalyticsEvent` macro (swift-syntax compiler plugin) that derives snake_case event names and `properties` from a type declaration |
+| **AppServices** | App-level services: `AppConfiguration` (backend `/config` bootstrap), Spotlight indexing/donation for concerts and playcuts, App Store review prompts, On Tour alert scheduling, widget state/relevance, `NowPlayingService` |
 | **Artwork** | Album artwork fetching from multiple sources |
 | **Caching** | Disk/memory caching with TTL support |
+| **ColorPalette** | Dominant-color extraction and palette generation from artwork images |
+| **Concerts** | On Tour concert models, the dismissed-concerts store, and the Box Office ticket presenter |
 | **Core** | Core types (RadioStation, Playcut, etc.); the `FileStorage`/`AppSupportFileStorage` durable never-evict byte-file seam (`CoreTesting` for the `InMemoryFileStorage` double), shared by LikedSongs and Concerts |
+| **DebugPanel** | DEBUG-only settings/HUD panel: performance metrics overlay, feature toggles, cache purge |
+| **Intents** | App Intents (`WXYCIntents` product): Siri/Spotlight entities and queries (PlayWXYC, artist/release/venue lookups) |
 | **LikedSongs** | On-device liked-songs store (#492): folded song identity, durable never-evict JSON file store (Core's `FileStorage` seam), artist-id healing for the For You shelf |
 | **Logger** | Logging infrastructure |
 | **Metadata** | Playlist metadata parsing |
 | **MusicShareKit** | Share extension support for music sharing |
-| **Obfuscate** | ObfuscateMacro (unused, retained as transitive dependency) |
-| **OpenNSFW** | NSFW image detection for artwork filtering |
 | **PartyHorn** | An easter egg. Users must scroll to the bottom of the playlist view and tap 'what the freq?' to access it.' |
 | **Playback** | Houses several playback engines. Eventually this will whittle down to 1 or 2, but is currently in an experimental phase. |
 | **PlayerHeaderView** | Now playing header UI component |
