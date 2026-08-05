@@ -100,6 +100,12 @@ public final class PlayerControllerTestHarness {
     public var sessionActivated: Bool { mockSession.lastActiveState == true }
     public var sessionDeactivated: Bool { mockSession.lastActiveState == false }
     
+    /// The concrete `AudioPlayerController`, when this harness wraps one. Lets a
+    /// test read `debugStateSnapshot` for async state the `PlaybackController`
+    /// protocol doesn't surface — notably whether a deferred audio-session
+    /// deactivation has finished.
+    public var audioController: AudioPlayerController? { audioPlayerController }
+    
     public var analyticsPlayCallCount: Int { 
         mockAnalytics.events.filter { $0 is PlaybackStartedEvent }.count 
     }

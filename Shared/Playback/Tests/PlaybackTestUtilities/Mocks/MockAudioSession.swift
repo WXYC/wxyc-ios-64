@@ -42,6 +42,8 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
         var setActiveError: (any Error)?
         var failSetActiveCount = 0
         var outputLatency: TimeInterval = 0
+        var deactivationDelay: TimeInterval = 0
+        var shouldThrowOnDeactivate = false
     }
 
     private let state = OSAllocatedUnfairLock(initialState: State())
@@ -121,6 +123,23 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
         get { state.withLock { $0.outputLatency } }
         set { state.withLock { $0.outputLatency = newValue } }
     }
+
+    /// Seconds `setActive(false, …)` blocks before returning, modelling the
+    /// hundreds-of-milliseconds XPC round-trip the real session makes. Lets a
+    /// test hold a deactivation open and prove the main actor doesn't wait
+    /// behind it. Applied outside the state lock, so the recorded call is
+    /// observable while it is still "in flight".
+    public var deactivationDelay: TimeInterval {
+        get { state.withLock { $0.deactivationDelay } }
+        set { state.withLock { $0.deactivationDelay = newValue } }
+    }
+
+    /// When true, `setActive(false, …)` throws. Deactivation otherwise always
+    /// succeeds — `shouldThrowOnSetActive` only models activation failures.
+    public var shouldThrowOnDeactivate: Bool {
+        get { state.withLock { $0.shouldThrowOnDeactivate } }
+        set { state.withLock { $0.shouldThrowOnDeactivate = newValue } }
+    }
     
     public init() {}
 
@@ -154,13 +173,13 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
     }
 
     public func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
-        try state.withLock { state in
+        let delay: TimeInterval = try state.withLock { state in
             state.setActiveCallCount += 1
             state.lastActiveState = active
             state.lastActiveOptions = options
 
             // Only activation (true) is subject to the transient-failure model;
-            // deactivation always succeeds.
+            // deactivation fails only when a test asks it to.
             if active {
                 if state.shouldThrowOnSetActive {
                     throw state.setActiveError ?? MockAudioSessionError.setActiveFailed
@@ -169,7 +188,19 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
                     state.failSetActiveCount -= 1
                     throw state.setActiveError ?? MockAudioSessionError.setActiveFailed
                 }
+                return 0
             }
+
+            if state.shouldThrowOnDeactivate {
+                throw MockAudioSessionError.setActiveFailed
+            }
+            return state.deactivationDelay
+        }
+
+        // Held outside the state lock so a test polling the recorded call isn't
+        // blocked by the very delay it is waiting on.
+        if delay > 0 {
+            Thread.sleep(forTimeInterval: delay)
         }
     }
 

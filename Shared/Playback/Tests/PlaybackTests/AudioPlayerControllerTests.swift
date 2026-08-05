@@ -84,7 +84,7 @@ struct AudioPlayerControllerTests {
     }
 
     @Test("Audio session category is configured only once across multiple plays")
-    func audioSessionConfiguredOnlyOnce() {
+    func audioSessionConfiguredOnlyOnce() async {
         let mockSession = MockAudioSession()
         let mockCommandCenter = MockRemoteCommandCenter()
         let mockPlayer = MockAudioPlayerForController()
@@ -99,6 +99,11 @@ struct AudioPlayerControllerTests {
 
         controller.play()
         controller.stop()
+        // stop() hands the session back off its own turn, so the count below is
+        // a race with the second play() unless we wait for it: a deactivation
+        // that loses is correctly skipped as stale and never calls setActive.
+        // See PauseResponsivenessTests.
+        await waitUntil { mockSession.lastActiveState == false }
         controller.play()
 
         // Category should only be set once (idempotent)
@@ -347,4 +352,21 @@ final class MockAudioPlayerForController: AudioPlayerProtocol, @unchecked Sendab
 
     func installRenderTap() {}
     func removeRenderTap() {}
+}
+
+// MARK: - Test Helpers
+
+/// Polls until `condition` holds or the timeout expires.
+///
+/// `AudioPlayerController` hands the audio session back off the caller's turn,
+/// so a test that counts `setActive` calls has to wait for the deactivation
+/// rather than read the count inline. The suites built on
+/// `PlayerControllerTestHarness` use its `waitUntil`; these tests construct a
+/// controller directly, so they need their own.
+@MainActor
+private func waitUntil(_ condition: () -> Bool, timeout: Duration = .seconds(1)) async {
+    let deadline = ContinuousClock().now + timeout
+    while !condition(), ContinuousClock().now < deadline {
+        await Task.yield()
+    }
 }
