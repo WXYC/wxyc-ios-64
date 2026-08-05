@@ -24,6 +24,13 @@ let package = Package(
             name: "WXYCIntents",
             dependencies: [
                 "Analytics",
+                // #751 review: `AppIntentsDependencies.registerForWidget(playcutHistoryStore:)`'s
+                // default value builds an isolated in-memory `PlaycutHistoryStore`
+                // (`CacheCoordinator(cache: InMemoryCache())`) so the widget
+                // process never creates a `playcut-history` disk directory or
+                // spawns a purge task at every launch for a store nothing
+                // ever writes to.
+                "Caching",
                 "Concerts",
                 "Core",
                 "Logger",
@@ -42,10 +49,9 @@ let package = Package(
                 "Playlist",
                 .product(name: "ConcertsTesting", package: "Concerts"),
                 .product(name: "PlaylistTesting", package: "Playlist"),
-                // Only needed to build an isolated in-memory `PlaycutHistoryStore`
+                // Builds isolated in-memory `PlaycutHistoryStore`s
                 // (`CacheCoordinator(cache: InMemoryCache())`) for the F3
-                // `@Dependency`-binding tests — production WXYCIntents code never
-                // imports Caching directly.
+                // `@Dependency`-binding tests and the #751 bootstrap tests.
                 "Caching",
                 .product(name: "AnalyticsTesting", package: "Analytics"),
             ],

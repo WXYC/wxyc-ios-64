@@ -12,6 +12,17 @@
 //  without this the widget process would hit an unregistered dependency the
 //  first time it resolved one of those queries.
 //
+//  `AppIntentsDependencySlot` is the single source of truth both bootstrap
+//  entry points and the completeness test key off: `dependencyType` and the
+//  per-slot registration switches in `registerForApp`/`registerForWidget`
+//  all switch over the same `CaseIterable` enum exhaustively (no `default:`
+//  case), so adding a slot is a compile error in every one of those switches
+//  until it's handled -- the manifest `AppIntentsDependenciesManifestTests`
+//  checks against and what the bootstrap functions actually register cannot
+//  drift apart (#751 review, finding B1: a hand-maintained manifest array and
+//  a hand-maintained registration body are two lists that can silently go
+//  out of sync under green tests).
+//
 //  `registerForApp(...)` wires Singletonia's real, capability-bearing
 //  implementations -- Singletonia stays the composition root, this just
 //  gives it one call instead of five inline `AppDependencyManager.shared.add`
@@ -21,21 +32,42 @@
 //  a crash for a quiet no-op there is a deliberate, encoded choice, not an
 //  oversight -- see #751's "decision already made" note.
 //
-//  `dependencyManifest` is the completeness net: `AppIntentsDependenciesManifestTests`
-//  reflects over every EntityQuery known to declare `@Dependency` properties
-//  and asserts the discovered set matches this list exactly, so a future
-//  entity kind's `@Dependency` can't reintroduce the trap by shipping without
-//  a widget-safe default.
-//
 //  Created by Jake Bromberg on 08/05/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Analytics
 import AppIntents
+import Caching
 import Concerts
 import Foundation
 import Playlist
+
+/// One slot per `@Dependency` type this package's AppIntents surface
+/// declares. See the file header for why every switch over this enum's
+/// cases must stay exhaustive (no `default:`).
+enum AppIntentsDependencySlot: CaseIterable {
+    case playcutHistoryStore
+    case playcutReindexer
+    case analytics
+    case concertReindexer
+    case concertsFetching
+
+    /// The `AppDependency<Value>` property-wrapper backing-storage metatype
+    /// this slot corresponds to. `AppIntentsDependenciesManifestTests`
+    /// derives a source-form type name from this (stripping the
+    /// `AppDependency<...>` wrapper) and compares it against every
+    /// `@Dependency` declaration found by scanning `Sources/Intents`.
+    var dependencyType: Any.Type {
+        switch self {
+        case .playcutHistoryStore: AppDependency<PlaycutHistoryStore>.self
+        case .playcutReindexer: AppDependency<any PlaycutReindexer>.self
+        case .analytics: AppDependency<any AnalyticsService>.self
+        case .concertReindexer: AppDependency<any ConcertReindexer>.self
+        case .concertsFetching: AppDependency<any ConcertsFetching>.self
+        }
+    }
+}
 
 public enum AppIntentsDependencies {
     /// Registers Singletonia's real implementations. Called once from
@@ -48,41 +80,62 @@ public enum AppIntentsDependencies {
         concertsFetching: any ConcertsFetching,
         analytics: any AnalyticsService
     ) {
-        AppDependencyManager.shared.add(dependency: playcutHistoryStore)
-        AppDependencyManager.shared.add(dependency: playcutReindexer)
-        AppDependencyManager.shared.add(dependency: concertReindexer)
-        AppDependencyManager.shared.add(dependency: concertsFetching)
-        AppDependencyManager.shared.add(dependency: analytics)
+        for slot in AppIntentsDependencySlot.allCases {
+            switch slot {
+            case .playcutHistoryStore:
+                AppDependencyManager.shared.add(dependency: playcutHistoryStore)
+            case .playcutReindexer:
+                AppDependencyManager.shared.add(dependency: playcutReindexer)
+            case .analytics:
+                AppDependencyManager.shared.add(dependency: analytics)
+            case .concertReindexer:
+                AppDependencyManager.shared.add(dependency: concertReindexer)
+            case .concertsFetching:
+                AppDependencyManager.shared.add(dependency: concertsFetching)
+            }
+        }
     }
 
     /// Registers widget-safe defaults. Called once from
     /// `NowPlayingWidgetBundle.init()`, the widget extension's own process
     /// entry point -- `Singletonia` never runs there.
     ///
-    /// - Parameter playcutHistoryStore: Defaults to a fresh, disk-backed
-    ///   store the widget process never feeds (`start(observing:)`/`ingest(_:)`
-    ///   are app-only calls), so reads come back empty rather than trapping.
-    ///   Overridable so a test can inject an in-memory-backed store instead
-    ///   of touching the real `playcut-history` disk cache -- the same
-    ///   isolation `PlaycutEntityQueryTests.makeHistoryStore()` uses.
-    public static func registerForWidget(playcutHistoryStore: PlaycutHistoryStore = PlaycutHistoryStore()) {
-        AppDependencyManager.shared.add(dependency: playcutHistoryStore)
-        AppDependencyManager.shared.add(dependency: WidgetSafePlaycutReindexer() as any PlaycutReindexer)
-        AppDependencyManager.shared.add(dependency: WidgetSafeConcertReindexer() as any ConcertReindexer)
-        AppDependencyManager.shared.add(dependency: WidgetSafeConcertsFetching() as any ConcertsFetching)
-        AppDependencyManager.shared.add(dependency: WidgetSafeAnalyticsService() as any AnalyticsService)
+    /// - Parameter playcutHistoryStore: Defaults to an in-memory-backed store
+    ///   (`CacheCoordinator(cache: InMemoryCache())`) that nothing ever
+    ///   writes to, expressing "deliberately empty" rather than "just
+    ///   happens to be empty": a disk-backed default would still resolve
+    ///   every read to nothing (the widget process never calls
+    ///   `start(observing:)`/`ingest(_:)`), but would also create a
+    ///   `playcut-history` directory in the appex's own container and spawn
+    ///   a purge task on every widget launch for a store nothing populates
+    ///   (#751 review, non-blocking finding). Overridable so a test can
+    ///   inject its own isolated store -- see
+    ///   `AppIntentsDependenciesBootstrapTests` in `ReindexHandlerTests.swift`.
+    public static func registerForWidget(
+        playcutHistoryStore: PlaycutHistoryStore = PlaycutHistoryStore(
+            cacheCoordinator: CacheCoordinator(cache: InMemoryCache())
+        )
+    ) {
+        for slot in AppIntentsDependencySlot.allCases {
+            switch slot {
+            case .playcutHistoryStore:
+                AppDependencyManager.shared.add(dependency: playcutHistoryStore)
+            case .playcutReindexer:
+                AppDependencyManager.shared.add(dependency: WidgetSafePlaycutReindexer() as any PlaycutReindexer)
+            case .analytics:
+                AppDependencyManager.shared.add(dependency: WidgetSafeAnalyticsService() as any AnalyticsService)
+            case .concertReindexer:
+                AppDependencyManager.shared.add(dependency: WidgetSafeConcertReindexer() as any ConcertReindexer)
+            case .concertsFetching:
+                AppDependencyManager.shared.add(dependency: WidgetSafeConcertsFetching() as any ConcertsFetching)
+            }
+        }
     }
 
     /// Every `AppDependency<Value>` property-wrapper backing-storage metatype
-    /// this package's `@Dependency` properties declare: `PlaycutEntityQuery`'s
-    /// `historyStore`/`reindexer`/`analytics` and `ConcertEntityQuery`'s
-    /// `reindexer`/`concertsFetching`/`analytics`. Five entries, not six --
-    /// `analytics` is one `any AnalyticsService` type shared by both queries.
-    static let dependencyManifest: [Any.Type] = [
-        AppDependency<PlaycutHistoryStore>.self,
-        AppDependency<any PlaycutReindexer>.self,
-        AppDependency<any AnalyticsService>.self,
-        AppDependency<any ConcertReindexer>.self,
-        AppDependency<any ConcertsFetching>.self,
-    ]
+    /// this package declares, derived from `AppIntentsDependencySlot` rather
+    /// than hand-listed here a second time (#751 review, finding B1).
+    static var dependencyManifest: [Any.Type] {
+        AppIntentsDependencySlot.allCases.map(\.dependencyType)
+    }
 }
