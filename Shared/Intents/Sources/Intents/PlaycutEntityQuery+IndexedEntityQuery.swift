@@ -8,7 +8,7 @@
 //  implementation fetches the entities and donates them again, rather than
 //  returning a value. `CSSearchableIndexDescription` carries only a nullable
 //  `protectionClass` — no index identity to dispatch on — so both handlers
-//  donate straight to the one named index via `PlaycutReindexer`. Both also
+//  donate straight to the one named index via `SpotlightReindexer<PlaycutEntity>`. Both also
 //  report `SpotlightReindexRequested` through `AnalyticsService` (#445) before
 //  resolving anything, so a reindex ask is visible in PostHog even when the
 //  store has nothing to donate for it.

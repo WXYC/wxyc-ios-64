@@ -3,7 +3,7 @@
 //  WXYCIntents
 //
 //  Verifies the F3 `IndexedEntityQuery` reindex handlers via a stub
-//  `ConcertsFetching` and a spy `ConcertReindexer`, mirroring
+//  `ConcertsFetching` and a spy `SpotlightReindexer<Concert>`, mirroring
 //  `PlaycutEntityQueryReindexTests`: `reindexEntities(for:)` donates only ids
 //  `ConcertsFetching.fetchConcert(id:)` can resolve (a miss is omitted, not
 //  an error), and `reindexAllEntities` re-donates the curated window fetched
@@ -65,7 +65,7 @@ struct ConcertEntityQueryReindexTests {
         let fetcher = StubConcertsFetcher(pages: [], concertsByID: [1: jessica])
         AppDependencyManager.shared.add(dependency: fetcher as any ConcertsFetching)
         let reindexer = SpyConcertReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any ConcertReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<Concert>)
         let analytics = MockStructuredAnalytics()
         AppDependencyManager.shared.add(dependency: analytics as any AnalyticsService)
 
@@ -92,7 +92,7 @@ struct ConcertEntityQueryReindexTests {
         let fetcher = StubConcertsFetcher(pages: [], concertsByID: [:])
         AppDependencyManager.shared.add(dependency: fetcher as any ConcertsFetching)
         let reindexer = SpyConcertReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any ConcertReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<Concert>)
         AppDependencyManager.shared.add(dependency: MockStructuredAnalytics() as any AnalyticsService)
 
         let unknownID = try #require(ConcertID(concertID: 404))
@@ -116,7 +116,7 @@ struct ConcertEntityQueryReindexTests {
         let fetcher = StubConcertsFetcher(pages: [page])
         AppDependencyManager.shared.add(dependency: fetcher as any ConcertsFetching)
         let reindexer = SpyConcertReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any ConcertReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<Concert>)
         let analytics = MockStructuredAnalytics()
         AppDependencyManager.shared.add(dependency: analytics as any AnalyticsService)
 
@@ -149,7 +149,7 @@ struct ConcertEntityQueryReindexTests {
         )
         AppDependencyManager.shared.add(dependency: StubConcertsFetcher(pages: [emptyPage]) as any ConcertsFetching)
         let reindexer = SpyConcertReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any ConcertReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<Concert>)
         AppDependencyManager.shared.add(dependency: MockStructuredAnalytics() as any AnalyticsService)
 
         let query = ConcertEntityQuery()
@@ -165,7 +165,7 @@ struct ConcertEntityQueryReindexTests {
 
         AppDependencyManager.shared.add(dependency: StubConcertsFetcher(error: URLError(.timedOut)) as any ConcertsFetching)
         let reindexer = SpyConcertReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any ConcertReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<Concert>)
         AppDependencyManager.shared.add(dependency: MockStructuredAnalytics() as any AnalyticsService)
 
         let query = ConcertEntityQuery()
@@ -186,7 +186,7 @@ struct ConcertEntityQueryReindexTests {
         let chuquimamani = Concert.stub(id: 909_005, headliningArtistRaw: "Chuquimamani-Condori", headliningArtistId: 909_006)
         let fetcher = StubConcertsFetcher(pages: [], concertsByID: [909_005: chuquimamani])
         AppDependencyManager.shared.add(dependency: fetcher as any ConcertsFetching)
-        AppDependencyManager.shared.add(dependency: SpyConcertReindexer() as any ConcertReindexer)
+        AppDependencyManager.shared.add(dependency: SpyConcertReindexer() as any SpotlightReindexer<Concert>)
         let analytics = MockStructuredAnalytics()
         AppDependencyManager.shared.add(dependency: analytics as any AnalyticsService)
 
@@ -215,7 +215,7 @@ struct ConcertEntityQueryReindexTests {
 /// Records every `donate(_:)` call's concert ids as a separate batch, so
 /// tests can assert both membership and (for the single-id path) that
 /// nothing was donated on an empty resolve.
-actor SpyConcertReindexer: ConcertReindexer {
+actor SpyConcertReindexer: SpotlightReindexer {
     private(set) var donatedBatches: [[Concert]] = []
 
     var donatedIDs: [Int] {

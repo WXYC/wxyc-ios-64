@@ -43,7 +43,7 @@ public struct PlaycutEntityQuery: EntityQuery {
     /// stored-property-in-an-extension reason as `historyStore`; unused by
     /// this file's own `entities(for:)`/`suggestedEntities()`.
     @Dependency
-    var reindexer: any PlaycutReindexer
+    var reindexer: any SpotlightReindexer<PlaycutEntity>
 
     /// Analytics seam the F3 reindex handlers use to report
     /// `SpotlightReindexRequested` (#445). Declared here for the same
