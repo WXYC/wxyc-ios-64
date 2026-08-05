@@ -367,4 +367,58 @@ struct RenderTapBackgroundBehaviorTests {
                "Should not restore render tap that was explicitly removed")
     }
 }
+
+// MARK: - RadioPlayerController Background/Foreground Specific Tests
+
+/// Characterization tests pinning `RadioPlayerController`'s `#if os(iOS)`
+/// lifecycle block (#777).
+///
+/// That block is unreachable in the shipping app — watchOS is the only platform
+/// that instantiates the controller, and watchOS compiles the block out — so
+/// nothing else in the suite exercises it. These tests are therefore the only
+/// thing that will notice if the handback is deferred, reordered, or dropped.
+/// They deliberately assert the *current, synchronous* shape rather than the
+/// deferred one #774 gave `AudioPlayerController`; see the comment on
+/// `handleApplicationDidEnterBackground()` for why that difference is
+/// intentional and what would make it wrong.
+@Suite("RadioPlayerController Background/Foreground Behavior Tests")
+@MainActor
+struct RadioPlayerControllerBackgroundBehaviorTests {
+
+    @Test("Backgrounding while not playing hands the session back on the caller's turn")
+    func backgroundWhileNotPlayingDeactivatesSynchronously() async {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
+        #expect(!harness.controller.isPlaying)
+
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+
+        // Read inline, with no intervening `await`: unlike #774's
+        // `AudioPlayerController`, this handback is still synchronous. If a
+        // port ever lands here, this expectation is the thing that has to
+        // change, which is exactly the visibility #777 asked for.
+        #expect(harness.mockSession.setActiveCallCount == 1,
+               "Backgrounding while stopped should hand the session back")
+        #expect(harness.mockSession.lastActiveState == false,
+               "The handback should deactivate, not activate")
+        #expect(harness.mockSession.lastActiveOptions == .notifyOthersOnDeactivation,
+               "Other audio apps must be told they can resume")
+    }
+
+    @Test("Backgrounding while playing leaves the session alone")
+    func backgroundWhilePlayingDoesNotDeactivate() async throws {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
+
+        try harness.controller.play(reason: .test)
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+        #expect(harness.controller.isPlaying)
+
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Backgrounding while playing must not deactivate — audio would stop")
+    }
+}
 #endif
