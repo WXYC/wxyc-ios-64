@@ -92,6 +92,15 @@ struct RootTabView: View {
                         configuration: appState.themeConfiguration
                     )
                     .clearTabBarBackground()
+                    #if DEBUG || DEBUG_TESTFLIGHT
+                    // The on-air banner's sole debug-panel wiring: overrides the
+                    // shipping theme with a live snapshot of OnAirDebugState, so the
+                    // debug panel's sliders keep tuning the banner in real time.
+                    // PlaylistView and OnAirBannerView never reference OnAirDebugState
+                    // themselves — compiled away entirely outside this gate, so it's
+                    // absent from a Release build (WXYC/wxyc-ios-64#752).
+                    .environment(\.onAirBannerTheme, OnAirBannerTheme.debugOverride)
+                    #endif
             }
             .accessibilityIdentifier(Page.playlist.accessibilityIdentifier)
 

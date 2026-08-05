@@ -25,10 +25,18 @@ extension Color {
 /// Visual parameters for the on-air banner that the debug panel can tune live.
 ///
 /// The ``default`` reproduces the shipping look, so release builds — which never surface
-/// the debug controls — render exactly as designed.
+/// the debug controls — render exactly as designed. Every default here was ported
+/// verbatim from `OnAirDebugState`'s persisted `UserDefaults` fallbacks (WXYC/wxyc-ios-64#752),
+/// so a Release build renders exactly what shipped before this type became the source
+/// of truth.
 struct OnAirBannerTheme: Equatable {
-    /// Color of the "ON AIR" indicator dot and its glow.
-    var indicatorColor: Color = .green
+    /// Color of the "ON AIR" indicator dot and its glow. Ships as a fully-saturated,
+    /// medium-lightness green — HSL(0.33, 1.0, 0.5), a hair warmer than true green
+    /// (1/3) — matching the value `OnAirDebugState` persisted as its default. This is
+    /// deliberately *not* SwiftUI's `.green`: that system color resolves to a visibly
+    /// duller, darker swatch, so hard-coding it here would have silently changed the
+    /// release banner's look.
+    var indicatorColor: Color = Color(HSL(hue: 0.33, saturation: 1.0, lightness: 0.5))
 
     /// Blur radius of the indicator's glow, in points.
     var indicatorBlurRadius: CGFloat = 4.5
@@ -101,4 +109,22 @@ struct OnAirBannerTheme: Equatable {
     var waveReplayToken: Int = 0
 
     static let `default` = OnAirBannerTheme()
+}
+
+// MARK: - Environment
+
+private struct OnAirBannerThemeKey: EnvironmentKey {
+    static let defaultValue: OnAirBannerTheme = .default
+}
+
+extension EnvironmentValues {
+    /// The on-air banner's visual theme. Defaults to the shipping look
+    /// (``OnAirBannerTheme/default``); the composition root overrides this with a
+    /// live-tuning value from the debug panel in `#if DEBUG || DEBUG_TESTFLIGHT`
+    /// builds only (see `RootTabView`), so `PlaylistView` and `OnAirBannerView`
+    /// never reference the debug state directly.
+    var onAirBannerTheme: OnAirBannerTheme {
+        get { self[OnAirBannerThemeKey.self] }
+        set { self[OnAirBannerThemeKey.self] = newValue }
+    }
 }
