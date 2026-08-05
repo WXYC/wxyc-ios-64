@@ -48,7 +48,8 @@ public final class AudioPlayerController {
         remoteCommandCenter: SystemRemoteCommandCenter(),
         notificationCenter: .default,
         analytics: StructuredPostHogAnalytics.shared,
-        reachability: NWPathMonitorReachability()
+        reachability: NWPathMonitorReachability(),
+        backgroundTasks: SystemBackgroundTaskAssertion()
     )
     #elseif os(watchOS)
     public static let shared = AudioPlayerController(
@@ -199,6 +200,11 @@ public final class AudioPlayerController {
     #if os(iOS) || os(tvOS)
     @ObservationIgnored private nonisolated(unsafe) var audioSession: AudioSessionProtocol?
     @ObservationIgnored private nonisolated(unsafe) var remoteCommandCenter: RemoteCommandCenterProtocol?
+    /// Source of background-execution assertions for the deferred handback. Not
+    /// `nonisolated(unsafe)` like its neighbours: assertions are begun and ended
+    /// only from the main actor, never from the executor the handback itself
+    /// runs on.
+    @ObservationIgnored private let backgroundTasks: (any BackgroundTaskAssertionProtocol)?
     #endif
 
     // MARK: - State
@@ -326,6 +332,14 @@ public final class AudioPlayerController {
     /// one may decline as stale. Consumed once, by
     /// `drainRequestedSessionDeactivation()`.
     private var sessionDeactivationRequested = false
+    /// Background-execution assertions this controller holds and has not yet
+    /// released. Tracked so each is ended exactly once — `UIApplication` treats
+    /// a double-end as a programming error, and an expiration handler racing the
+    /// handback's own continuation is precisely how that happens. A set rather
+    /// than a single identifier because a handback that re-drives a recorded
+    /// request briefly holds two: the new one is taken before the old is
+    /// released, so the app is never momentarily unprotected in between.
+    private var liveHandbackAssertions: Set<BackgroundTaskID> = []
 
     /// Serializes every `setActive` call on the session.
     ///
@@ -368,6 +382,10 @@ public final class AudioPlayerController {
     ///   - sessionActivationRetryDelay: Spacing of the bounded `'!int'`
     ///     activation retries (#514). Production keeps the default; tests
     ///     shrink it to exhaust the budget quickly.
+    ///   - backgroundTasks: Source of background-execution assertions, so a
+    ///     deferred audio-session handback survives the app being backgrounded.
+    ///     Defaults to nil — no assertion, which is what every construction site
+    ///     except `shared` wants, since only a real app is ever suspended.
     public init(
         player: AudioPlayerProtocol,
         audioSession: AudioSessionProtocol?,
@@ -379,12 +397,14 @@ public final class AudioPlayerController {
         reachability: NetworkReachability? = nil,
         defaults: DefaultsStorage = UserDefaults.standard,
         heartbeatInterval: Duration = .seconds(60),
-        sessionActivationRetryDelay: Duration = .milliseconds(250)
+        sessionActivationRetryDelay: Duration = .milliseconds(250),
+        backgroundTasks: (any BackgroundTaskAssertionProtocol)? = nil
     ) {
         self.player = player
         self.audioSession = audioSession
         self.remoteCommandCenter = remoteCommandCenter
         self.sessionActivationRetryDelay = sessionActivationRetryDelay
+        self.backgroundTasks = backgroundTasks
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
@@ -984,6 +1004,14 @@ public final class AudioPlayerController {
         }
         sessionDeactivationInFlight = true
 
+        // Taken here, where the handback is *scheduled*, rather than where the
+        // app is backgrounded: by the time `handleAppDidEnterBackground()` runs
+        // the handback is already in flight, and an assertion begun then would
+        // cover only the tail of it. Beginning it while still foregrounded is
+        // the documented usage — the assertion is what buys the seconds after
+        // the transition, whenever the transition happens to arrive.
+        let assertion = beginHandbackAssertion()
+
         // Read without the lock, deliberately. `sessionActivationGeneration` is
         // written only by `activate(_:)`, which is main-actor isolated, so this
         // read races nobody; the detached deactivation takes the lock only
@@ -1020,7 +1048,60 @@ public final class AudioPlayerController {
             }
             resumeDeferredActivationAfterHandback()
             drainRequestedSessionDeactivation()
+            // Released *after* the drain, so a re-driven handback has already
+            // taken its own assertion by the time this one lets go. Releasing
+            // first would leave the app holding none for exactly the window the
+            // re-driven handback runs in — and that handback is the one that
+            // actually hands the session back, since this one declined as stale.
+            endHandbackAssertion(assertion)
         }
+    }
+
+    /// Asks the system to keep the process running until the deferred handback
+    /// finishes, so a background transition arriving mid-handback can't strand
+    /// it. Returns nil when there is no provider (every construction site but
+    /// `shared`) or the system declined, in which case the handback runs exactly
+    /// as it did before — unprotected, but never blocked.
+    private func beginHandbackAssertion() -> BackgroundTaskID? {
+        guard let backgroundTasks else { return nil }
+        let id = backgroundTasks.beginTask(named: "Audio session handback") { [weak self] in
+            // Expiration is app-wide rather than per-assertion — the granted
+            // time ran out — so every assertion this controller holds is about
+            // to become fatal, and all of them are released together.
+            //
+            // Deliberately *only* released: the handback is not forced to
+            // completion here. A `setActive(false, …)` still outstanding after
+            // the whole background grace period is wedged in `mediaserverd`, and
+            // a second one issued from this handler could only stack behind it —
+            // while waiting on `sessionLock` to issue it safely would block the
+            // main actor, which is both the defect #774 fixed and, with seconds
+            // left before termination, a watchdog kill. Letting it lapse costs
+            // one deferred handback; `audioSessionActivated` stays set on an
+            // unconfirmed one, so the next `stop()` — or the foreground
+            // reactivation — retries it.
+            self?.endAllHandbackAssertions()
+        }
+        guard let id else { return nil }
+        liveHandbackAssertions.insert(id)
+        return id
+    }
+
+    /// Releases every assertion this controller still holds. Used only from the
+    /// expiration handler, where the alternative is termination.
+    private func endAllHandbackAssertions() {
+        let live = liveHandbackAssertions
+        liveHandbackAssertions.removeAll()
+        for id in live {
+            backgroundTasks?.endTask(id)
+        }
+    }
+
+    /// Releases one assertion, if it is still live. Membership in
+    /// `liveHandbackAssertions` is what makes this idempotent: ending the same
+    /// assertion twice is a programming error `UIApplication` raises on.
+    private func endHandbackAssertion(_ id: BackgroundTaskID?) {
+        guard let id, liveHandbackAssertions.remove(id) != nil else { return }
+        backgroundTasks?.endTask(id)
     }
 
     /// Re-drives an activation that deferred behind the handback, now that the
@@ -1096,11 +1177,20 @@ public final class AudioPlayerController {
     /// `.notifyOthersOnDeactivation` never fires and the app whose audio we
     /// interrupted stays silent until WXYC is next resumed. This is what the call
     /// site did before the handback was deferred at all.
+    ///
+    /// Runs entirely within the caller's turn, and the system does not suspend an
+    /// app inside its own scenePhase callback — so this path needs no
+    /// background-execution assertion of its own.
     private func deactivateAudioSessionOnCallersTurn() {
         guard audioSessionActivated, audioSession != nil else { return }
         guard !sessionDeactivationInFlight else {
             // One is already running and will finish or re-drive itself. Blocking
             // on its lock is the one thing this must not do.
+            //
+            // This is the ordering #776 was about: the in-flight handback's
+            // continuation is what re-drives this request, and it was racing
+            // suspension. It no longer is — the assertion taken when that
+            // handback was *scheduled* is still live, and outlives the drain.
             sessionDeactivationRequested = true
             return
         }
