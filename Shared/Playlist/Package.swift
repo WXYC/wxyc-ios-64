@@ -44,6 +44,7 @@ let package = Package(
                 .product(name: "CachingTesting", package: "Caching"),
                 .product(name: "AnalyticsTesting", package: "Analytics"),
                 .product(name: "LoggerTesting", package: "Logger"),
+                .product(name: "CoreTesting", package: "Core"),
             ],
             resources: [.copy("Fixtures")]
         )
