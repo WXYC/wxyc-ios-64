@@ -34,12 +34,15 @@ final class Singletonia {
 
     let nowPlayingInfoCenterManager: NowPlayingInfoCenterManager
     let handoffActivityManager: HandoffActivityManager
-    // iOS is the only platform that subscribes to the `live-fs-topic` SSE
-    // stream: track inserts and metadata updates arrive as push events while
-    // foregrounded (see `setForegrounded(_:)`), so the periodic poll drops to a
-    // 300 s reconciliation backstop instead of the 30 s default. See
-    // WXYC/wxyc-ios-64#269.
-    let playlistService = PlaylistService(interval: 300, liveUpdatesEnabled: true)
+    // iOS is the only platform that opts into the `live-fs-topic` SSE stream:
+    // track inserts and metadata updates arrive as push events while
+    // foregrounded (see `setForegrounded(_:)`). The 300 s reconciliation
+    // cadence is no longer hardcoded here — `PlaylistService` derives it from
+    // the resolved `PlaylistAPIVersion` plus this opt-in (300 s only when the
+    // version actually supports live updates; 30 s otherwise, e.g. under v1),
+    // so a runtime version switch can never leave the poll interval or the
+    // SSE subscription stale. See WXYC/wxyc-ios-64#269, #749.
+    let playlistService = PlaylistService(liveUpdatesEnabled: true)
     let artworkService = MultisourceArtworkService()
     let artworkLoader: ArtworkLoader
     let widgetStateService: WidgetStateService

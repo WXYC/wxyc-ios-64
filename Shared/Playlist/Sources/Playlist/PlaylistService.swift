@@ -15,24 +15,83 @@ import Caching
 
 public final actor PlaylistService: Sendable {
     private var fetcher: PlaylistFetcherProtocol
-    private let interval: TimeInterval
+
+    /// Builds the fetcher for a given version. `switchAPIVersion(to:)` rebuilds
+    /// through this rather than hard-coding `PlaylistFetcher(apiVersion:)`, so a
+    /// caller that injected a double at `init` keeps it across a version switch
+    /// instead of silently having it replaced by a live-network fetcher.
+    ///
+    /// When no fetcher was injected, this is the real
+    /// `PlaylistFetcher(apiVersion:)` and production behavior is unchanged.
+    private let fetcherFactory: @Sendable (PlaylistAPIVersion) -> PlaylistFetcherProtocol
+
+    private var interval: TimeInterval
     private var currentPlaylist: Playlist = .empty
     private var fetchTask: Task<Void, Never>?
     private let cacheCoordinator: CacheCoordinator
     private static let cacheKey = PlaylistCacheKey.playlist
     private static let cacheLifespan: TimeInterval = 15 * 60 // 15 minutes
 
+    /// The resolved playlist API version this instance is currently wired
+    /// for. Set once at `init` (from the `apiVersion` argument, or
+    /// `PlaylistAPIVersion.loadActive()` when omitted) and reassigned by
+    /// `switchAPIVersion(to:)`.
+    private var apiVersion: PlaylistAPIVersion
+
+    /// A test-supplied poll interval, or `nil` to derive it from the wiring
+    /// (see ``liveUpdatesReconciliationInterval`` / ``pollOnlyInterval``).
+    /// `switchAPIVersion(to:)` must never stomp an explicit override — tests
+    /// that pin an `interval` expect it to stay pinned across a version
+    /// switch.
+    private let intervalOverride: TimeInterval?
+
     // MARK: - Live updates (SSE)
 
-    /// The `live-fs-topic` SSE source, or `nil` when live updates aren't enabled
-    /// for this instance (the default — watchOS/tvOS/widgets stay poll-only).
-    /// When present, `PlaylistService` opens a subscription while foregrounded
-    /// and applies `insert`/`update` events between reconciliation polls. See
-    /// WXYC/wxyc-ios-64#269.
-    private let liveEventSource: (any LiveFsEventSource)?
+    /// Poll cadence used only as a reconciliation backstop when SSE live
+    /// updates are actually wired in (`apiVersion.supportsLiveUpdates &&`
+    /// caller opted in). Defensible only because inserts/updates already
+    /// arrive over the push channel while foregrounded — see
+    /// `setForegrounded(_:)`. Keying this off the *resolved wiring*, not the
+    /// API version alone, matters: `WXYC/WatchXYC/PlaylistPage.swift` and
+    /// `PlayerPage.swift` consume `updates()` as their only refresh path and
+    /// never opt into SSE, so a version-keyed 300 s would silently make the
+    /// watch up to 5 minutes stale once `PlaylistAPIVersion.defaultVersion`
+    /// flips to `.v2`.
+    private static let liveUpdatesReconciliationInterval: TimeInterval = 300
+
+    /// Poll cadence when no push channel backs freshness: v1 always (it has
+    /// no SSE channel — see `PlaylistAPIVersion.supportsLiveUpdates`), and v2
+    /// when the caller didn't opt into live updates (watchOS/tvOS/widgets/
+    /// intents).
+    private static let pollOnlyInterval: TimeInterval = 30
+
+    /// The caller's immutable live-updates opt-in — the `liveEventSource`
+    /// passed at `init` (directly, or via `FlowsheetLiveEventSource()` when
+    /// `liveUpdatesEnabled: true`), or `nil` when the caller never opted in.
+    /// Unlike ``activeLiveEventSource``, this never changes: it's the ceiling
+    /// `switchAPIVersion(to:)` re-derives the active source from on every
+    /// version change.
+    private let liveEventSourceIfEnabled: (any LiveFsEventSource)?
+
+    /// The currently-installed `live-fs-topic` SSE source — `liveEventSourceIfEnabled`
+    /// when the resolved `apiVersion` supports live updates, `nil` otherwise
+    /// (including when the caller never opted in). This is what
+    /// `setForegrounded`/`ensureLiveUpdatesRunning`/`consumeLiveEvents` read;
+    /// re-derived by `init` and by `switchAPIVersion(to:)` on every version
+    /// change. See WXYC/wxyc-ios-64#269, #749.
+    private var activeLiveEventSource: (any LiveFsEventSource)?
 
     /// The running SSE consume loop, or `nil` when backgrounded / not enabled.
     private var liveUpdatesTask: Task<Void, Never>?
+
+    /// True while `switchAPIVersion(to:)` is between tearing down the old
+    /// wiring and installing the new one. `ensureLiveUpdatesRunning()` refuses
+    /// to start a loop while set, because any loop started in that window
+    /// would bind the *pre-switch* source (`consumeLiveEvents` captures it
+    /// once, at the top) and then outlive the switch. Only ever mutated
+    /// synchronously on the actor, so a reentrant call parked on one of
+    /// `switchAPIVersion`'s awaits always observes the current value.
+    private var isSwitchingAPIVersion = false
 
     /// The app's current foreground state. The SSE subscription is opened only
     /// while foregrounded and torn down on background — a long-lived socket in
@@ -42,7 +101,7 @@ public final actor PlaylistService: Sendable {
     /// Reconnect backoff bounds for the SSE consume loop.
     private static let minReconnectBackoff: Duration = .seconds(1)
     private static let maxReconnectBackoff: Duration = .seconds(30)
-    
+
     /// Collection of continuations for broadcasting to multiple observers
     private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
     
@@ -62,16 +121,52 @@ public final actor PlaylistService: Sendable {
     /// Designated initializer. Takes the live-updates source directly so tests
     /// can inject a scripted `MockLiveFsEventSource`; app code uses the
     /// `liveUpdatesEnabled` convenience initializer below instead.
+    ///
+    /// - Parameters:
+    ///   - fetcher: Fetcher to use. When `nil` (the default), one is built
+    ///     from the single `resolvedVersion` below — never from a second,
+    ///     independent `PlaylistAPIVersion.loadActive()` call. That matters
+    ///     because the version comes from a PostHog flag snapshot that loads
+    ///     asynchronously at launch: two independent reads could disagree at
+    ///     cold start, wiring the service for one version while the fetcher
+    ///     pulls another. Note this only couples the *derived* fetcher to
+    ///     `apiVersion`: pass a `PlaylistFetcher(apiVersion:)` built against a
+    ///     different version here and the two will disagree by construction,
+    ///     so callers injecting a real fetcher should pass a matching
+    ///     `apiVersion`. An injected fetcher is also kept for the lifetime of
+    ///     the service — `switchAPIVersion(to:)` rebuilds only the derived one.
+    ///   - interval: A test-supplied poll interval override. When `nil` (the
+    ///     default), the interval is derived from the resolved wiring — see
+    ///     ``liveUpdatesReconciliationInterval`` / ``pollOnlyInterval``.
+    ///   - apiVersion: The API version to resolve against. When `nil` (the
+    ///     default), resolves via `PlaylistAPIVersion.loadActive()`.
     init(
-        fetcher: PlaylistFetcherProtocol = PlaylistFetcher(),
-        interval: TimeInterval = 30,
+        fetcher: PlaylistFetcherProtocol? = nil,
+        interval: TimeInterval? = nil,
         cacheCoordinator: CacheCoordinator = CacheCoordinator.Playlist,
-        liveEventSource: (any LiveFsEventSource)?
+        liveEventSource: (any LiveFsEventSource)?,
+        apiVersion: PlaylistAPIVersion? = nil
     ) {
-        self.fetcher = fetcher
-        self.interval = interval
+        let resolvedVersion = apiVersion ?? PlaylistAPIVersion.loadActive()
+        self.apiVersion = resolvedVersion
+        // An injected fetcher is a deliberate test double: keep returning it
+        // so `switchAPIVersion(to:)` can't swap it out for a live-network one.
+        if let fetcher {
+            self.fetcherFactory = { _ in fetcher }
+            self.fetcher = fetcher
+        } else {
+            self.fetcherFactory = { PlaylistFetcher(apiVersion: $0) }
+            self.fetcher = PlaylistFetcher(apiVersion: resolvedVersion)
+        }
+        self.intervalOverride = interval
         self.cacheCoordinator = cacheCoordinator
-        self.liveEventSource = liveEventSource
+        self.liveEventSourceIfEnabled = liveEventSource
+
+        let liveUpdatesActive = resolvedVersion.supportsLiveUpdates && liveEventSource != nil
+        self.activeLiveEventSource = liveUpdatesActive ? liveEventSource : nil
+        self.interval = interval ?? (
+            liveUpdatesActive ? Self.liveUpdatesReconciliationInterval : Self.pollOnlyInterval
+        )
 
         // Start loading cached playlist immediately.
         // Observers will await this task before receiving their first value.
@@ -82,26 +177,42 @@ public final actor PlaylistService: Sendable {
 
     /// Creates a `PlaylistService`.
     ///
-    /// - Parameter liveUpdatesEnabled: When `true`, the service opens a
-    ///   `live-fs-topic` SSE subscription while foregrounded (see
-    ///   ``setForegrounded(_:)``) and applies `insert`/`update` events between
-    ///   reconciliation polls, so a caller should pair it with a long `interval`
-    ///   (e.g. 300 s). Defaults to `false`, preserving the poll-only behavior
-    ///   for watchOS/tvOS/widgets. Only the iOS app enables it.
+    /// - Parameters:
+    ///   - liveUpdatesEnabled: When `true`, the caller opts into a
+    ///     `live-fs-topic` SSE subscription while foregrounded (see
+    ///     ``setForegrounded(_:)``). Whether a subscription is actually
+    ///     wired up is a conjunction of this opt-in *and* the resolved
+    ///     `apiVersion` supporting live updates
+    ///     (``PlaylistAPIVersion/supportsLiveUpdates``) — v1 has no push
+    ///     channel, so opting in has no effect there. Defaults to `false`,
+    ///     preserving the poll-only behavior for watchOS/tvOS/widgets. Only
+    ///     the iOS app enables it. The poll interval follows the same
+    ///     conjunction — see ``liveUpdatesReconciliationInterval`` /
+    ///     ``pollOnlyInterval`` — so callers no longer pass it explicitly to
+    ///     get the long reconciliation cadence.
+    ///   - apiVersion: The API version to resolve against. When `nil` (the
+    ///     default), resolves via `PlaylistAPIVersion.loadActive()`. Public
+    ///     — mirroring the already-public `PlaylistFetcher(apiVersion:)` —
+    ///     so a test can force a version through this production-shaped
+    ///     initializer without mutating the shared `UserDefaults.wxyc` app
+    ///     group, which is process-global and would make parallel test
+    ///     suites order-dependent.
     public init(
-        fetcher: PlaylistFetcherProtocol = PlaylistFetcher(),
-        interval: TimeInterval = 30,
+        fetcher: PlaylistFetcherProtocol? = nil,
+        interval: TimeInterval? = nil,
         cacheCoordinator: CacheCoordinator = CacheCoordinator.Playlist,
-        liveUpdatesEnabled: Bool = false
+        liveUpdatesEnabled: Bool = false,
+        apiVersion: PlaylistAPIVersion? = nil
     ) {
         self.init(
             fetcher: fetcher,
             interval: interval,
             cacheCoordinator: cacheCoordinator,
-            liveEventSource: liveUpdatesEnabled ? FlowsheetLiveEventSource() : nil
+            liveEventSource: liveUpdatesEnabled ? FlowsheetLiveEventSource() : nil,
+            apiVersion: apiVersion
         )
     }
-    
+
     /// Load cached playlist if available and not expired.
     /// Called once at initialization.
     private func loadCachedPlaylist() async {
@@ -199,41 +310,130 @@ public final actor PlaylistService: Sendable {
             
     /// Switches to a different API version and immediately fetches fresh data.
     /// Clears the current playlist and cache before fetching to ensure clean data.
+    /// Also re-derives the SSE subscription and poll interval from the new
+    /// version, per the same `apiVersion.supportsLiveUpdates && callerOptedIn`
+    /// conjunction `init` applies — a runtime switch must not leave either one
+    /// stale (WXYC/wxyc-ios-64#749).
     ///
     /// - Parameter version: The API version to switch to.
     public func switchAPIVersion(to version: PlaylistAPIVersion) async {
         Log(.info, category: .network, "Switching playlist API to \(version.rawValue)")
-            
-        // Cancel any existing fetch task
+
+        // Latch before the first await so every reentrant call parked below
+        // sees it. Cleared just before the rebuild's own ensure calls.
+        isSwitchingAPIVersion = true
+
+        // Cancel the live-updates loop and await its completion BEFORE
+        // touching `activeLiveEventSource`/`currentPlaylist` below.
+        // `consumeLiveEvents` binds its `source` once at the top of the
+        // loop, so nilling the property alone would not stop an in-flight
+        // consume — only cancellation does, and we must wait for the loop to
+        // actually observe it and return so a straggler `upsertPlaycut` from
+        // the old source can't broadcast after `currentPlaylist` resets below.
+        //
+        // Awaiting `.value` suspends this actor method, so other calls run on
+        // reentrant turns while we're parked — `setForegrounded(_:)` in
+        // particular, which mutates `liveUpdatesTask`. Two consequences, both
+        // handled: clear the field only if it still holds the task we actually
+        // cancelled (an unconditional `= nil` would drop a mid-switch loop's
+        // handle, leaving it consuming the old source with nothing able to
+        // stop it), and keep `isSwitchingAPIVersion` set so no such loop can
+        // be started in the first place.
+        let cancelledLiveUpdates = liveUpdatesTask
+        cancelledLiveUpdates?.cancel()
+        await cancelledLiveUpdates?.value
+        if liveUpdatesTask == cancelledLiveUpdates {
+            liveUpdatesTask = nil
+        }
+
+        // Everything from here to the `fetchAndCachePlaylist()` await is one
+        // synchronous actor turn, so no reentrant call can observe half-swapped
+        // wiring. `cancelFetchTask()` in particular must stay below the await
+        // above: hoisted above it, a new `updates()` subscriber landing in the
+        // window would restart `startFetching()` against the *old* fetcher, and
+        // the restart at the bottom would then no-op because a task exists —
+        // leaving the previous version's payload on screen until the loop's
+        // next tick, which on the new interval can be five minutes away.
         cancelFetchTask()
-            
-        // Create new fetcher with the specified version
-        fetcher = PlaylistFetcher(apiVersion: version)
-                
+
+        apiVersion = version
+
+        // Rebuild the fetcher for the new version, preserving an injected
+        // double (see `fetcherFactory`).
+        fetcher = fetcherFactory(version)
+
+        // Re-derive the SSE wiring and poll interval from the new version,
+        // exactly as `init` does.
+        let liveUpdatesActive = version.supportsLiveUpdates && liveEventSourceIfEnabled != nil
+        activeLiveEventSource = liveUpdatesActive ? liveEventSourceIfEnabled : nil
+        interval = intervalOverride ?? (
+            liveUpdatesActive ? Self.liveUpdatesReconciliationInterval : Self.pollOnlyInterval
+        )
+
         // Clear current playlist to show loading state
         currentPlaylist = .empty
         broadcast(.empty)
-            
+
         // Fetch fresh data with new API version (this will overwrite the cache)
         _ = await fetchAndCachePlaylist()
-                
+
+        // New wiring is fully installed — reentrant calls may start loops again.
+        isSwitchingAPIVersion = false
+
         // Restart fetch loop if we have observers
         if !continuations.isEmpty {
             ensureFetchTaskRunning()
         }
+
+        // Restart the live-updates loop against the newly-derived source if
+        // we're still foregrounded (a no-op when the new version doesn't
+        // support live updates, since `ensureLiveUpdatesRunning` guards on
+        // `activeLiveEventSource != nil`).
+        if isForegrounded {
+            ensureLiveUpdatesRunning()
+        }
+    }
+
+    /// A snapshot of the service's currently-resolved wiring, for tests that
+    /// need to observe the derived interval/subscription state without
+    /// relaxing visibility on the individual fields.
+    ///
+    /// Deliberately `internal`, not `public`: every consumer reaches it via
+    /// `@testable import Playlist` (including the cross-package
+    /// `AppServicesTests`), which is the same route the designated
+    /// initializer above relies on. Making it `public` would commit the
+    /// module to three typed fields as permanent API for a test-only seam.
+    struct WiringSnapshot: Sendable, Equatable {
+        let apiVersion: PlaylistAPIVersion
+        let pollInterval: TimeInterval
+        let liveUpdatesActive: Bool
+    }
+
+    /// Returns the service's currently-resolved wiring — the API version,
+    /// poll interval, and whether an SSE subscription is actually wired in
+    /// (``PlaylistAPIVersion/supportsLiveUpdates`` and the caller opted in).
+    func wiringSnapshot() -> WiringSnapshot {
+        WiringSnapshot(
+            apiVersion: apiVersion,
+            pollInterval: interval,
+            liveUpdatesActive: activeLiveEventSource != nil
+        )
     }
 
     /// Opens or closes the `live-fs-topic` SSE subscription in response to the
     /// app's foreground state.
     ///
     /// Called from the iOS scene-phase handler: `true` on `.active`, `false` on
-    /// `.inactive`/`.background`. A no-op when live updates aren't enabled for
-    /// this instance (watchOS/tvOS/widgets), so those platforms keep their
-    /// poll-only behavior untouched. While foregrounded the service applies
+    /// `.inactive`/`.background`. Tracks `isForegrounded` unconditionally —
+    /// even when live updates aren't wired in for this instance right now
+    /// (v1, or the caller never opted in) — so a later `switchAPIVersion(to:)`
+    /// that DOES wire one in knows whether to start it immediately.
+    /// `ensureLiveUpdatesRunning()` already guards on `activeLiveEventSource`
+    /// being non-nil, and cancelling a nil task is harmless, so no outer
+    /// guard is needed here. While foregrounded the service applies
     /// `insert`/`update` events as they arrive; the periodic `interval` poll
     /// stays running underneath as a reconciliation backstop.
     public func setForegrounded(_ foregrounded: Bool) {
-        guard liveEventSource != nil else { return }
         isForegrounded = foregrounded
         if foregrounded {
             ensureLiveUpdatesRunning()
@@ -397,7 +597,8 @@ public final actor PlaylistService: Sendable {
 
     /// Ensure the live-updates consume loop is running (foregrounded + enabled).
     private func ensureLiveUpdatesRunning() {
-        guard liveEventSource != nil, isForegrounded, liveUpdatesTask == nil else { return }
+        guard !isSwitchingAPIVersion else { return }
+        guard activeLiveEventSource != nil, isForegrounded, liveUpdatesTask == nil else { return }
         liveUpdatesTask = Task { await self.consumeLiveEvents() }
     }
 
@@ -410,7 +611,7 @@ public final actor PlaylistService: Sendable {
     /// event, and grows only when an attempt produced nothing (a hard failure,
     /// distinct from a healthy connection that simply closed).
     private func consumeLiveEvents() async {
-        guard let source = liveEventSource else { return }
+        guard let source = activeLiveEventSource else { return }
 
         // Splice events into the cache-loaded baseline, not the `.empty`
         // pre-load state a racing early event would otherwise be overwritten on.
