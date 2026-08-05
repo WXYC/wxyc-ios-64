@@ -15,6 +15,7 @@
 //
 
 import Core
+import Foundation
 import Testing
 @testable import WXYC
 
@@ -28,8 +29,13 @@ struct SingletoniaLikedStorageTests {
     }
 
     @Test("Production routes likes to the durable Application Support store")
-    func productionUsesDurableStorage() {
+    func productionUsesDurableStorage() throws {
         let storage = Singletonia.likedStorage(isMarketing: false)
-        #expect(storage is AppSupportFileStorage)
+        let appSupportStorage = try #require(storage as? AppSupportFileStorage)
+        // Pinning the filename, not just the type, matters: `LikedSongsStore`
+        // and `DismissedConcertsStore` both resolve to `AppSupportFileStorage`,
+        // so a type-only check can't catch the two factories being swapped and
+        // pointed at each other's file.
+        #expect(appSupportStorage.fileURL.lastPathComponent == "liked-songs.json")
     }
 }

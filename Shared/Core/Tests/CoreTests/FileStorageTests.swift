@@ -62,6 +62,30 @@ struct FileStorageTests {
         #expect(try storage.load() == Data("nested".utf8))
     }
 
+    @Test("fileURL exposes the resolved path so callers can pin which file a store targets")
+    func fileURLReflectsTheFilename() {
+        let subdirectory = "filestorage-test-\(UUID().uuidString)"
+        let storage = AppSupportFileStorage(filename: "\(subdirectory)/store.json")
+        defer { removeApplicationSupportSubdirectory(subdirectory) }
+
+        #expect(storage.fileURL.lastPathComponent == "store.json")
+    }
+
+    @Test("A flat filename directly under Application Support round-trips")
+    func flatFilenameRoundTrips() throws {
+        // Production callers (Singletonia) pass a flat name like "liked-songs.json"
+        // with no subdirectory, so `deletingLastPathComponent()` in `save(_:)`
+        // resolves to the Application Support root itself. The other tests above
+        // only ever exercise the nested "<uuid>/store.json" shape.
+        let filename = "filestorage-flat-test-\(UUID().uuidString).json"
+        let storage = AppSupportFileStorage(filename: filename)
+        defer { removeApplicationSupportFile(filename) }
+
+        #expect(storage.fileURL.lastPathComponent == filename)
+        try storage.save(Data("flat".utf8))
+        #expect(try storage.load() == Data("flat".utf8))
+    }
+
     // MARK: - InMemoryFileStorage (CoreTesting)
 
     @Test("A fresh InMemoryFileStorage with no seed returns nil")
@@ -100,5 +124,12 @@ struct FileStorageTests {
             return
         }
         try? FileManager.default.removeItem(at: base.appending(path: subdirectory))
+    }
+
+    private func removeApplicationSupportFile(_ filename: String) {
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return
+        }
+        try? FileManager.default.removeItem(at: base.appending(path: filename))
     }
 }

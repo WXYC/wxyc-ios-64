@@ -33,7 +33,13 @@ public protocol FileStorage: Sendable {
 
 /// `FileStorage` backed by a file in the app's Application Support directory.
 public struct AppSupportFileStorage: FileStorage {
-    private let fileURL: URL
+    /// The resolved on-disk location. Public so callers with several
+    /// `AppSupportFileStorage` instances in play (Singletonia routes both the
+    /// likes and dismissed-concerts stores through this same type) can assert
+    /// `fileURL.lastPathComponent` to confirm which file a given instance
+    /// targets — the storage's `filename` init parameter has no other
+    /// observable trace once constructed.
+    public let fileURL: URL
 
     public init(filename: String) {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
