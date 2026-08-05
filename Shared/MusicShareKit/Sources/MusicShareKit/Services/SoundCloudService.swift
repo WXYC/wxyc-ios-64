@@ -43,11 +43,6 @@ final class SoundCloudService: MusicServiceProvider {
         )
     }
     
-    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
-        // Artwork is fetched as part of fetchMetadata, return cached value
-        return track.artworkURL
-    }
-    
     func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         // Use SoundCloud oEmbed API (no auth required)
         // API: https://soundcloud.com/oembed?format=json&url=[url]

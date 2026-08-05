@@ -34,4 +34,11 @@ extension MusicServiceProvider {
     public func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         return track
     }
+
+    /// Default implementation returns the track's cached artwork URL.
+    /// Every conformer fetches artwork as part of `fetchMetadata`, so by the time
+    /// `fetchArtwork` is called there is nothing left to do but hand back the cached value.
+    public func fetchArtwork(for track: MusicTrack) async throws -> URL? {
+        track.artworkURL
+    }
 }

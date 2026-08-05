@@ -45,11 +45,6 @@ final class BandcampService: MusicServiceProvider {
         )
     }
     
-    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
-        // Artwork is fetched as part of fetchMetadata, return cached value
-        return track.artworkURL
-    }
-    
     func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         // Bandcamp doesn't have a public API, so we scrape the page for Open Graph tags
         let (data, _) = try await URLSession.shared.data(from: track.url)
