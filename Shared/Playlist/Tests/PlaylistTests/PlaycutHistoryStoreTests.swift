@@ -15,6 +15,7 @@
 import Testing
 import Foundation
 import CachingTesting
+import CoreTesting
 import PlaylistTesting
 @testable import Playlist
 @testable import Caching
@@ -610,7 +611,7 @@ struct PlaycutHistoryStoreTests {
     // MARK: - Subscription
 
     @Test("start(observing:) ingests playlists from an injected stream", .timeLimit(.minutes(1)))
-    func startObservingIngestsFromStream() async throws {
+    func startObservingIngestsFromStream() async {
         let (store, _, _) = makeStore()
         let (stream, continuation) = AsyncStream.makeStream(of: Playlist.self)
 
@@ -620,14 +621,15 @@ struct PlaycutHistoryStoreTests {
         ]))
         continuation.finish()
 
-        try await waitUntil { await store.allIndexable().count == 1 }
+        let ingested = await waitUntil { await store.allIndexable().count == 1 }
+        #expect(ingested)
         let all = await store.allIndexable()
         #expect(all.count == 1)
         #expect(all.first?.artistName == "Juana Molina")
     }
 
     @Test("start(observing:) ingests playlists from a live PlaylistService", .timeLimit(.minutes(1)))
-    func startObservingIngestsFromPlaylistService() async throws {
+    func startObservingIngestsFromPlaylistService() async {
         let (store, _, _) = makeStore()
         let fetcher = MockPlaylistFetcher()
         fetcher.playlistToReturn = .stub(playcuts: [
@@ -641,7 +643,8 @@ struct PlaycutHistoryStoreTests {
 
         await store.start(observing: service)
 
-        try await waitUntil { await store.allIndexable().count == 1 }
+        let ingested = await waitUntil { await store.allIndexable().count == 1 }
+        #expect(ingested)
         let all = await store.allIndexable()
         #expect(all.count == 1)
         #expect(all.first?.artistName == "Stereolab")
@@ -750,17 +753,6 @@ struct PlaycutHistoryStoreTests {
         let coordinator = CacheCoordinator(cache: InMemoryCache(), clock: clock)
         let store = PlaycutHistoryStore(cacheCoordinator: coordinator, clock: clock)
         return (store, coordinator, clock)
-    }
-
-    /// Polls `condition` for up to ~5 seconds, returning when it holds.
-    ///
-    /// Callers re-assert the condition with `#expect` afterwards so a timeout
-    /// fails with diagnostics rather than a bare suite time limit.
-    private func waitUntil(_ condition: () async -> Bool) async throws {
-        for _ in 0..<250 {
-            if await condition() { return }
-            try await Task.sleep(for: .milliseconds(20))
-        }
     }
 }
 

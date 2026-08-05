@@ -29,6 +29,7 @@
 
 import Testing
 import Foundation
+import CoreTesting
 import PlaylistTesting
 @testable import Playlist
 @testable import Caching
@@ -36,20 +37,6 @@ import PlaylistTesting
 @MainActor
 @Suite("PlaylistService live updates", .serialized)
 struct PlaylistServiceLiveUpdatesTests {
-
-    /// Polls `condition` until it holds or `timeout` elapses. Used to await a
-    /// side effect (a reconnect) that produces no broadcast to await on.
-    private func waitUntil(
-        _ timeout: Duration = .seconds(2),
-        _ condition: @Sendable () async -> Bool
-    ) async -> Bool {
-        let deadline = ContinuousClock.now + timeout
-        while ContinuousClock.now < deadline {
-            if await condition() { return true }
-            try? await Task.sleep(for: .milliseconds(20))
-        }
-        return await condition()
-    }
 
     @Test("An insert event appends the new playcut", .timeLimit(.minutes(1)))
     func insertAppends() async throws {
@@ -272,7 +259,7 @@ struct PlaylistServiceLiveUpdatesTests {
         // A fresh subscription proves the backgrounded task was torn down (had it
         // survived, `liveUpdatesTask` would be non-nil and the guard would skip
         // reconnecting, leaving connectCount at 1).
-        #expect(await waitUntil { source.connectCount == 2 })
+        #expect(await waitUntil(timeout: .seconds(2)) { source.connectCount == 2 })
     }
 
     @Test("A superseded consume loop does not retire the loop that replaced it", .timeLimit(.minutes(1)))

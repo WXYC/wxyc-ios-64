@@ -18,6 +18,7 @@
 
 import Testing
 import Foundation
+import CoreTesting
 import PlaylistTesting
 @testable import Playlist
 @testable import Caching
@@ -25,21 +26,6 @@ import PlaylistTesting
 @MainActor
 @Suite("PlaylistService wiring derivation", .serialized)
 struct PlaylistServiceWiringTests {
-
-    /// Polls `condition` until it holds or `timeout` elapses. Mirrors the
-    /// helper in `PlaylistServiceLiveUpdatesTests` — used here to await a
-    /// side effect (a reconnect) that produces no broadcast to await on.
-    private func waitUntil(
-        _ timeout: Duration = .seconds(2),
-        _ condition: @Sendable () async -> Bool
-    ) async -> Bool {
-        let deadline = ContinuousClock.now + timeout
-        while ContinuousClock.now < deadline {
-            if await condition() { return true }
-            try? await Task.sleep(for: .milliseconds(20))
-        }
-        return await condition()
-    }
 
     // MARK: - Enrichment-loss regression (the reported defect)
 
@@ -202,7 +188,7 @@ struct PlaylistServiceWiringTests {
         let afterReswitch = await service.wiringSnapshot()
         #expect(afterReswitch.apiVersion == .v2)
         #expect(afterReswitch.liveUpdatesActive == true)
-        #expect(await waitUntil { source.connectCount > connectCountBeforeReswitch })
+        #expect(await waitUntil(timeout: .seconds(2)) { source.connectCount > connectCountBeforeReswitch })
     }
 
     // MARK: - switchAPIVersion reentrancy
