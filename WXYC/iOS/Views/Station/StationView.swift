@@ -36,6 +36,10 @@ struct StationView: View {
     @State private var showingBugReport = false
     @State private var showingNoMailFallback = false
 
+    /// Current audio route, shown in the "Listening" section. Owned here so the
+    /// route observation lives exactly as long as the tab is on screen.
+    @State private var routeMonitor = AudioRouteMonitor()
+
     @Environment(\.playlistService) private var playlistService
     @Environment(\.openURL) private var openURL
 
@@ -49,6 +53,10 @@ struct StationView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 StationHero()
+
+                StationSection(caption: "Listening") {
+                    AudioRouteRow(monitor: routeMonitor)
+                }
 
                 StationSection(
                     caption: "Talk to the booth",
@@ -266,33 +274,12 @@ struct StationRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 15))
-                    .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-                    .background(iconColor, in: .rect(cornerRadius: 8))
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title)
-                        .font(.body)
-                        .foregroundStyle(.white)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.55))
-                    }
-                }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.4))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .contentShape(.rect)
+            StationRowContent(
+                title: title,
+                subtitle: subtitle,
+                systemImage: systemImage,
+                iconColor: iconColor
+            )
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
@@ -300,6 +287,52 @@ struct StationRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityHint(subtitle ?? "")
+    }
+}
+
+// MARK: - Row Content
+
+/// The visual half of a ``StationRow``, without the button wrapper.
+///
+/// Extracted so rows whose tap is *not* a SwiftUI action closure can reuse the
+/// exact same layout — see ``AudioRouteRow``, where an `AVRoutePickerView` has
+/// to be the thing that receives the touch.
+struct StationRowContent: View {
+    let title: String
+    var subtitle: String?
+    /// Overridable so a row can signal an active state in its subtitle.
+    var subtitleColor: Color = .white.opacity(0.55)
+    let systemImage: String
+    let iconColor: Color
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(iconColor, in: .rect(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(.white)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(subtitleColor)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "chevron.right")
+                .font(.footnote)
+                .foregroundStyle(.white.opacity(0.4))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .contentShape(.rect)
     }
 }
 
