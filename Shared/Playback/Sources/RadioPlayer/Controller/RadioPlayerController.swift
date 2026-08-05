@@ -566,16 +566,34 @@ private extension RadioPlayerController {
     /// Hands the audio session back when the app backgrounds without playing.
     ///
     /// The `setActive(false, …)` below is deliberately left on the caller's
-    /// turn, unlike the equivalent in `AudioPlayerController`. That call is a
-    /// blocking XPC round-trip to `mediaserverd` which, because of
-    /// `.notifyOthersOnDeactivation`, also fans resume notifications out to
-    /// every other audio app before returning; #773 traced a roughly
-    /// one-second main-actor freeze to it, and #774 moved
-    /// `AudioPlayerController`'s copy onto a background executor behind an
-    /// activation/deactivation interlock.
+    /// turn. That call is a blocking XPC round-trip to `mediaserverd` which,
+    /// because of `.notifyOthersOnDeactivation`, also fans resume
+    /// notifications out to every other audio app before returning, and #773
+    /// traced a roughly one-second main-actor freeze to it. #777 asked whether
+    /// #774's deferred handback should therefore be ported here. It should
+    /// not, and the reason is not that this code is unreachable — that is only
+    /// the reason it is not urgent.
     ///
-    /// Leaving this one synchronous is safe only while **both** of the
-    /// following hold, and neither is visible from this line:
+    /// **A backgrounding handback belongs on the caller's turn.** Deferring it
+    /// buys nothing: no view is rendering during a background transition, so
+    /// there is no latency anyone can perceive. And it costs a guarantee — a
+    /// deferred handback races app suspension, and if it loses,
+    /// `.notifyOthersOnDeactivation` never fires and whatever app WXYC
+    /// interrupted stays silent until WXYC is next resumed. #774 reaches the
+    /// same conclusion for the identical call site on the other controller: it
+    /// defers `stop()`'s handback but routes `handleAppDidEnterBackground()`
+    /// through `deactivateAudioSessionOnCallersTurn()`, for exactly this
+    /// reason. So this line already agrees with #774 rather than lagging it,
+    /// and #776 — the residual race in the deferred path — is a hazard a port
+    /// would *introduce* here, not one it would inherit.
+    ///
+    /// #773's visible symptom came from the blocking call in
+    /// `AudioPlayerController.stop(reason:)`, on the pause-button tap path.
+    /// This controller's `stop(reason:)` touches the session not at all, so
+    /// that half of #773 has no counterpart here.
+    ///
+    /// Two further conditions make it moot today. Neither is visible from this
+    /// line, and #777 exists because neither is guaranteed to keep holding:
     ///
     /// 1. **No iOS scene instantiates this controller.** `WXYCApp` and
     ///    `WXYCTVApp` both drive `AudioPlayerController.shared`; the only
@@ -596,25 +614,26 @@ private extension RadioPlayerController {
     ///    — the two halves do not share a platform condition, so widening
     ///    either one does not implicitly widen the other.
     ///
-    /// Either condition alone is insufficient. Widen this gate to watchOS and
-    /// the #773 stall lands on the watch's main actor; wire this controller
-    /// into an iOS scene and it lands on the phone's. Do either and port
-    /// #774's interlock rather than reinventing it — detached handback,
-    /// activation that defers instead of blocking, and a generation counter so
-    /// a stale handback cannot tear down a session `play()` just re-activated.
-    /// A port would also inherit the residual background-suspension race in
-    /// #776.
+    /// Either condition alone is insufficient, and the work to do if either
+    /// changes is not "port #774". Two things here would need attention first,
+    /// and neither is fixed by a deferred handback:
     ///
-    /// One thing that is *not* shared with #773: that defect's blocking call
-    /// sat in `stop(reason:)`, on the pause-button tap path. This controller's
-    /// `stop(reason:)` touches the session not at all, and this handback runs
-    /// only from the backgrounding notification and only while stopped — so
-    /// even reachable, it would stall app suspension rather than freeze a
-    /// visible control. That lowers the severity; it does not change the
-    /// conclusion.
+    /// - **Two entry points would both fire.** This runs from the
+    ///   `AppDidEnterBackgroundMessage` observer *and* from the
+    ///   `PlaybackController` requirement `handleAppDidEnterBackground()`
+    ///   (see the passthrough above). `AudioPlayerController` deliberately has
+    ///   only the latter, driven from SwiftUI's `scenePhase`. An iOS scene
+    ///   wired to this controller would double-fire the handback.
+    /// - **The guard is on the wrong predicate.** It reads `isPlaying`, actual
+    ///   state, where `AudioPlayerController` reads `playbackIntended`, intent
+    ///   — and this controller has `playbackIntended` too. Background during
+    ///   buffering and `isPlaying` is still false, so this would tear down the
+    ///   session the pending `play()` just activated at the `setActive(true,
+    ///   …)` above.
     ///
-    /// `RadioPlayerControllerBackgroundBehaviorTests` pins the current
-    /// synchronous shape so that changing any of this is not silent. See #777.
+    /// `RadioPlayerControllerBackgroundBehaviorTests` pins the current shape —
+    /// synchronous, and skipped while playing — so that changing either is not
+    /// silent. See #777.
     func handleApplicationDidEnterBackground() {
         isForegrounded = false
 
