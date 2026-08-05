@@ -89,15 +89,23 @@ struct PauseResponsivenessTests {
         harness.controller.stop()
         harness.controller.play()
 
-        // Settle: play() either activated outright or deferred behind the
-        // in-flight deactivation and re-activated on the bounded retry.
-        await harness.waitUntil({ harness.sessionActivated }, timeout: .seconds(5))
-        // Then give any straggling deactivation a chance to land late.
-        await harness.waitUntil({ false }, timeout: .milliseconds(200))
+        // Wait on the deactivation actually having run and decided, rather than
+        // on a fixed delay: `sessionDeactivationInFlight` is set synchronously by
+        // stop() and cleared only in the continuation, so it is an edge the test
+        // can observe instead of a duration it has to guess.
+        await harness.waitUntil({ harness.sessionDeactivationSettled }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivationSettled, "the deferred deactivation never ran")
 
         #expect(
             harness.sessionActivated,
             "the deferred deactivation tore down a session that play() had already re-activated"
+        )
+        // Stronger than `lastActiveState`, which only records the most recent
+        // call: two activations and no deactivation is the only history in which
+        // the stale check actually declined.
+        #expect(
+            harness.mockSession.setActiveCallCount == 2,
+            "the stale deactivation called setActive anyway"
         )
     }
 
@@ -111,8 +119,11 @@ struct PauseResponsivenessTests {
         harness.controller.play()
         harness.controller.stop()
         // Let the detached deactivation reach `setActive(false, …)` and start
-        // holding the session.
+        // holding the session. Asserted, not assumed: `waitUntil` returns
+        // silently on timeout, and a play() that finds the lock free measures
+        // ~0ms and passes below without ever exercising the deferral.
         await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
 
         let timer = ContinuousClock().now
         harness.controller.play()
@@ -139,10 +150,9 @@ struct PauseResponsivenessTests {
         // attempted: the retry is gated on the in-flight guard clearing, which
         // happens a continuation later than the mock records the call.
         await harness.waitUntil({
-            harness.mockSession.setActiveCallCount >= 2
-                && harness.audioController?.debugStateSnapshot
-                    .contains("sessionDeactivationInFlight=false") == true
+            harness.mockSession.setActiveCallCount >= 2 && harness.sessionDeactivationSettled
         }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivationSettled, "precondition: the failed handback never settled")
 
         // No intervening play(): the session is still active as far as the OS is
         // concerned, so the next stop() has to attempt the handback again rather
@@ -161,6 +171,120 @@ struct PauseResponsivenessTests {
             "a failed deactivation abandoned the session — it is never handed back and other apps can't resume"
         )
     }
+
+    @Test("A stop() that lands while a handback is in flight is still honoured")
+    func stopDuringInFlightDeactivationStillHandsBack() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // All four calls land in one main-actor turn, so the handback the first
+        // stop() scheduled has not begun when the second one arrives: the task
+        // that runs it cannot start until this turn ends. That makes the
+        // interleaving deterministic rather than a race — but it is the same one
+        // a real pause/play/pause hits whenever the second pause falls inside
+        // the hundreds of milliseconds the handback takes on a device.
+        harness.controller.play()
+        harness.controller.stop()
+        harness.controller.play()
+        harness.controller.stop()
+
+        // The first handback correctly declines as stale — the middle play()
+        // re-activated the session out from under it. Something still has to
+        // hand the session back for the *second* stop(), or the app keeps the
+        // session for a pause the user can see took effect, and every other
+        // audio app stays suppressed until the next play/stop cycle.
+        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(
+            harness.sessionDeactivated,
+            "the second stop() was swallowed by the in-flight guard and the session was never handed back"
+        )
+    }
+
+    @Test("A handback slower than the retry budget still resumes playback promptly")
+    func playResumesAfterHandbackOutlastsRetryBudget() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        // Longer than the bounded activation retry can cover on its own: four
+        // attempts, 250ms apart, is a one-second budget — and the block this
+        // whole change exists to remove was itself measured at about a second.
+        // Polling alone would exhaust here and abandon the play.
+        harness.mockSession.deactivationDelay = 1.5
+
+        harness.controller.play()
+        harness.controller.stop()
+        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
+
+        let stopsBefore = harness.stopCallCount
+        let playsBefore = harness.playCallCount
+        harness.controller.play()
+
+        // The handback's own completion re-drives the deferred activation, so the
+        // wait is proportional to the handback rather than to a fixed budget.
+        // Asserted on the player actually being started, not on `isPlaying`: the
+        // mock republishes state through `stateStream`, so a poll can catch a
+        // stale `.playing` replayed from before the stop() and pass vacuously.
+        await harness.waitUntil({ harness.playCallCount > playsBefore }, timeout: .seconds(10))
+        #expect(
+            harness.playCallCount > playsBefore,
+            "the play was abandoned when the retry budget ran out — the user is left on a spinner until the startup watchdog fires"
+        )
+        #expect(harness.sessionActivated, "the session was never re-activated")
+        #expect(
+            harness.streamErrorEvents.filter({ $0.errorType == .silentStartup }).isEmpty,
+            "a deferral we imposed on ourselves was reported as a silent startup"
+        )
+        #expect(harness.stopCallCount == stopsBefore, "the player was torn down again while resuming")
+    }
+
+    #if os(iOS)
+    @Test("A backgrounded resume colliding with the handback defers instead of escalating")
+    func backgroundedPlayDuringHandbackDefersRatherThanEscalating() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        harness.mockSession.deactivationDelay = 0.5
+
+        harness.controller.play()
+        harness.controller.stop()
+        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
+
+        // Backgrounded is the *normal* state for the resumes that collide with a
+        // handback — an interruption ending, a lock-screen or CarPlay play, a
+        // route flap. The deferral is ours, so it must not be reported as the
+        // app failing to make sound: `silent_startup` is the #518 fleet metric
+        // for genuinely-silent startups, and a self-inflicted wait that lands in
+        // it sends reliability triage after a signal we manufactured.
+        harness.controller.handleAppDidEnterBackground()
+        let playsBefore = harness.playCallCount
+        harness.controller.play()
+
+        await harness.waitUntil({ harness.playCallCount > playsBefore }, timeout: .seconds(10))
+        #expect(harness.playCallCount > playsBefore, "the backgrounded resume never started the player")
+        #expect(harness.sessionActivated, "the backgrounded resume never re-activated the session")
+        #expect(
+            harness.streamErrorEvents.filter({ $0.errorType == .silentStartup }).isEmpty,
+            "waiting out our own handback was reported as a silent startup"
+        )
+    }
+
+    @Test("Backgrounding hands the session back on the caller's turn")
+    func backgroundingHandsBackWithoutDeferring() {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        // A widget or Siri tap warms the session without setting playback intent.
+        harness.audioController?.prepareForPlayback()
+        #expect(harness.sessionActivated, "precondition: the session was never activated")
+
+        harness.controller.handleAppDidEnterBackground()
+
+        // Asserted with no await, deliberately. Deferring buys nothing here —
+        // nothing is rendering during a background transition — and costs the
+        // one guarantee that mattered: a deferred handback races suspension, and
+        // if it loses, `.notifyOthersOnDeactivation` never fires and the app
+        // whose audio we interrupted stays silent until WXYC is next resumed.
+        #expect(
+            harness.sessionDeactivated,
+            "the handback was deferred into a suspension it may not survive"
+        )
+    }
+    #endif
 }
 
 #endif

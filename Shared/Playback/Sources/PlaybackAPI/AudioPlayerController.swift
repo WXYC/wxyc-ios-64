@@ -268,6 +268,11 @@ public final class AudioPlayerController {
     /// the caller's turn.
     @ObservationIgnored private var sessionDeactivationTask: Task<Void, Never>?
 
+    /// Whether a handback was asked for while one was already in flight. The
+    /// request can't be served immediately and must not be dropped: the in-flight
+    /// one may decline as stale. Consumed once, by
+    /// `drainRequestedSessionDeactivation()`.
+    private var sessionDeactivationRequested = false
 
     /// Serializes every `setActive` call on the session.
     ///
@@ -278,9 +283,14 @@ public final class AudioPlayerController {
     /// `setActive` makes the two mutually exclusive.
     @ObservationIgnored private let sessionLock = OSAllocatedUnfairLock()
 
-    /// Number of successful activations so far. Guarded by `sessionLock`; a
-    /// deferred deactivation carries the value it was scheduled against, so one
-    /// that lost the race to `play()` can recognise itself as stale.
+    /// Number of successful activations so far. A deferred deactivation carries
+    /// the value it was scheduled against, so one that lost the race to `play()`
+    /// can recognise itself as stale.
+    ///
+    /// Written only from `activate(_:)`, which is main-actor isolated — so the
+    /// main actor is the sole writer and may read it unlocked. `sessionLock`
+    /// exists for the deactivation, which reads it from off the actor, and whose
+    /// acquire pairs with the release on the writer's unlock.
     @ObservationIgnored private nonisolated(unsafe) var sessionActivationGeneration = 0
     #endif
 
@@ -677,13 +687,29 @@ public final class AudioPlayerController {
             Log(.info, category: .playback, "Audio session activated")
             return true
         } catch is AudioSessionBusy {
-            Log(.info, category: .playback, "Audio session still being handed back; deferring activation")
-            scheduleSessionActivationRetry(cause: "deactivation in flight")
+            // Deliberately *not* routed into the bounded retry. That budget —
+            // four attempts, one second in total — is sized for another app
+            // holding the session, and it is shorter than this handback can be:
+            // the block this class exists to move off the main actor was itself
+            // measured at about a second. Polling would exhaust first, clear
+            // `pendingPlaybackReason`, and abandon the play with `playbackIntended`
+            // still set, leaving a spinner until the startup watchdog escalates.
+            //
+            // `AudioSessionBusy` is thrown only while a handback holds the lock,
+            // so a continuation is guaranteed to run and re-drive this from
+            // `resumeDeferredActivationAfterHandback()` — a wait proportional to
+            // the handback instead of to a fixed budget. Marking the activation
+            // pending is what makes `play()` defer rather than escalate, and it
+            // is deliberately not gated on `isForegrounded`: the resumes that
+            // collide with a handback (an interruption ending, a lock-screen or
+            // CarPlay play, a route flap) arrive precisely when backgrounded.
+            Log(.info, category: .playback, "Audio session still being handed back; deferring activation until it completes")
+            sessionActivationPending = true
             return false
         } catch {
             Log(.error, category: .playback, "Failed to activate audio session: \(error)")
             if isCannotInterruptOthers(error) {
-                scheduleSessionActivationRetry(cause: "CannotInterruptOthers")
+                scheduleSessionActivationRetry(cause: .cannotInterruptOthers)
             }
             return false
         }
@@ -698,17 +724,27 @@ public final class AudioPlayerController {
             && nsError.code == cannotInterruptOthersErrorCode
     }
 
-    /// Schedules a bounded, delayed sequence of activation retries after an
-    /// activation that could not proceed — either a `CannotInterruptOthers`
-    /// failure or a deferred deactivation still holding the session. Deliberately
-    /// does NOT busy-loop: it spaces attempts out and stops after
-    /// `maxSessionActivationRetries`, and an interruption-ended notification can
-    /// short-circuit the wait via `reactivateAfterInterruptionIfPending()`.
-    ///
-    /// - Parameter cause: What blocked the activation, for the log line. The two
-    ///   causes ride the same retry cadence but are very different diagnoses, so
-    ///   they must not be conflated in the field.
-    private func scheduleSessionActivationRetry(cause: String) {
+    /// Why an activation had to be deferred. Every case here means *another app*
+    /// holds the session; this app's own in-flight handback is handled by
+    /// `resumeDeferredActivationAfterHandback()` instead, precisely because it is
+    /// the one blocker whose completion can be observed rather than polled for.
+    /// The causes ride the same retry cadence but are very different diagnoses,
+    /// so they must not be conflated in the field.
+    private enum ActivationRetryCause: String {
+        /// Another app holds the session and declines to be interrupted.
+        case cannotInterruptOthers = "CannotInterruptOthers"
+        /// An interruption ended but the session still won't activate.
+        case stillBlockedAfterInterruption = "still blocked after interruption ended"
+        /// Our handback finished but the session still won't activate.
+        case stillBlockedAfterHandback = "still blocked after handback"
+    }
+
+    /// Schedules a bounded, delayed sequence of activation retries after a
+    /// `CannotInterruptOthers` failure. Deliberately does NOT busy-loop: it
+    /// spaces attempts out and stops after `maxSessionActivationRetries`, and an
+    /// interruption-ended notification can short-circuit the wait via
+    /// `reactivateAfterInterruptionIfPending()`.
+    private func scheduleSessionActivationRetry(cause: ActivationRetryCause) {
         // Never activate while backgrounded — foregrounding drives its own
         // reactivation path — and only when playback is still intended.
         guard playbackIntended, isForegrounded else { return }
@@ -716,7 +752,7 @@ public final class AudioPlayerController {
         guard !sessionActivationPending else { return }
 
         sessionActivationPending = true
-        Log(.info, category: .playback, "Audio session activation deferred (\(cause)); scheduling bounded retry")
+        Log(.info, category: .playback, "Audio session activation deferred (\(cause.rawValue)); scheduling bounded retry")
 
         sessionActivationRetryTask?.cancel()
         sessionActivationRetryTask = Task { [weak self] in
@@ -783,7 +819,7 @@ public final class AudioPlayerController {
             // the cause worth naming here rather than whatever `activate(_:)`
             // last threw.
             sessionActivationPending = false
-            scheduleSessionActivationRetry(cause: "still blocked after interruption ended")
+            scheduleSessionActivationRetry(cause: .stillBlockedAfterInterruption)
         }
     }
 
@@ -835,25 +871,122 @@ public final class AudioPlayerController {
     /// `sessionDeactivationInFlight` covers the window in its place.
     private func scheduleAudioSessionDeactivation() {
         // Only deactivate if we previously activated - AVAudioSession has no isActive property
-        guard audioSessionActivated, !sessionDeactivationInFlight, audioSession != nil else { return }
+        guard audioSessionActivated, audioSession != nil else { return }
+        guard !sessionDeactivationInFlight else {
+            // Don't stack a second XPC call behind the first — but don't drop the
+            // request either. The in-flight handback may yet decline as stale,
+            // because a `play()` re-activated the session after it was scheduled,
+            // and then this request is the only thing left that would ever hand
+            // the session back. Re-driven from the continuation below.
+            sessionDeactivationRequested = true
+            return
+        }
         sessionDeactivationInFlight = true
 
-        sessionLock.lock()
+        // Read without the lock, deliberately. `sessionActivationGeneration` is
+        // written only by `activate(_:)`, which is main-actor isolated, so this
+        // read races nobody; the detached deactivation takes the lock only
+        // because it reads from off the actor. Taking it here would be actively
+        // harmful — it is a *blocking* acquire on the main actor, and the thing
+        // that holds it holds it across the very XPC call this all exists to
+        // get off the main actor.
         let generation = sessionActivationGeneration
-        sessionLock.unlock()
 
         // The outer task inherits the main actor but doesn't run until this turn
         // ends, and the blocking call happens on the detached one — so `stop()`
-        // still returns immediately, and the bookkeeping lands back here without
-        // a second hop.
+        // still returns immediately, and the bookkeeping lands back on the actor
+        // without an explicit `MainActor.run`. `self` is captured strongly on
+        // purpose: the handback is what lets every other audio app resume, so it
+        // has to finish even if the controller is being torn down. (That is also
+        // why `deinit` doesn't cancel this task — and cancelling it would be
+        // pointless rather than dangerous, since the detached child doesn't
+        // inherit cancellation and `.value` on a non-throwing task never checks
+        // it.)
         sessionDeactivationTask = Task { [self] in
             let handedBack = await Task.detached(priority: .userInitiated) {
                 self.deactivateAudioSession(ifGenerationIs: generation)
             }.value
             sessionDeactivationInFlight = false
-            if handedBack {
+            // `handedBack` proves the session was handed back at some point — not
+            // that it is still down now. The detached task released the lock
+            // before this continuation was scheduled, and a deferred activation
+            // retry can have taken it and re-activated in between. Clearing the
+            // flag on that ordering would strand a live session: every later
+            // `stop()` would early-return on it, and the session would never be
+            // handed back at all.
+            if handedBack, sessionActivationGeneration == generation {
                 audioSessionActivated = false
             }
+            resumeDeferredActivationAfterHandback()
+            drainRequestedSessionDeactivation()
+        }
+    }
+
+    /// Re-drives an activation that deferred behind the handback, now that the
+    /// handback has released the session.
+    ///
+    /// This is the whole reason `activateAudioSession()` doesn't poll for its own
+    /// handback: the completion is observable, so the wait is proportional to the
+    /// handback instead of to a budget that is shorter than one.
+    private func resumeDeferredActivationAfterHandback() {
+        guard sessionActivationPending else { return }
+        guard playbackIntended else {
+            // The play that deferred has since been cancelled. Clear the
+            // bookkeeping rather than leaving `sessionActivationPending` latched,
+            // which would make every later activation look like it already had a
+            // retry in flight.
+            clearPendingSessionActivation()
+            return
+        }
+        sessionActivationRetryTask?.cancel()
+        sessionActivationRetryTask = nil
+        if !retrySessionActivation() {
+            // Blocked by something other than our own handback now, so this
+            // genuinely is the `CannotInterruptOthers` shape the bounded retry
+            // was sized for. If it declines to schedule — backgrounded, where
+            // foregrounding drives its own reactivation — drop the deferral
+            // rather than leaving `play()` waiting on a driver that will never
+            // run. The startup watchdog armed at play time still covers it.
+            sessionActivationPending = false
+            scheduleSessionActivationRetry(cause: .stillBlockedAfterHandback)
+            if !sessionActivationPending {
+                pendingPlaybackReason = nil
+            }
+        }
+    }
+
+    /// Re-drives a handback request that arrived while one was already in flight.
+    ///
+    /// Gated on playback still being unintended: the dropped request may have
+    /// been overtaken by a `play()`, and tearing down *that* session is exactly
+    /// the failure the generation check exists to prevent. Each rejected request
+    /// re-drives at most once, so a persistently failing handback can't turn this
+    /// into an unbounded XPC loop — the next `stop()` retries it instead, which
+    /// is the contract `failedDeactivationStaysRetryable` pins.
+    private func drainRequestedSessionDeactivation() {
+        guard sessionDeactivationRequested else { return }
+        sessionDeactivationRequested = false
+        guard !playbackIntended else { return }
+        scheduleAudioSessionDeactivation()
+    }
+
+    /// Hands the session back on the caller's turn, for the one call site where
+    /// deferring buys nothing and costs a guarantee: the app entering the
+    /// background. No view is waiting to render there, so the latency is
+    /// invisible — but a deferred handback is racing suspension, and if it loses,
+    /// `.notifyOthersOnDeactivation` never fires and the app whose audio we
+    /// interrupted stays silent until WXYC is next resumed. This is what the call
+    /// site did before the handback was deferred at all.
+    private func deactivateAudioSessionOnCallersTurn() {
+        guard audioSessionActivated, audioSession != nil else { return }
+        guard !sessionDeactivationInFlight else {
+            // One is already running and will finish or re-drive itself. Blocking
+            // on its lock is the one thing this must not do.
+            sessionDeactivationRequested = true
+            return
+        }
+        if deactivateAudioSession(ifGenerationIs: sessionActivationGeneration) {
+            audioSessionActivated = false
         }
     }
 
@@ -1051,7 +1184,7 @@ public final class AudioPlayerController {
         
     #if os(iOS)
     /// Call this when the app enters the background (from SwiftUI scenePhase)
-    /// Only schedules the audio session handback if playback is NOT intended
+    /// Only hands the audio session back if playback is NOT intended
     public func handleAppDidEnterBackground() {
         Log(.info, category: .playback, "App entered background (playbackIntended: \(playbackIntended))")
         isForegrounded = false
@@ -1073,7 +1206,11 @@ public final class AudioPlayerController {
             cpuAggregator?.transitionContext(to: .background)
         }
         guard !playbackIntended else { return }
-        scheduleAudioSessionDeactivation()
+        // Deliberately *not* deferred, unlike `stop()`'s handback: see
+        // `deactivateAudioSessionOnCallersTurn()`. Nothing is rendering during a
+        // background transition, so there is no latency to save here — only a
+        // completion guarantee to lose.
+        deactivateAudioSessionOnCallersTurn()
     }
 
     /// Call this when the app enters the foreground (from SwiftUI scenePhase)

@@ -99,21 +99,33 @@ public final class PlayerControllerTestHarness {
     public var stopCallCount: Int { mockPlayer.stopCallCount }
     public var sessionActivated: Bool { mockSession.lastActiveState == true }
     public var sessionDeactivated: Bool { mockSession.lastActiveState == false }
-    
+
     /// The concrete `AudioPlayerController`, when this harness wraps one. Lets a
     /// test read `debugStateSnapshot` for async state the `PlaybackController`
     /// protocol doesn't surface — notably whether a deferred audio-session
     /// deactivation has finished.
     public var audioController: AudioPlayerController? { audioPlayerController }
-    
-    public var analyticsPlayCallCount: Int { 
-        mockAnalytics.events.filter { $0 is PlaybackStartedEvent }.count 
+
+    /// Whether a deferred audio-session handback has run and been accounted for.
+    ///
+    /// Set synchronously by `stop()` and cleared only once the deactivation's
+    /// continuation has recorded its outcome, so this is an edge a test can wait
+    /// on instead of guessing a duration. Kept here rather than grepped inline so
+    /// the one string match against `debugStateSnapshot` lives in a single place —
+    /// otherwise renaming the field leaves every caller silently waiting out its
+    /// full timeout and then passing anyway.
+    public var sessionDeactivationSettled: Bool {
+        audioPlayerController?.debugStateSnapshot.contains("sessionDeactivationInFlight=false") ?? true
     }
-    
-    public var analyticsStopCallCount: Int { 
-        mockAnalytics.events.filter { $0 is PlaybackStoppedEvent }.count 
+
+    public var analyticsPlayCallCount: Int {
+        mockAnalytics.events.filter { $0 is PlaybackStartedEvent }.count
     }
-    
+
+    public var analyticsStopCallCount: Int {
+        mockAnalytics.events.filter { $0 is PlaybackStoppedEvent }.count
+    }
+
     public var lastAnalyticsPlayReason: String? {
         (mockAnalytics.events.reversed().first(where: { $0 is PlaybackStartedEvent }) as? PlaybackStartedEvent)?.reason
     }
