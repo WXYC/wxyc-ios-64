@@ -9,7 +9,6 @@
 //
 
 import Analytics
-import AppIntents
 import AppServices
 import Artwork
 import Caching
@@ -231,32 +230,36 @@ final class Singletonia {
     #endif
 
     private init() {
-        // F3 (#427): register PlaycutHistoryStore and the Spotlight reindex
-        // seam before anything else runs, so both are in place before any
-        // intent/query the AppIntents runtime might construct — including
-        // PlaycutEntityQuery's `@Dependency`-backed production `entities(for:)`
-        // and iOS 27 reindex handlers — can run. `@Dependency`'s wrappedValue
-        // traps if its type was never registered, so this must precede every
-        // other line here. `playcutHistoryStore` is already initialized at
-        // this point: stored properties with default-value expressions (like
-        // this one, declared above) are set before a class's custom `init()`
-        // body runs.
-        AppDependencyManager.shared.add(dependency: self.playcutHistoryStore)
-        let playcutReindexer: any PlaycutReindexer = CoreSpotlightIndexer()
-        AppDependencyManager.shared.add(dependency: playcutReindexer)
-        // #445: the iOS 27 reindex handlers report `SpotlightReindexRequested`
-        // through this same `@Dependency` seam.
-        let reindexAnalytics: any AnalyticsService = StructuredPostHogAnalytics.shared
-        AppDependencyManager.shared.add(dependency: reindexAnalytics)
-
-        // OT-F3 (#622): same registration shape as the playcut reindex seam
-        // above, for `ConcertEntityQuery`'s reindex handlers. Authenticated
-        // the same way `AppIntentServices.concertsFetcher()`
-        // (WXYC/iOS/Intents.swift) authenticates `ToursNearMe`.
-        let concertsFetching: any ConcertsFetching = ConcertsFetcher(tokenProvider: MusicShareKit.tokenProvider)
-        AppDependencyManager.shared.add(dependency: concertsFetching)
-        let concertReindexer: any ConcertReindexer = CoreSpotlightConcertIndexer()
-        AppDependencyManager.shared.add(dependency: concertReindexer)
+        // F3 (#427) / #751: register every AppIntents `@Dependency` type
+        // WXYCIntents declares before anything else runs, so all of them are
+        // in place before any intent/query the AppIntents runtime might
+        // construct — including PlaycutEntityQuery's `@Dependency`-backed
+        // production `entities(for:)` and iOS 27 reindex handlers — can run.
+        // `@Dependency`'s wrappedValue traps if its type was never
+        // registered, so this must precede every other line here.
+        // `playcutHistoryStore` is already initialized at this point: stored
+        // properties with default-value expressions (like this one, declared
+        // above) are set before a class's custom `init()` body runs.
+        //
+        // Routed through `AppIntentsDependencies.registerForApp` (one call,
+        // not five inline `AppDependencyManager.shared.add` calls) so the
+        // NowPlayingWidget extension — which also links WXYCIntents but never
+        // runs `Singletonia` — has the same bootstrap to register its own
+        // widget-safe defaults against instead of silently omitting one; see
+        // `NowPlayingWidgetBundle.init()` and #751.
+        AppIntentsDependencies.registerForApp(
+            playcutHistoryStore: self.playcutHistoryStore,
+            // #445: the iOS 27 reindex handlers report `SpotlightReindexRequested`
+            // through the same `@Dependency` seam as `playcutReindexer`.
+            playcutReindexer: CoreSpotlightIndexer(),
+            // OT-F3 (#622): same registration shape as the playcut reindex
+            // seam above, for `ConcertEntityQuery`'s reindex handlers.
+            concertReindexer: CoreSpotlightConcertIndexer(),
+            // Authenticated the same way `AppIntentServices.concertsFetcher()`
+            // (WXYC/iOS/Intents.swift) authenticates `ToursNearMe`.
+            concertsFetching: ConcertsFetcher(tokenProvider: MusicShareKit.tokenProvider),
+            analytics: StructuredPostHogAnalytics.shared
+        )
 
         self.widgetStateService = WidgetStateService(
             playbackController: AudioPlayerController.shared,
