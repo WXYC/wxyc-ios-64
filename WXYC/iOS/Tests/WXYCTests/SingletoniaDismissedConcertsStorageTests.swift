@@ -14,7 +14,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Concerts
+import Core
 import Testing
 @testable import WXYC
 
@@ -24,12 +24,12 @@ struct SingletoniaDismissedConcertsStorageTests {
     @Test("Marketing mode routes dismissals to an in-memory store")
     func marketingUsesInMemoryStorage() {
         let storage = Singletonia.dismissedConcertsStorage(isMarketing: true)
-        #expect(storage is MarketingDismissedConcertsStorage)
+        #expect(storage is MarketingFileStorage)
     }
 
     @Test("Production routes dismissals to the durable Application Support store")
     func productionUsesDurableStorage() {
         let storage = Singletonia.dismissedConcertsStorage(isMarketing: false)
-        #expect(storage is Concerts.AppSupportFileStorage)
+        #expect(storage is AppSupportFileStorage)
     }
 }

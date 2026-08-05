@@ -80,15 +80,17 @@ final class Singletonia {
 
     /// On-device liked songs (#492). A durable file store, not a cache — likes
     /// are user-curated canonical data with a never-evict contract (see
-    /// docs/plans/492-liked-songs.md decision #6). `AppSupportFileStorage` is
-    /// module-qualified because `Concerts` exports a same-named seam. Routed
-    /// through `makeLikedStorage()` so a `-marketing` recording gets an
-    /// in-memory store instead (see the `-marketing` section below).
+    /// docs/plans/492-liked-songs.md decision #6). `AppSupportFileStorage`
+    /// (Core's `FileStorage` seam) needs no module qualification since
+    /// `LikedSongs` and `Concerts` both consume the same Core definition
+    /// (WXYC/wxyc-ios-64#557). Routed through `makeLikedStorage()` so a
+    /// `-marketing` recording gets an in-memory store instead (see the
+    /// `-marketing` section below).
     let likedSongsStore = LikedSongsStore(storage: Singletonia.makeLikedStorage())
 
     /// Concerts the listener dismissed ("Not interested") from the On Tour For You
     /// shelf. Same durable-file rationale as the likes store — user curation, not a
-    /// re-derivable cache — so it goes through the Concerts `FileStorage` seam.
+    /// re-derivable cache — so it goes through the same Core `FileStorage` seam.
     /// Routed through `makeDismissedConcertsStorage()` so a `-marketing` recording
     /// gets an in-memory store instead (see the `-marketing` section below) — the
     /// same treatment `likedSongsStore` gets, so a recording can never touch (or
@@ -815,7 +817,7 @@ final class Singletonia {
     /// always gets the durable Application Support file. Static so it's callable
     /// from the `likedSongsStore` property initializer, which runs before `self`
     /// exists.
-    private static func makeLikedStorage() -> any LikedSongs.FileStorage {
+    private static func makeLikedStorage() -> any FileStorage {
         likedStorage(isMarketing: ProcessInfo.processInfo.arguments.contains("-marketing"))
     }
 
@@ -823,13 +825,13 @@ final class Singletonia {
     /// so it's unit-testable without depending on `ProcessInfo` launch arguments
     /// or `MarketingModeController.isEnabled` (a cached `static let` that a host
     /// unit test can neither set nor reset).
-    static func likedStorage(isMarketing: Bool) -> any LikedSongs.FileStorage {
+    static func likedStorage(isMarketing: Bool) -> any FileStorage {
         #if DEBUG
         if isMarketing {
-            return MarketingLikedStorage()
+            return MarketingFileStorage()
         }
         #endif
-        return LikedSongs.AppSupportFileStorage(filename: "liked-songs.json")
+        return AppSupportFileStorage(filename: "liked-songs.json")
     }
 
     /// Chooses the dismissed-concerts-store backing. Under `-marketing` (DEBUG
@@ -838,19 +840,19 @@ final class Singletonia {
     /// Application Support file. Static so it's callable from the
     /// `dismissedConcertsStore` property initializer, which runs before `self`
     /// exists.
-    private static func makeDismissedConcertsStorage() -> any Concerts.FileStorage {
+    private static func makeDismissedConcertsStorage() -> any FileStorage {
         dismissedConcertsStorage(isMarketing: ProcessInfo.processInfo.arguments.contains("-marketing"))
     }
 
     /// The pure storage-selection decision, factored out of
     /// `makeDismissedConcertsStorage()` so it's unit-testable the same way
     /// ``likedStorage(isMarketing:)`` is.
-    static func dismissedConcertsStorage(isMarketing: Bool) -> any Concerts.FileStorage {
+    static func dismissedConcertsStorage(isMarketing: Bool) -> any FileStorage {
         #if DEBUG
         if isMarketing {
-            return MarketingDismissedConcertsStorage()
+            return MarketingFileStorage()
         }
         #endif
-        return Concerts.AppSupportFileStorage(filename: "dismissed-concerts.json")
+        return AppSupportFileStorage(filename: "dismissed-concerts.json")
     }
 }

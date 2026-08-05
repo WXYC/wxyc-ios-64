@@ -14,7 +14,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import LikedSongs
+import Core
 import Testing
 @testable import WXYC
 
@@ -24,12 +24,12 @@ struct SingletoniaLikedStorageTests {
     @Test("Marketing mode routes likes to an in-memory store")
     func marketingUsesInMemoryStorage() {
         let storage = Singletonia.likedStorage(isMarketing: true)
-        #expect(storage is MarketingLikedStorage)
+        #expect(storage is MarketingFileStorage)
     }
 
     @Test("Production routes likes to the durable Application Support store")
     func productionUsesDurableStorage() {
         let storage = Singletonia.likedStorage(isMarketing: false)
-        #expect(storage is LikedSongs.AppSupportFileStorage)
+        #expect(storage is AppSupportFileStorage)
     }
 }
