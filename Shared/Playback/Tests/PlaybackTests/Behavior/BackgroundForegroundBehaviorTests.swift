@@ -376,27 +376,29 @@ struct RenderTapBackgroundBehaviorTests {
 /// That block is unreachable in the shipping app — watchOS is the only platform
 /// that instantiates the controller, and watchOS compiles the block out — so
 /// nothing else in the suite exercises it. These tests are therefore the only
-/// thing that will notice if the handback is deferred, reordered, or dropped.
-/// They deliberately assert the *current, synchronous* shape rather than the
-/// deferred one #774 gave `AudioPlayerController`; see the comment on
-/// `handleApplicationDidEnterBackground()` for why that difference is
-/// intentional and what would make it wrong.
+/// thing that will notice if the handback is deferred or dropped, or if the
+/// while-playing guard goes away.
+///
+/// The synchronous shape is the intended one, not a lag behind #774: that PR
+/// defers `AudioPlayerController.stop()`'s handback but keeps the
+/// *backgrounding* handback on the caller's turn, which is what this is. See
+/// the comment on `handleApplicationDidEnterBackground()`.
 @Suite("RadioPlayerController Background/Foreground Behavior Tests")
 @MainActor
 struct RadioPlayerControllerBackgroundBehaviorTests {
 
     @Test("Backgrounding while not playing hands the session back on the caller's turn")
-    func backgroundWhileNotPlayingDeactivatesSynchronously() async {
+    func backgroundWhileNotPlayingDeactivatesSynchronously() {
         let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
         #expect(!harness.controller.isPlaying)
 
         harness.mockSession.reset()
         harness.controller.handleAppDidEnterBackground()
 
-        // Read inline, with no intervening `await`: unlike #774's
-        // `AudioPlayerController`, this handback is still synchronous. If a
-        // port ever lands here, this expectation is the thing that has to
-        // change, which is exactly the visibility #777 asked for.
+        // This test body is deliberately non-`async`: there is no suspension
+        // point for a deferred handback to run in, so the count being 1 here
+        // is a structural assertion that the call happened inline. Wrapping
+        // the handback in a `Task` leaves it at 0.
         #expect(harness.mockSession.setActiveCallCount == 1,
                "Backgrounding while stopped should hand the session back")
         #expect(harness.mockSession.lastActiveState == false,
