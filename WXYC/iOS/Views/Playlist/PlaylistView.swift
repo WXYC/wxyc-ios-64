@@ -60,6 +60,11 @@ struct PlaylistView: View {
     @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
+    /// The banner's visual theme. Reads ``OnAirBannerTheme/default`` in Release;
+    /// the composition root (`RootTabView`) overrides it with the live debug-panel
+    /// value in `#if DEBUG || DEBUG_TESTFLIGHT` builds — this view never touches
+    /// `OnAirDebugState` directly.
+    @Environment(\.onAirBannerTheme) private var onAirBannerTheme
 
     @State private var visualizer = VisualizerDataSource()
     @State private var showVisualizerDebug = false
@@ -288,9 +293,11 @@ struct PlaylistView: View {
     /// "Auto DJ" while a human DJ is on. The debug "Force On Air Banner" toggle
     /// substitutes a sample named DJ so the named layout can be previewed.
     private var onAirBannerTitle: String? {
+        #if DEBUG || DEBUG_TESTFLIGHT
         if OnAirDebugState.shared.forceOnAir {
             return OnAirDebugState.shared.forcedDJName
         }
+        #endif
         return onAir.bannerTitle
     }
 
@@ -299,43 +306,12 @@ struct PlaylistView: View {
     /// asserts. The debug "Force On Air Banner" toggle substitutes a named DJ so
     /// the chip and sheet can be exercised without a live show.
     private var requestLine: RequestLine {
+        #if DEBUG || DEBUG_TESTFLIGHT
         if OnAirDebugState.shared.forceOnAir {
             return RequestLine(onAir: .dj(OnAirDebugState.shared.forcedDJName))
         }
+        #endif
         return RequestLine(onAir: onAir)
-    }
-
-    /// Live design parameters for the on-air banner, driven by the debug controls.
-    /// In release builds these read their persisted defaults, reproducing the shipping look.
-    private var onAirBannerTheme: OnAirBannerTheme {
-        let debug = OnAirDebugState.shared
-        return OnAirBannerTheme(
-            indicatorColor: Color(HSL(
-                hue: debug.indicatorHue,
-                saturation: debug.indicatorSaturation,
-                lightness: debug.indicatorLightness
-            )),
-            indicatorBlurRadius: CGFloat(debug.indicatorBlurRadius),
-            handleVariation: SFProVariation(
-                weight: debug.handleWeight,
-                width: debug.handleWidth,
-                opticalSize: debug.handleOpticalSize,
-                grade: debug.handleGrade
-            ),
-            adaptiveWidth: debug.adaptiveWidth,
-            handleWidthFloor: debug.handleWidthFloor,
-            requestLineTintOpacity: debug.requestLineTintOpacity,
-            onAirSpacing: CGFloat(debug.onAirSpacing),
-            handleLineSpacing: CGFloat(debug.handleLineSpacing),
-            waveEnabled: debug.waveEnabled,
-            waveDuration: debug.waveDuration,
-            waveDepth: debug.waveDepth,
-            waveWeightDepth: debug.waveWeightDepth,
-            waveCrestHalfWidth: debug.waveCrestHalfWidth,
-            waveRepetitions: Int(debug.waveRepetitions.rounded()),
-            waveSpacing: debug.waveSpacing,
-            waveReplayToken: debug.waveReplayToken
-        )
     }
 
     /// The debug-tap handler for the banner: presents the on-air controls sheet in debug
