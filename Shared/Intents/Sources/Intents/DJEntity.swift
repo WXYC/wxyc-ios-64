@@ -9,10 +9,12 @@
 //  name only, no Contacts/IntentPerson bridge (that's CC-C1, tracked
 //  separately) and no donation pipeline.
 //
-//  Dedup key and identifier derivation are shared with every other F5x
-//  string-keyed entity via `normalizedEntityKey`/`stableEntityID` in
-//  ArtistIdentity.swift — see that file for why `String.hashValue` is unsafe
-//  here.
+//  Dedup key and identifier derivation, the `displayRepresentation`, and the
+//  `attributeSet` are all inherited from `NormalizedNameEntity`
+//  (NormalizedNameEntity.swift) — `LabelEntity`'s pre-collapse body was
+//  character-identical to this one modulo the noun ("DJ" vs "Label"), so
+//  both conform there instead of repeating the plumbing. See that file for
+//  why `String.hashValue` is unsafe for entity ids.
 //
 //  `IndexedEntity` is gated to platforms where CoreSpotlight exists, matching
 //  ArtistEntity/PlaycutEntity: `IndexedEntity`/`CSSearchableItemAttributeSet`
@@ -31,7 +33,7 @@ import CoreSpotlight
 
 public typealias DJID = EntityID<DJEntity>
 
-public struct DJEntity: AppEntity {
+public struct DJEntity: NormalizedNameEntity {
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(
         name: "DJ",
         numericFormat: "\(placeholder: .int) DJs"
@@ -39,34 +41,23 @@ public struct DJEntity: AppEntity {
 
     public static let defaultQuery = DJEntityQuery()
 
-    public var id: DJID
-
     /// The dedup key ("Jake B" and "  jake   b  " both normalize to the
     /// same value) — also the sole text this minimal slice displays.
     @Property(title: "Name")
     public var normalizedName: String
 
-    public var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(normalizedName)")
-    }
-
     /// Builds an entity from a raw `ShowMarker.djName`. Two show markers
     /// whose DJ names differ only by casing or whitespace produce entities
     /// with identical `id` and `normalizedName`.
     public init(djName: String) {
-        let normalized = normalizedEntityKey(djName)
-        self.id = DJID(stableEntityID(for: normalized))
-        self.normalizedName = normalized
+        self.normalizedName = normalizedEntityKey(djName)
     }
 }
 
 #if !os(watchOS) && !os(tvOS)
 extension DJEntity: IndexedEntity {
     public var attributeSet: CSSearchableItemAttributeSet {
-        let set = CSSearchableItemAttributeSet(contentType: .item)
-        set.title = normalizedName
-        set.relatedUniqueIdentifier = id.entityIdentifierString
-        return set
+        normalizedNameAttributeSet
     }
 }
 #endif

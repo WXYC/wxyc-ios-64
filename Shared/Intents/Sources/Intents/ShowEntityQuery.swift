@@ -30,15 +30,17 @@ public struct ShowEntityQuery: EntityQuery {
     /// Resolves `identifiers` to entities via the injected source. The result
     /// preserves the input order and drops ids the source couldn't resolve,
     /// matching the AppIntents `entities(for:)` contract. If the source
-    /// returns duplicate ids the first one wins — the query never traps.
+    /// returns duplicate ids the first one wins — the query never traps. See
+    /// `EntityQueryResolution.swift` for the shared keyed-by-backend-id
+    /// resolution this delegates to.
     public func entities(for identifiers: [ShowID]) async throws -> [ShowEntity] {
-        let rawIDs = identifiers.map(\.value)
-        let markers = await source(rawIDs)
-        let byID = Dictionary(
-            markers.map { ($0.id, ShowEntity(start: $0)) },
-            uniquingKeysWith: { first, _ in first }
+        await resolveEntities(
+            identifiers: identifiers,
+            rawID: { $0.value },
+            from: source,
+            id: \.id,
+            makeEntity: { ShowEntity(start: $0) }
         )
-        return rawIDs.compactMap { byID[$0] }
     }
 
     public func suggestedEntities() async throws -> [ShowEntity] {

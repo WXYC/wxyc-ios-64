@@ -33,13 +33,12 @@ public struct DJEntityQuery: EntityQuery {
     /// markers down to one DJEntity per normalized DJ name, then looking up
     /// each requested id. Preserves the input order and drops ids the source
     /// couldn't resolve, matching the AppIntents `entities(for:)` contract.
+    /// See `EntityQueryResolution.swift` for the shared derived-by-
+    /// normalization resolution this delegates to.
     public func entities(for identifiers: [DJID]) async throws -> [DJEntity] {
-        let markers = await source()
-        let entitiesByID = Dictionary(
-            markers.compactMap(\.djName).map { DJEntity(djName: $0) }.map { ($0.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        return identifiers.compactMap { entitiesByID[$0] }
+        await resolveEntities(identifiers: identifiers, from: source) { marker in
+            marker.djName.map(DJEntity.init(djName:))
+        }
     }
 
     public func suggestedEntities() async throws -> [DJEntity] {

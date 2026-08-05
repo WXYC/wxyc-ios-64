@@ -34,13 +34,12 @@ public struct LabelEntityQuery: EntityQuery {
     /// down to one LabelEntity per normalized label name, then looking up
     /// each requested id. Preserves the input order and drops ids the source
     /// couldn't resolve, matching the AppIntents `entities(for:)` contract.
+    /// See `EntityQueryResolution.swift` for the shared derived-by-
+    /// normalization resolution this delegates to.
     public func entities(for identifiers: [LabelID]) async throws -> [LabelEntity] {
-        let playcuts = await source()
-        let entitiesByID = Dictionary(
-            playcuts.compactMap { $0.labelName }.map { LabelEntity(labelName: $0) }.map { ($0.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
-        return identifiers.compactMap { entitiesByID[$0] }
+        await resolveEntities(identifiers: identifiers, from: source) { playcut in
+            playcut.labelName.map(LabelEntity.init(labelName:))
+        }
     }
 
     public func suggestedEntities() async throws -> [LabelEntity] {

@@ -12,10 +12,12 @@
 //  than reconciling with a Discogs-canonical label name — that reconciliation
 //  is the open product decision tracked in #292, out of scope here.
 //
-//  Dedup key and identifier derivation are shared with every other F5x
-//  string-keyed entity via `normalizedEntityKey`/`stableEntityID` in
-//  ArtistIdentity.swift — see that file for why `String.hashValue` is unsafe
-//  here.
+//  Dedup key and identifier derivation, the `displayRepresentation`, and the
+//  `attributeSet` are all inherited from `NormalizedNameEntity`
+//  (NormalizedNameEntity.swift) — this type's pre-collapse body was
+//  character-identical to `DJEntity`'s modulo the noun ("Label" vs "DJ"), so
+//  both conform there instead of repeating the plumbing. See that file for
+//  why `String.hashValue` is unsafe for entity ids.
 //
 //  `IndexedEntity` is gated to platforms where CoreSpotlight exists, matching
 //  ArtistEntity/PlaycutEntity: `IndexedEntity`/`CSSearchableItemAttributeSet`
@@ -34,7 +36,7 @@ import CoreSpotlight
 
 public typealias LabelID = EntityID<LabelEntity>
 
-public struct LabelEntity: AppEntity {
+public struct LabelEntity: NormalizedNameEntity {
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(
         name: "Label",
         numericFormat: "\(placeholder: .int) labels"
@@ -42,34 +44,23 @@ public struct LabelEntity: AppEntity {
 
     public static let defaultQuery = LabelEntityQuery()
 
-    public var id: LabelID
-
     /// The dedup key (label-name casing/whitespace variants normalize to the
     /// same value) — also the sole text this minimal slice displays.
     @Property(title: "Name")
     public var normalizedName: String
 
-    public var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(normalizedName)")
-    }
-
     /// Builds an entity from a raw `Playcut.labelName`. Two playcuts whose
     /// label names differ only by casing/whitespace produce entities with
     /// identical `id` and `normalizedName`.
     public init(labelName: String) {
-        let normalized = normalizedEntityKey(labelName)
-        self.id = LabelID(stableEntityID(for: normalized))
-        self.normalizedName = normalized
+        self.normalizedName = normalizedEntityKey(labelName)
     }
 }
 
 #if !os(watchOS) && !os(tvOS)
 extension LabelEntity: IndexedEntity {
     public var attributeSet: CSSearchableItemAttributeSet {
-        let set = CSSearchableItemAttributeSet(contentType: .item)
-        set.title = normalizedName
-        set.relatedUniqueIdentifier = id.entityIdentifierString
-        return set
+        normalizedNameAttributeSet
     }
 }
 #endif
