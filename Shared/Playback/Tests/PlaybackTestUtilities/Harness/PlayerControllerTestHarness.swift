@@ -85,6 +85,10 @@ public final class PlayerControllerTestHarness {
     public let mockSession: MockAudioSession
     public let mockCommandCenter: MockRemoteCommandCenter?
     public let mockAnalytics: MockStructuredAnalytics
+    /// Stands in for `UIApplication`'s background-task assertions. Only
+    /// `AudioPlayerController` takes any; it is created for every controller so
+    /// a test can assert the *absence* of one just as easily.
+    public let mockBackgroundTasks: MockBackgroundTaskAssertion
 
     // For controller-specific backoff access
     private let radioPlayerController: RadioPlayerController?
@@ -152,6 +156,7 @@ public final class PlayerControllerTestHarness {
         mockSession: MockAudioSession,
         mockCommandCenter: MockRemoteCommandCenter?,
         mockAnalytics: MockStructuredAnalytics,
+        mockBackgroundTasks: MockBackgroundTaskAssertion,
         radioPlayerController: RadioPlayerController? = nil,
         audioPlayerController: AudioPlayerController? = nil
     ) {
@@ -161,6 +166,7 @@ public final class PlayerControllerTestHarness {
         self.mockSession = mockSession
         self.mockCommandCenter = mockCommandCenter
         self.mockAnalytics = mockAnalytics
+        self.mockBackgroundTasks = mockBackgroundTasks
         self.radioPlayerController = radioPlayerController
         self.audioPlayerController = audioPlayerController
     }
@@ -187,6 +193,7 @@ public final class PlayerControllerTestHarness {
         let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         let mockPlayer = MockAudioPlayer(url: streamURL)
         let mockAnalytics = MockStructuredAnalytics()
+        let mockBackgroundTasks = MockBackgroundTaskAssertion()
         let notificationCenter = NotificationCenter()
 
         switch testCase {
@@ -203,7 +210,8 @@ public final class PlayerControllerTestHarness {
                 analytics: mockAnalytics,
                 backoffTimer: backoffTimer,
                 heartbeatInterval: heartbeatInterval,
-                sessionActivationRetryDelay: sessionActivationRetryDelay
+                sessionActivationRetryDelay: sessionActivationRetryDelay,
+                backgroundTasks: mockBackgroundTasks
             )
 
             return PlayerControllerTestHarness(
@@ -213,6 +221,7 @@ public final class PlayerControllerTestHarness {
                 mockSession: mockSession,
                 mockCommandCenter: mockCommandCenter,
                 mockAnalytics: mockAnalytics,
+                mockBackgroundTasks: mockBackgroundTasks,
                 audioPlayerController: audioController
             )
         #endif
@@ -237,6 +246,7 @@ public final class PlayerControllerTestHarness {
                 mockSession: mockSession,
                 mockCommandCenter: nil,
                 mockAnalytics: mockAnalytics,
+                mockBackgroundTasks: mockBackgroundTasks,
                 radioPlayerController: radioController
             )
             #else
@@ -256,6 +266,7 @@ public final class PlayerControllerTestHarness {
                 mockSession: mockSession,
                 mockCommandCenter: nil,
                 mockAnalytics: mockAnalytics,
+                mockBackgroundTasks: mockBackgroundTasks,
                 radioPlayerController: radioController
             )
             #endif
@@ -338,6 +349,7 @@ public final class PlayerControllerTestHarness {
         mockSession.reset()
         mockCommandCenter?.reset()
         mockAnalytics.reset()
+        mockBackgroundTasks.reset()
         stopCountAtLastPlay = 0
     }
 

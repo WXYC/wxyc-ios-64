@@ -4,7 +4,8 @@
 //
 //  Guards the contract that pausing publishes the paused state without first
 //  blocking on the audio-session teardown, that deferring the teardown can't
-//  undo a subsequent activation, and that the audible stop stays synchronous.
+//  undo a subsequent activation, that the audible stop stays synchronous, and
+//  that the deferred teardown survives the app being backgrounded on top of it.
 //
 //  Created by Jake Bromberg on 08/05/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -413,6 +414,179 @@ struct PauseResponsivenessTests {
             harness.streamErrorEvents.filter({ $0.errorType == .silentStartup }).isEmpty,
             "a deferral we imposed on ourselves was reported as a silent startup"
         )
+    }
+
+    @Test("A pause the user backgrounds out of still hands the session back")
+    func handbackSurvivesBackgroundingRightAfterAPause() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        // Hold the handback open across the background transition, which is the
+        // whole scenario: swiping up or locking the screen takes far less time
+        // than the XPC round-trip the pause tap just started.
+        harness.mockSession.holdDeactivations()
+
+        harness.controller.play()
+        harness.controller.stop()
+        // Asserted, not assumed, and waited for rather than inferred from the
+        // synchronous flag: the gate records the call before it blocks, so this
+        // proves the handback is *inside* `setActive(false, …)` right now. Had
+        // it already finished, the background transition would take the
+        // synchronous path and everything below would pass without ever
+        // exercising the race this test is about.
+        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
+        #expect(
+            harness.sessionDeactivationSettled == false,
+            "precondition: the handback had already finished, so nothing was in flight to lose"
+        )
+
+        let timer = ContinuousClock().now
+        harness.controller.handleAppDidEnterBackground()
+        let elapsed = ContinuousClock().now - timer
+
+        // Waiting out the in-flight handback here would be worse than the freeze
+        // #774 removed: a blocked main actor during a scenePhase transition is a
+        // watchdog kill, not a stutter. The bound is 1s rather than a hair over
+        // the old sleep because a regressed caller now blocks on `sessionLock`
+        // until the gate's 5s cap — so the bound no longer has to be tight to
+        // discriminate, and a loaded CI host can't fail a healthy run.
+        #expect(
+            elapsed < .seconds(1),
+            "the background transition blocked for \(elapsed) on the in-flight handback"
+        )
+        // Without an explicit request for background execution, whether the
+        // handback's continuation runs at all is down to how fast the system
+        // suspends us — and when it loses, `.notifyOthersOnDeactivation` never
+        // fires and Spotify (or whatever WXYC interrupted) stays silent.
+        #expect(
+            harness.mockBackgroundTasks.activeCount >= 1,
+            "nothing asked the system for the time to finish the handback, so it is racing suspension"
+        )
+
+        harness.mockSession.releaseDeactivations()
+        await harness.waitUntil({
+            harness.sessionDeactivated && harness.sessionDeactivationSettled
+        }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "the session was never handed back")
+        #expect(
+            harness.mockSession.lastActiveOptions == .notifyOthersOnDeactivation,
+            "the handback dropped the notification other apps resume on"
+        )
+        #expect(
+            harness.mockBackgroundTasks.activeCount == 0,
+            "the background-execution assertion outlived the work it was taken for — the OS kills apps for that"
+        )
+    }
+
+    @Test("A failed handback still releases its background-execution assertion")
+    func failedHandbackReleasesItsAssertion() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        harness.mockSession.shouldThrowOnDeactivate = true
+
+        harness.controller.play()
+        harness.controller.stop()
+
+        await harness.waitUntil({ harness.sessionDeactivationSettled }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivationSettled, "precondition: the failed handback never settled")
+        #expect(harness.mockBackgroundTasks.beginCount >= 1, "precondition: no assertion was ever taken")
+
+        // An assertion the app never ends is a termination, and it lands on
+        // whatever the user does next rather than on the pause that leaked it.
+        #expect(
+            harness.mockBackgroundTasks.activeCount == 0,
+            "a handback that threw walked away holding a background-execution assertion"
+        )
+    }
+
+    @Test("A handback that declines as stale still releases its assertion")
+    func staleHandbackReleasesItsAssertion() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        harness.controller.play()
+        harness.controller.stop()
+        // Re-activates the session out from under the scheduled handback, which
+        // then recognises itself as stale and never calls `setActive` at all.
+        harness.controller.play()
+
+        await harness.waitUntil({ harness.sessionDeactivationSettled }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivationSettled, "precondition: the stale handback never settled")
+        #expect(harness.mockBackgroundTasks.beginCount >= 1, "precondition: no assertion was ever taken")
+
+        #expect(
+            harness.mockBackgroundTasks.activeCount == 0,
+            "a handback that declined to run walked away holding a background-execution assertion"
+        )
+    }
+
+    @Test("An expiring assertion is released rather than truncating the handback")
+    func expiringAssertionIsReleasedWithoutASecondSetActive() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        harness.mockSession.holdDeactivations()
+
+        harness.controller.play()
+        harness.controller.stop()
+        // Wait until the handback is genuinely inside `setActive(false, …)`, so
+        // the expiry below lands on work that is still running — expiring an
+        // assertion whose task already finished proves nothing. The gate records
+        // the call before blocking, so this edge is the handback holding the
+        // session rather than merely having been scheduled.
+        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
+        #expect(harness.mockBackgroundTasks.activeCount == 1, "precondition: no assertion was taken for the handback")
+
+        harness.mockBackgroundTasks.expireAll()
+
+        // Not ending an expired assertion is the one failure mode the OS
+        // punishes immediately: it kills the process outright.
+        #expect(
+            harness.mockBackgroundTasks.activeCount == 0,
+            "the expiration handler left the assertion live, which is a termination rather than a warning"
+        )
+
+        harness.mockSession.releaseDeactivations()
+        await harness.waitUntil({ harness.sessionDeactivationSettled }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivationSettled, "precondition: the handback never settled")
+        // One activation plus one handback, and nothing else. Expiry deliberately
+        // does *not* force the handback to completion: a `setActive(false, …)`
+        // that has outlived the whole background grace period is wedged in
+        // mediaserverd, and a second one can only stack behind the first — while
+        // blocking to issue it is the main-actor freeze this all exists to avoid.
+        // `audioSessionActivated` stays set on an unconfirmed handback, so the
+        // next stop() retries it instead.
+        #expect(
+            harness.mockSession.setActiveCallCount == 2,
+            "expiry issued a second setActive behind one that was already in flight"
+        )
+        #expect(
+            harness.mockBackgroundTasks.strayEndCount == 0,
+            "the same assertion was ended twice — UIApplication treats that as a programming error"
+        )
+    }
+
+    @Test("A re-driven handback holds its assertion before the one that scheduled it lets go")
+    func redrivenHandbackNeverLetsTheAssertionLapse() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // Same one-turn interleaving as `stopDuringInFlightDeactivationStillHandsBack`:
+        // the first handback declines as stale and the second stop()'s recorded
+        // request is re-driven from its continuation.
+        harness.controller.play()
+        harness.controller.stop()
+        harness.controller.play()
+        harness.controller.stop()
+
+        await harness.waitUntil({ harness.mockBackgroundTasks.events.count == 4 }, timeout: .seconds(5))
+        #expect(harness.mockBackgroundTasks.beginCount == 2, "precondition: the recorded request was never re-driven")
+
+        // If the first assertion ends before the re-drive takes its own, there is
+        // a window in which the app holds none — and it is exactly the window the
+        // re-driven handback runs in, which is the one that actually hands the
+        // session back.
+        #expect(
+            harness.mockBackgroundTasks.events[1].isBegin,
+            "the assertion lapsed between the stale handback and the re-drive it scheduled: \(harness.mockBackgroundTasks.events)"
+        )
+        #expect(harness.mockBackgroundTasks.activeCount == 0, "an assertion was left live")
+        #expect(harness.sessionDeactivated, "the re-driven handback never handed the session back")
     }
 
     @Test("Backgrounding hands the session back on the caller's turn")
