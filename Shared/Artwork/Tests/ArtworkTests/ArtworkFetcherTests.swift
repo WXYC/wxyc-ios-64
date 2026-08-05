@@ -38,6 +38,23 @@ final class MockWebSession: WebSession, @unchecked Sendable {
     }
 }
 
+/// A `WebSession` that returns queued responses in order — request N gets
+/// `responses[N]` — for fetchers that make more than one sequential request
+/// (a search followed by an image fetch). Once queued responses are
+/// exhausted, further requests throw `.noResults`.
+final class SequentialMockSession: WebSession, @unchecked Sendable {
+    var responses: [Data] = []
+    var currentIndex = 0
+
+    func data(from url: URL) async throws -> Data {
+        defer { currentIndex += 1 }
+        guard currentIndex < responses.count else {
+            throw ServiceError.noResults
+        }
+        return responses[currentIndex]
+    }
+}
+
 // MARK: - Test Helpers
 
 #if canImport(UIKit)
@@ -84,19 +101,6 @@ struct DiscogsArtworkServiceTests {
     @Test("Fetches album artwork successfully")
     func fetchAlbumArtworkSuccess() async throws {
         // Given
-        final class SequentialMockSession: WebSession, @unchecked Sendable {
-            var responses: [Data] = []
-            var currentIndex = 0
-
-            func data(from url: URL) async throws -> Data {
-                defer { currentIndex += 1 }
-                guard currentIndex < responses.count else {
-                    throw ServiceError.noResults
-                }
-                return responses[currentIndex]
-            }
-        }
-
         let mockSession = SequentialMockSession()
         let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
 
@@ -130,19 +134,6 @@ struct DiscogsArtworkServiceTests {
     @Test("Skips spacer.gif images")
     func skipsSpacerGifImages() async throws {
         // Given
-        final class SequentialMockSession: WebSession, @unchecked Sendable {
-            var responses: [Data] = []
-            var currentIndex = 0
-
-            func data(from url: URL) async throws -> Data {
-                defer { currentIndex += 1 }
-                guard currentIndex < responses.count else {
-                    throw ServiceError.noResults
-                }
-                return responses[currentIndex]
-            }
-        }
-
         let mockSession = SequentialMockSession()
         let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
 
