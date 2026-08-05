@@ -2,9 +2,8 @@
 //  SpotlightIndexerTests.swift
 //  AppServices
 //
-//  Verifies `CoreSpotlightIndexer`'s F3 additions: `indexName` aliases
-//  `PlaycutSpotlightIndex.name` (WXYCIntents) rather than a redeclared
-//  literal, and its `PlaycutReindexer` conformance forwards to
+//  Verifies `CoreSpotlightEntityIndexer<PlaycutEntity>`'s F3 additions
+//  (#758): its `SpotlightReindexer` conformance forwards to
 //  `indexPlaycuts(_:priority:)` at `SpotlightDonationService.batchPriority`
 //  so a Spotlight-driven reindex is treated as a backfill, not an
 //  elevated-priority "on air now" donation.
@@ -21,21 +20,22 @@ import Testing
 import WXYCIntents
 @testable import AppServices
 
-@Suite("CoreSpotlightIndexer (F3 PlaycutReindexer)")
+@Suite("CoreSpotlightEntityIndexer<PlaycutEntity> (F3 SpotlightReindexer)")
 struct SpotlightIndexerTests {
-    @Test("indexName aliases the WXYCIntents-owned constant")
-    func indexNameAliasesSharedConstant() {
-        #expect(CoreSpotlightIndexer.indexName == PlaycutSpotlightIndex.name)
+    @Test("indexName echoes back the name passed at init")
+    func indexNameEchoesInit() {
+        let indexer = CoreSpotlightEntityIndexer<PlaycutEntity>(indexName: SpotlightIndexName.playcuts)
+        #expect(indexer.indexName == SpotlightIndexName.playcuts)
     }
 
     @Test("donate(_:) forwards to indexPlaycuts at batch priority")
     func donateForwardsAtBatchPriority() async throws {
-        // CoreSpotlightIndexer talks to the real CSSearchableIndex, so this
-        // only proves the call doesn't throw for an empty batch — indexPlaycuts
+        // CoreSpotlightEntityIndexer talks to the real CSSearchableIndex, so
+        // this only proves the call doesn't throw for an empty batch — indexPlaycuts
         // already early-returns on empty input, avoiding an XPC round-trip in
-        // a unit test. Priority/name wiring is covered by the two tests above
-        // and by the reindex handlers' own spy-based tests in WXYCIntentsTests.
-        let indexer = CoreSpotlightIndexer(indexName: "wxyc.playcuts.tests.\(UUID().uuidString)")
+        // a unit test. The priority forwarding itself is exercised by the
+        // reindex handlers' own spy-based tests in WXYCIntentsTests.
+        let indexer = CoreSpotlightEntityIndexer<PlaycutEntity>(indexName: "wxyc.playcuts.tests.\(UUID().uuidString)")
 
         try await indexer.donate([])
     }

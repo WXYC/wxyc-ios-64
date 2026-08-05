@@ -1,5 +1,5 @@
 //
-//  SpotlightIndexer.swift
+//  CoreSpotlightEntityIndexer.swift
 //  AppServices
 //
 //  Seam that lets `SpotlightDonationService` be exercised in tests without
@@ -7,10 +7,21 @@
 //  named `wxyc.playcuts` index; the SP-F1 identifier scheme (`PlaycutID`)
 //  determines what a Spotlight tap resolves to via `OpenPlaycut`.
 //
-//  `ArtistSpotlightIndexer`/`CoreSpotlightArtistIndexer` (C6) mirror this
-//  same seam shape against the separate named `wxyc.artists` index — a
-//  distinct type rather than a second method on `SpotlightIndexer` so the
-//  two entity kinds' named indexes can never be conflated at a callsite.
+//  `ArtistSpotlightIndexer` (C6) mirrors this same seam shape against the
+//  separate named `wxyc.artists` index — a distinct protocol rather than a
+//  second method on `SpotlightIndexer` so the two entity kinds' named
+//  indexes can never be conflated at a callsite.
+//
+//  `CoreSpotlightEntityIndexer<Entity: IndexedEntity>` (#758) is the single
+//  generic struct that backs both seam protocols' production conformances
+//  (and, via `ConcertSpotlightIndexer.swift`'s `where Entity == ConcertEntity`
+//  extension, the concert kind's divergent indexing path too). It replaces
+//  three near-identical concrete structs — `CoreSpotlightIndexer`,
+//  `CoreSpotlightArtistIndexer` (both previously declared in this file), and
+//  `CoreSpotlightConcertIndexer` (previously in `ConcertSpotlightIndexer.swift`)
+//  — that differed only in their entity type and named index. Adding a
+//  fourth entity kind now needs one instantiation
+//  (`CoreSpotlightEntityIndexer<NewEntity>(indexName:)`), not a new struct.
 //
 //  Compiled out on watchOS and tvOS: `CoreSpotlight`, `IndexedEntity`,
 //  and `CSSearchableItemAttributeSet` are all unavailable on those
@@ -23,12 +34,14 @@
 
 #if !os(watchOS) && !os(tvOS)
 
+import AppIntents
 @preconcurrency import CoreSpotlight
 import Foundation
 import WXYCIntents
 
-/// Injectable Spotlight indexing seam. The production impl forwards to
-/// `CSSearchableIndex.indexAppEntities`; tests provide a recording double.
+/// Injectable Spotlight indexing seam for `PlaycutEntity`. The production
+/// impl forwards to `CSSearchableIndex.indexAppEntities`; tests provide a
+/// recording double.
 public protocol SpotlightIndexer: Sendable {
     /// Upserts `entities` into the `wxyc.playcuts` index.
     ///
@@ -36,41 +49,6 @@ public protocol SpotlightIndexer: Sendable {
     /// system to surface the item sooner. See ``SpotlightDonationService``
     /// for the two values in use (current-playcut vs. batch backfill).
     func indexPlaycuts(_ entities: [PlaycutEntity], priority: Int) async throws
-}
-
-/// Production `SpotlightIndexer` backed by a named `CSSearchableIndex`.
-///
-/// A named index (rather than `.default()`) scopes deletes and reindex hooks
-/// to the WXYC playcut catalogue so an accidental reset can't nuke other
-/// system-index entries the app might add later.
-public struct CoreSpotlightIndexer: SpotlightIndexer {
-    /// Name of the WXYC playcut index. Aliases `PlaycutSpotlightIndex.name`
-    /// (WXYCIntents) rather than redeclaring the literal, so this indexer and
-    /// the F3 `IndexedEntityQuery` reindex handlers — which depend on
-    /// WXYCIntents but not on AppServices — can never drift onto different
-    /// index names.
-    public static let indexName = PlaycutSpotlightIndex.name
-
-    private let index: CSSearchableIndex
-
-    public init(indexName: String = Self.indexName) {
-        self.index = CSSearchableIndex(name: indexName)
-    }
-
-    public func indexPlaycuts(_ entities: [PlaycutEntity], priority: Int) async throws {
-        guard !entities.isEmpty else { return }
-        try await index.indexAppEntities(entities, priority: priority)
-    }
-}
-
-/// F3: the same named index doubles as the reindex handlers' donation seam.
-/// `SpotlightDonationService.batchPriority` matches the priority the F2
-/// background-refresh batch path already uses — a reindex is functionally a
-/// backfill, not an elevated-priority "on air now" surface.
-extension CoreSpotlightIndexer: PlaycutReindexer {
-    public func donate(_ entities: [PlaycutEntity]) async throws {
-        try await indexPlaycuts(entities, priority: SpotlightDonationService.batchPriority)
-    }
 }
 
 /// Injectable Spotlight indexing seam for `ArtistEntity`, mirroring
@@ -87,24 +65,92 @@ public protocol ArtistSpotlightIndexer: Sendable {
     func indexArtists(_ entities: [ArtistEntity], priority: Int) async throws
 }
 
-/// Production `ArtistSpotlightIndexer` backed by a named `CSSearchableIndex`,
-/// separate from `CoreSpotlightIndexer`'s playcut index so the two entity
-/// kinds' named indexes can't be conflated at a callsite.
-public struct CoreSpotlightArtistIndexer: ArtistSpotlightIndexer {
-    /// Name of the WXYC artist index. Aliases `ArtistSpotlightIndex.name`
-    /// (WXYCIntents) so this indexer and any future artist-side reindex
-    /// handler can never drift onto different index names.
-    public static let indexName = ArtistSpotlightIndex.name
+/// Generic production Spotlight indexer backed by a named `CSSearchableIndex`,
+/// parameterized by the `IndexedEntity` kind it indexes (#758).
+///
+/// A named index (rather than `.default()`) scopes deletes and reindex hooks
+/// to one entity kind's catalogue so an accidental reset can't nuke other
+/// system-index entries the app might add later — the rationale each of the
+/// three predecessor structs carried individually.
+///
+/// The concert kind's genuinely divergent path — a per-item `expirationDate`,
+/// which `CSSearchableItemAttributeSet` has no field for, so it has to be set
+/// on a directly-built `CSSearchableItem` rather than going through
+/// `indexAppEntities` — lives in the `where Entity == ConcertEntity`
+/// extension in `ConcertSpotlightIndexer.swift`, a strategy on this generic
+/// type rather than a parallel type.
+public struct CoreSpotlightEntityIndexer<Entity: IndexedEntity>: Sendable {
+    /// The named index this instance targets, e.g. `SpotlightIndexName.playcuts`.
+    public let indexName: String
 
-    private let index: CSSearchableIndex
+    /// `internal` (not `private`) so the `where Entity == ConcertEntity`
+    /// extension declared in `ConcertSpotlightIndexer.swift` — a separate
+    /// file — can build and index `CSSearchableItem`s directly against the
+    /// same underlying index.
+    let searchableIndex: CSSearchableIndex
 
-    public init(indexName: String = Self.indexName) {
-        self.index = CSSearchableIndex(name: indexName)
+    public init(indexName: String) {
+        self.indexName = indexName
+        self.searchableIndex = CSSearchableIndex(name: indexName)
     }
 
-    public func indexArtists(_ entities: [ArtistEntity], priority: Int) async throws {
+    /// Upserts `entities` via `CSSearchableIndex.indexAppEntities` — the
+    /// shared body every non-concert entity kind's seam-protocol conformance
+    /// below forwards to.
+    public func index(_ entities: [Entity], priority: Int) async throws {
         guard !entities.isEmpty else { return }
-        try await index.indexAppEntities(entities, priority: priority)
+        try await searchableIndex.indexAppEntities(entities, priority: priority)
+    }
+}
+
+extension CoreSpotlightEntityIndexer: SpotlightIndexer where Entity == PlaycutEntity {
+    public func indexPlaycuts(_ entities: [PlaycutEntity], priority: Int) async throws {
+        try await index(entities, priority: priority)
+    }
+}
+
+extension CoreSpotlightEntityIndexer: ArtistSpotlightIndexer where Entity == ArtistEntity {
+    public func indexArtists(_ entities: [ArtistEntity], priority: Int) async throws {
+        try await index(entities, priority: priority)
+    }
+}
+
+/// Bridges an `IndexedEntity` kind's own reindex-donation shape to
+/// `CoreSpotlightEntityIndexer`'s `SpotlightReindexer` (WXYCIntents)
+/// conformance.
+///
+/// Swift forbids two separate `where Entity == X` / `where Entity == Y`
+/// extensions of one generic type conforming to the *same* protocol, even
+/// when the where-clauses are mutually exclusive ("conflicting conformance
+/// of 'CoreSpotlightEntityIndexer<Entity>' to protocol 'SpotlightReindexer';
+/// there cannot be more than one conformance, even with different
+/// conditional bounds"). So `CoreSpotlightEntityIndexer` declares its
+/// `SpotlightReindexer` conformance exactly once below, conditioned on this
+/// one shared constraint, and dispatches to each conforming entity kind's own
+/// static `reindexDonate(_:via:)` — the playcut kind's below, the concert
+/// kind's in `ConcertSpotlightIndexer.swift`. A third entity kind that never
+/// needs F3 reindex support doesn't conform to this at all; one that does
+/// adds one small conformance here, not a new protocol.
+public protocol SpotlightReindexStrategy: IndexedEntity {
+    associatedtype ReindexSource
+    static func reindexDonate(_ source: [ReindexSource], via indexer: CoreSpotlightEntityIndexer<Self>) async throws
+}
+
+extension CoreSpotlightEntityIndexer: SpotlightReindexer where Entity: SpotlightReindexStrategy {
+    public typealias Source = Entity.ReindexSource
+
+    public func donate(_ items: [Source]) async throws {
+        try await Entity.reindexDonate(items, via: self)
+    }
+}
+
+/// F3: the same named index doubles as the reindex handlers' donation seam.
+/// `SpotlightDonationService.batchPriority` matches the priority the F2
+/// background-refresh batch path already uses — a reindex is functionally a
+/// backfill, not an elevated-priority "on air now" surface.
+extension PlaycutEntity: SpotlightReindexStrategy {
+    public static func reindexDonate(_ entities: [PlaycutEntity], via indexer: CoreSpotlightEntityIndexer<PlaycutEntity>) async throws {
+        try await indexer.indexPlaycuts(entities, priority: SpotlightDonationService.batchPriority)
     }
 }
 

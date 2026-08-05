@@ -61,9 +61,9 @@ enum AppIntentsDependencySlot: CaseIterable {
     var dependencyType: Any.Type {
         switch self {
         case .playcutHistoryStore: AppDependency<PlaycutHistoryStore>.self
-        case .playcutReindexer: AppDependency<any PlaycutReindexer>.self
+        case .playcutReindexer: AppDependency<any SpotlightReindexer<PlaycutEntity>>.self
         case .analytics: AppDependency<any AnalyticsService>.self
-        case .concertReindexer: AppDependency<any ConcertReindexer>.self
+        case .concertReindexer: AppDependency<any SpotlightReindexer<Concert>>.self
         case .concertsFetching: AppDependency<any ConcertsFetching>.self
         }
     }
@@ -75,8 +75,8 @@ public enum AppIntentsDependencies {
     /// runtime might construct in the app process can run.
     public static func registerForApp(
         playcutHistoryStore: PlaycutHistoryStore,
-        playcutReindexer: any PlaycutReindexer,
-        concertReindexer: any ConcertReindexer,
+        playcutReindexer: any SpotlightReindexer<PlaycutEntity>,
+        concertReindexer: any SpotlightReindexer<Concert>,
         concertsFetching: any ConcertsFetching,
         analytics: any AnalyticsService
     ) {
@@ -121,11 +121,11 @@ public enum AppIntentsDependencies {
             case .playcutHistoryStore:
                 AppDependencyManager.shared.add(dependency: playcutHistoryStore)
             case .playcutReindexer:
-                AppDependencyManager.shared.add(dependency: WidgetSafePlaycutReindexer() as any PlaycutReindexer)
+                AppDependencyManager.shared.add(dependency: WidgetSafeSpotlightReindexer<PlaycutEntity>() as any SpotlightReindexer<PlaycutEntity>)
             case .analytics:
                 AppDependencyManager.shared.add(dependency: WidgetSafeAnalyticsService() as any AnalyticsService)
             case .concertReindexer:
-                AppDependencyManager.shared.add(dependency: WidgetSafeConcertReindexer() as any ConcertReindexer)
+                AppDependencyManager.shared.add(dependency: WidgetSafeSpotlightReindexer<Concert>() as any SpotlightReindexer<Concert>)
             case .concertsFetching:
                 AppDependencyManager.shared.add(dependency: WidgetSafeConcertsFetching() as any ConcertsFetching)
             }
