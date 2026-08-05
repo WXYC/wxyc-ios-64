@@ -14,24 +14,8 @@
 import Foundation
 import Testing
 import Playlist
+import PlaylistTesting
 @testable import LikedSongs
-
-private func makePlaycut(
-    artist: String,
-    title: String,
-    album: String? = nil
-) -> Playcut {
-    Playcut(
-        id: 1,
-        hour: 1,
-        chronOrderID: 1,
-        timeCreated: 1,
-        songTitle: title,
-        labelName: nil,
-        artistName: artist,
-        releaseTitle: album
-    )
-}
 
 @Suite("LikedSongSnapshot display parity")
 struct LikedSongSnapshotDisplayTests {
@@ -40,7 +24,7 @@ struct LikedSongSnapshotDisplayTests {
 
     @Test("Snapshot and its source Playcut resolve the same artwork cache key")
     func artworkCacheKeyMatchesSourcePlaycut() {
-        let playcut = makePlaycut(artist: "Juana Molina", title: "la paradoja", album: "DOGA")
+        let playcut = Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", releaseTitle: "DOGA")
         let snapshot = LikedSongSnapshot(playcut: playcut, likedAt: Self.likedAt)
 
         #expect(snapshot.artworkCacheKey == playcut.artworkCacheKey)
@@ -50,7 +34,7 @@ struct LikedSongSnapshotDisplayTests {
     @Test("Parity holds when the release falls back to the song title")
     func artworkCacheKeyMatchesWhenReleaseMissing() {
         // No release title: both sides must fall back to the song title.
-        let playcut = makePlaycut(artist: "Jessica Pratt", title: "Back, Baby")
+        let playcut = Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: nil)
         let snapshot = LikedSongSnapshot(playcut: playcut, likedAt: Self.likedAt)
 
         #expect(snapshot.artworkCacheKey == playcut.artworkCacheKey)
