@@ -47,6 +47,32 @@ struct NowPlayingWidget: Widget {
 
 @main
 struct NowPlayingWidgetBundle: WidgetBundle {
+    /// Registers this process's AppIntents dependencies before any widget
+    /// timeline or intent runs. Neither `NowPlayingWidgetIntent` nor
+    /// `WidgetToggleWXYC` (this file's own AppIntents surface) touch
+    /// `PlaycutEntityQuery`/`ConcertEntityQuery` directly, but this process
+    /// links WXYCIntents — the same module the app links — so its compiled
+    /// AppIntents metadata declares support for every `AppEntity`/`EntityQuery`
+    /// WXYCIntents ships, including those two. The OS can route an external
+    /// resolution request (Spotlight, Siri, Shortcuts) for either entity kind
+    /// to whichever qualifying process is live, which may be this widget
+    /// extension rather than the app. `Singletonia` — the app's composition
+    /// root — never runs in this `.appex` process, so without this call that
+    /// resolution would hit an unregistered `@Dependency` and trap (#751).
+    /// Registers read-only/no-op defaults here, not the app's real Spotlight
+    /// indexers or network fetcher.
+    ///
+    /// Manual verification (AppIntents' `@Dependency` only resolves inside
+    /// the real OS-driven intent/entity-query flow, so no unit test can
+    /// force this path — see `AppIntentsDependenciesTests.swift`): install
+    /// the widget on a simulator/device, add the "WXYC Now Playing" widget to
+    /// a home screen, and confirm it renders (or shows its placeholder/empty
+    /// state) with no crash in Console — filter for "AppDependency" to catch
+    /// a silent respawn.
+    init() {
+        AppIntentsDependencies.registerForWidget()
+    }
+
     var body: some Widget {
         NowPlayingControl()
         NowPlayingWidget()
