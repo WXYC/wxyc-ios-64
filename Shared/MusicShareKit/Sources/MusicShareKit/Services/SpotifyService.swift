@@ -73,11 +73,6 @@ final class SpotifyService: MusicServiceProvider {
         )
     }
 
-    func fetchArtwork(for track: MusicTrack) async throws -> URL? {
-        // Artwork is fetched as part of fetchMetadata, return cached value
-        track.artworkURL
-    }
-
     func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         guard let identifier = track.identifier else { return track }
 
