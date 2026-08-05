@@ -22,6 +22,7 @@ let package = Package(
             dependencies: [
                 "LikedSongs",
                 .product(name: "CoreTesting", package: "Core"),
+                .product(name: "PlaylistTesting", package: "Playlist"),
             ]
         )
     ]

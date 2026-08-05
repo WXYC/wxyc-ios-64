@@ -16,6 +16,7 @@ import Foundation
 import Testing
 import Playlist
 import CoreTesting
+import PlaylistTesting
 @testable import LikedSongs
 
 /// Injectable clock: tests advance it to control `likedAt` ordering.
@@ -30,28 +31,6 @@ private final class TestClock: @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         _date += seconds
     }
-}
-
-private func makePlaycut(
-    artist: String,
-    title: String,
-    album: String? = nil,
-    label: String? = nil,
-    artistId: Int? = nil,
-    artwork: String? = nil
-) -> Playcut {
-    Playcut(
-        id: 1,
-        hour: 1,
-        chronOrderID: 1,
-        timeCreated: 1,
-        songTitle: title,
-        labelName: label,
-        artistName: artist,
-        releaseTitle: album,
-        artworkURL: artwork.flatMap { URL(string: $0) },
-        artistId: artistId
-    )
 }
 
 @MainActor
@@ -71,10 +50,10 @@ struct LikedSongsStoreTests {
     @Test("Liking inserts a snapshot of the playcut with the clock's timestamp")
     func likeInserts() {
         let (store, storage, clock) = makeStore()
-        let liked = store.toggle(makePlaycut(
-            artist: "Jessica Pratt", title: "Back, Baby",
-            album: "On Your Own Love Again", label: "Drag City",
-            artistId: 812, artwork: "https://example.org/oyola.jpg"
+        let liked = store.toggle(Playcut.stub(
+            songTitle: "Back, Baby", labelName: "Drag City",
+            artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again",
+            artworkURL: URL(string: "https://example.org/oyola.jpg"), artistId: 812
         ))
         #expect(liked == true)
         #expect(store.songs.count == 1)
@@ -93,8 +72,8 @@ struct LikedSongsStoreTests {
     @Test("Toggling the same song again removes it")
     func toggleRemoves() {
         let (store, storage, _) = makeStore()
-        store.toggle(makePlaycut(artist: "Juana Molina", title: "la paradoja"))
-        let liked = store.toggle(makePlaycut(artist: "Juana Molina", title: "la paradoja"))
+        store.toggle(Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", releaseTitle: nil))
+        let liked = store.toggle(Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", releaseTitle: nil))
         #expect(liked == false)
         #expect(store.songs.isEmpty)
         #expect(storage.saveCount == 2)
@@ -103,13 +82,13 @@ struct LikedSongsStoreTests {
     @Test("The same song across releases, casing, and linkage is one liked song")
     func dedupesAcrossVariants() {
         let (store, _, _) = makeStore()
-        store.toggle(makePlaycut(
-            artist: "Chuquimamani-Condori", title: "Call Your Name",
-            album: "Edits", artistId: 977
+        store.toggle(Playcut.stub(
+            songTitle: "Call Your Name", artistName: "Chuquimamani-Condori",
+            releaseTitle: "Edits", artistId: 977
         ))
         // Free-text ALL-CAPS replay of the same song, different (absent) album:
         // same folded identity, so this toggle unlikes the existing row.
-        let liked = store.toggle(makePlaycut(artist: "CHUQUIMAMANI-CONDORI", title: "CALL YOUR NAME"))
+        let liked = store.toggle(Playcut.stub(songTitle: "CALL YOUR NAME", artistName: "CHUQUIMAMANI-CONDORI", releaseTitle: nil))
         #expect(liked == false)
         #expect(store.songs.isEmpty)
     }
@@ -117,7 +96,7 @@ struct LikedSongsStoreTests {
     @Test("isLiked matches across casing and diacritics")
     func isLikedFolds() {
         let (store, _, _) = makeStore()
-        store.toggle(makePlaycut(artist: "Nilüfer Yanya", title: "Midnight Sun"))
+        store.toggle(Playcut.stub(songTitle: "Midnight Sun", artistName: "Nilüfer Yanya", releaseTitle: nil))
         #expect(store.isLiked(artistName: "NILUFER  YANYA", songTitle: "midnight sun"))
         #expect(!store.isLiked(artistName: "Nilüfer Yanya", songTitle: "Anotherlife"))
     }
@@ -125,16 +104,16 @@ struct LikedSongsStoreTests {
     @Test("Songs sort newest first")
     func newestFirst() {
         let (store, _, clock) = makeStore()
-        store.toggle(makePlaycut(artist: "Stereolab", title: "Metronomic Underground"))
+        store.toggle(Playcut.stub(songTitle: "Metronomic Underground", artistName: "Stereolab", releaseTitle: nil))
         clock.advance(60)
-        store.toggle(makePlaycut(artist: "Duke Ellington & John Coltrane", title: "In a Sentimental Mood"))
+        store.toggle(Playcut.stub(songTitle: "In a Sentimental Mood", artistName: "Duke Ellington & John Coltrane", releaseTitle: nil))
         #expect(store.songs.map(\.songTitle) == ["In a Sentimental Mood", "Metronomic Underground"])
     }
 
     @Test("unlike(snapshot) removes the row — the Liked tab's swipe path")
     func unlikeSnapshot() {
         let (store, _, _) = makeStore()
-        store.toggle(makePlaycut(artist: "Cat Power", title: "Cross Bones Style"))
+        store.toggle(Playcut.stub(songTitle: "Cross Bones Style", artistName: "Cat Power", releaseTitle: nil))
         store.unlike(store.songs[0])
         #expect(store.songs.isEmpty)
         #expect(!store.isLiked(artistName: "Cat Power", songTitle: "Cross Bones Style"))
@@ -145,10 +124,10 @@ struct LikedSongsStoreTests {
     @Test("Heal stamps the observed artist id onto folded-name matches, preserving likedAt")
     func healStamps() {
         let (store, _, clock) = makeStore()
-        store.toggle(makePlaycut(artist: "NILÜFER YANYA", title: "Midnight Sun"))
+        store.toggle(Playcut.stub(songTitle: "Midnight Sun", artistName: "NILÜFER YANYA", releaseTitle: nil))
         let likedAt = store.songs[0].likedAt
         clock.advance(3600)
-        store.heal(from: [makePlaycut(artist: "Nilüfer Yanya", title: "Anotherlife", artistId: 1502)])
+        store.heal(from: [Playcut.stub(songTitle: "Anotherlife", artistName: "Nilüfer Yanya", releaseTitle: nil, artistId: 1502)])
         #expect(store.songs[0].artistId == 1502)
         #expect(store.songs[0].likedAt == likedAt)
     }
@@ -156,17 +135,17 @@ struct LikedSongsStoreTests {
     @Test("Heal never touches rows that already carry an id")
     func healSkipsIdBearing() {
         let (store, _, _) = makeStore()
-        store.toggle(makePlaycut(artist: "Stereolab", title: "Percolator", artistId: 118))
-        store.heal(from: [makePlaycut(artist: "Stereolab", title: "French Disko", artistId: 999)])
+        store.toggle(Playcut.stub(songTitle: "Percolator", artistName: "Stereolab", releaseTitle: nil, artistId: 118))
+        store.heal(from: [Playcut.stub(songTitle: "French Disko", artistName: "Stereolab", releaseTitle: nil, artistId: 999)])
         #expect(store.songs[0].artistId == 118)
     }
 
     @Test("Heal with no folded-name match changes nothing and does not save")
     func healNoMatchNoSave() {
         let (store, storage, _) = makeStore()
-        store.toggle(makePlaycut(artist: "Csillagrablók", title: "Utolsó tánc"))
+        store.toggle(Playcut.stub(songTitle: "Utolsó tánc", artistName: "Csillagrablók", releaseTitle: nil))
         let savesBefore = storage.saveCount
-        store.heal(from: [makePlaycut(artist: "Jessica Pratt", title: "Back, Baby", artistId: 812)])
+        store.heal(from: [Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: nil, artistId: 812)])
         #expect(store.songs[0].artistId == nil)
         #expect(storage.saveCount == savesBefore)
     }
@@ -175,8 +154,8 @@ struct LikedSongsStoreTests {
     func healPersists() {
         let storage = InMemoryFileStorage()
         let (store, _, _) = makeStore(storage: storage)
-        store.toggle(makePlaycut(artist: "NILÜFER YANYA", title: "Midnight Sun"))
-        store.heal(from: [makePlaycut(artist: "Nilüfer Yanya", title: "Anotherlife", artistId: 1502)])
+        store.toggle(Playcut.stub(songTitle: "Midnight Sun", artistName: "NILÜFER YANYA", releaseTitle: nil))
+        store.heal(from: [Playcut.stub(songTitle: "Anotherlife", artistName: "Nilüfer Yanya", releaseTitle: nil, artistId: 1502)])
         let (reloaded, _, _) = makeStore(storage: storage)
         #expect(reloaded.songs.first?.artistId == 1502)
     }
@@ -186,10 +165,10 @@ struct LikedSongsStoreTests {
     @Test("likedArtistIds is the distinct non-nil id set across liked songs")
     func likedArtistIds() {
         let (store, _, _) = makeStore()
-        store.toggle(makePlaycut(artist: "Stereolab", title: "Metronomic Underground", artistId: 118))
-        store.toggle(makePlaycut(artist: "Stereolab", title: "Percolator", artistId: 118))
-        store.toggle(makePlaycut(artist: "Jessica Pratt", title: "Back, Baby", artistId: 812))
-        store.toggle(makePlaycut(artist: "NILÜFER YANYA", title: "Midnight Sun"))
+        store.toggle(Playcut.stub(songTitle: "Metronomic Underground", artistName: "Stereolab", releaseTitle: nil, artistId: 118))
+        store.toggle(Playcut.stub(songTitle: "Percolator", artistName: "Stereolab", releaseTitle: nil, artistId: 118))
+        store.toggle(Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: nil, artistId: 812))
+        store.toggle(Playcut.stub(songTitle: "Midnight Sun", artistName: "NILÜFER YANYA", releaseTitle: nil))
         #expect(store.likedArtistIds == [118, 812])
     }
 
@@ -199,7 +178,7 @@ struct LikedSongsStoreTests {
     func totalBuckets(count: Int, expected: String) {
         let (store, _, _) = makeStore()
         for i in 0..<count {
-            store.toggle(makePlaycut(artist: "Artist \(i)", title: "Song \(i)"))
+            store.toggle(Playcut.stub(songTitle: "Song \(i)", artistName: "Artist \(i)", releaseTitle: nil))
         }
         #expect(store.totalBucket == expected)
     }
@@ -210,9 +189,9 @@ struct LikedSongsStoreTests {
     func roundTrip() {
         let storage = InMemoryFileStorage()
         let (store, _, clock) = makeStore(storage: storage)
-        store.toggle(makePlaycut(artist: "Jessica Pratt", title: "Back, Baby", artistId: 812))
+        store.toggle(Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: nil, artistId: 812))
         clock.advance(60)
-        store.toggle(makePlaycut(artist: "Juana Molina", title: "la paradoja", artistId: 645))
+        store.toggle(Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", releaseTitle: nil, artistId: 645))
         let (reloaded, _, _) = makeStore(storage: storage)
         #expect(reloaded.songs.map(\.songTitle) == ["la paradoja", "Back, Baby"])
         #expect(reloaded.isLiked(artistName: "jessica pratt", songTitle: "back, baby"))
@@ -223,7 +202,7 @@ struct LikedSongsStoreTests {
         let storage = InMemoryFileStorage(initial: Data("not json".utf8))
         let (store, _, _) = makeStore(storage: storage)
         #expect(store.songs.isEmpty)
-        store.toggle(makePlaycut(artist: "Hermanos Gutiérrez", title: "El Bueno y el Malo", artistId: 2088))
+        store.toggle(Playcut.stub(songTitle: "El Bueno y el Malo", artistName: "Hermanos Gutiérrez", releaseTitle: nil, artistId: 2088))
         let (reloaded, _, _) = makeStore(storage: storage)
         #expect(reloaded.songs.count == 1)
     }
