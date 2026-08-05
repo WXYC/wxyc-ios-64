@@ -3,7 +3,7 @@
 //  WXYCIntents
 //
 //  Verifies the F3 `IndexedEntityQuery` reindex handlers via a spy
-//  `PlaycutReindexer`: `reindexEntities(for:)` donates only ids the seeded
+//  `SpotlightReindexer<PlaycutEntity>`: `reindexEntities(for:)` donates only ids the seeded
 //  `PlaycutHistoryStore` actually has (a miss is omitted, not an error), and
 //  `reindexAllEntities` donates the store's full indexable set in
 //  ≤50-entity chunks.
@@ -25,7 +25,7 @@
 //  concurrently with one from the concert suite, which could race on
 //  `AppDependencyManager.shared`'s registration. `.serialized` on the shared
 //  parent suite governs both children together, closing that gap. (Parallel
-//  registration of different `PlaycutHistoryStore`/`PlaycutReindexer`
+//  registration of different `PlaycutHistoryStore`/`SpotlightReindexer<PlaycutEntity>`
 //  instances against `PlaycutEntityQueryTests`' production-binding tests is a
 //  separate, pre-existing risk this file does not address.)
 //
@@ -64,7 +64,7 @@ struct PlaycutEntityQueryReindexTests {
         ])
         AppDependencyManager.shared.add(dependency: store)
         let reindexer = SpyPlaycutReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any PlaycutReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<PlaycutEntity>)
         let analytics = MockStructuredAnalytics()
         AppDependencyManager.shared.add(dependency: analytics as any AnalyticsService)
 
@@ -91,7 +91,7 @@ struct PlaycutEntityQueryReindexTests {
 
         AppDependencyManager.shared.add(dependency: PlaycutEntityQueryTests.makeHistoryStore())
         let reindexer = SpyPlaycutReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any PlaycutReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<PlaycutEntity>)
         AppDependencyManager.shared.add(dependency: MockStructuredAnalytics() as any AnalyticsService)
 
         let query = PlaycutEntityQuery()
@@ -114,7 +114,7 @@ struct PlaycutEntityQueryReindexTests {
         await store.ingest(playcuts)
         AppDependencyManager.shared.add(dependency: store)
         let reindexer = SpyPlaycutReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any PlaycutReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<PlaycutEntity>)
         let analytics = MockStructuredAnalytics()
         AppDependencyManager.shared.add(dependency: analytics as any AnalyticsService)
 
@@ -138,7 +138,7 @@ struct PlaycutEntityQueryReindexTests {
 
         AppDependencyManager.shared.add(dependency: PlaycutEntityQueryTests.makeHistoryStore())
         let reindexer = SpyPlaycutReindexer()
-        AppDependencyManager.shared.add(dependency: reindexer as any PlaycutReindexer)
+        AppDependencyManager.shared.add(dependency: reindexer as any SpotlightReindexer<PlaycutEntity>)
         AppDependencyManager.shared.add(dependency: MockStructuredAnalytics() as any AnalyticsService)
 
         let query = PlaycutEntityQuery()
@@ -153,7 +153,7 @@ struct PlaycutEntityQueryReindexTests {
 
 /// Records every `donate(_:)` call's entity ids as a separate batch, so tests
 /// can assert both chunk boundaries and total membership.
-actor SpyPlaycutReindexer: PlaycutReindexer {
+actor SpyPlaycutReindexer: SpotlightReindexer {
     private(set) var donatedBatches: [[PlaycutID]] = []
 
     var donatedIDs: [PlaycutID] {

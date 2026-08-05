@@ -31,7 +31,7 @@ public struct ConcertEntityQuery: EntityQuery {
     /// Donation seam the F3 reindex handlers use to re-donate entities to
     /// Spotlight. See the stored-property-in-an-extension rationale above.
     @Dependency
-    var reindexer: any ConcertReindexer
+    var reindexer: any SpotlightReindexer<Concert>
 
     /// Fetch seam the F3 reindex handlers use to resolve concerts by id
     /// (`reindexEntities(for:)`) and to fetch the curated window

@@ -6,7 +6,7 @@
 //  write-only calendar access plus a save -- abstracted so the intent is
 //  unit-testable without touching the real calendar. `EventKitCalendarEventSaving`
 //  is the production conformer; tests use a recording spy, mirroring
-//  `ConcertReindexer`'s protocol/production-conformer split.
+//  `SpotlightReindexer`'s protocol/production-conformer split.
 //
 //  Created by Jake Bromberg on 07/24/26.
 //  Copyright © 2026 WXYC. All rights reserved.

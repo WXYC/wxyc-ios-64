@@ -7,7 +7,7 @@
 //  `wxyc.concerts` index, mirroring `PlaycutEntityQuery+IndexedEntityQuery`.
 //  Both handlers resolve concerts through `ConcertsFetching` — the same
 //  fetch seam `OnTourModel`/`ToursNearMeQuery` use — and re-donate through
-//  `ConcertReindexer`. Both report `ConcertReindexRequested` through
+//  `SpotlightReindexer<Concert>`. Both report `ConcertReindexRequested` through
 //  `AnalyticsService` (#631/OT-Q1, mirroring the playcut handlers' own
 //  `SpotlightReindexRequested` — #445 — but as a concert-specific type so the
 //  two entity kinds' reindex volume stays disambiguated in PostHog) before
@@ -21,7 +21,7 @@
 //  features' idea of what's current can't drift apart.
 //
 //  Neither handler routes through `ConcertSpotlightDonationService.reconcile
-//  (window:...)` — see `ConcertReindexer`'s doc comment for why the
+//  (window:...)` — see `SpotlightReindexer`'s doc comment for why the
 //  persisted-id diff/eviction that powers the OT-F2 background pass would
 //  misfire on a Spotlight-driven reindex ask.
 //
