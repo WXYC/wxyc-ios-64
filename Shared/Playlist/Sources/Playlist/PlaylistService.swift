@@ -333,12 +333,21 @@ public final actor PlaylistService: Sendable {
         //
         // Awaiting `.value` suspends this actor method, so other calls run on
         // reentrant turns while we're parked — `setForegrounded(_:)` in
-        // particular, which mutates `liveUpdatesTask`. Two consequences, both
-        // handled: clear the field only if it still holds the task we actually
-        // cancelled (an unconditional `= nil` would drop a mid-switch loop's
-        // handle, leaving it consuming the old source with nothing able to
-        // stop it), and keep `isSwitchingAPIVersion` set so no such loop can
-        // be started in the first place.
+        // particular, which mutates `liveUpdatesTask`. Without a guard, its
+        // `(false)` then `(true)` pair would nil the field and then start a
+        // fresh loop bound to the *pre-switch* source (`consumeLiveEvents`
+        // captures it once, at the top), and the clear below would drop that
+        // loop's handle — orphaning it with nothing able to cancel it, not
+        // backgrounding and not a later switch.
+        //
+        // `isSwitchingAPIVersion` is what prevents that: it spans this whole
+        // method and `ensureLiveUpdatesRunning()` refuses to start under it,
+        // so across the await `liveUpdatesTask` can only go to nil, never to
+        // a new task. The conditional clear below is therefore provably
+        // equivalent to an unconditional `= nil` today — it is kept as
+        // defense-in-depth in case the latch is ever narrowed, NOT as the
+        // mechanism that closes the orphan. Don't remove the latch on the
+        // strength of the conditional; that reintroduces the bug.
         let cancelledLiveUpdates = liveUpdatesTask
         cancelledLiveUpdates?.cancel()
         await cancelledLiveUpdates?.value
@@ -398,25 +407,43 @@ public final actor PlaylistService: Sendable {
     /// need to observe the derived interval/subscription state without
     /// relaxing visibility on the individual fields.
     ///
-    /// Deliberately `internal`, not `public`: every consumer reaches it via
-    /// `@testable import Playlist` (including the cross-package
-    /// `AppServicesTests`), which is the same route the designated
-    /// initializer above relies on. Making it `public` would commit the
-    /// module to three typed fields as permanent API for a test-only seam.
+    /// Deliberately `internal`, not `public`: its only consumers are this
+    /// module's own tests, which reach it via `@testable import Playlist` —
+    /// the same route the designated initializer above relies on. Making it
+    /// `public` would commit the module to typed fields as permanent API for
+    /// a test-only seam.
     struct WiringSnapshot: Sendable, Equatable {
         let apiVersion: PlaylistAPIVersion
         let pollInterval: TimeInterval
         let liveUpdatesActive: Bool
+
+        /// Whether a live-updates consume loop is currently held. Distinct
+        /// from ``liveUpdatesActive``, which reports whether a source is
+        /// *wired in*: this reports whether a loop is actually running against
+        /// it. The pair is what makes the `switchAPIVersion` reentrancy guard
+        /// testable without waiting on the loop to reach `connect()` —
+        /// `ensureLiveUpdatesRunning()` assigns `liveUpdatesTask`
+        /// synchronously, before the task body runs, so observing this field
+        /// needs no timing tolerance at all.
+        let hasLiveUpdatesTask: Bool
+
+        /// Whether a ``switchAPIVersion(to:)`` is currently in flight. Lets a
+        /// test wait for the switch to have latched before driving reentrant
+        /// calls at it, instead of racing an unstructured `Task`'s start.
+        let isSwitchingAPIVersion: Bool
     }
 
     /// Returns the service's currently-resolved wiring — the API version,
-    /// poll interval, and whether an SSE subscription is actually wired in
-    /// (``PlaylistAPIVersion/supportsLiveUpdates`` and the caller opted in).
+    /// poll interval, whether an SSE subscription is wired in
+    /// (``PlaylistAPIVersion/supportsLiveUpdates`` and the caller opted in),
+    /// and whether a consume loop is currently held.
     func wiringSnapshot() -> WiringSnapshot {
         WiringSnapshot(
             apiVersion: apiVersion,
             pollInterval: interval,
-            liveUpdatesActive: activeLiveEventSource != nil
+            liveUpdatesActive: activeLiveEventSource != nil,
+            hasLiveUpdatesTask: liveUpdatesTask != nil,
+            isSwitchingAPIVersion: isSwitchingAPIVersion
         )
     }
 

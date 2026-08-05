@@ -62,9 +62,13 @@ struct PlaylistServiceWiringTests {
             metadataStatus: .enrichedMatch
         )
         let source = MockLiveFsEventSource(events: [.update(enrichedUpdate)])
+        // A long interval on purpose: at a short one, a poll would wipe any
+        // leaked enrichment before the assertion below sampled it, so the loop
+        // would pass under the broken behavior too. Held open, a leak persists
+        // and is observable.
         let service = PlaylistService(
             fetcher: fetcher,
-            interval: 0.05,
+            interval: 3600,
             cacheCoordinator: makeTestCacheCoordinator(),
             liveEventSource: source,
             apiVersion: .v1
@@ -82,9 +86,10 @@ struct PlaylistServiceWiringTests {
 
         await service.setForegrounded(true)
 
-        // Several poll intervals' worth of proof that the consume loop never
-        // starts: the scripted enrichment never reaches the playlist, so no
-        // subsequent poll has anything to discard.
+        // The consume loop never starts, so the scripted enrichment never
+        // reaches the playlist. With the interval held open above, a leak
+        // would persist rather than being overwritten by a poll, so these
+        // samples genuinely discriminate.
         for _ in 0..<3 {
             try await Task.sleep(for: .milliseconds(60))
             let snapshot = await service.currentPlaylistSnapshot()
@@ -92,6 +97,7 @@ struct PlaylistServiceWiringTests {
         }
 
         #expect(source.connectCount == 0)
+        #expect(await service.wiringSnapshot().hasLiveUpdatesTask == false)
     }
 
     // MARK: - Derivation matrix
@@ -197,6 +203,84 @@ struct PlaylistServiceWiringTests {
         #expect(afterReswitch.apiVersion == .v2)
         #expect(afterReswitch.liveUpdatesActive == true)
         #expect(await waitUntil { source.connectCount > connectCountBeforeReswitch })
+    }
+
+    // MARK: - switchAPIVersion reentrancy
+
+    @Test(
+        "a foreground toggle landing mid-switch cannot start a loop bound to the pre-switch source",
+        .timeLimit(.minutes(1))
+    )
+    func foregroundToggleMidSwitchCannotStartStaleLoop() async throws {
+        // Deterministic, with no sleeps and no wall-clock tolerance. The lever
+        // is that `applyLiveEvent(.refetch)` routes to `fetchAndCachePlaylist()`
+        // → `await fetcher.fetchPlaylist()`, and GatedPlaylistFetcher parks
+        // there on a non-throwing continuation — which has no cancellation
+        // handling. So the consume loop can be held at a point cancellation
+        // cannot move it, and `switchAPIVersion`'s `await liveUpdatesTask?.value`
+        // stays suspended for exactly as long as this test wants.
+        let fetcher = GatedPlaylistFetcher(
+            playlist: .stub(playcuts: [
+                .stub(id: 3, chronOrderID: 3, songTitle: "Peng!", artistName: "Stereolab")
+            ])
+        )
+        let source = MockLiveFsEventSource(events: [.refetch(source: "etl")])
+        let service = PlaylistService(
+            fetcher: fetcher,
+            cacheCoordinator: makeTestCacheCoordinator(),
+            liveEventSource: source,
+            apiVersion: .v2
+        )
+
+        // No updates() subscriber on purpose: without one, startFetching()
+        // never runs, so the gate sees only the consume loop's traffic.
+        await service.setForegrounded(true)
+        await fetcher.waitForEntry(count: 1)
+        #expect(await service.wiringSnapshot().hasLiveUpdatesTask)
+
+        // Parked. Start the switch — it cancels the consume loop (which cannot
+        // observe the cancellation while parked) and suspends on its `.value`.
+        let switchTask = Task { await service.switchAPIVersion(to: .v1) }
+
+        // Wait for the switch to have actually latched before driving anything
+        // at it. An unstructured Task's start is not ordered against the lines
+        // below, so without this the toggles can win the race and the test
+        // fails for the wrong reason. Each iteration is an actor hop plus a
+        // yield — no sleeps, no wall-clock tolerance; the suite's .timeLimit
+        // bounds it if the switch somehow never enters.
+        while await service.wiringSnapshot().isSwitchingAPIVersion == false {
+            await Task.yield()
+        }
+
+        // The exact reentrant pair from the orphan scenario. Both land while
+        // the switch is suspended on `await cancelledLiveUpdates?.value`,
+        // which cannot return until the gate is released below.
+        await service.setForegrounded(false)
+        await service.setForegrounded(true)
+
+        // The load-bearing assertion. Without the isSwitchingAPIVersion latch,
+        // that setForegrounded(true) passes every guard in
+        // ensureLiveUpdatesRunning() — activeLiveEventSource is still the v2
+        // source (not re-derived until after the await), isForegrounded is
+        // true, liveUpdatesTask was just nil'd — and assigns a second loop
+        // synchronously, bound to the source the switch is tearing down.
+        #expect(await service.wiringSnapshot().hasLiveUpdatesTask == false)
+
+        // Release generously rather than counting exactly: the gate
+        // pre-authorizes, so surplus releases are inert, and a task parked on
+        // a non-throwing continuation is uncancellable — meaning .timeLimit
+        // cannot rescue an under-count. Releasing too few would hang the suite
+        // instead of failing it, which is exactly what happens under the
+        // regression this test guards (the orphaned loop parks on the gate
+        // too, adding a third consumer).
+        for _ in 0..<6 { fetcher.release() }
+        await switchTask.value
+
+        let afterSwitch = await service.wiringSnapshot()
+        #expect(afterSwitch.apiVersion == .v1)
+        #expect(afterSwitch.liveUpdatesActive == false)
+        #expect(afterSwitch.pollInterval == 30)
+        #expect(afterSwitch.hasLiveUpdatesTask == false)
     }
 
     // MARK: - Injected fetcher survives a version switch
