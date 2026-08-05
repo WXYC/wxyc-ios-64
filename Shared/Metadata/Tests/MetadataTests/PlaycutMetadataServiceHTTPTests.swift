@@ -29,12 +29,9 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockWebSession = MetadataMockWebSession()
-
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
             tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
-            session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
@@ -77,12 +74,9 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockWebSession = MetadataMockWebSession()
-
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
             tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
-            session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
@@ -121,12 +115,9 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockWebSession = MetadataMockWebSession()
-
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
             tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
-            session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
@@ -181,12 +172,9 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockWebSession = MetadataMockWebSession()
-
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
             tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
-            session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
@@ -270,12 +258,9 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockWebSession = MetadataMockWebSession()
-
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
             tokenProvider: RecordingTokenProvider(initialToken: "test-token"),
-            session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
@@ -322,12 +307,9 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockWebSession = MetadataMockWebSession()
-
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
             tokenProvider: RecordingTokenProvider(initialToken: "my-secret-token"),
-            session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
@@ -366,12 +348,9 @@ struct PlaycutMetadataServiceHTTPTests {
 
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockWebSession = MetadataMockWebSession()
-
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
             tokenProvider: RecordingTokenProvider(initialToken: "stale-token", refreshedToken: "fresh-token"),
-            session: mockWebSession,
             urlSession: mockURLSession,
             cache: cache
         )
