@@ -15,6 +15,11 @@ import Playlist
 ///
 /// Lets you preview the banner between DJs (when no sign-on is present in the flowsheet)
 /// and tune its indicator, DJ-handle typography, and spacing live.
+///
+/// Every persisted property writes through ``persist(_:forKey:)`` to a key in ``Keys`` —
+/// a single write-through helper rather than a property wrapper, because `@Observable`
+/// synthesizes its own storage for stored properties and a wrapper can't layer on top
+/// of that (WXYC/wxyc-ios-64#752).
 @MainActor
 @Observable
 public final class OnAirDebugState {
@@ -23,17 +28,13 @@ public final class OnAirDebugState {
     /// When true, the playlist shows the on-air banner with a placeholder DJ even when
     /// no one is currently signed on.
     public var forceOnAir: Bool {
-        didSet {
-            UserDefaults.standard.set(forceOnAir, forKey: "OnAirDebug.forceOnAir")
-        }
+        didSet { persist(forceOnAir, forKey: Keys.forceOnAir) }
     }
 
     /// The DJ handle shown when ``forceOnAir`` is on — editable so the adaptive
     /// width-condensing can be tried against handles of any length.
     public var forcedDJName: String {
-        didSet {
-            UserDefaults.standard.set(forcedDJName, forKey: "OnAirDebug.forcedDJName")
-        }
+        didSet { persist(forcedDJName, forKey: Keys.forcedDJName) }
     }
 
     // MARK: - Adaptive handle width
@@ -41,17 +42,13 @@ public final class OnAirDebugState {
     /// Whether the DJ handle condenses its width axis to fit one line beside the
     /// say-hi chip (on) or renders at the fixed ``handleWidth`` (off).
     public var adaptiveWidth: Bool {
-        didSet {
-            UserDefaults.standard.set(adaptiveWidth, forKey: "OnAirDebug.adaptiveWidth")
-        }
+        didSet { persist(adaptiveWidth, forKey: Keys.adaptiveWidth) }
     }
 
     /// The narrowest `wdth` axis the adaptive fit will use before the handle
     /// wraps, `30...150`.
     public var handleWidthFloor: Double {
-        didSet {
-            UserDefaults.standard.set(handleWidthFloor, forKey: "OnAirDebug.handleWidthFloor")
-        }
+        didSet { persist(handleWidthFloor, forKey: Keys.handleWidthFloor) }
     }
 
     // MARK: - Say Hi chip
@@ -59,9 +56,7 @@ public final class OnAirDebugState {
     /// Opacity of the say-hi chip's green glass tint, `0...1` — the capsule
     /// background transparency. The chip's text and icon stay opaque.
     public var requestLineTintOpacity: Double {
-        didSet {
-            UserDefaults.standard.set(requestLineTintOpacity, forKey: "OnAirDebug.requestLineTintOpacity")
-        }
+        didSet { persist(requestLineTintOpacity, forKey: Keys.requestLineTintOpacity) }
     }
 
     // MARK: - "ON AIR" indicator theme
@@ -69,125 +64,161 @@ public final class OnAirDebugState {
     /// Hue of the "ON AIR" indicator, `0...1`. Combined with ``indicatorSaturation`` and
     /// ``indicatorLightness`` into an ``HSL`` color at the view layer.
     public var indicatorHue: Double {
-        didSet { UserDefaults.standard.set(indicatorHue, forKey: "OnAirDebug.indicatorHue") }
+        didSet { persist(indicatorHue, forKey: Keys.indicatorHue) }
     }
 
     /// Saturation of the "ON AIR" indicator, `0...1`.
     public var indicatorSaturation: Double {
-        didSet { UserDefaults.standard.set(indicatorSaturation, forKey: "OnAirDebug.indicatorSaturation") }
+        didSet { persist(indicatorSaturation, forKey: Keys.indicatorSaturation) }
     }
 
     /// Lightness of the "ON AIR" indicator, `0...1`.
     public var indicatorLightness: Double {
-        didSet { UserDefaults.standard.set(indicatorLightness, forKey: "OnAirDebug.indicatorLightness") }
+        didSet { persist(indicatorLightness, forKey: Keys.indicatorLightness) }
     }
 
     /// Blur radius of the indicator's glow, in points.
     public var indicatorBlurRadius: Double {
-        didSet { UserDefaults.standard.set(indicatorBlurRadius, forKey: "OnAirDebug.indicatorBlurRadius") }
+        didSet { persist(indicatorBlurRadius, forKey: Keys.indicatorBlurRadius) }
     }
 
     // MARK: - DJ handle typography (SF Pro variable-font axes)
 
     /// SF Pro `wght` (Weight) axis for the DJ handle, `1...1000`.
     public var handleWeight: Double {
-        didSet { UserDefaults.standard.set(handleWeight, forKey: "OnAirDebug.handleWght") }
+        didSet { persist(handleWeight, forKey: Keys.handleWeight) }
     }
 
     /// SF Pro `wdth` (Width) axis, `30...150`.
     public var handleWidth: Double {
-        didSet { UserDefaults.standard.set(handleWidth, forKey: "OnAirDebug.handleWdth") }
+        didSet { persist(handleWidth, forKey: Keys.handleWidth) }
     }
 
     /// SF Pro `opsz` (Optical Size) axis, `17...96`.
     public var handleOpticalSize: Double {
-        didSet { UserDefaults.standard.set(handleOpticalSize, forKey: "OnAirDebug.handleOpsz") }
+        didSet { persist(handleOpticalSize, forKey: Keys.handleOpticalSize) }
     }
 
     /// SF Pro `GRAD` (Grade) axis, `400...1000`.
     public var handleGrade: Double {
-        didSet { UserDefaults.standard.set(handleGrade, forKey: "OnAirDebug.handleGrad") }
+        didSet { persist(handleGrade, forKey: Keys.handleGrade) }
     }
 
     // MARK: - Banner spacing
 
     /// Vertical space between the "ON AIR" eyebrow and the DJ handle, in points.
     public var onAirSpacing: Double {
-        didSet { UserDefaults.standard.set(onAirSpacing, forKey: "OnAirDebug.onAirSpacing") }
+        didSet { persist(onAirSpacing, forKey: Keys.onAirSpacing) }
     }
 
     /// Line spacing applied to the DJ handle, in points (affects wrapped handles).
     public var handleLineSpacing: Double {
-        didSet { UserDefaults.standard.set(handleLineSpacing, forKey: "OnAirDebug.handleLineSpacing") }
+        didSet { persist(handleLineSpacing, forKey: Keys.handleLineSpacing) }
     }
 
     // MARK: - DJ handle grade wave
 
     /// Whether the handle plays its one-shot grade wave on appear / handle change.
     public var waveEnabled: Bool {
-        didSet { UserDefaults.standard.set(waveEnabled, forKey: "OnAirDebug.waveEnabled") }
+        didSet { persist(waveEnabled, forKey: Keys.waveEnabled) }
     }
 
     /// Duration of one handle-wave sweep, in seconds.
     public var waveDuration: Double {
-        didSet { UserDefaults.standard.set(waveDuration, forKey: "OnAirDebug.waveDuration") }
+        didSet { persist(waveDuration, forKey: Keys.waveDuration) }
     }
 
     /// How far the wave lightens a letter's grade at the crest peak (`0` is off).
     public var waveDepth: Double {
-        didSet { UserDefaults.standard.set(waveDepth, forKey: "OnAirDebug.waveDepth") }
+        didSet { persist(waveDepth, forKey: Keys.waveDepth) }
     }
 
     /// How far the wave also thins a letter's weight at the crest peak, for a much
     /// thinner crest than grade alone reaches (`0` leaves weight alone).
     public var waveWeightDepth: Double {
-        didSet { UserDefaults.standard.set(waveWeightDepth, forKey: "OnAirDebug.waveWeightDepth") }
+        didSet { persist(waveWeightDepth, forKey: Keys.waveWeightDepth) }
     }
 
     /// The wave crest's half-width as a fraction of the handle, `(0, 1]`.
     public var waveCrestHalfWidth: Double {
-        didSet { UserDefaults.standard.set(waveCrestHalfWidth, forKey: "OnAirDebug.waveCrestHalfWidth") }
+        didSet { persist(waveCrestHalfWidth, forKey: Keys.waveCrestHalfWidth) }
     }
 
     /// How many times the crest sweeps across the handle per animation, `1...5`.
     /// Stored as a `Double` for the slider; the banner rounds it to a whole count.
     public var waveRepetitions: Double {
-        didSet { UserDefaults.standard.set(waveRepetitions, forKey: "OnAirDebug.waveRepetitions") }
+        didSet { persist(waveRepetitions, forKey: Keys.waveRepetitions) }
     }
 
     /// The launch interval between consecutive crests, as a fraction of one sweep,
     /// `0.1...1`. Lower values overlap the crests for a snappier train.
     public var waveSpacing: Double {
-        didSet { UserDefaults.standard.set(waveSpacing, forKey: "OnAirDebug.waveSpacing") }
+        didSet { persist(waveSpacing, forKey: Keys.waveSpacing) }
     }
 
     /// A transient replay token bumped by the debug "Play wave" button to re-run
     /// the animation on demand. Not persisted — it's a one-shot UI event.
     public var waveReplayToken: Int = 0
 
+    /// `UserDefaults` keys for every persisted property above, gathered in one place
+    /// rather than declared inline at each `didSet` (WXYC/wxyc-ios-64#752). Values are
+    /// load-bearing: they're already written to real devices, so changing one resets
+    /// that tester's tuned banner back to the shipping default.
+    private enum Keys {
+        static let forceOnAir = "OnAirDebug.forceOnAir"
+        static let forcedDJName = "OnAirDebug.forcedDJName"
+        static let adaptiveWidth = "OnAirDebug.adaptiveWidth"
+        static let handleWidthFloor = "OnAirDebug.handleWidthFloor"
+        static let requestLineTintOpacity = "OnAirDebug.requestLineTintOpacity"
+        static let indicatorHue = "OnAirDebug.indicatorHue"
+        static let indicatorSaturation = "OnAirDebug.indicatorSaturation"
+        static let indicatorLightness = "OnAirDebug.indicatorLightness"
+        static let indicatorBlurRadius = "OnAirDebug.indicatorBlurRadius"
+        static let handleWeight = "OnAirDebug.handleWght"
+        static let handleWidth = "OnAirDebug.handleWdth"
+        static let handleOpticalSize = "OnAirDebug.handleOpsz"
+        static let handleGrade = "OnAirDebug.handleGrad"
+        static let onAirSpacing = "OnAirDebug.onAirSpacing"
+        static let handleLineSpacing = "OnAirDebug.handleLineSpacing"
+        static let waveEnabled = "OnAirDebug.waveEnabled"
+        static let waveDuration = "OnAirDebug.waveDuration"
+        static let waveDepth = "OnAirDebug.waveDepth"
+        static let waveWeightDepth = "OnAirDebug.waveWeightDepth"
+        static let waveCrestHalfWidth = "OnAirDebug.waveCrestHalfWidth"
+        static let waveRepetitions = "OnAirDebug.waveRepetitions"
+        static let waveSpacing = "OnAirDebug.waveSpacing"
+    }
+
+    /// Writes `value` to `UserDefaults.standard` under `key` — the shared write-through
+    /// every persisted property's `didSet` calls. A plain method rather than a property
+    /// wrapper: see the type-level doc comment for why a wrapper isn't an option here.
+    private func persist(_ value: Any?, forKey key: String) {
+        UserDefaults.standard.set(value, forKey: key)
+    }
+
     private init() {
         let defaults = UserDefaults.standard
-        self.forceOnAir = defaults.bool(forKey: "OnAirDebug.forceOnAir")
-        self.forcedDJName = defaults.string(forKey: "OnAirDebug.forcedDJName") ?? "DJ HOUNDSTOOTH"
-        self.adaptiveWidth = defaults.object(forKey: "OnAirDebug.adaptiveWidth") as? Bool ?? true
-        self.handleWidthFloor = defaults.object(forKey: "OnAirDebug.handleWidthFloor") as? Double ?? 50
-        self.requestLineTintOpacity = defaults.object(forKey: "OnAirDebug.requestLineTintOpacity") as? Double ?? 0.75
-        self.indicatorHue = defaults.object(forKey: "OnAirDebug.indicatorHue") as? Double ?? 0.33
-        self.indicatorSaturation = defaults.object(forKey: "OnAirDebug.indicatorSaturation") as? Double ?? 1.0
-        self.indicatorLightness = defaults.object(forKey: "OnAirDebug.indicatorLightness") as? Double ?? 0.5
-        self.indicatorBlurRadius = defaults.object(forKey: "OnAirDebug.indicatorBlurRadius") as? Double ?? 4.5
-        self.handleWeight = defaults.object(forKey: "OnAirDebug.handleWght") as? Double ?? SFProFontAxis.weight.defaultValue
-        self.handleWidth = defaults.object(forKey: "OnAirDebug.handleWdth") as? Double ?? SFProFontAxis.width.defaultValue
-        self.handleOpticalSize = defaults.object(forKey: "OnAirDebug.handleOpsz") as? Double ?? SFProFontAxis.opticalSize.defaultValue
-        self.handleGrade = defaults.object(forKey: "OnAirDebug.handleGrad") as? Double ?? SFProFontAxis.grade.defaultValue
-        self.onAirSpacing = defaults.object(forKey: "OnAirDebug.onAirSpacing") as? Double ?? 0.0
-        self.handleLineSpacing = defaults.object(forKey: "OnAirDebug.handleLineSpacing") as? Double ?? 0.0
-        self.waveEnabled = defaults.object(forKey: "OnAirDebug.waveEnabled") as? Bool ?? true
-        self.waveDuration = defaults.object(forKey: "OnAirDebug.waveDuration") as? Double ?? 2
-        self.waveDepth = defaults.object(forKey: "OnAirDebug.waveDepth") as? Double ?? 536
-        self.waveWeightDepth = defaults.object(forKey: "OnAirDebug.waveWeightDepth") as? Double ?? 647
-        self.waveCrestHalfWidth = defaults.object(forKey: "OnAirDebug.waveCrestHalfWidth") as? Double ?? 0.75
-        self.waveRepetitions = defaults.object(forKey: "OnAirDebug.waveRepetitions") as? Double ?? 1
-        self.waveSpacing = defaults.object(forKey: "OnAirDebug.waveSpacing") as? Double ?? 0.66
+        self.forceOnAir = defaults.bool(forKey: Keys.forceOnAir)
+        self.forcedDJName = defaults.string(forKey: Keys.forcedDJName) ?? "DJ HOUNDSTOOTH"
+        self.adaptiveWidth = defaults.object(forKey: Keys.adaptiveWidth) as? Bool ?? true
+        self.handleWidthFloor = defaults.object(forKey: Keys.handleWidthFloor) as? Double ?? 50
+        self.requestLineTintOpacity = defaults.object(forKey: Keys.requestLineTintOpacity) as? Double ?? 0.75
+        self.indicatorHue = defaults.object(forKey: Keys.indicatorHue) as? Double ?? 0.33
+        self.indicatorSaturation = defaults.object(forKey: Keys.indicatorSaturation) as? Double ?? 1.0
+        self.indicatorLightness = defaults.object(forKey: Keys.indicatorLightness) as? Double ?? 0.5
+        self.indicatorBlurRadius = defaults.object(forKey: Keys.indicatorBlurRadius) as? Double ?? 4.5
+        self.handleWeight = defaults.object(forKey: Keys.handleWeight) as? Double ?? SFProFontAxis.weight.defaultValue
+        self.handleWidth = defaults.object(forKey: Keys.handleWidth) as? Double ?? SFProFontAxis.width.defaultValue
+        self.handleOpticalSize = defaults.object(forKey: Keys.handleOpticalSize) as? Double ?? SFProFontAxis.opticalSize.defaultValue
+        self.handleGrade = defaults.object(forKey: Keys.handleGrade) as? Double ?? SFProFontAxis.grade.defaultValue
+        self.onAirSpacing = defaults.object(forKey: Keys.onAirSpacing) as? Double ?? 0.0
+        self.handleLineSpacing = defaults.object(forKey: Keys.handleLineSpacing) as? Double ?? 0.0
+        self.waveEnabled = defaults.object(forKey: Keys.waveEnabled) as? Bool ?? true
+        self.waveDuration = defaults.object(forKey: Keys.waveDuration) as? Double ?? 2
+        self.waveDepth = defaults.object(forKey: Keys.waveDepth) as? Double ?? 536
+        self.waveWeightDepth = defaults.object(forKey: Keys.waveWeightDepth) as? Double ?? 647
+        self.waveCrestHalfWidth = defaults.object(forKey: Keys.waveCrestHalfWidth) as? Double ?? 0.75
+        self.waveRepetitions = defaults.object(forKey: Keys.waveRepetitions) as? Double ?? 1
+        self.waveSpacing = defaults.object(forKey: Keys.waveSpacing) as? Double ?? 0.66
     }
 }
