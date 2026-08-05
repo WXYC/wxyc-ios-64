@@ -18,7 +18,6 @@
 //
 
 import Foundation
-import Artwork
 import Logger
 import Core
 import Caching
