@@ -47,6 +47,7 @@
 		ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = B1E128B6E39E90EA57C68C69 /* MusicShareKit */; };
 		B0A59156E0821D59D5F50AAE /* Artwork in Frameworks */ = {isa = PBXBuildFile; productRef = 3776C2184A667CCB7B4E0B67 /* Artwork */; };
 		B3C1123B54E860DEF19F22BF /* AppServices in Frameworks */ = {isa = PBXBuildFile; productRef = 932CA5D4CF336582845E6C75 /* AppServices */; };
+		CONCERTS0BUILDFILE0001 /* Concerts in Frameworks */ = {isa = PBXBuildFile; productRef = CONCERTS0PRODDEP000001 /* Concerts */; };
 		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
 		LIKEDSONGSFWBUILD000001 /* LikedSongs in Frameworks */ = {isa = PBXBuildFile; productRef = LIKEDSONGSPRODDEP000001 /* LikedSongs */; };
@@ -402,6 +403,7 @@
 				23B42F972F0209CB007351F1 /* ColorPalette in Frameworks */,
 				7127691612A44A229E553EDE /* Sentry in Frameworks */,
 				WXYCINTENTS00000001 /* WXYCIntents in Frameworks */,
+				CONCERTS0BUILDFILE0001 /* Concerts in Frameworks */,
 			);
 		};
 		5282D69CBC6C3EAF27DE8CBE /* Frameworks */ = {
@@ -680,6 +682,7 @@
 				23D4181A2EF2C8000DBGPNL /* DebugPanel */,
 				23B42F962F0209CB007351F1 /* ColorPalette */,
 				WXYCINTENTS00000005 /* WXYCIntents */,
+				CONCERTS0PRODDEP000001 /* Concerts */,
 			);
 			productName = WXYC;
 			productReference = 87ED2724FB87B5D288BBFFFB /* WXYC.app */;
@@ -2712,6 +2715,11 @@
 		BE7D47372C4F1F83B0F271DE /* Metadata */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Metadata;
+		};
+		CONCERTS0PRODDEP000001 /* Concerts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CONCERTS0PKGREF00000001 /* XCLocalSwiftPackageReference "Shared/Concerts" */;
+			productName = Concerts;
 		};
 		D1362165656CBF5DDD9E5DDA /* Playlist */ = {
 			isa = XCSwiftPackageProductDependency;
