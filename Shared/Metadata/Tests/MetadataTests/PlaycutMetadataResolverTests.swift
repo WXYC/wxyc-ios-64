@@ -26,6 +26,7 @@ import CoreTesting
 import Playlist
 import PlaylistTesting
 @testable import Caching
+import CachingTesting
 @testable import Metadata
 
 // MARK: - Fixtures
@@ -305,7 +306,7 @@ extension PlaycutMetadataServiceHTTPTests {
         PlaycutMetadataResolver(
             service: PlaycutMetadataService(
                 urlSession: QueuedStubURLProtocol.makeSession(),
-                cache: CacheCoordinator(cache: PlaycutMetadataMockCache())
+                cache: CacheCoordinator(cache: CountingCache())
             )
         )
     }

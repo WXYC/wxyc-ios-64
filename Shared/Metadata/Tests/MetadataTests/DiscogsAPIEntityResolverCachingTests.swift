@@ -28,59 +28,8 @@ import Foundation
 import Core
 import CoreTesting
 @testable import Caching
+import CachingTesting
 @testable import Metadata
-
-// MARK: - Mock Cache for Entity Resolver Tests
-
-final class EntityResolverMockCache: Cache, @unchecked Sendable {
-    private var dataStorage: [String: Data] = [:]
-    private var metadataStorage: [String: CacheMetadata] = [:]
-    var getCallCount = 0
-    var setCallCount = 0
-    var keysSet: [String] = []
-    var lastGetKey: String?
-    var lastSetKey: String?
-
-    func metadata(for key: String) -> CacheMetadata? {
-        getCallCount += 1
-        lastGetKey = key
-        return metadataStorage[key]
-    }
-
-    func data(for key: String) -> Data? {
-        dataStorage[key]
-    }
-
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        setCallCount += 1
-        lastSetKey = key
-        keysSet.append(key)
-        if let data {
-            dataStorage[key] = data
-            metadataStorage[key] = metadata
-        } else {
-            remove(for: key)
-        }
-    }
-
-    func remove(for key: String) {
-        dataStorage.removeValue(forKey: key)
-        metadataStorage.removeValue(forKey: key)
-    }
-
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        metadataStorage.map { ($0.key, $0.value) }
-    }
-
-    func clearAll() {
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-    }
-
-    func totalSize() -> Int64 {
-        dataStorage.values.reduce(0) { $0 + Int64($1.count) }
-    }
-}
 
 // MARK: - Fail-fast session for cache-hit tests
 
@@ -118,13 +67,13 @@ struct DiscogsAPIEntityResolverCachingTests {
     @Test("resolveArtist returns cached name without API call")
     func resolveArtistReturnsCached() async throws {
         // Given
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(urlSession: failFastSession(), cache: cache)
 
         // Pre-populate cache with artist name
         await cache.set(value: "Cached Artist Name", for: "discogs-artist-12345", lifespan: 3600)
-        mockCache.getCallCount = 0  // Reset after setup
+        mockCache.reset()
 
         // When
         let result = try await resolver.resolveArtist(id: 12345)
@@ -136,13 +85,13 @@ struct DiscogsAPIEntityResolverCachingTests {
     @Test("resolveRelease returns cached title without API call")
     func resolveReleaseReturnsCached() async throws {
         // Given
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(urlSession: failFastSession(), cache: cache)
 
         // Pre-populate cache
         await cache.set(value: "Cached Album Title", for: "discogs-release-54321", lifespan: 3600)
-        mockCache.getCallCount = 0
+        mockCache.reset()
 
         // When
         let result = try await resolver.resolveRelease(id: 54321)
@@ -154,13 +103,13 @@ struct DiscogsAPIEntityResolverCachingTests {
     @Test("resolveMaster returns cached title without API call")
     func resolveMasterReturnsCached() async throws {
         // Given
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(urlSession: failFastSession(), cache: cache)
 
         // Pre-populate cache
         await cache.set(value: "Cached Master Title", for: "discogs-master-11111", lifespan: 3600)
-        mockCache.getCallCount = 0
+        mockCache.reset()
 
         // When
         let result = try await resolver.resolveMaster(id: 11111)
@@ -208,7 +157,7 @@ extension PlaycutMetadataServiceHTTPTests {
 
     @Test("resolveArtist fetches from backend proxy and caches on miss")
     func discogsResolveArtistFetchesAndCaches() async throws {
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
 
@@ -224,12 +173,12 @@ extension PlaycutMetadataServiceHTTPTests {
 
         #expect(result == "New Artist From API")
         #expect(QueuedStubURLProtocol.capturedRequests().count == 1, "Should make exactly one API call")
-        #expect(mockCache.keysSet.contains("discogs-artist-99999"), "Should cache the result")
+        #expect(mockCache.setKeys.contains("discogs-artist-99999"), "Should cache the result")
     }
 
     @Test("resolveRelease fetches from backend proxy and caches on miss")
     func discogsResolveReleaseFetchesAndCaches() async throws {
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
 
@@ -245,12 +194,12 @@ extension PlaycutMetadataServiceHTTPTests {
 
         #expect(result == "New Album From API")
         #expect(QueuedStubURLProtocol.capturedRequests().count == 1)
-        #expect(mockCache.keysSet.contains("discogs-release-88888"))
+        #expect(mockCache.setKeys.contains("discogs-release-88888"))
     }
 
     @Test("resolveMaster fetches from backend proxy and caches on miss")
     func discogsResolveMasterFetchesAndCaches() async throws {
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
 
@@ -266,12 +215,12 @@ extension PlaycutMetadataServiceHTTPTests {
 
         #expect(result == "New Master From API")
         #expect(QueuedStubURLProtocol.capturedRequests().count == 1)
-        #expect(mockCache.keysSet.contains("discogs-master-77777"))
+        #expect(mockCache.setKeys.contains("discogs-master-77777"))
     }
 
     @Test("Second call returns cached result without additional API call")
     func discogsSecondCallReturnsCached() async throws {
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
 
@@ -300,7 +249,7 @@ extension PlaycutMetadataServiceHTTPTests {
 
     @Test("Uses correct cache key format for each entity type")
     func discogsUsesCorrectCacheKeyFormat() async throws {
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
 
@@ -327,9 +276,9 @@ extension PlaycutMetadataServiceHTTPTests {
         _ = try await resolver.resolveMaster(id: 3)
 
         // Then
-        #expect(mockCache.keysSet.contains(MetadataCacheKey.discogsEntity(type: "artist", id: 1)))
-        #expect(mockCache.keysSet.contains(MetadataCacheKey.discogsEntity(type: "release", id: 2)))
-        #expect(mockCache.keysSet.contains(MetadataCacheKey.discogsEntity(type: "master", id: 3)))
+        #expect(mockCache.setKeys.contains(MetadataCacheKey.discogsEntity(type: "artist", id: 1)))
+        #expect(mockCache.setKeys.contains(MetadataCacheKey.discogsEntity(type: "release", id: 2)))
+        #expect(mockCache.setKeys.contains(MetadataCacheKey.discogsEntity(type: "master", id: 3)))
     }
 
     // MARK: - 401 Reauthenticate-and-Retry Test (#414/#415)
@@ -342,7 +291,7 @@ extension PlaycutMetadataServiceHTTPTests {
     func discogsEntityResolverRetriesOnceOn401ThenSucceeds() async throws {
         let mockURLSession = QueuedStubURLProtocol.makeSession()
 
-        let mockCache = EntityResolverMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let resolver = DiscogsAPIEntityResolver(
             tokenProvider: RecordingTokenProvider(initialToken: "stale-token", refreshedToken: "fresh-token"),

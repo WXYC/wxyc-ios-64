@@ -15,6 +15,7 @@ import CoreTesting
 import Playlist
 import PlaylistTesting
 @testable import Caching
+import CachingTesting
 @testable import Metadata
 
 // MARK: - HTTP Status Code Validation Tests
@@ -27,7 +28,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // Given
         let mockURLSession = QueuedStubURLProtocol.makeSession()
 
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -72,7 +73,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // Given
         let mockURLSession = QueuedStubURLProtocol.makeSession()
 
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -113,7 +114,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // Given
         let mockURLSession = QueuedStubURLProtocol.makeSession()
 
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -170,7 +171,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // Given
         let mockURLSession = QueuedStubURLProtocol.makeSession()
 
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -256,7 +257,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // Given
         let mockURLSession = QueuedStubURLProtocol.makeSession()
 
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -305,7 +306,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // Given
         let mockURLSession = QueuedStubURLProtocol.makeSession()
 
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -346,7 +347,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // Given
         let mockURLSession = QueuedStubURLProtocol.makeSession()
 
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,

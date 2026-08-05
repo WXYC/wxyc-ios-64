@@ -31,6 +31,7 @@ import Core
 import Playlist
 import PlaylistTesting
 @testable import Caching
+import CachingTesting
 @testable import Metadata
 
 // MARK: - Mock WebSession for this file's suite
@@ -115,7 +116,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
     @Test("Inline V2 with at least one streaming URL skips the proxy fetch")
     func inlineV2WithStreamingURLsSkipsFetch() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -150,7 +151,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // intact) and never touch the proxy (#402). This asserts the service
         // boundary specifically; the builder itself is covered directly in
         // PlaycutMetadataResolverTests.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -191,7 +192,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
     @Test("Inline V2 with empty streaming falls through to /proxy/metadata/album")
     func inlineV2WithEmptyStreamingHitsProxy() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -236,7 +237,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
     @Test("Inline V2 fallthrough preserves inline album and artist data when proxy omits them")
     func inlineV2FallthroughPreservesInlineData() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -287,7 +288,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // doesn't declare the field — see the NOTE in
         // PlaycutMetadataService.fetchAlbumAndStreaming), so the merge must
         // fall back to the inline value rather than silently dropping it.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -336,7 +337,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // declares the field (#731), so it's no longer silently dropped at
         // decode time. Empty inline streaming (Tragic Magic shape) so the
         // service still falls through to the proxy.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -393,7 +394,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // response that doesn't return genres itself. Locking in that this is
         // the actual, intended behavior (proxy wins when present, inline is a
         // fallback), not an untested accident.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -445,7 +446,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // alone) still lets this row reach fetchMetadata with empty inline.streaming,
         // and the old Gate-2 check (`inline.streaming.hasAny`) would fall through to
         // the proxy anyway. The terminal status must short-circuit here too.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -484,7 +485,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         ]
     )
     func terminalRowSingleNonStreamingFieldSkipsProxy(field: String) async throws {
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -533,7 +534,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // critic_reviews must render ReviewsSection from feed data alone —
         // the review must survive `fetchMetadata`'s terminal short-circuit
         // (#685/#691, unmodified by this change) with no proxy round-trip.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -574,7 +575,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
 
     @Test("Terminal row with zero enriched fields renders base-only, no proxy")
     func terminalEmptyRowSkipsProxy() async throws {
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -603,7 +604,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
     @Test("No inline V2 metadata behaves identically to fetchMetadata(for:)")
     func noInlineFallsBackToProxyFetch() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -644,7 +645,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
     @Test("Empty streaming response is cached with the short TTL constant")
     func emptyStreamingUsesShortTTL() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -702,7 +703,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // once the album carried an artist id, and a proxy answer with no bio
         // silently replaces the bio the V2 row already had. The album side next
         // to it coalesces field-by-field; the artist side has to as well.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -761,7 +762,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // Given — the row is mid-enrichment, so the proxy has nothing but the
         // base label column to give back. Pinning that for a week is what made
         // #812 survive closing and reopening the card.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -826,7 +827,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
         // open forever and return the same nothing each time. `nil` covers that
         // cohort along with v1 rows; a terminal status covers a row Backend has
         // already given up on.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -873,7 +874,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
 
     @Test("An enriched album response keeps the seven-day TTL")
     func enrichedAlbumKeepsSevenDayTTL() async throws {
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -941,7 +942,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
     /// the `PlaycutMetadataService` boundary; the resolver's own branch is
     /// covered directly in `PlaycutMetadataResolverTests`.
     private func assertMetadataStatusGatesProxyCall(status: MetadataStatus?, expectsProxyCall: Bool) async throws {
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -986,7 +987,7 @@ struct PlaycutMetadataServiceV2FallbackTests {
     @Test("Populated streaming response keeps the seven-day TTL")
     func populatedStreamingKeepsSevenDayTTL() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
