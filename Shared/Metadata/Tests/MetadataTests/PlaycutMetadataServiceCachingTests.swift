@@ -26,66 +26,9 @@ import Playlist
 import PlaylistTesting
 import WXYCAPIModels
 @testable import Caching
+import CachingTesting
 @testable import Metadata
 
-// MARK: - Mock Cache
-
-/// Mock cache for PlaycutMetadataService tests (has additional tracking properties)
-final class PlaycutMetadataMockCache: Cache, @unchecked Sendable {
-    private var dataStorage: [String: Data] = [:]
-    private var metadataStorage: [String: CacheMetadata] = [:]
-    var getCallCount = 0
-    var setCallCount = 0
-    var accessedKeys: [String] = []
-    var setKeys: [String] = []
-    
-    func metadata(for key: String) -> CacheMetadata? {
-        getCallCount += 1
-        accessedKeys.append(key)
-        return metadataStorage[key]
-    }
-    
-    func data(for key: String) -> Data? {
-        return dataStorage[key]
-    }
-    
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        setCallCount += 1
-        setKeys.append(key)
-        if let data {
-            dataStorage[key] = data
-            metadataStorage[key] = metadata
-        } else {
-            remove(for: key)
-        }
-    }
-    
-    func remove(for key: String) {
-        dataStorage.removeValue(forKey: key)
-        metadataStorage.removeValue(forKey: key)
-    }
-    
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        metadataStorage.map { ($0.key, $0.value) }
-    }
-
-    func clearAll() {
-        dataStorage.removeAll()
-        metadataStorage.removeAll()
-    }
-
-    func totalSize() -> Int64 {
-        dataStorage.values.reduce(0) { $0 + Int64($1.count) }
-    }
-
-    func reset() {
-        getCallCount = 0
-        setCallCount = 0
-        accessedKeys.removeAll()
-        setKeys.removeAll()
-    }
-}
-        
 // MARK: - Mock WebSession replacement for Metadata Service
 
 /// A stub `URLProtocol`-backed double for `PlaycutMetadataService`'s single
@@ -197,7 +140,7 @@ struct PlaycutMetadataServiceCachingTests {
     /// convention `ConcertsFetcherTests` uses for `/concerts`.
     @Test("Requests the exact proxy endpoint paths, not merely paths containing them")
     func requestsExactProxyEndpointPaths() async throws {
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(
             urlSession: mockSession.urlSession,
@@ -239,7 +182,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Returns cached metadata without making API calls")
     func returnsCachedMetadata() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -291,7 +234,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Fetches from API and caches result on cache miss")
     func fetchesAndCachesOnMiss() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -336,7 +279,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Uses correct cache key format for each level")
     func usesCorrectCacheKeys() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -374,7 +317,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Second fetch returns cached data without API call")
     func secondFetchReturnsCached() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -417,7 +360,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Parses enriched API response with genres, styles, and fullReleaseDate")
     func parsesEnrichedAPIResponse() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -503,7 +446,7 @@ struct PlaycutMetadataServiceCachingTests {
         #expect(wireResponse.artworkUrl == "https://example.com/artwork.jpg")
 
         // And - the service maps that same payload into the domain AlbumMetadata/StreamingLinks.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -565,7 +508,7 @@ struct PlaycutMetadataServiceCachingTests {
 
         // And - the service maps that same payload into ArtistMetadata.bioTokens, dropping the
         // unknown-type token via compactMap(ResolvedBioToken.init) rather than failing the fetch.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -624,7 +567,7 @@ struct PlaycutMetadataServiceCachingTests {
 
         // And - the service's transform carries nil bioTokens through to ArtistMetadata,
         // keeping the rest of the artist metadata intact.
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -653,7 +596,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Maps discogsArtistId from dedicated field, not discogsReleaseId")
     func mapsDiscogsArtistIdCorrectly() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -701,7 +644,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Uses API label when available, falls back to playcut label")
     func usesAPILabelOverPlaycutLabel() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -739,7 +682,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Falls back to playcut label when API label is absent")
     func fallsBackToPlaycutLabelWhenAPILabelAbsent() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -776,7 +719,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Enriched fields are nil when absent from API response")
     func enrichedFieldsNilWhenAbsent() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
@@ -814,7 +757,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Same artist across different songs shares cached artist metadata")
     func sameArtistSharesCachedMetadata() async throws {
         // Given
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataMockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
