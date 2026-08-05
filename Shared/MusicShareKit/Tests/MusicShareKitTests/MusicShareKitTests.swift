@@ -76,6 +76,54 @@ struct MusicServiceURLHandlingTests {
     }
 }
 
+// MARK: - Cross-Product Artwork Fetching Tests
+
+@Suite("Music Service Artwork Fetching")
+struct MusicServiceArtworkFetchingTests {
+
+    @Test(
+        "Default fetchArtwork returns the track's cached artwork URL",
+        arguments: testableServices
+    )
+    func fetchArtworkReturnsCachedURL(serviceId: MusicService) async throws {
+        let service = makeService(for: serviceId)
+        let cachedArtworkURL = URL(string: "https://example.com/artwork/\(serviceId.rawValue).jpg")!
+        let track = MusicTrack(
+            service: serviceId,
+            url: TestURLs.all.first!,
+            title: nil,
+            artist: nil,
+            album: nil,
+            identifier: "123",
+            artworkURL: cachedArtworkURL
+        )
+
+        let artwork = try await service.fetchArtwork(for: track)
+
+        #expect(artwork == cachedArtworkURL)
+    }
+
+    @Test(
+        "Default fetchArtwork returns nil when no artwork has been cached",
+        arguments: testableServices
+    )
+    func fetchArtworkReturnsNilWhenUncached(serviceId: MusicService) async throws {
+        let service = makeService(for: serviceId)
+        let track = MusicTrack(
+            service: serviceId,
+            url: TestURLs.all.first!,
+            title: nil,
+            artist: nil,
+            album: nil,
+            identifier: "123"
+        )
+
+        let artwork = try await service.fetchArtwork(for: track)
+
+        #expect(artwork == nil)
+    }
+}
+
 // MARK: - Service-Specific URL Parsing Tests
 
 @Suite("URL Parsing")
