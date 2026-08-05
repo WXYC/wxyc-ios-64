@@ -6,14 +6,12 @@ let package = Package(
     platforms: [.iOS("18.4"), .macOS(.v15)],
     products: [.library(name: "ColorPalette", targets: ["ColorPalette"])],
     dependencies: [
-        .package(name: "Caching", path: "../Caching"),
         .package(name: "Core", path: "../Core"),
-        .package(name: "Logger", path: "../Logger"),
     ],
     targets: [
         .target(
             name: "ColorPalette",
-            dependencies: ["Caching", "Core", "Logger"]
+            dependencies: ["Core"]
         ),
         .testTarget(
             name: "ColorPaletteTests",
