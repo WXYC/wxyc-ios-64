@@ -124,15 +124,15 @@ public final class PlayerControllerTestHarness {
     public var sessionDeactivationSettled: Bool {
         audioPlayerController.map { !$0.debugState.sessionDeactivationInFlight } ?? true
     }
-
-    public var analyticsPlayCallCount: Int {
-        mockAnalytics.events.filter { $0 is PlaybackStartedEvent }.count
+    
+    public var analyticsPlayCallCount: Int { 
+        mockAnalytics.events.filter { $0 is PlaybackStartedEvent }.count 
     }
-
-    public var analyticsStopCallCount: Int {
-        mockAnalytics.events.filter { $0 is PlaybackStoppedEvent }.count
+    
+    public var analyticsStopCallCount: Int { 
+        mockAnalytics.events.filter { $0 is PlaybackStoppedEvent }.count 
     }
-
+    
     public var lastAnalyticsPlayReason: String? {
         (mockAnalytics.events.reversed().first(where: { $0 is PlaybackStartedEvent }) as? PlaybackStartedEvent)?.reason
     }
