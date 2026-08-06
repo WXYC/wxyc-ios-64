@@ -15,6 +15,7 @@ import Analytics
 import Concerts
 import SwiftUI
 import Wallpaper
+import WXUI
 
 /// A single concert row in the On Tour tab's list.
 struct ConcertRow: View {
@@ -153,36 +154,12 @@ struct ConcertRow: View {
     }
 
     private var feedTag: some View {
-        let colors = Self.tagColors(presenter.feedTagStyle)
-        return Text(presenter.feedTagText.uppercased())
-            .font(.system(.caption2, design: .monospaced)).fontWeight(.bold).kerning(0.8)
-            .foregroundStyle(colors.ink)
-            .padding(.horizontal, 8).padding(.vertical, 4)
-            .background(Capsule().fill(colors.fill))
-            .overlay(Capsule().stroke(colors.border, lineWidth: 1))
-            .fixedSize()
+        StatusPill(text: presenter.feedTagText, style: presenter.feedTagStyle.statusPillStyle)
     }
 
     private var accessibilityLabel: String {
         [concert.headlineName, venueLine, presenter.dateLabel, detailLine, presenter.feedTagText]
             .compactMap { $0 }
             .joined(separator: ", ")
-    }
-
-    /// Maps a semantic feed-tag style to a fill / border / ink triple, echoing the
-    /// Box Office ticket's color language (amber for on-sale, teal for free, etc.).
-    private static func tagColors(_ style: FeedTagStyle) -> (fill: Color, border: Color, ink: Color) {
-        switch style {
-        case .prominent:
-            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
-        case .free:
-            (Color.teal.opacity(0.18), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
-        case .muted:
-            (Color.white.opacity(0.1), Color.white.opacity(0.3), Color.white.opacity(0.7))
-        case .negative:
-            (Color.red.opacity(0.18), Color.red.opacity(0.5), Color(red: 1.0, green: 0.7, blue: 0.7))
-        case .neutral:
-            (Color.white.opacity(0.1), Color.white.opacity(0.25), Color.white.opacity(0.8))
-        }
     }
 }
