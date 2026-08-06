@@ -14,27 +14,24 @@ import Foundation
 import Core
 
 /// Data source that fetches playlists from the v1 (legacy tubafrenzy) flowsheet API.
+///
+/// The v1 API's response *is* the canonical `Playlist` shape, so the
+/// `RevalidatingJSONDataSource` map is the identity function. `repairsMojibake`
+/// is `true` here: the legacy tubafrenzy server has historically double-encoded
+/// UTF-8 as Latin-1 (see `Data.repairingMojibake()`'s doc comment).
 public final class PlaylistDataSourceV1: PlaylistDataSource, @unchecked Sendable {
-    private let session: URLSession
+    private let transport: RevalidatingJSONDataSource<Playlist>
 
     public init(session: URLSession = .shared) {
-        self.session = session
+        self.transport = RevalidatingJSONDataSource(
+            url: .WXYCPlaylist,
+            session: session,
+            repairsMojibake: true,
+            map: { $0 }
+        )
     }
 
     public func getPlaylist() async throws -> Playlist {
-        // .reloadRevalidatingCacheData forces URLSession to consult the origin server
-        // on every poll. Without it, URLCache.shared can replay the previous process's
-        // stored response (zero network traffic) for as long as the server's
-        // Cache-Control: max-age window lasts, leaving the UI stuck on stale data
-        // after relaunch.
-        let request = URLRequest(
-            url: URL.WXYCPlaylist,
-            cachePolicy: .reloadRevalidatingCacheData,
-            timeoutInterval: 30
-        )
-        let (playlistData, response) = try await session.data(for: request)
-        try (response as? HTTPURLResponse)?.validateSuccessStatus()
-        let repairedData = playlistData.repairingMojibake()
-        return try JSONDecoder.shared.decode(Playlist.self, from: repairedData)
+        try await transport.getPlaylist()
     }
 }

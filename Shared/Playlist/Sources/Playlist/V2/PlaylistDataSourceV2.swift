@@ -28,27 +28,24 @@ extension URL {
 /// belong above one inside it. Harmless at a 50-row window where a show is
 /// ~20 entries and reorders move rows by one or two places; worth knowing
 /// before anyone builds pagination on top of the displayed order.
+///
+/// `repairsMojibake` is left at its `false` default: unlike the legacy v1
+/// tubafrenzy server, api.wxyc.org has never exhibited the UTF-8-as-Latin-1
+/// double-encoding bug `Data.repairingMojibake()` exists to correct, so this
+/// data source deliberately does not apply it. If that ever changes, add
+/// `repairsMojibake: true` here rather than reaching for a new mechanism.
 public final class PlaylistDataSourceV2: PlaylistDataSource, @unchecked Sendable {
-    private let session: URLSession
+    private let transport: RevalidatingJSONDataSource<FlowsheetResponse>
 
     public init(session: URLSession = .shared) {
-        self.session = session
+        self.transport = RevalidatingJSONDataSource(
+            url: .WXYCFlowsheet,
+            session: session,
+            map: { FlowsheetConverter.convert($0.entries, onAir: $0.onAir) }
+        )
     }
 
     public func getPlaylist() async throws -> Playlist {
-        // .reloadRevalidatingCacheData forces URLSession to consult the origin server
-        // on every poll. Without it, URLCache.shared can replay the previous process's
-        // stored response (zero network traffic) for as long as the server's
-        // Cache-Control: max-age window lasts, leaving the UI stuck on stale data
-        // after relaunch.
-        let request = URLRequest(
-            url: URL.WXYCFlowsheet,
-            cachePolicy: .reloadRevalidatingCacheData,
-            timeoutInterval: 30
-        )
-        let (data, response) = try await session.data(for: request)
-        try (response as? HTTPURLResponse)?.validateSuccessStatus()
-        let flowsheet = try JSONDecoder.shared.decode(FlowsheetResponse.self, from: data)
-        return FlowsheetConverter.convert(flowsheet.entries, onAir: flowsheet.onAir)
+        try await transport.getPlaylist()
     }
 }
