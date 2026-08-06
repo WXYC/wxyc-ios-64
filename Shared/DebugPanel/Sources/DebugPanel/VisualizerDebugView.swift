@@ -15,6 +15,7 @@ import Playback
 import PlayerHeaderView
 import Playlist
 import Wallpaper
+import WXUI
 
 #if DEBUG
 public struct VisualizerDebugView: View {
@@ -25,7 +26,6 @@ public struct VisualizerDebugView: View {
     @State private var skipNextPlayerTypePersist = false
     @State private var selectedHLSEnvironment: HLSEnvironment = .loadActive()
     @State private var cachePurged = false
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
@@ -334,17 +334,7 @@ public struct VisualizerDebugView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Visualizer Settings")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                }
-            }
+            .sheetChrome(title: "Visualizer Settings")
         }
     }
 }

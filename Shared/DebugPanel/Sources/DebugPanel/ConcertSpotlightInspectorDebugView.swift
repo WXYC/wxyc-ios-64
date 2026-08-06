@@ -23,6 +23,7 @@
 //
 
 import SwiftUI
+import WXUI
 
 #if DEBUG
 /// A DEBUG-only inspector for the `wxyc.concerts` Spotlight index: a dump of
@@ -48,7 +49,6 @@ public struct ConcertSpotlightInspectorDebugView: View {
         }
     }
 
-    @Environment(\.dismiss) private var dismiss
     @State private var rows: [Row] = []
     @State private var isReconciling = false
     @State private var hasLoadedOnce = false
@@ -117,15 +117,7 @@ public struct ConcertSpotlightInspectorDebugView: View {
                     Text("Re-runs ConcertSpotlightDonationService.reconcile against the current window — the same production entry point OT-C8 will call automatically.")
                 }
             }
-            .navigationTitle("Concert Spotlight")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
+            .sheetChrome(title: "Concert Spotlight")
             .task { await loadRows() }
             .refreshable { await loadRows() }
         }

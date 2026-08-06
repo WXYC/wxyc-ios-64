@@ -24,6 +24,7 @@ let package = Package(
         .package(name: "Playlist", path: "../Playlist"),
         .package(name: "Wallpaper", path: "../Wallpaper"),
         .package(name: "PlayerHeaderView", path: "../PlayerHeaderView"),
+        .package(name: "WXUI", path: "../WXUI"),
     ],
     targets: [
         .target(
@@ -35,6 +36,7 @@ let package = Package(
                 "Playlist",
                 "Wallpaper",
                 "PlayerHeaderView",
+                "WXUI",
             ],
         ),
     ]

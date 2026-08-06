@@ -15,6 +15,7 @@
 import Analytics
 import Concerts
 import SwiftUI
+import WXUI
 
 /// The filter sheet presented from the On Tour tab's Filter button.
 struct OnTourFilterSheet: View {
@@ -29,8 +30,7 @@ struct OnTourFilterSheet: View {
                 venueSection
                 togglesSection
             }
-            .navigationTitle("Filters")
-            .navigationBarTitleDisplayMode(.inline)
+            .sheetChrome(title: "Filters", showsDoneButton: false)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Reset") {
