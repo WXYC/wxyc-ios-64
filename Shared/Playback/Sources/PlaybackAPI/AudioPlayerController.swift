@@ -433,7 +433,13 @@ public final class AudioPlayerController {
     ///     (#787). Production keeps the real wall clock; tests substitute a
     ///     gate so the watchdog fires on an explicit signal instead of racing
     ///     scheduler latency against `isPlayerWaitingForConnectivity`'s
-    ///     propagation.
+    ///     propagation. Must not capture the controller: an armed watchdog holds
+    ///     this closure strongly for the whole deadline, so a closure that
+    ///     retained `self` would keep the controller — audio session,
+    ///     remote-command targets, notification observations — alive past
+    ///     teardown, defeating the `[weak self]` capture in `armStartupWatchdog()`.
+    ///     Must throw only on cancellation; any other error is treated as a
+    ///     failed sleep and suppresses the escalation rather than triggering it.
     public init(
         player: AudioPlayerProtocol,
         audioSession: AudioSessionProtocol?,
@@ -1894,12 +1900,24 @@ extension AudioPlayerController {
     /// The timer is measured from the establishing `play()` (user intent), which
     /// is the span the `silent_startup` deadline is meant to bound.
     ///
-    /// `self` is held weakly across the sleep (only the deadline is captured by
-    /// value) so an armed watchdog never extends the controller's lifetime.
+    /// `self` is held weakly across the sleep — the deadline and the sleep
+    /// closure are the only things captured by value — so an armed watchdog
+    /// never extends the controller's lifetime, provided the injected
+    /// `startupWatchdogSleep` does not itself capture the controller. See that
+    /// parameter's note on the initializer.
     private func armStartupWatchdog() {
         startupWatchdogTask?.cancel()
         startupWatchdogTask = Task { [weak self, deadline = startupWatchdogDeadline, sleep = startupWatchdogSleep] in
-            try? await sleep(deadline)
+            do {
+                try await sleep(deadline)
+            } catch {
+                // Cancellation — the ordinary disarm/re-arm path — or an
+                // injected sleep that failed outright. Neither means "the
+                // deadline elapsed", so neither may escalate. A `try?` here
+                // would send a failed sleep straight into a `silent_startup`
+                // that never happened.
+                return
+            }
             guard let self, !Task.isCancelled else { return }
             // Consult the live player as well as the mirrored `isPlaying`: at
             // the deadline boundary a `.playing` transition may have been
