@@ -118,23 +118,14 @@ public final class HLSPlayer: Sendable {
         self.analytics = analytics
         self.notificationCenter = notificationCenter
 
-        var stateContinuation: AsyncStream<PlayerState>.Continuation!
-        self.stateStream = AsyncStream { continuation in
-            stateContinuation = continuation
-        }
-        self.stateContinuation = stateContinuation
+        (self.stateStream, self.stateContinuation) = AsyncStream.makeStream(of: PlayerState.self)
 
-        var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
-        self.eventStream = AsyncStream { continuation in
-            eventContinuation = continuation
-        }
-        self.eventContinuation = eventContinuation
+        (self.eventStream, self.eventContinuation) = AsyncStream.makeStream(of: AudioPlayerInternalEvent.self)
 
-        var timePositionContinuation: AsyncStream<TimeInterval>.Continuation!
-        self.timePositionStream = AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
-            timePositionContinuation = continuation
-        }
-        self.timePositionContinuation = timePositionContinuation
+        (self.timePositionStream, self.timePositionContinuation) = AsyncStream.makeStream(
+            of: TimeInterval.self,
+            bufferingPolicy: .bufferingNewest(1)
+        )
 
         self.rateObservation = notificationCenter.addMainActorObserver(
             of: player as? AVPlayer,

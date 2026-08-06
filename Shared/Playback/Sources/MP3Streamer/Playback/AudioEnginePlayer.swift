@@ -112,9 +112,10 @@ final class AudioEnginePlayer: AudioEnginePlayerProtocol, @unchecked Sendable {
         self.pendingRenderTapState = RenderTapState()
 
         // Initialize event stream with bounded buffer to prevent unbounded growth
-        var eventCont: AsyncStream<AudioPlayerEvent>.Continuation!
-        self.eventStream = AsyncStream(bufferingPolicy: .bufferingNewest(16)) { eventCont = $0 }
-        self.eventContinuation = eventCont
+        (self.eventStream, self.eventContinuation) = AsyncStream.makeStream(
+            of: AudioPlayerEvent.self,
+            bufferingPolicy: .bufferingNewest(16)
+        )
 
         // NOTE: We intentionally do NOT call setUpAudioEngine() here.
         // Accessing engine.mainMixerNode during init implicitly activates the audio
@@ -554,9 +555,11 @@ private final class RenderTapRelay: @unchecked Sendable {
     func makeStream() -> AsyncStream<AVAudioPCMBuffer> {
         os_unfair_lock_lock(lock)
         let old = _continuation
-        var newCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
-        let stream = AsyncStream<AVAudioPCMBuffer>(bufferingPolicy: .bufferingNewest(1)) { newCont = $0 }
-        _continuation = newCont
+        let (stream, newContinuation) = AsyncStream.makeStream(
+            of: AVAudioPCMBuffer.self,
+            bufferingPolicy: .bufferingNewest(1)
+        )
+        _continuation = newContinuation
         os_unfair_lock_unlock(lock)
         old?.finish()
         return stream
