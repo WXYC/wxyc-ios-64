@@ -239,6 +239,34 @@ struct RouteChangeBehaviorTests {
                "RadioPlayerController should restart playback when player stops during route change")
     }
 
+    /// Same restart-if-still-intended recovery as
+    /// `radioPlayerControllerRestartsOnRouteChange`, but through the `default`
+    /// switch arm (any route-change reason other than old/new device) rather
+    /// than `.newDeviceAvailable`'s else-branch — the two are separate call
+    /// sites of the same fallback in `RadioPlayerController.handleRouteChanged`
+    /// (#756), so a mutation dropping either one independently must fail a
+    /// distinct test.
+    @Test("RadioPlayerController restarts when player stops during an unrelated route-change reason")
+    func radioPlayerControllerRestartsOnOtherRouteChangeReason() async {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+        #expect(harness.controller.isPlaying, "Should be playing before route change")
+
+        let playCountBefore = harness.playCallCount
+
+        harness.simulateEngineStoppedDueToRouteChange()
+
+        // .categoryChange falls through the `default` arm, not `.newDeviceAvailable`.
+        harness.postRouteChange(reason: .categoryChange)
+        await harness.waitForAsync()
+
+        #expect(harness.playCallCount > playCountBefore,
+               "RadioPlayerController should restart playback via the default-arm fallback")
+    }
+
     // MARK: - Analytics
 
     @Test("Headphone disconnect captures analytics", arguments: PlayerControllerTestCase.allCases)
