@@ -16,9 +16,6 @@ import SwiftUI
 import Core
 import PlaybackCore
 import Analytics
-#if os(iOS)
-import UIKit
-#endif
 
 @MainActor
 @Observable
@@ -212,8 +209,7 @@ public final class RadioPlayerController: PlaybackController {
     /// knows its `PlaybackReason` even when it doesn't want to surface the
     /// free-text string. Shared by `toggle(reason:)`'s stop branch,
     /// `remotePauseOrStopCommand`, `remoteTogglePlayPauseCommand`'s stop
-    /// branch, and `handleApplicationWillEnterForeground`'s reconciliation
-    /// stop, so all four paths stay identical — some of which are gated
+    /// branch, so all three paths stay identical — some of which are gated
     /// behind a real `MPRemoteCommandEvent` a unit test can't construct.
     private func stopWithAnalytics(reason: PlaybackReason) {
         analytics.capture(PlaybackStoppedEvent(source: reason.playbackSource, duration: playbackTimer.duration(), sessionID: sessionID))
@@ -242,6 +238,7 @@ public final class RadioPlayerController: PlaybackController {
             Log(.error, category: .playback, "RadioPlayerController could not start playback: \(error)")
             return
         }
+        audioSessionActivated = true
         #endif
 
         analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, source: reason.playbackSource, sessionID: sessionID))
@@ -313,9 +310,16 @@ public final class RadioPlayerController: PlaybackController {
     private var routeChangeObservation: (any NSObjectProtocol)?
     #endif
     private var stallObservation: (any NSObjectProtocol)?
-
+    
     #if os(iOS) || os(tvOS)
     private let audioSession: AudioSessionProtocol
+    /// Whether `play(reason:)` last succeeded in activating `audioSession`.
+    ///
+    /// The background handback is guarded on this so the controller never
+    /// deactivates — and, via `.notifyOthersOnDeactivation`, fans a resume out
+    /// to every other audio app over — a session it never took. Mirrors
+    /// `AudioPlayerController.audioSessionActivated`.
+    private var audioSessionActivated = false
     #endif
     
     private var playbackTimer = Timer.start()
@@ -340,18 +344,19 @@ public final class RadioPlayerController: PlaybackController {
     private let heartbeatInterval: Duration
     private var heartbeatTask: Task<Void, Never>?
     /// Whether the app is foregrounded, read by `emitHeartbeat()` for the
-    /// heartbeat's `context` field. Updated only where this controller has
-    /// lifecycle wiring — the `#if os(iOS)` `handleApplicationDidEnterBackground()`
-    /// / `handleApplicationWillEnterForeground()` methods below, reached
-    /// through the `PlaybackController` protocol's `#if os(iOS)`-gated
-    /// `handleAppDidEnterBackground()` / `handleAppWillEnterForeground()`
-    /// requirements. On watchOS, where this controller is actually used in
-    /// production (`RadioPlayerController.shared` backs `WatchXYCApp`),
-    /// nothing ever sets this to `false`: that protocol requirement doesn't
-    /// exist on watchOS, since it's `#if os(iOS)`-gated too. So a watchOS
-    /// heartbeat always reports `.foreground` — closing that gap needs a
-    /// watchOS-native lifecycle signal (`WKExtension` / SwiftUI
-    /// `scenePhase`) and is out of scope here; see the PR description.
+    /// heartbeat's `context` field.
+    ///
+    /// Nothing in the shipping app ever sets this to `false`. The only writes
+    /// are in the `#if os(iOS)` `handleApplicationDidEnterBackground()` /
+    /// `handleApplicationWillEnterForeground()` methods below, reached through
+    /// the `PlaybackController` protocol's `#if os(iOS)`-gated requirements —
+    /// and no iOS scene drives this controller (`WXYCApp` uses
+    /// `AudioPlayerController`), while watchOS, the one platform that does
+    /// (`RadioPlayerController.shared` backs `WatchXYCApp`), compiles both the
+    /// requirement and the methods out. So a watchOS heartbeat always reports
+    /// `.foreground` — closing that gap needs a watchOS-native lifecycle
+    /// signal (`WKExtension` / SwiftUI `scenePhase`) and is out of scope here;
+    /// see the PR description.
     private var isForegrounded = true
 }
 
@@ -573,78 +578,103 @@ private extension RadioPlayerController {
     /// This controller's `stop(reason:)` touches the session not at all, so
     /// that half of #773 has no counterpart here.
     ///
-    /// Two further conditions make it moot today. Neither is visible from this
-    /// line, and #777 exists because neither is guaranteed to keep holding:
+    /// Nothing reaches this today, on any platform. `WXYCApp` and `WXYCTVApp`
+    /// both drive `AudioPlayerController.shared`; the only runtime consumer of
+    /// `RadioPlayerController.shared` is `WatchXYCApp`, and watchOS compiles
+    /// this `#if os(iOS)` block out. Removing #788's `NotificationCenter`
+    /// observers took away the last live entry point, leaving the
+    /// `PlaybackController` requirement above as the only door — one no iOS
+    /// scene currently opens. That is why none of this is urgent; it is not
+    /// why the shape below is right.
     ///
-    /// 1. **No iOS scene instantiates this controller.** `WXYCApp` and
-    ///    `WXYCTVApp` both drive `AudioPlayerController.shared`; the only
-    ///    runtime consumer of `RadioPlayerController.shared` is `WatchXYCApp`
-    ///    (`WXYC/WatchXYC/WatchXYCApp.swift`). It was the iOS app's controller
-    ///    until 8114d5c9 (2025-11-30), so this is a recent arrangement rather
-    ///    than a long-standing one. Two caveats: `PlayerControllerType`'s
-    ///    `.radioPlayer` case selects a *player* inside `AudioPlayerController`
-    ///    and never this controller, so flipping that override does not reach
-    ///    here; and `WXYC/WatchXYC/PlayerPage.swift` — a member of the WXYC TV
-    ///    target as well as WatchXYC — names `.shared` in a `#Preview`, so the
-    ///    type links into tvOS even though a lazy static reached only from a
-    ///    preview registry is never instantiated by the shipping app.
-    /// 2. **This block is `#if os(iOS)`.** watchOS, the one platform that does
-    ///    instantiate the controller, compiles it out entirely, so the watch
-    ///    never performs a handback at all. The matching activation in
-    ///    `play(reason:)` sits inside a *wider* `#if os(iOS) || os(tvOS)` gate
-    ///    — the two halves do not share a platform condition, so widening
-    ///    either one does not implicitly widen the other.
+    /// Note the platform gates differ: this block is `#if os(iOS)` while the
+    /// matching activation in `play(reason:)` sits inside a wider
+    /// `#if os(iOS) || os(tvOS)`. Widening one does not widen the other.
     ///
-    /// Either condition alone is insufficient, so #788 closed the two gaps
-    /// #777 left open rather than leaving them for whichever condition lapses
-    /// first:
+    /// Two guards, both matching `AudioPlayerController`:
     ///
-    /// - **Single entry point.** This is reached only through the
-    ///   `PlaybackController` requirement `handleAppDidEnterBackground()` (see
-    ///   the passthrough above), matching `AudioPlayerController`, which is
-    ///   driven from SwiftUI's `scenePhase`. There used to be a second path —
-    ///   a `NotificationCenter` observer on `AppDidEnterBackgroundMessage`,
-    ///   wired directly in `setUpObservations(notificationCenter:remoteCommandCenter:)`
-    ///   — that would have double-fired the handback if an iOS scene ever
-    ///   wired this controller up. It's gone; an iOS caller only has the one
-    ///   door in.
-    /// - **Guard on intent, not state.** The guard below reads
-    ///   `playbackIntended`, matching `AudioPlayerController`, rather than
-    ///   `isPlaying`. `isPlaying` is false for the entire buffering window
-    ///   between `play()`'s `setActive(true, …)` and the player actually
-    ///   rendering audio, so guarding on it let a background during that
-    ///   window tear down the session the pending `play()` had just
-    ///   activated — the user's own act of backgrounding right after hitting
-    ///   play would silently kill it. `playbackIntended` is set for exactly
-    ///   that window (see `play(reason:)`) and cleared in `stop(reason:)`, so
-    ///   it covers the buffering gap `isPlaying` misses.
+    /// - **Intent, not actual state.** `isPlaying` is false for the whole
+    ///   buffering window between `play()`'s `setActive(true, …)` and audio
+    ///   actually rendering, so the `isPlaying` guard this replaced tore down
+    ///   the session a pending `play()` had just activated whenever the user
+    ///   backgrounded right after hitting play. `playbackIntended` covers that
+    ///   window. It is broader than the window, not equal to it: it is set in
+    ///   `play(reason:)` and cleared only in `stop(reason:)`, so it also
+    ///   survives a stall and a backoff exhaustion. Holding the session across
+    ///   a dead stream is deliberate and is what
+    ///   `handleApplicationWillEnterForeground()` below relies on to recover.
+    /// - **Only hand back what was taken.** `audioSessionActivated` keeps the
+    ///   handback from deactivating a session this controller never activated
+    ///   — which, because of `.notifyOthersOnDeactivation`, would fan a resume
+    ///   out to every other audio app over a session it never owned.
     ///
-    /// `RadioPlayerControllerBackgroundBehaviorTests` pins the current shape —
-    /// synchronous, and skipped whenever playback is intended, whether or not
-    /// the player has actually started rendering audio yet — so that
-    /// regressing either is not silent. See #777, #788.
+    /// `RadioPlayerControllerBackgroundBehaviorTests` pins all of it —
+    /// synchronous, skipped whenever playback is intended, and skipped when
+    /// there is nothing to hand back. See #777, #788.
     func handleApplicationDidEnterBackground() {
         isForegrounded = false
 
-        guard !self.playbackIntended else {
+        guard !self.playbackIntended, audioSessionActivated else {
             return
         }
 
         do {
             try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+            audioSessionActivated = false
         } catch {
             analytics.capture(Analytics.ErrorEvent(error: error, context: "RadioPlayerController could not deactivate"))
             Log(.error, category: .playback, "RadioPlayerController could not deactivate: \(error)")
         }
     }
 
+    /// Reconciles on the way back in, keyed off the same intent the
+    /// backgrounding handback is guarded on.
+    ///
+    /// The two halves have to read the same predicate or they undo each other:
+    /// guarding the background half on intent while this one guarded on
+    /// `isPlaying` meant a play that was still buffering survived the
+    /// backgrounding only to be stopped — with a `PlaybackStoppedEvent` — the
+    /// moment the app came back. Same user-visible outcome as the bug #788
+    /// fixed, one transition later.
+    ///
+    /// With intent on record there are two cases, mirroring
+    /// `AudioPlayerController.handleAppWillEnterForeground()`:
+    ///
+    /// - **Stranded** — idle or terminally errored with no reconnect in
+    ///   flight, which is where a backoff exhaustion leaves things. Re-drive
+    ///   the full play path so the session activation and the player start
+    ///   both happen. This is the recovery that makes holding the session
+    ///   across a dead stream sound rather than a leak.
+    /// - **Otherwise** — playing, buffering, or actively reconnecting. Only
+    ///   re-affirm the session: restarting would cancel a healthy reconnect,
+    ///   discard backoff progress, and emit a spurious playback-start.
+    ///
+    /// With no intent on record there is nothing to reconcile. The
+    /// `stopWithAnalytics(reason: .foregroundNotPlaying)` that used to run
+    /// here fired on every foreground transition of an idle app, stopping an
+    /// already-stopped player and emitting a stop event for a listen that had
+    /// already ended.
     func handleApplicationWillEnterForeground() {
         isForegrounded = true
 
-        if self.radioPlayer.isPlaying {
-            try? self.play(reason: .foregroundToggle)
+        guard playbackIntended else { return }
+
+        if (state.isIdle || state.isError), reconnectTask == nil {
+            try? self.play(reason: .resumeAfterForeground)
         } else {
-            stopWithAnalytics(reason: .foregroundNotPlaying)
+            reactivateAudioSession()
+        }
+    }
+
+    /// Re-asserts the audio session without disturbing playback, for a
+    /// foreground transition where a play is already under way.
+    func reactivateAudioSession() {
+        do {
+            try audioSession.setActive(true, options: [])
+            audioSessionActivated = true
+        } catch {
+            analytics.capture(Analytics.ErrorEvent(error: error, context: "RadioPlayerController could not reactivate"))
+            Log(.error, category: .playback, "RadioPlayerController could not reactivate: \(error)")
         }
     }
 #endif
