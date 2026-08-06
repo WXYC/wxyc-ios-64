@@ -199,18 +199,10 @@ public final class MP3Streamer {
         self.startupWatchdogSleep = startupWatchdogSleep
 
         // Initialize state stream for AudioPlayerProtocol
-        var stateContinuation: AsyncStream<PlayerState>.Continuation!
-        self.stateStreamInternal = AsyncStream { continuation in
-            stateContinuation = continuation
-        }
-        self.stateContinuationInternal = stateContinuation
+        (self.stateStreamInternal, self.stateContinuationInternal) = AsyncStream.makeStream(of: PlayerState.self)
 
         // Initialize event stream for AudioPlayerProtocol
-        var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
-        self.eventStreamInternal = AsyncStream { continuation in
-            eventContinuation = continuation
-        }
-        self.eventContinuationInternal = eventContinuation
+        (self.eventStreamInternal, self.eventContinuationInternal) = AsyncStream.makeStream(of: AudioPlayerInternalEvent.self)
 
         // Create buffer queue
         self.bufferQueue = PCMBufferQueue(

@@ -102,18 +102,10 @@ public final class RadioPlayer: Sendable {
         self.notificationCenter = notificationCenter
 
         // Initialize state stream
-        var stateContinuation: AsyncStream<PlayerState>.Continuation!
-        self.stateStream = AsyncStream { continuation in
-            stateContinuation = continuation
-        }
-        self.stateContinuation = stateContinuation
+        (self.stateStream, self.stateContinuation) = AsyncStream.makeStream(of: PlayerState.self)
 
         // Initialize event stream
-        var eventContinuation: AsyncStream<AudioPlayerInternalEvent>.Continuation!
-        self.eventStream = AsyncStream { continuation in
-            eventContinuation = continuation
-        }
-        self.eventContinuation = eventContinuation
+        (self.eventStream, self.eventContinuation) = AsyncStream.makeStream(of: AudioPlayerInternalEvent.self)
 
         // Observe rate changes to track playing state
         self.rateObservation = notificationCenter.addMainActorObserver(

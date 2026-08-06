@@ -38,9 +38,10 @@ final class HTTPStreamClient: HTTPStreamClientProtocol, @unchecked Sendable {
 
         // Use bounded buffering - HTTP events should be consumed quickly
         // but we allow some slack for reconnection scenarios
-        var cont: AsyncStream<HTTPStreamEvent>.Continuation!
-        self.eventStream = AsyncStream(bufferingPolicy: .bufferingOldest(64)) { cont = $0 }
-        self.continuation = cont
+        (self.eventStream, self.continuation) = AsyncStream.makeStream(
+            of: HTTPStreamEvent.self,
+            bufferingPolicy: .bufferingOldest(64)
+        )
     }
 
     /// Builds the URLSession configuration for streaming, with MPTCP handover enabled on iOS.

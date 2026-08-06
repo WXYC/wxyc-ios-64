@@ -99,14 +99,16 @@ final class MP3StreamDecoder: @unchecked Sendable {
 
         // Initialize buffer stream with bounded buffer to prevent memory growth
         // 32 buffers is enough to handle temporary consumer slowdowns
-        var bufferCont: AsyncStream<AVAudioPCMBuffer>.Continuation!
-        self.decodedBufferStream = AsyncStream(bufferingPolicy: .bufferingOldest(32)) { bufferCont = $0 }
-        self.bufferContinuation = bufferCont
+        (self.decodedBufferStream, self.bufferContinuation) = AsyncStream.makeStream(
+            of: AVAudioPCMBuffer.self,
+            bufferingPolicy: .bufferingOldest(32)
+        )
 
         // Initialize error stream - errors are rare, small buffer is fine
-        var errorCont: AsyncStream<Error>.Continuation!
-        self.errorStream = AsyncStream(bufferingPolicy: .bufferingNewest(4)) { errorCont = $0 }
-        self.errorContinuation = errorCont
+        (self.errorStream, self.errorContinuation) = AsyncStream.makeStream(
+            of: Error.self,
+            bufferingPolicy: .bufferingNewest(4)
+        )
 
         // Standard output format for decoded audio
         guard let format = AVAudioFormat(
