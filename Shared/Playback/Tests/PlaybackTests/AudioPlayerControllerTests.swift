@@ -171,7 +171,7 @@ struct AudioPlayerControllerTests {
         // The snapshot exists so a future CI flake on PlayWXYCIntentTests can be
         // diagnosed without reproducing locally; assert the field names we're
         // committing to so a refactor that drops one is caught.
-        for field in ["playerState=", "playbackIntended=", "isPlaying=", "isLoading=", "audioSessionActivated=", "sessionDeactivationInFlight=", "isForegrounded="] {
+        for field in ["playerState=", "playbackIntended=", "isPlaying=", "isLoading=", "audioSessionActivated=", "sessionDeactivationInFlight=", "isForegrounded=", "liveHandbackAssertions="] {
             #expect(snapshot.contains(field), "debugStateSnapshot missing '\(field)': \(snapshot)")
         }
     }
