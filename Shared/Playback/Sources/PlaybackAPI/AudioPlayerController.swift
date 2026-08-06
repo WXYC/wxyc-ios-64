@@ -1054,7 +1054,7 @@ public final class AudioPlayerController {
             // one's completion and the retry; its own continuation re-enters
             // here when it finishes.
             break
-        case .blockedByOtherAudio, .failed:
+        case .blockedByOtherAudio:
             // Blocked by something other than our own handback now, so this
             // genuinely is the `CannotInterruptOthers` shape the bounded retry
             // was sized for. If it declines to schedule — backgrounded, where
@@ -1066,6 +1066,16 @@ public final class AudioPlayerController {
             if !sessionActivationPending {
                 pendingPlaybackReason = nil
             }
+        case .failed:
+            // A hard, non-`'!int'` failure — the same class that escalates
+            // immediately when it surfaces in `play()` (#518, design 6-A). The
+            // bounded retry can't help (it exists for another app declining to
+            // be interrupted, and its exhaustion path gives up without
+            // escalating), so spending it here would just delay the same
+            // silence signal by the rest of the watchdog deadline.
+            clearPendingSessionActivation()
+            Log(.error, category: .playback, "Audio session activation failed after handback; escalating silent-startup recovery immediately")
+            escalateSilentStartup(description: "Audio session activation failed after handback")
         }
     }
 
