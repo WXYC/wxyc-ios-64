@@ -833,8 +833,13 @@ public final class AudioPlayerController {
                 // while waiting.
                 guard self.playbackIntended, self.isForegrounded, self.sessionActivationPending else { return }
 
-                if self.retrySessionActivation() {
+                switch self.retrySessionActivation() {
+                case .activated, .deferredBehindHandback:
+                    // Done, or parked on our own handback's completion — either
+                    // way this cadence has nothing further to add.
                     return
+                case .blockedByOtherAudio, .failed:
+                    continue
                 }
             }
             // Budget exhausted without success — stop deferring so a later
@@ -846,11 +851,31 @@ public final class AudioPlayerController {
         }
     }
 
+    /// What a single deferred-activation attempt did. Callers must not conflate
+    /// these: a session busy with our *own* handback is re-driven by that
+    /// handback's continuation and must stay parked on it, while a session held
+    /// by another app is the bounded retry's territory, and a hard failure is
+    /// neither — collapsing them (as a plain Bool once did) demoted the
+    /// event-driven wait onto a budget shorter than the handback it was waiting
+    /// out, which exhausted, cleared `pendingPlaybackReason`, and abandoned the
+    /// play.
+    private enum SessionActivationRetryOutcome {
+        /// The session activated; any deferred play has been resumed.
+        case activated
+        /// Our own in-flight handback holds the session. The deferral stays
+        /// intact and the handback continuation re-drives it.
+        case deferredBehindHandback
+        /// Another app holds the session (`'!int'`) — the transient state the
+        /// bounded retry cadence is sized for.
+        case blockedByOtherAudio
+        /// A non-transient activation failure.
+        case failed(any Error)
+    }
+
     /// Attempts a single (re)activation of the session and, on success, resumes
-    /// the deferred playback. Returns whether activation succeeded.
-    @discardableResult
-    private func retrySessionActivation() -> Bool {
-        guard let session = audioSession else { return true }
+    /// the deferred playback.
+    private func retrySessionActivation() -> SessionActivationRetryOutcome {
+        guard let session = audioSession else { return .activated }
         configureAudioSessionIfNeeded()
         do {
             try activate(session)
@@ -858,13 +883,26 @@ public final class AudioPlayerController {
             let reason = pendingPlaybackReason
             clearPendingSessionActivation()
             Log(.info, category: .playback, "Audio session activated after deferred retry")
-            if let reason, playbackIntended, !isPlaying {
+            // Consult the live player, not the mirrored `isPlaying`: the mirror
+            // lags the state stream, and a stale `.playing` replayed from
+            // before the stop would skip the start here while still consuming
+            // the deferral — the play would be silently dropped. Same
+            // divergence `armStartupWatchdog()`'s deadline check guards against.
+            if let reason, playbackIntended, !player.isPlaying {
                 startPlayerAfterActivation(reason: reason)
             }
-            return true
+            return .activated
+        } catch is AudioSessionBusy {
+            // Same contract as `activateAudioSession()`'s Busy branch: the
+            // handback continuation is guaranteed to run and re-drive this via
+            // `resumeDeferredActivationAfterHandback()`, so the deferral stays
+            // parked on that completion rather than on any polled budget.
+            Log(.info, category: .playback, "Audio session still being handed back; keeping the deferred activation parked on its completion")
+            sessionActivationPending = true
+            return .deferredBehindHandback
         } catch {
             Log(.info, category: .playback, "Deferred audio session activation still blocked: \(error)")
-            return false
+            return isCannotInterruptOthers(error) ? .blockedByOtherAudio : .failed(error)
         }
     }
 
@@ -876,7 +914,12 @@ public final class AudioPlayerController {
         guard sessionActivationPending, playbackIntended, isForegrounded else { return }
         sessionActivationRetryTask?.cancel()
         sessionActivationRetryTask = nil
-        if !retrySessionActivation() {
+        switch retrySessionActivation() {
+        case .activated, .deferredBehindHandback:
+            // Done, or parked on our own handback — the one blocker whose
+            // completion is observable rather than polled for.
+            break
+        case .blockedByOtherAudio, .failed:
             // Still blocked — resume the bounded retry cadence. Reached only
             // from an interruption-ended notification, so the interruption is
             // the cause worth naming here rather than whatever `activate(_:)`
@@ -1003,7 +1046,15 @@ public final class AudioPlayerController {
         }
         sessionActivationRetryTask?.cancel()
         sessionActivationRetryTask = nil
-        if !retrySessionActivation() {
+        switch retrySessionActivation() {
+        case .activated:
+            break
+        case .deferredBehindHandback:
+            // A second handback (a drain re-drive) took the lock between this
+            // one's completion and the retry; its own continuation re-enters
+            // here when it finishes.
+            break
+        case .blockedByOtherAudio, .failed:
             // Blocked by something other than our own handback now, so this
             // genuinely is the `CannotInterruptOthers` shape the bounded retry
             // was sized for. If it declines to schedule — backgrounded, where
