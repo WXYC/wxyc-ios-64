@@ -249,4 +249,62 @@ struct PlaylistServiceLiveUpdatesTests {
         let snapshot = await service.currentPlaylistSnapshot()
         #expect(snapshot.playcuts.map(\.id) == [1])
     }
+
+    @Test("A row below the current window is dropped, not appended", .timeLimit(.minutes(1)))
+    func dropsRowBelowWindow() async throws {
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [
+            .stub(id: 5_304_100, chronOrderID: 5_304_100),
+            .stub(id: 5_304_110, chronOrderID: 5_304_110),
+        ])
+        // An archival enrichment row (#780): `live-fs-topic` carries a
+        // full-catalog backfill whose ids sit millions below the live head. It
+        // must not be broadcast, so the next broadcast after foregrounding is
+        // the legitimate row — proving the archival one was dropped, exactly as
+        // `duplicateInsertIsIdempotent` proves a duplicate isn't re-broadcast.
+        let source = MockLiveFsEventSource(events: [
+            .update(.stub(id: 639_857, chronOrderID: 639_857, metadataStatus: .enrichedMatch)),
+            .insert(.stub(id: 5_304_111, chronOrderID: 5_304_111)),
+        ])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        #expect(await iterator.next()?.playcuts.map(\.id) == [5_304_100, 5_304_110])
+        await service.setForegrounded(true)
+
+        let next = await iterator.next()
+        #expect(next?.playcuts.map(\.id).sorted() == [5_304_100, 5_304_110, 5_304_111])
+    }
+
+    @Test("With an empty window there is no floor, so a row is still accepted", .timeLimit(.minutes(1)))
+    func acceptsRowWhenWindowIsEmpty() async throws {
+        let fetcher = MockPlaylistFetcher()
+        // A content-empty fetch leaves no rows to derive a floor from; the event
+        // is the only data there is, and the next poll reconciles regardless.
+        fetcher.playlistToReturn = .stub(playcuts: [])
+        let source = MockLiveFsEventSource(events: [.insert(.stub(id: 42, chronOrderID: 42))])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        await service.setForegrounded(true)
+
+        // Await the broadcast rather than polling a snapshot on a wall-clock
+        // budget: the content-empty fetch equals `currentPlaylist` and so
+        // broadcasts nothing, leaving the accepted insert as the only thing
+        // that can wake this iterator. A guard that wrongly dropped the row
+        // would hang here until the test's time limit rather than racing it.
+        var received: [UInt64] = []
+        while received.isEmpty {
+            received = await iterator.next()?.playcuts.map(\.id) ?? []
+        }
+        #expect(received == [42])
+    }
 }

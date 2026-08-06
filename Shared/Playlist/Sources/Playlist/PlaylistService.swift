@@ -669,6 +669,7 @@ public final actor PlaylistService: Sendable {
     private func applyLiveEvent(_ event: LiveFsEvent) async {
         switch event {
         case .insert(let playcut), .update(let playcut):
+            guard belongsInWindow(playcut) else { return }
             // Both reduce to an upsert-by-id: an insert appends a new row, an
             // update replaces the existing one (the payload is the full
             // post-enrichment row, so a replace is the merge). Upserting also
@@ -679,6 +680,31 @@ public final actor PlaylistService: Sendable {
             // to a full reconciliation fetch.
             _ = await fetchAndCachePlaylist()
         }
+    }
+
+    /// Whether a pushed row belongs in the live window, i.e. its id is at least
+    /// the lowest id the window currently holds.
+    ///
+    /// `live-fs-topic` is not exclusively a live feed: it also carries
+    /// Backend's catalog-wide enrichment backfill, whose rows are years old and
+    /// whose ids sit millions below the live head (#780). Those rows are real
+    /// and correctly decoded, but they are not part of what this window shows,
+    /// and `upsertPlaycut` would append every one of them — unbounded, and
+    /// persisted to the disk cache — until the next reconciliation poll
+    /// replaced the playlist wholesale.
+    ///
+    /// The floor is derived from the window rather than a fixed id so it tracks
+    /// the poll: a row already in the window always passes (its id can't be
+    /// below the minimum), and a genuinely new row always passes (Backend
+    /// assigns ids in chronological order, so it's above the head). An empty
+    /// window carries no floor and accepts, since there is nothing to judge
+    /// against and the next poll reconciles regardless.
+    ///
+    /// This is a client-side defense, not the fix: the backfill arguably
+    /// shouldn't be on a topic named `live-fs-topic` at all.
+    private func belongsInWindow(_ playcut: Playcut) -> Bool {
+        guard let floor = currentPlaylist.playcuts.map(\.id).min() else { return true }
+        return playcut.id >= floor
     }
 
     /// Inserts or replaces a playcut by `id`, then caches and broadcasts.
