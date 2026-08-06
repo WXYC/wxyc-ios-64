@@ -245,7 +245,7 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
 
 /// Mock audio session for testing (macOS)
 public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
-
+    
     private struct State: Sendable {
         var setActiveCallCount = 0
         var lastActiveState: Bool?
@@ -255,7 +255,7 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
     private let state = OSAllocatedUnfairLock(initialState: State())
 
     // MARK: - State Tracking
-
+    
     public var setActiveCallCount: Int {
         get { state.withLock { $0.setActiveCallCount } }
         set { state.withLock { $0.setActiveCallCount = newValue } }
@@ -272,9 +272,9 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
     }
 
     public init() {}
-
+    
     // MARK: - AudioSessionProtocol
-
+    
     public func setActive(_ active: Bool) throws {
         try state.withLock { state in
             state.setActiveCallCount += 1

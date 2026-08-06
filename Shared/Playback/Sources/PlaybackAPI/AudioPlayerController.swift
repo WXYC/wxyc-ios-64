@@ -552,7 +552,7 @@ public final class AudioPlayerController {
         analytics.capture(PlaybackStartedEvent(reason: reason.rawValue, source: reason.playbackSource, sessionID: sessionID))
         donatePlayIntent()
     }
-
+    
     /// Calculate how long playback has been active
     private var playbackDuration: TimeInterval {
         playbackTimer?.duration() ?? 0
