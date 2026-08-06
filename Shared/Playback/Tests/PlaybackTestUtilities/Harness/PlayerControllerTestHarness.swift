@@ -11,9 +11,6 @@
 
 import Testing
 import AVFoundation
-#if canImport(UIKit)
-import UIKit
-#endif
 import MediaPlayer
 @testable import Playback
 @testable import PlaybackCore
@@ -401,14 +398,6 @@ public final class PlayerControllerTestHarness {
     }
 
     #if os(iOS)
-    public func postBackgroundNotification() {
-        notificationCenter.post(name: UIApplication.didEnterBackgroundNotification, object: nil)
-    }
-
-    public func postForegroundNotification() {
-        notificationCenter.post(name: UIApplication.willEnterForegroundNotification, object: nil)
-    }
-
     public func postInterruptionBegan(shouldResume: Bool) {
         var userInfo: [AnyHashable: Any] = [
             AVAudioSessionInterruptionTypeKey: NSNumber(value: AVAudioSession.InterruptionType.began.rawValue)
