@@ -92,6 +92,7 @@
 import Analytics
 import Caching
 import Concerts
+import Core
 import Foundation
 import Logger
 import WXYCIntents
@@ -328,16 +329,9 @@ public actor ConcertSpotlightDonationService: Sendable {
         stationCalendar.dateInterval(of: .day, for: startsOn)?.end ?? startsOn
     }
 
-    /// The station's broadcast time zone (US Eastern), duplicated locally
-    /// because `Concerts`' `TimeZone.wxycStation` is internal to that
-    /// module — the same duplication idiom `ConcertsTesting`'s
-    /// `ConcertStubs.swift` already uses for the identical reason, rather
-    /// than widening `Concerts`' public API for one call site.
-    private static let stationTimeZone = TimeZone(identifier: "America/New_York") ?? .gmt
-
     private static let stationCalendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = stationTimeZone
+        calendar.timeZone = .wxycStation
         return calendar
     }()
 
