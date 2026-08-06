@@ -23,6 +23,7 @@
 //
 
 import Testing
+import ColorPalette
 import SwiftUI
 import WXUI
 @testable import WXYC

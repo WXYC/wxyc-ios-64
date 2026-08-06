@@ -11,6 +11,7 @@
 //
 
 #if DEBUG || DEBUG_TESTFLIGHT
+import ColorPalette
 import DebugPanel
 import SwiftUI
 import WXUI

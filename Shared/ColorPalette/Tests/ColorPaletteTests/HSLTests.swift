@@ -1,6 +1,6 @@
 //
 //  HSLTests.swift
-//  WXUI
+//  ColorPalette
 //
 //  Tests for the HSL -> RGB conversion used by the on-air banner theme controls.
 //
@@ -10,7 +10,7 @@
 
 import Testing
 import Foundation
-@testable import WXUI
+@testable import ColorPalette
 
 // MARK: - HSL Tests
 
@@ -61,5 +61,18 @@ struct HSLTests {
     @Test("Hue 1/6 fully saturated at mid lightness is pure yellow")
     func pureYellow() {
         expectRGB(HSL(hue: 1.0 / 6.0, saturation: 1, lightness: 0.5).rgb, (1, 1, 0))
+    }
+
+    /// The six "pure color" tests above only ever land a channel's hue offset exactly
+    /// on a sextant boundary (0, 1/6, 1/3, 1/2, 2/3) — never strictly inside one, like
+    /// the rising-edge sextant `(0, 1/6)` or the falling-edge sextant `(1/2, 2/3)`. A
+    /// widened or narrowed boundary (e.g. `t < 1.0 / 6.0` drifting to `t < 1.0 / 3.0`)
+    /// can misroute a value in that open interval to the wrong formula while every
+    /// boundary-exact test above still passes unchanged. Hue 0.2 puts the green
+    /// channel's `t` at 0.2 — inside `(1/6, 1/3)`, the interior of the rising-edge
+    /// sextant — so this pins the actual interior formula, not just its edges.
+    @Test("A hue strictly inside the rising-edge sextant uses the rising formula, not the plateau")
+    func hueInteriorToRisingSextant() {
+        expectRGB(HSL(hue: 0.2, saturation: 1, lightness: 0.5).rgb, (0.8, 1, 0))
     }
 }

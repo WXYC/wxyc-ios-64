@@ -20,12 +20,13 @@ let package = Package(
     dependencies: [
         .package(name: "AppServices", path: "../AppServices"),
         .package(name: "Caching", path: "../Caching"),
+        .package(name: "ColorPalette", path: "../ColorPalette"),
         .package(name: "Playback", path: "../Playback"),
         // Load-bearing — do not remove as "unused" just because OnAirDebugState and
         // OnAirBannerDebugView no longer need it (WXYC/wxyc-ios-64#767 moved their
-        // typography/color types to WXUI). VisualizerDebugView still needs Playlist
-        // for PlaylistAPIVersion, an unrelated debug menu (the API version override),
-        // so this edge stays.
+        // typography/color types to WXUI/ColorPalette). VisualizerDebugView still
+        // needs Playlist for PlaylistAPIVersion, an unrelated debug menu (the API
+        // version override), so this edge stays.
         .package(name: "Playlist", path: "../Playlist"),
         .package(name: "Wallpaper", path: "../Wallpaper"),
         .package(name: "PlayerHeaderView", path: "../PlayerHeaderView"),
@@ -37,6 +38,7 @@ let package = Package(
             dependencies: [
                 "AppServices",
                 "Caching",
+                "ColorPalette",
                 "Playback",
                 "Playlist",
                 "Wallpaper",
