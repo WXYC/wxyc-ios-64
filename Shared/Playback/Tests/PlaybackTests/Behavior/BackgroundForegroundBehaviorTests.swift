@@ -129,6 +129,12 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
         #expect(harness.mockSession.lastActiveState == false,
                "Session should be set to inactive")
 
+        // Let the handback fully settle before re-using the mock: the mock
+        // records the call while the controller still considers the handback
+        // in flight, and a backgrounding that lands in that gap queues a
+        // deferred re-drive that would land after this test's last assertion.
+        await harness.waitUntil({ harness.sessionDeactivationSettled }, timeout: .seconds(5))
+
         // Background after stop should NOT deactivate again (already deactivated)
         harness.mockSession.reset()
         harness.controller.handleAppDidEnterBackground()
@@ -148,6 +154,12 @@ struct AudioPlayerControllerBackgroundBehaviorTests {
         harness.mockSession.reset()
         harness.controller.handleAppDidEnterBackground()
 
+        // The handback the stop() above scheduled hasn't run yet — everything
+        // so far happened in one main-actor turn, so at this point it hasn't
+        // even started. Settle it before asserting, so a regressed staleness
+        // check that wrongly tears the session down can't land after the
+        // test's last statement and pass unobserved.
+        await harness.waitUntil({ harness.sessionDeactivationSettled }, timeout: .seconds(5))
         #expect(harness.mockSession.setActiveCallCount == 0,
                "Background after stop-then-play should NOT deactivate")
     }
