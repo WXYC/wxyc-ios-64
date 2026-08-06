@@ -11,9 +11,7 @@
 import Testing
 import PlaybackTestUtilities
 import AVFoundation
-#if canImport(UIKit)
-import UIKit
-#endif
+import Core
 @testable import Playback
 @testable import PlaybackCore
 @testable import RadioPlayerModule
@@ -21,6 +19,16 @@ import UIKit
 // MARK: - Background/Foreground Behavior Tests (iOS)
 
 #if os(iOS)
+/// Lifecycle behavior every `PlaybackController` owes, exercised through the
+/// `PlaybackController` requirements themselves rather than by posting
+/// `UIApplication` notifications.
+///
+/// The protocol methods are the only door either controller has: both are
+/// driven from SwiftUI's `scenePhase` (`WXYCApp.swift`), and neither observes
+/// `UIApplication.didEnterBackgroundNotification`. Posting the notification —
+/// which these tests used to do — reached `RadioPlayerController` only, and
+/// stopped reaching anything once its observers came out in #788, at which
+/// point every assertion here held vacuously without a single test failing.
 @Suite("Background/Foreground Behavior Tests")
 @MainActor
 struct BackgroundForegroundBehaviorTests {
@@ -35,25 +43,33 @@ struct BackgroundForegroundBehaviorTests {
         #expect(harness.controller.isPlaying)
 
         let stopCountBefore = harness.stopCallCount
-        harness.postBackgroundNotification()
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
         await harness.waitForAsync()
 
         // Should NOT have stopped
         #expect(harness.stopCallCount == stopCountBefore,
                "Background while playing should not stop")
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Background while playing must not touch the session — audio would stop")
     }
 
-    @Test("Background while not playing is handled gracefully", arguments: PlayerControllerTestCase.allCases)
+    @Test("Background without ever having played leaves the session alone", arguments: PlayerControllerTestCase.allCases)
     func backgroundWhileNotPlayingIsHandled(testCase: PlayerControllerTestCase) async {
         let harness = PlayerControllerTestHarness.make(for: testCase)
         #expect(!harness.controller.isPlaying)
 
-        // Should not crash or cause issues
-        harness.postBackgroundNotification()
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
         await harness.waitForAsync()
 
-        // Verify still not playing
         #expect(!harness.controller.isPlaying)
+        // Deactivating a session this app never activated fans a
+        // `.notifyOthersOnDeactivation` resume out to every other audio app
+        // over a session it never took. Both controllers guard on having
+        // activated first.
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Backgrounding must not hand back a session this controller never activated")
     }
 
     @Test("Foreground while playing reactivates", arguments: PlayerControllerTestCase.allCases)
@@ -65,14 +81,20 @@ struct BackgroundForegroundBehaviorTests {
         await harness.waitForAsync()
         #expect(harness.controller.isPlaying)
 
-        harness.postBackgroundNotification()
+        harness.controller.handleAppDidEnterBackground()
         await harness.waitForAsync()
 
-        harness.postForegroundNotification()
+        let stopCountBefore = harness.stopCallCount
+        harness.mockSession.reset()
+        harness.controller.handleAppWillEnterForeground()
         await harness.waitForAsync()
 
-        // Should still be playing or have reactivated
-        // (specific behavior varies by controller implementation)
+        #expect(harness.controller.isPlaying,
+               "Foreground while playing must leave playback running")
+        #expect(harness.stopCallCount == stopCountBefore,
+               "Foreground while playing must not stop the player")
+        #expect(harness.sessionActivated,
+               "Foreground while playing re-affirms the session")
     }
 
     @Test("Foreground while not playing does not start playback", arguments: PlayerControllerTestCase.allCases)
@@ -81,14 +103,18 @@ struct BackgroundForegroundBehaviorTests {
         #expect(!harness.controller.isPlaying)
 
         let playCountBefore = harness.playCallCount
-        harness.postForegroundNotification()
+        let stopCountBefore = harness.stopCallCount
+        harness.controller.handleAppWillEnterForeground()
         await harness.waitForAsync()
 
-        // Should NOT have started playback automatically
-        // Note: RadioPlayerController may call stop on foreground when not playing,
-        // so we just verify it's not playing
+        // Should NOT have started playback automatically — and, with no
+        // intent on record, should not have stopped anything either.
         #expect(!harness.controller.isPlaying,
                "Foreground while not playing should not start playback")
+        #expect(harness.playCallCount == playCountBefore,
+               "Foreground while not playing should not start playback")
+        #expect(harness.stopCallCount == stopCountBefore,
+               "Foreground with no playback intended has nothing to reconcile")
     }
 }
 
@@ -373,32 +399,32 @@ struct RenderTapBackgroundBehaviorTests {
 /// Characterization tests pinning `RadioPlayerController`'s `#if os(iOS)`
 /// lifecycle block (#777, #788).
 ///
-/// That block is unreachable in the shipping app — watchOS is the only platform
+/// That block has no caller in the shipping app — watchOS is the only platform
 /// that instantiates the controller, and watchOS compiles the block out — so
 /// nothing else in the suite exercises it. These tests are therefore the only
-/// thing that will notice if the handback is deferred or dropped, or if the
-/// intent-based guard regresses to actual-state.
+/// thing that will notice if the handback is deferred or dropped, if the
+/// intent-based guard regresses to actual-state, or if the foreground half
+/// goes back to stopping a play that is merely still buffering.
 ///
 /// The synchronous shape is the intended one, not a lag behind #774: that PR
 /// defers `AudioPlayerController.stop()`'s handback but keeps the
 /// *backgrounding* handback on the caller's turn, which is what this is. See
 /// the comment on `handleApplicationDidEnterBackground()`.
-///
-/// The guard reads `playbackIntended`, not `isPlaying` (#788) — matching
-/// `AudioPlayerController`. That widens what "leaves the session alone"
-/// covers: `backgroundWhilePlayingDoesNotDeactivate` below (actual state)
-/// still holds, but it's now a special case of
-/// `backgroundWhileBufferingDoesNotDeactivate` (mere intent) rather than the
-/// governing condition — a play that's still buffering when the app
-/// backgrounds is exactly the case `isPlaying` alone used to miss.
 @Suite("RadioPlayerController Background/Foreground Behavior Tests")
 @MainActor
 struct RadioPlayerControllerBackgroundBehaviorTests {
 
-    @Test("Backgrounding while not playing hands the session back on the caller's turn")
-    func backgroundWhileNotPlayingDeactivatesSynchronously() {
+    @Test("Backgrounding after a stop hands the session back on the caller's turn")
+    func backgroundAfterStopDeactivatesSynchronously() throws {
         let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
-        #expect(!harness.controller.isPlaying)
+
+        // `play()` activates; `stop()` clears intent but leaves the session
+        // active — this controller's `stop(reason:)` touches the session not
+        // at all — so backgrounding is what hands it back. This is the whole
+        // negative half of the intent guard: if `stop(reason:)` ever stopped
+        // clearing `playbackIntended`, every handback would be swallowed.
+        try harness.controller.play(reason: .test)
+        harness.controller.stop(reason: .test)
 
         harness.mockSession.reset()
         harness.controller.handleAppDidEnterBackground()
@@ -415,54 +441,97 @@ struct RadioPlayerControllerBackgroundBehaviorTests {
                "Other audio apps must be told they can resume")
     }
 
-    @Test("Backgrounding while playing leaves the session alone")
-    func backgroundWhilePlayingDoesNotDeactivate() async throws {
+    @Test("Backgrounding a session this controller never activated leaves it alone")
+    func backgroundWithoutActivationDoesNotDeactivate() {
         let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
-
-        try harness.controller.play(reason: .test)
-        harness.simulatePlaybackStarted()
-        await harness.waitForAsync()
-        #expect(harness.controller.isPlaying)
-
-        harness.mockSession.reset()
-        harness.controller.handleAppDidEnterBackground()
-
-        // The guard now reads `playbackIntended` rather than `isPlaying`
-        // (#788), so this scenario passes through the same branch as
-        // `backgroundWhileBufferingDoesNotDeactivate` below: `isPlaying` true
-        // implies `playbackIntended` true (there is no code path that clears
-        // intent while still reporting playing), so this case was already
-        // covered by intent. It stays as its own test because "actually
-        // playing" is the scenario a reader expects this guard to protect —
-        // dropping it in favor of the buffering case alone would leave that
-        // expectation unverified.
-        #expect(harness.mockSession.setActiveCallCount == 0,
-               "Backgrounding while playing must not deactivate — audio would stop")
-    }
-
-    @Test("Backgrounding while a play is still buffering leaves the session alone")
-    func backgroundWhileBufferingDoesNotDeactivate() throws {
-        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
-
-        // Disable the mock's auto state-update so `play()` starts the play
-        // without immediately reporting `isPlaying == true` — the buffering
-        // window a real `AVPlayer` sits in between `play()` and the stream
-        // actually rendering audio.
-        harness.mockPlayer.shouldAutoUpdateState = false
-
-        try harness.controller.play(reason: .test)
-        // Deliberately no `simulatePlaybackStarted()` — the play is still
-        // buffering, so `isPlaying` is false even though `playbackIntended`
-        // is true. The guard must key off intent, not actual state, or this
-        // backgrounding tears down the session the pending `play()` just
-        // activated (#788).
         #expect(!harness.controller.isPlaying)
 
         harness.mockSession.reset()
         harness.controller.handleAppDidEnterBackground()
 
         #expect(harness.mockSession.setActiveCallCount == 0,
-               "Backgrounding during buffering must not deactivate the session a pending play just activated")
+               "Deactivating a session never activated fans a resume out to every other audio app")
+    }
+
+    /// One claim, two observable states: intent suppresses the handback
+    /// whether or not the player has started rendering audio yet.
+    ///
+    /// `playbackStarted: false` is the buffering window a real `AVPlayer` sits
+    /// in between `play()`'s `setActive(true, …)` and audio actually playing —
+    /// `isPlaying` is false there, which is exactly the case the pre-#788
+    /// `isPlaying` guard missed.
+    @Test(
+        "Backgrounding with playback intended leaves the session alone",
+        arguments: [true, false]
+    )
+    func backgroundWithPlaybackIntendedDoesNotDeactivate(playbackStarted: Bool) async throws {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
+        harness.mockPlayer.shouldAutoUpdateState = playbackStarted
+
+        try harness.controller.play(reason: .test)
+        if playbackStarted {
+            harness.simulatePlaybackStarted()
+            await harness.waitForAsync()
+        }
+        #expect(harness.controller.isPlaying == playbackStarted)
+
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Backgrounding with a play intended must not tear down the session that play activated")
+    }
+
+    @Test("Foregrounding mid-buffer keeps the pending play alive")
+    func foregroundWhileBufferingKeepsPendingPlayAlive() async throws {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
+        harness.mockPlayer.shouldAutoUpdateState = false
+
+        try harness.controller.play(reason: .test)
+        harness.controller.handleAppDidEnterBackground()
+
+        let stopsBefore = harness.stopCallCount
+        let stopEventsBefore = harness.analyticsStopCallCount
+        harness.controller.handleAppWillEnterForeground()
+        await harness.waitForAsync()
+
+        // The background half already skips the handback while buffering. If
+        // the foreground half still guards on `isPlaying`, it stops the very
+        // play the background half just protected — same user-visible outcome,
+        // one transition later (#788).
+        #expect(harness.stopCallCount == stopsBefore,
+               "Foregrounding mid-buffer must not stop the pending play")
+        #expect(harness.analyticsStopCallCount == stopEventsBefore,
+               "Foregrounding mid-buffer must not emit a stopped event")
+    }
+
+    @Test("Foregrounding while stranded re-drives the play")
+    func foregroundWhileStrandedRedrivesPlay() async throws {
+        // `maximumAttempts: 0` exhausts on the first stall, which is what
+        // strands the controller: intent is still on record, but the player
+        // is idle and no reconnect is in flight.
+        let harness = PlayerControllerTestHarness.make(
+            for: .radioPlayerController,
+            backoffTimer: ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.01, maximumAttempts: 0)
+        )
+
+        try harness.controller.play(reason: .test)
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        harness.simulateStall()
+        await harness.waitForAsync()
+        #expect(!harness.controller.isPlaying)
+
+        harness.controller.handleAppDidEnterBackground()
+        let playsBefore = harness.playCallCount
+        harness.controller.handleAppWillEnterForeground()
+        await harness.waitForAsync()
+
+        #expect(harness.playCallCount > playsBefore,
+               "A stranded stream is what foregrounding is for — re-drive the play")
+        #expect(harness.lastAnalyticsPlayReason == PlaybackReason.resumeAfterForeground.rawValue,
+               "The re-drive should attribute itself to the foreground transition")
     }
 }
 #endif

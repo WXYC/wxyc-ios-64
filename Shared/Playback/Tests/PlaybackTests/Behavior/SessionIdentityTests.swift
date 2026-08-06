@@ -144,9 +144,11 @@ struct SessionIdentityTests {
 
     @Test("Foreground auto-resume after a stranded background preserves the session id")
     func foregroundAutoResumePreservesSessionID() async throws {
-        // `.resumeAfterForeground` is an AudioPlayerController-specific path
-        // (RadioPlayerController's foreground handler uses `.foregroundToggle` /
-        // `.foregroundNotPlaying` instead), so this is scoped to that controller,
+        // Both controllers re-drive a stranded stream with
+        // `.resumeAfterForeground` as of #788 — the radio side is pinned by
+        // `RadioPlayerControllerBackgroundBehaviorTests.foregroundWhileStrandedRedrivesPlay`.
+        // What this test adds is the *session-id* half of that contract, and
+        // it stays scoped to the controller the iOS app actually ships,
         // mirroring `routeDisconnectAutoResumePreservesSessionID` above.
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
@@ -156,14 +158,12 @@ struct SessionIdentityTests {
 
         let originalSessionID = try #require(harness.mockAnalytics.startedEvents.last?.sessionID)
 
-        // AudioPlayerController's background/foreground handlers are driven
-        // directly from SwiftUI's `scenePhase` (see the doc comments on
-        // `handleAppDidEnterBackground`/`handleAppWillEnterForeground`), not
-        // via `NotificationCenter` — unlike RadioPlayerController, it never
-        // subscribes to `UIApplication` notifications. So this calls the
-        // methods directly, matching `AudioPlayerControllerBackgroundBehaviorTests`
-        // in BackgroundForegroundBehaviorTests.swift, rather than
-        // `harness.postBackgroundNotification()` (a no-op for this controller).
+        // Both controllers' background/foreground handlers are driven directly
+        // from SwiftUI's `scenePhase` (see the doc comments on
+        // `handleAppDidEnterBackground`/`handleAppWillEnterForeground`);
+        // neither observes `UIApplication` notifications. So every lifecycle
+        // test calls the protocol methods directly — see the suite comment on
+        // `BackgroundForegroundBehaviorTests`.
         harness.controller.handleAppDidEnterBackground()
         await harness.waitForAsync()
 
