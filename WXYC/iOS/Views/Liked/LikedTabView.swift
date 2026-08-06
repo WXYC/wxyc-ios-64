@@ -39,16 +39,7 @@ struct LikedTabView: View {
             .accessibilityIdentifier("likedTabView")
             // Presented like the On Tour concert detail: a full-screen cover the
             // tapped row zooms into, matching the flowsheet's playcut detail.
-            .fullScreenCover(item: $selectedPlaycut) { selection in
-                PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-                    .navigationTransition(.zoom(sourceID: selection.transitionID, in: playcutZoom))
-                    // The cover hosts the detail in a separate presentation context,
-                    // so the `@Environment(Singletonia.self)` it reads has to be
-                    // re-injected here (the old inline `.overlaySheet` shared this
-                    // tree and got it for free), else the presentation bridge traps
-                    // force-unwrapping the missing observable.
-                    .environment(appState)
-            }
+            .playcutDetailCover(selection: $selectedPlaycut, in: playcutZoom)
             #if DEBUG
             .sheet(isPresented: $showEffectTuning) {
                 LikeEffectTuningView()

@@ -140,16 +140,7 @@ struct RootTabView: View {
         // The playcut detail is presented like the On Tour concert detail: a
         // full-screen cover the tapped row zooms into, rather than the old
         // partial-height overlay sheet.
-        .fullScreenCover(item: $selectedPlaycut) { selection in
-            PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-                .navigationTransition(.zoom(sourceID: selection.transitionID, in: playcutZoom))
-                // The cover hosts the detail in a separate presentation context, so
-                // the `@Environment(Singletonia.self)` it reads has to be re-injected
-                // here — the old inline `.overlaySheet` shared this tree and got it
-                // for free. Without this, the zoom-transition presentation bridge
-                // traps force-unwrapping the missing observable.
-                .environment(appState)
-        }
+        .playcutDetailCover(selection: $selectedPlaycut, in: playcutZoom)
         // A shared show link arrived: switch to On Tour so the tab materializes and
         // its resolution ladder (`OnTourTabView`) can open the show. Reacting here —
         // not in `OnTourTabView` — guarantees the tab is built even when it wasn't
