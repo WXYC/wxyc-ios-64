@@ -5,9 +5,9 @@
 //  Transport for Backend-Service's `live-fs-topic` server-sent-events stream:
 //  a protocol seam (`LiveFsEventSource`) so `PlaylistService` can be tested
 //  against a scripted source, the URLSession-backed production implementation
-//  (`FlowsheetLiveEventSource`), and the `text/event-stream` line accumulator
-//  (`SSEFrameAccumulator`) that reassembles `data:` frames. See
-//  WXYC/wxyc-ios-64#269.
+//  (`FlowsheetLiveEventSource`), and the `text/event-stream` frame accumulator
+//  (`SSEFrameAccumulator`) that reassembles `data:` frames from the raw response
+//  bytes. See WXYC/wxyc-ios-64#269 and #780.
 //
 //  Created by Jake Bromberg on 07/31/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -64,9 +64,9 @@ public final class FlowsheetLiveEventSource: LiveFsEventSource, @unchecked Senda
                     }
 
                     var accumulator = SSEFrameAccumulator()
-                    for try await line in bytes.lines {
+                    for try await byte in bytes {
                         if Task.isCancelled { break }
-                        guard let frame = accumulator.consume(line: line) else { continue }
+                        guard let frame = accumulator.consume(byte: byte) else { continue }
                         if let event = LiveFsEvent(frameData: frame) {
                             continuation.yield(event)
                         }
@@ -85,7 +85,7 @@ public final class FlowsheetLiveEventSource: LiveFsEventSource, @unchecked Senda
     }
 }
 
-/// Reassembles `text/event-stream` `data:` frames from newline-stripped lines.
+/// Reassembles `text/event-stream` `data:` frames from the raw response bytes.
 ///
 /// An SSE frame is one or more `data:` lines terminated by a blank line;
 /// multiple `data:` lines within a frame concatenate with `\n`. Comment lines
@@ -93,8 +93,54 @@ public final class FlowsheetLiveEventSource: LiveFsEventSource, @unchecked Senda
 /// `retry:`) are ignored — this consumer only cares about the JSON `data:`
 /// payload. Kept as a synchronous value type so the framing logic is testable
 /// without a live socket.
+///
+/// The transport feeds ``consume(byte:)``, which splits lines itself and hands
+/// them to ``consume(line:)``. Splitting here rather than upstream is
+/// load-bearing, not stylistic — see ``consume(byte:)``.
 struct SSEFrameAccumulator {
     private var dataLines: [String] = []
+    private var lineBytes: [UInt8] = []
+    /// Whether the previous byte was a CR, so the LF of a CRLF pair is swallowed
+    /// rather than ending a second, spurious (and frame-terminating) empty line.
+    private var pendingCR = false
+
+    /// Feeds one byte of the response body. Returns the completed frame's JSON
+    /// bytes when that byte terminated the blank line ending a frame, otherwise
+    /// `nil`.
+    ///
+    /// Framing has to happen at the byte level: `AsyncLineSequence` (the
+    /// `bytes.lines` this transport used through #269) never yields an empty
+    /// element, so the blank lines SSE uses as frame terminators vanished before
+    /// reaching ``consume(line:)`` and no frame was ever completed — a stream
+    /// that returned HTTP 200 and delivered bytes forever while yielding zero
+    /// events.
+    ///
+    /// All three line terminators the SSE spec allows — LF, CRLF, and a lone CR —
+    /// end a line here.
+    mutating func consume(byte: UInt8) -> Data? {
+        switch byte {
+        case UInt8(ascii: "\r"):
+            pendingCR = true
+            return flushLine()
+        case UInt8(ascii: "\n"):
+            guard !pendingCR else {
+                pendingCR = false
+                return nil
+            }
+            return flushLine()
+        default:
+            pendingCR = false
+            lineBytes.append(byte)
+            return nil
+        }
+    }
+
+    /// Ends the buffered line and feeds it to ``consume(line:)``.
+    private mutating func flushLine() -> Data? {
+        let line = String(decoding: lineBytes, as: UTF8.self)
+        lineBytes.removeAll(keepingCapacity: true)
+        return consume(line: line)
+    }
 
     /// Feeds one newline-stripped line. Returns the completed frame's JSON bytes
     /// when `line` is the blank line terminating a frame that carried at least
