@@ -31,10 +31,7 @@ public struct OpenPlaycut: AppIntent, OpenIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult {
-        NotificationCenter.default.post(
-            PlaycutOpenMessage(playcutID: target.id),
-            subject: nil
-        )
+        postOpenMessage(PlaycutOpenMessage(playcutID: target.id))
         return .result()
     }
 }
