@@ -1,6 +1,6 @@
 //
 //  WidthAxisFitterTests.swift
-//  Playlist
+//  WXUI
 //
 //  Verifies the pure width-axis solver that condenses the on-air DJ handle to
 //  fit one line: it returns the base axis when the name already fits, narrows
@@ -14,7 +14,7 @@
 
 import Testing
 import Foundation
-@testable import Playlist
+@testable import WXUI
 
 @Suite("WidthAxisFitter Tests")
 struct WidthAxisFitterTests {

@@ -1,6 +1,6 @@
 //
 //  HandleGradeWave.swift
-//  Playlist
+//  WXUI
 //
 //  A one-shot "wave" for the on-air DJ handle: a train of lightening crests that
 //  sweep across the letters once when the handle appears or changes.

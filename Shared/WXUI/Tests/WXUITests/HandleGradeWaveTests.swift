@@ -1,6 +1,6 @@
 //
 //  HandleGradeWaveTests.swift
-//  Playlist
+//  WXUI
 //
 //  Verifies the pure, one-shot "wave" that sweeps a train of lightening crests
 //  across the on-air DJ handle's letters. The model reports a per-letter intensity
@@ -14,7 +14,7 @@
 
 import Testing
 import Foundation
-@testable import Playlist
+@testable import WXUI
 
 @Suite("HandleGradeWave Tests")
 struct HandleGradeWaveTests {

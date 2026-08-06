@@ -1,6 +1,6 @@
 //
 //  HandleGlyphMetrics.swift
-//  Playlist
+//  WXUI
 //
 //  Measures how much horizontal space each character of the on-air DJ handle
 //  occupies in its real, shaped line — kerning included — so the handle's wave

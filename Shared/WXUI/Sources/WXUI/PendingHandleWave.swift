@@ -1,6 +1,6 @@
 //
 //  PendingHandleWave.swift
-//  Playlist
+//  WXUI
 //
 //  Holds a one-shot on-air handle wave until it can actually be seen — the app
 //  foregrounded and the handle on-screen. A DJ sign-on that lands while the app

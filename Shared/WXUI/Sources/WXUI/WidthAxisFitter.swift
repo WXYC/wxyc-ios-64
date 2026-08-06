@@ -1,6 +1,6 @@
 //
 //  WidthAxisFitter.swift
-//  Playlist
+//  WXUI
 //
 //  Solves for the SF Pro width (`wdth`) axis value that condenses the on-air DJ
 //  handle onto one line beside the say-hi chip, without shrinking the point

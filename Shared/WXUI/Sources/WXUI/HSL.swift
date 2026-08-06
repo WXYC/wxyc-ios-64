@@ -1,6 +1,6 @@
 //
 //  HSL.swift
-//  Playlist
+//  WXUI
 //
 //  A hue/saturation/lightness color used by the on-air banner theme controls.
 //

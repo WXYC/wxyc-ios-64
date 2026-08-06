@@ -1,6 +1,6 @@
 //
 //  SFProVariationTests.swift
-//  Playlist
+//  WXUI
 //
 //  Tests for the SF Pro variable-font axis model used by the on-air banner controls.
 //
@@ -9,7 +9,7 @@
 //
 
 import Testing
-@testable import Playlist
+@testable import WXUI
 
 // MARK: - SF Pro Variation Tests
 
