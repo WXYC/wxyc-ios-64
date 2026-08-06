@@ -319,13 +319,23 @@ public final class AudioPlayerController {
     /// connected-but-starved class (`startup_timeout`, #487) surfaces and
     /// disarms this outer watchdog first. Injected so tests can trigger it fast.
     private let startupWatchdogDeadline: Duration
+    /// The sleep behind `startupWatchdogDeadline`. Defaults to the real wall
+    /// clock; tests substitute a gate so the deadline is driven by an explicit
+    /// signal instead of racing scheduler latency against the async
+    /// `.connectivityWaitChanged` propagation `isPlayerWaitingForConnectivity`
+    /// depends on. See issue #787 (the same pattern `MP3Streamer`'s own startup
+    /// watchdog uses for its inner deadline).
+    private let startupWatchdogSleep: @Sendable (Duration) async throws -> Void
     @ObservationIgnored private var startupWatchdogTask: Task<Void, Never>?
     /// Mirrors the player's connectivity-wait state, driven by the streamer's
     /// `.connectivityWaitChanged` edges (#699). While `true`, the startup
     /// watchdog defers instead of escalating a `silent_startup`: the task is
     /// legitimately parked offline (#697), not silently starved, and escalating
     /// would restart the parked streamer one layer up and defeat the gate.
-    @ObservationIgnored private var isPlayerWaitingForConnectivity = false
+    /// `internal`, not part of the public API — exposed so tests (`@testable
+    /// import`) can wait deterministically for the mirror to update rather than
+    /// guessing how many scheduler turns propagation needs. See issue #787.
+    @ObservationIgnored internal private(set) var isPlayerWaitingForConnectivity = false
 
     #if os(iOS) || os(tvOS)
     // Bounded deferral for audio-session activation that fails with
@@ -419,6 +429,11 @@ public final class AudioPlayerController {
     ///     deferred audio-session handback survives the app being backgrounded.
     ///     Defaults to nil — no assertion, which is what every construction site
     ///     except `shared` wants, since only a real app is ever suspended.
+    ///   - startupWatchdogSleep: The sleep behind `startupWatchdogDeadline`
+    ///     (#787). Production keeps the real wall clock; tests substitute a
+    ///     gate so the watchdog fires on an explicit signal instead of racing
+    ///     scheduler latency against `isPlayerWaitingForConnectivity`'s
+    ///     propagation.
     public init(
         player: AudioPlayerProtocol,
         audioSession: AudioSessionProtocol?,
@@ -431,7 +446,8 @@ public final class AudioPlayerController {
         defaults: DefaultsStorage = UserDefaults.standard,
         heartbeatInterval: Duration = .seconds(60),
         sessionActivationRetryDelay: Duration = .milliseconds(250),
-        backgroundTasks: (any BackgroundTaskAssertionProtocol)? = nil
+        backgroundTasks: (any BackgroundTaskAssertionProtocol)? = nil,
+        startupWatchdogSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.player = player
         self.audioSession = audioSession
@@ -442,6 +458,7 @@ public final class AudioPlayerController {
         self.analytics = analytics
         self.backoffTimer = backoffTimer
         self.startupWatchdogDeadline = startupWatchdogDeadline
+        self.startupWatchdogSleep = startupWatchdogSleep
         self.reachability = reachability
         self.defaults = defaults
         self.heartbeatInterval = heartbeatInterval
@@ -470,13 +487,15 @@ public final class AudioPlayerController {
         startupWatchdogDeadline: Duration = .seconds(15),
         reachability: NetworkReachability? = nil,
         defaults: DefaultsStorage = UserDefaults.standard,
-        heartbeatInterval: Duration = .seconds(60)
+        heartbeatInterval: Duration = .seconds(60),
+        startupWatchdogSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.player = player
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
         self.startupWatchdogDeadline = startupWatchdogDeadline
+        self.startupWatchdogSleep = startupWatchdogSleep
         self.reachability = reachability
         self.defaults = defaults
         self.heartbeatInterval = heartbeatInterval
@@ -1879,8 +1898,8 @@ extension AudioPlayerController {
     /// value) so an armed watchdog never extends the controller's lifetime.
     private func armStartupWatchdog() {
         startupWatchdogTask?.cancel()
-        startupWatchdogTask = Task { [weak self, deadline = startupWatchdogDeadline] in
-            try? await Task.sleep(for: deadline)
+        startupWatchdogTask = Task { [weak self, deadline = startupWatchdogDeadline, sleep = startupWatchdogSleep] in
+            try? await sleep(deadline)
             guard let self, !Task.isCancelled else { return }
             // Consult the live player as well as the mirrored `isPlaying`: at
             // the deadline boundary a `.playing` transition may have been

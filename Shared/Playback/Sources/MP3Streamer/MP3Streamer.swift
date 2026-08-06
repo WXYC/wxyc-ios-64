@@ -103,6 +103,13 @@ public final class MP3Streamer {
     private var startupConnectTask: Task<Void, Never>?
     @ObservationIgnored
     private var startupWatchdogTask: Task<Void, Never>?
+    /// The sleep behind the startup watchdog's deadline. Defaults to the real
+    /// wall clock; tests substitute a gate so the deadline is driven by an
+    /// explicit signal instead of racing scheduler latency against whatever
+    /// async event the watchdog's outcome depends on (e.g.
+    /// `isWaitingForConnectivity`). See issue #787.
+    @ObservationIgnored
+    private let startupWatchdogSleep: @Sendable (Duration) async throws -> Void
     @ObservationIgnored
     private var httpEventTask: Task<Void, Never>?
     @ObservationIgnored
@@ -179,11 +186,13 @@ public final class MP3Streamer {
         httpClient: (any HTTPStreamClientProtocol)? = nil,
         audioPlayer: (any AudioEnginePlayerProtocol)? = nil,
         backoffTimer: ExponentialBackoff = .default,
-        analytics: AnalyticsService? = nil
+        analytics: AnalyticsService? = nil,
+        startupWatchdogSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.configuration = configuration
         self.backoffTimer = backoffTimer
         self.analytics = analytics
+        self.startupWatchdogSleep = startupWatchdogSleep
 
         // Initialize state stream for AudioPlayerProtocol
         var stateContinuation: AsyncStream<PlayerState>.Continuation!
@@ -573,8 +582,9 @@ public final class MP3Streamer {
     private func armStartupWatchdog() {
         startupWatchdogTask?.cancel()
         let timeout = configuration.startupTimeout
+        let sleep = startupWatchdogSleep
         startupWatchdogTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(timeout))
+            try? await sleep(.seconds(timeout))
             guard let self, !Task.isCancelled else { return }
             self.handleStartupTimeout()
         }

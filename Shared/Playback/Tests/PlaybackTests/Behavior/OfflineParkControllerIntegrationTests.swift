@@ -45,7 +45,16 @@ struct OfflineParkControllerIntegrationTests {
     @Test("A sustained offline park fires extended_offline_park and no StreamErrorEvent, end to end")
     func sustainedParkFiresExtendedParkAndNoError() async throws {
         // startupTimeout clamps to max(0.1, connectionTimeout + 1) = 1.0s, so the
-        // inner re-arm threshold (2) is crossed ~2s into the park.
+        // inner re-arm threshold (2) is normally crossed ~2s into the park. Both
+        // that inner watchdog and the controller's own 300ms outer watchdog are
+        // driven off a `StartupWatchdogGate` rather than the wall clock (#787):
+        // a real `Task.sleep`-based deadline races the async
+        // `.waitingForConnectivity` → `isWaitingForConnectivity` →
+        // `isPlayerWaitingForConnectivity` propagation, and under
+        // parallel-simulator load the deadline can win, manufacturing the very
+        // escalation this test exists to rule out. Gating both means neither
+        // watchdog can fire until the test says so — and the test only says so
+        // after proving the park has already propagated to both layers.
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()
         let mockEnginePlayer = MockAudioEnginePlayer()
@@ -55,7 +64,15 @@ struct OfflineParkControllerIntegrationTests {
         mockHTTP.testData = nil
         mockHTTP.nextConnectDelay = .seconds(30)
 
-        let streamer = MP3Streamer(configuration: config, httpClient: mockHTTP, audioPlayer: mockEnginePlayer)
+        let innerWatchdogGate = StartupWatchdogGate()
+        let outerWatchdogGate = StartupWatchdogGate()
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockEnginePlayer,
+            startupWatchdogSleep: innerWatchdogGate.sleep
+        )
         let mockAnalytics = MockStructuredAnalytics()
         let controller = AudioPlayerController(
             player: streamer,
@@ -63,14 +80,19 @@ struct OfflineParkControllerIntegrationTests {
             remoteCommandCenter: MockRemoteCommandCenter(),
             notificationCenter: NotificationCenter(),
             analytics: mockAnalytics,
-            // Fires well before the inner 1.0s watchdog — reproduces the
-            // controller-preempts-inner ordering the fix has to survive.
-            startupWatchdogDeadline: .milliseconds(300)
+            // The deadline value is now vestigial — the gate decides when the
+            // watchdog actually fires — but kept short of the inner 1.0s
+            // deadline to document the controller-preempts-inner ordering the
+            // fix has to survive.
+            startupWatchdogDeadline: .milliseconds(300),
+            startupWatchdogSleep: outerWatchdogGate.sleep
         )
 
         controller.play(reason: .test)
 
-        // Wait for the initial connect to be issued, then park it.
+        // Wait for the initial connect to be issued, then park it. Neither
+        // watchdog can fire yet (both gates are un-released), so nothing races
+        // this poll.
         for _ in 0..<40 {
             try await Task.sleep(for: .milliseconds(25))
             if mockHTTP.connectCallCount >= 1 { break }
@@ -78,11 +100,42 @@ struct OfflineParkControllerIntegrationTests {
         #expect(mockHTTP.connectCallCount == 1, "Precondition: the controller issued the initial connect")
 
         mockHTTP.yield(.waitingForConnectivity)
-        // Let the park edge propagate streamer → controller before any deadline.
-        for _ in 0..<32 { await Task.yield() }
+
+        // Let the park edge propagate all the way from the streamer's own flag
+        // to the controller's mirror — a logic-based wait (nothing races it,
+        // since both watchdogs are still gated shut), not a time-based one.
+        for _ in 0..<400 {
+            if streamer.isWaitingForConnectivity { break }
+            await Task.yield()
+        }
         #expect(streamer.isWaitingForConnectivity, "Precondition: the streamer observed the park")
 
-        // Observe across several controller deadlines AND both inner re-arms.
+        for _ in 0..<400 {
+            if controller.isPlayerWaitingForConnectivity { break }
+            await Task.yield()
+        }
+        #expect(controller.isPlayerWaitingForConnectivity, "Precondition: the controller observed the park")
+
+        // Both preconditions are proven true before either gate is ever
+        // released, so every watchdog fire from here on is guaranteed to see a
+        // legitimate park — no scheduler-latency race can manufacture a false
+        // escalation.
+
+        // Drive the controller's watchdog through several deadlines: each
+        // release must defer (the mirror is true), never escalate to
+        // `silent_startup`.
+        for _ in 0..<3 {
+            await outerWatchdogGate.waitForArm()
+            outerWatchdogGate.release()
+        }
+
+        // Drive the inner watchdog through both re-arms needed to cross the
+        // extended-park threshold (2).
+        for _ in 0..<2 {
+            await innerWatchdogGate.waitForArm()
+            innerWatchdogGate.release()
+        }
+
         var events = mockAnalytics.typedEvents(ofType: ExtendedOfflineParkEvent.self)
         for _ in 0..<200 {
             try await Task.sleep(for: .milliseconds(25))
@@ -102,6 +155,12 @@ struct OfflineParkControllerIntegrationTests {
                 "A legitimately offline park must not escalate any StreamErrorEvent at either layer (#697/#699)")
 
         controller.stop(reason: .test)
+        // Drain any watchdog re-arm still parked on a gate (e.g. the inner
+        // watchdog's third arm, scheduled after the extended-park event fired
+        // but never explicitly released) so no suspended continuation outlives
+        // the test.
+        innerWatchdogGate.releaseAll()
+        outerWatchdogGate.releaseAll()
     }
 }
 
