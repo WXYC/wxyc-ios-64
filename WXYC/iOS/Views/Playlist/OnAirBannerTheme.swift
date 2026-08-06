@@ -8,13 +8,14 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import ColorPalette
 import SwiftUI
 import WXUI
 
 extension Color {
     /// Creates a color from an ``HSL`` value.
     ///
-    /// WXUI's ``HSL`` is genuine hue/saturation/lightness; SwiftUI's own
+    /// ColorPalette's ``HSL`` is genuine hue/saturation/lightness; SwiftUI's own
     /// `Color(hue:saturation:brightness:)` is HSB, a different space, so we convert here.
     init(_ hsl: HSL) {
         let rgb = hsl.rgb

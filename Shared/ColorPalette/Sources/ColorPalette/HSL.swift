@@ -1,6 +1,6 @@
 //
 //  HSL.swift
-//  WXUI
+//  ColorPalette
 //
 //  A hue/saturation/lightness color used by the on-air banner theme controls.
 //
@@ -18,6 +18,23 @@ import Foundation
 /// onto three intuitive sliders. The view layer converts ``rgb`` into a SwiftUI `Color`.
 /// SwiftUI's own `Color(hue:saturation:brightness:)` is HSB — a different space — so the
 /// conversion lives here rather than being delegated to it.
+///
+/// ``HSBColor`` also lives in this package, and deliberately stays a separate type rather
+/// than folding into this one: the two exist for different jobs. HSBColor bridges to
+/// UIKit/AppKit (``HSBColor/uiColor``, ``HSBColor/nsColor``) and carries the wallpaper
+/// theming system's semantic operations (``HSBColor/rotatingHue(by:)``,
+/// ``HSBColor/withBrightness(_:)``), with hue in degrees to match `UIColor`'s own
+/// convention. HSL exists to translate design-system colors specified as CSS `hsl()`
+/// values (see `BoxOfficeTicketView` and `OnTourRowBadge`, both transcribing literal
+/// prototype CSS) and to back the on-air banner's fraction-based debug sliders — CSS's
+/// hue is a fraction of the wheel, not degrees, and its "lightness" is a different
+/// midpoint-anchored model than HSB's "brightness." Unifying them would mean either
+/// picking one convention and re-deriving every transcribed CSS value and slider by
+/// hand, or keeping both formulas under one type — neither buys anything over two small,
+/// independently-correct structs. Consolidating them into one *package* (this ticket)
+/// still gets the win that mattered: one place to look for "how does this codebase turn
+/// hue+something+something into a Color," instead of the previous split across Playlist
+/// and ColorPalette.
 public struct HSL: Hashable, Sendable {
     /// Hue as a fraction of the color wheel, `0...1` (0 = red, 1/3 = green, 2/3 = blue).
     public var hue: Double
