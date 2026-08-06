@@ -371,18 +371,26 @@ struct RenderTapBackgroundBehaviorTests {
 // MARK: - RadioPlayerController Background/Foreground Specific Tests
 
 /// Characterization tests pinning `RadioPlayerController`'s `#if os(iOS)`
-/// lifecycle block (#777).
+/// lifecycle block (#777, #788).
 ///
 /// That block is unreachable in the shipping app — watchOS is the only platform
 /// that instantiates the controller, and watchOS compiles the block out — so
 /// nothing else in the suite exercises it. These tests are therefore the only
 /// thing that will notice if the handback is deferred or dropped, or if the
-/// while-playing guard goes away.
+/// intent-based guard regresses to actual-state.
 ///
 /// The synchronous shape is the intended one, not a lag behind #774: that PR
 /// defers `AudioPlayerController.stop()`'s handback but keeps the
 /// *backgrounding* handback on the caller's turn, which is what this is. See
 /// the comment on `handleApplicationDidEnterBackground()`.
+///
+/// The guard reads `playbackIntended`, not `isPlaying` (#788) — matching
+/// `AudioPlayerController`. That widens what "leaves the session alone"
+/// covers: `backgroundWhilePlayingDoesNotDeactivate` below (actual state)
+/// still holds, but it's now a special case of
+/// `backgroundWhileBufferingDoesNotDeactivate` (mere intent) rather than the
+/// governing condition — a play that's still buffering when the app
+/// backgrounds is exactly the case `isPlaying` alone used to miss.
 @Suite("RadioPlayerController Background/Foreground Behavior Tests")
 @MainActor
 struct RadioPlayerControllerBackgroundBehaviorTests {
@@ -419,8 +427,42 @@ struct RadioPlayerControllerBackgroundBehaviorTests {
         harness.mockSession.reset()
         harness.controller.handleAppDidEnterBackground()
 
+        // The guard now reads `playbackIntended` rather than `isPlaying`
+        // (#788), so this scenario passes through the same branch as
+        // `backgroundWhileBufferingDoesNotDeactivate` below: `isPlaying` true
+        // implies `playbackIntended` true (there is no code path that clears
+        // intent while still reporting playing), so this case was already
+        // covered by intent. It stays as its own test because "actually
+        // playing" is the scenario a reader expects this guard to protect —
+        // dropping it in favor of the buffering case alone would leave that
+        // expectation unverified.
         #expect(harness.mockSession.setActiveCallCount == 0,
                "Backgrounding while playing must not deactivate — audio would stop")
+    }
+
+    @Test("Backgrounding while a play is still buffering leaves the session alone")
+    func backgroundWhileBufferingDoesNotDeactivate() throws {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
+
+        // Disable the mock's auto state-update so `play()` starts the play
+        // without immediately reporting `isPlaying == true` — the buffering
+        // window a real `AVPlayer` sits in between `play()` and the stream
+        // actually rendering audio.
+        harness.mockPlayer.shouldAutoUpdateState = false
+
+        try harness.controller.play(reason: .test)
+        // Deliberately no `simulatePlaybackStarted()` — the play is still
+        // buffering, so `isPlaying` is false even though `playbackIntended`
+        // is true. The guard must key off intent, not actual state, or this
+        // backgrounding tears down the session the pending `play()` just
+        // activated (#788).
+        #expect(!harness.controller.isPlaying)
+
+        harness.mockSession.reset()
+        harness.controller.handleAppDidEnterBackground()
+
+        #expect(harness.mockSession.setActiveCallCount == 0,
+               "Backgrounding during buffering must not deactivate the session a pending play just activated")
     }
 }
 #endif
