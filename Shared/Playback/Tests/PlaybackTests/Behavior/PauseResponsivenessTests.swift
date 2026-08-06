@@ -439,6 +439,7 @@ struct PauseResponsivenessTests {
             "precondition: the handback had already finished, so nothing was in flight to lose"
         )
 
+        let eventsBeforeBackgrounding = harness.mockBackgroundTasks.events
         let timer = ContinuousClock().now
         harness.controller.handleAppDidEnterBackground()
         let elapsed = ContinuousClock().now - timer
@@ -461,6 +462,15 @@ struct PauseResponsivenessTests {
             harness.mockBackgroundTasks.activeCount >= 1,
             "nothing asked the system for the time to finish the handback, so it is racing suspension"
         )
+        // Read *before* the transition, because reading it after can't tell the
+        // two designs apart: an assertion begun inside
+        // `handleAppDidEnterBackground()` would also leave one live here, and it
+        // would cover only the tail of a handback that is already in flight by
+        // then. Beginning it where the handback is scheduled is the whole point.
+        #expect(
+            eventsBeforeBackgrounding.count == 1 && eventsBeforeBackgrounding[0].isBegin,
+            "the assertion was taken at the background transition rather than when the handback was scheduled: \(eventsBeforeBackgrounding)"
+        )
 
         harness.mockSession.releaseDeactivations()
         await harness.waitUntil({
@@ -476,6 +486,7 @@ struct PauseResponsivenessTests {
             "the background-execution assertion outlived the work it was taken for — the OS kills apps for that"
         )
     }
+    #endif
 
     @Test("A failed handback still releases its background-execution assertion")
     func failedHandbackReleasesItsAssertion() async {
@@ -494,6 +505,10 @@ struct PauseResponsivenessTests {
         #expect(
             harness.mockBackgroundTasks.activeCount == 0,
             "a handback that threw walked away holding a background-execution assertion"
+        )
+        #expect(
+            harness.mockBackgroundTasks.strayEndCount == 0,
+            "the same assertion was ended twice — UIApplication treats that as a programming error"
         )
     }
 
@@ -514,6 +529,10 @@ struct PauseResponsivenessTests {
         #expect(
             harness.mockBackgroundTasks.activeCount == 0,
             "a handback that declined to run walked away holding a background-execution assertion"
+        )
+        #expect(
+            harness.mockBackgroundTasks.strayEndCount == 0,
+            "the same assertion was ended twice — UIApplication treats that as a programming error"
         )
     }
 
@@ -587,6 +606,117 @@ struct PauseResponsivenessTests {
         )
         #expect(harness.mockBackgroundTasks.activeCount == 0, "an assertion was left live")
         #expect(harness.sessionDeactivated, "the re-driven handback never handed the session back")
+    }
+
+    @Test("A re-drive after expiry does not arm a fresh assertion against a spent budget")
+    func redriveAfterExpiryDoesNotRearmTheAssertion() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        // The re-drive interleaving again, but with the system taking our
+        // background time away mid-flight.
+        harness.controller.play()
+        harness.controller.stop()
+        harness.controller.play()
+        harness.controller.stop()
+        #expect(harness.mockBackgroundTasks.beginCount == 1, "precondition: the handback took no assertion to expire")
+
+        harness.mockBackgroundTasks.expireAll()
+        #expect(harness.mockBackgroundTasks.activeCount == 0, "precondition: expiry left an assertion live")
+
+        await harness.waitUntil({
+            harness.sessionDeactivated && harness.sessionDeactivationSettled
+        }, timeout: .seconds(5))
+
+        // Expiry is app-wide and means `backgroundTimeRemaining` is spent. Arming
+        // another assertion there is the churn the expiration handler already
+        // refuses to do by the front door — and its handler may not be delivered
+        // before the process is suspended, which leaves it live and unended, the
+        // one failure the OS punishes with termination rather than a warning.
+        #expect(
+            harness.mockBackgroundTasks.beginCount == 1,
+            "a re-drive armed a new assertion after the system said our background time was spent: \(harness.mockBackgroundTasks.events)"
+        )
+        // Suppressing the *assertion* must not suppress the handback: it is still
+        // the only thing that lets the interrupted app resume, and it runs exactly
+        // as it did before this seam existed — unprotected, but never blocked.
+        #expect(harness.sessionDeactivated, "suppressing the post-expiry assertion also dropped the handback")
+        #expect(harness.mockBackgroundTasks.activeCount == 0, "an assertion was left live")
+        #expect(harness.mockBackgroundTasks.strayEndCount == 0, "an assertion was ended twice")
+    }
+
+    @Test("A declined assertion leaves the handback unprotected but still running")
+    func declinedAssertionStillCompletesTheHandback() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        // Background execution can be refused outright — the system returns an
+        // invalid identifier and there is nothing to end. The handback must still
+        // happen; it simply races suspension exactly as it did before #776.
+        harness.mockBackgroundTasks.shouldDeclineToBegin = true
+
+        harness.controller.play()
+        harness.controller.stop()
+
+        await harness.waitUntil({
+            harness.sessionDeactivated && harness.sessionDeactivationSettled
+        }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "a declined assertion stopped the handback from happening at all")
+        #expect(
+            harness.mockSession.lastActiveOptions == .notifyOthersOnDeactivation,
+            "the handback dropped the notification other apps resume on"
+        )
+        #expect(harness.mockBackgroundTasks.beginCount == 0, "precondition: the system did not actually decline")
+        #expect(
+            harness.mockBackgroundTasks.strayEndCount == 0,
+            "an identifier the system never issued was handed back to it"
+        )
+    }
+
+    #if os(iOS)
+    @Test("An expired assertion leaves the handback for the next background transition to finish")
+    func expiredHandbackIsRetriedByTheNextBackgrounding() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        // The handback comes back unconfirmed, which is the state expiry leaves
+        // behind: the assertion is gone and nothing proved the session was
+        // released. Letting it lapse is only defensible if something later picks
+        // it up, so this pins what that something is.
+        harness.mockSession.shouldThrowOnDeactivate = true
+
+        harness.controller.play()
+        harness.controller.stop()
+        #expect(harness.mockBackgroundTasks.activeCount == 1, "precondition: no assertion was taken for the handback")
+        harness.mockBackgroundTasks.expireAll()
+
+        await harness.waitUntil({ harness.sessionDeactivationSettled }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivationSettled, "precondition: the expired handback never settled")
+
+        // Foregrounding is deliberately *not* tested as a retry driver:
+        // `handleAppWillEnterForeground()` touches the session only when
+        // playback is intended, and a pause is exactly the state where it isn't.
+        // Backgrounding is, because it finds `audioSessionActivated` still set
+        // and hands back on the caller's turn.
+        harness.mockSession.shouldThrowOnDeactivate = false
+        let callsBeforeRetry = harness.mockSession.setActiveCallCount
+        let assertionsBeforeRetry = harness.mockBackgroundTasks.beginCount
+
+        harness.controller.handleAppDidEnterBackground()
+
+        #expect(
+            harness.mockSession.setActiveCallCount == callsBeforeRetry + 1,
+            "the unconfirmed handback was dropped rather than retried, so the session is still held"
+        )
+        #expect(
+            harness.mockSession.lastActiveOptions == .notifyOthersOnDeactivation,
+            "the retry dropped the notification other apps resume on"
+        )
+        // The synchronous branch runs entirely within the caller's turn, and the
+        // system does not suspend an app inside its own scenePhase callback — so
+        // it takes no assertion, and taking one here would be an assertion begun
+        // and ended in the same turn for nothing.
+        #expect(
+            harness.mockBackgroundTasks.beginCount == assertionsBeforeRetry,
+            "the synchronous handback took a background-execution assertion it does not need"
+        )
+        #expect(harness.mockBackgroundTasks.activeCount == 0, "an assertion was left live")
+        #expect(harness.mockBackgroundTasks.strayEndCount == 0, "an assertion was ended twice")
     }
 
     @Test("Backgrounding hands the session back on the caller's turn")

@@ -88,7 +88,10 @@ public final class MockBackgroundTaskAssertion: BackgroundTaskAssertionProtocol 
     /// the app's background time runs out. Expiration is app-wide, not per-task,
     /// so they all fire together here too.
     public func expireAll() {
-        for handler in expirationHandlers.values {
+        // Snapshotted: the handlers end tasks, which mutates the dictionary
+        // being iterated. Copy-on-write makes the bare `for` safe too, but only
+        // by an argument nobody should have to reconstruct at a call site.
+        for handler in Array(expirationHandlers.values) {
             handler()
         }
     }
