@@ -127,10 +127,6 @@ public final class RadioPlayerController: PlaybackController {
         if let routeChangeObservation { notificationCenter.removeObserver(routeChangeObservation) }
         #endif
         if let stallObservation { notificationCenter.removeObserver(stallObservation) }
-        #if os(iOS)
-        if let backgroundObservation { notificationCenter.removeObserver(backgroundObservation) }
-        if let foregroundObservation { notificationCenter.removeObserver(foregroundObservation) }
-        #endif
         reconnectTask?.cancel()
         heartbeatTask?.cancel()
     }
@@ -157,19 +153,6 @@ public final class RadioPlayerController: PlaybackController {
         ) { [weak self] _ in
             self?.handlePlaybackStalled()
         }
-
-        #if os(iOS)
-        backgroundObservation = notificationCenter.addMainActorObserver(
-            for: AppDidEnterBackgroundMessage.self
-        ) { [weak self] _ in
-            self?.handleApplicationDidEnterBackground()
-        }
-        foregroundObservation = notificationCenter.addMainActorObserver(
-            for: AppWillEnterForegroundMessage.self
-        ) { [weak self] _ in
-            self?.handleApplicationWillEnterForeground()
-        }
-        #endif
 
         if let remoteCommandCenter {
             remoteCommandCenter.playCommand.addTarget(handler: self.remotePlayCommand)
@@ -330,11 +313,7 @@ public final class RadioPlayerController: PlaybackController {
     private var routeChangeObservation: (any NSObjectProtocol)?
     #endif
     private var stallObservation: (any NSObjectProtocol)?
-    #if os(iOS)
-    private var backgroundObservation: (any NSObjectProtocol)?
-    private var foregroundObservation: (any NSObjectProtocol)?
-    #endif
-    
+
     #if os(iOS) || os(tvOS)
     private let audioSession: AudioSessionProtocol
     #endif
@@ -362,13 +341,14 @@ public final class RadioPlayerController: PlaybackController {
     private var heartbeatTask: Task<Void, Never>?
     /// Whether the app is foregrounded, read by `emitHeartbeat()` for the
     /// heartbeat's `context` field. Updated only where this controller has
-    /// lifecycle wiring — the `#if os(iOS)` `UIApplication` notification
-    /// handlers below. On watchOS, where this controller is actually used in
+    /// lifecycle wiring — the `#if os(iOS)` `handleApplicationDidEnterBackground()`
+    /// / `handleApplicationWillEnterForeground()` methods below, reached
+    /// through the `PlaybackController` protocol's `#if os(iOS)`-gated
+    /// `handleAppDidEnterBackground()` / `handleAppWillEnterForeground()`
+    /// requirements. On watchOS, where this controller is actually used in
     /// production (`RadioPlayerController.shared` backs `WatchXYCApp`),
-    /// nothing ever sets this to `false`: `AppDidEnterBackgroundMessage` /
-    /// `AppWillEnterForegroundMessage` are themselves `#if os(iOS)`-gated
-    /// (see `UIApplicationMessages.swift`), since they're backed by
-    /// `UIApplication`, which doesn't exist on watchOS. So a watchOS
+    /// nothing ever sets this to `false`: that protocol requirement doesn't
+    /// exist on watchOS, since it's `#if os(iOS)`-gated too. So a watchOS
     /// heartbeat always reports `.foreground` — closing that gap needs a
     /// watchOS-native lifecycle signal (`WKExtension` / SwiftUI
     /// `scenePhase`) and is out of scope here; see the PR description.
@@ -563,7 +543,8 @@ private extension RadioPlayerController {
     // MARK: External playback command handlers
 
 #if os(iOS)
-    /// Hands the audio session back when the app backgrounds without playing.
+    /// Hands the audio session back when the app backgrounds without playback
+    /// intended.
     ///
     /// The `setActive(false, …)` below is deliberately left on the caller's
     /// turn. That call is a blocking XPC round-trip to `mediaserverd` which,
@@ -614,30 +595,38 @@ private extension RadioPlayerController {
     ///    — the two halves do not share a platform condition, so widening
     ///    either one does not implicitly widen the other.
     ///
-    /// Either condition alone is insufficient, and the work to do if either
-    /// changes is not "port #774". Two things here would need attention first,
-    /// and neither is fixed by a deferred handback:
+    /// Either condition alone is insufficient, so #788 closed the two gaps
+    /// #777 left open rather than leaving them for whichever condition lapses
+    /// first:
     ///
-    /// - **Two entry points would both fire.** This runs from the
-    ///   `AppDidEnterBackgroundMessage` observer *and* from the
-    ///   `PlaybackController` requirement `handleAppDidEnterBackground()`
-    ///   (see the passthrough above). `AudioPlayerController` deliberately has
-    ///   only the latter, driven from SwiftUI's `scenePhase`. An iOS scene
-    ///   wired to this controller would double-fire the handback.
-    /// - **The guard is on the wrong predicate.** It reads `isPlaying`, actual
-    ///   state, where `AudioPlayerController` reads `playbackIntended`, intent
-    ///   — and this controller has `playbackIntended` too. Background during
-    ///   buffering and `isPlaying` is still false, so this would tear down the
-    ///   session the pending `play()` just activated at the `setActive(true,
-    ///   …)` above.
+    /// - **Single entry point.** This is reached only through the
+    ///   `PlaybackController` requirement `handleAppDidEnterBackground()` (see
+    ///   the passthrough above), matching `AudioPlayerController`, which is
+    ///   driven from SwiftUI's `scenePhase`. There used to be a second path —
+    ///   a `NotificationCenter` observer on `AppDidEnterBackgroundMessage`,
+    ///   wired directly in `setUpObservations(notificationCenter:remoteCommandCenter:)`
+    ///   — that would have double-fired the handback if an iOS scene ever
+    ///   wired this controller up. It's gone; an iOS caller only has the one
+    ///   door in.
+    /// - **Guard on intent, not state.** The guard below reads
+    ///   `playbackIntended`, matching `AudioPlayerController`, rather than
+    ///   `isPlaying`. `isPlaying` is false for the entire buffering window
+    ///   between `play()`'s `setActive(true, …)` and the player actually
+    ///   rendering audio, so guarding on it let a background during that
+    ///   window tear down the session the pending `play()` had just
+    ///   activated — the user's own act of backgrounding right after hitting
+    ///   play would silently kill it. `playbackIntended` is set for exactly
+    ///   that window (see `play(reason:)`) and cleared in `stop(reason:)`, so
+    ///   it covers the buffering gap `isPlaying` misses.
     ///
     /// `RadioPlayerControllerBackgroundBehaviorTests` pins the current shape —
-    /// synchronous, and skipped while playing — so that changing either is not
-    /// silent. See #777.
+    /// synchronous, and skipped whenever playback is intended, whether or not
+    /// the player has actually started rendering audio yet — so that
+    /// regressing either is not silent. See #777, #788.
     func handleApplicationDidEnterBackground() {
         isForegrounded = false
 
-        guard !self.radioPlayer.isPlaying else {
+        guard !self.playbackIntended else {
             return
         }
 
