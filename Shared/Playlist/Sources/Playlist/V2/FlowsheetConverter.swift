@@ -61,16 +61,16 @@ enum FlowsheetConverter {
                     artistName: (entry.artist_name ?? "Unknown").htmlDecoded,
                     releaseTitle: entry.album_title?.htmlDecoded,
                     rotation: entry.rotation_id != nil,
-                    artworkURL: entry.artwork_url.flatMap { URL(string: $0) },
-                    discogsURL: entry.discogs_url.flatMap { URL(string: $0) },
+                    artworkURL: parseURL(entry.artwork_url),
+                    discogsURL: parseURL(entry.discogs_url),
                     releaseYear: entry.release_year,
-                    spotifyURL: entry.spotify_url.flatMap { URL(string: $0) },
-                    appleMusicURL: entry.apple_music_url.flatMap { URL(string: $0) },
-                    youtubeMusicURL: entry.youtube_music_url.flatMap { URL(string: $0) },
-                    bandcampURL: entry.bandcamp_url.flatMap { URL(string: $0) },
-                    soundcloudURL: entry.soundcloud_url.flatMap { URL(string: $0) },
+                    spotifyURL: parseURL(entry.spotify_url),
+                    appleMusicURL: parseURL(entry.apple_music_url),
+                    youtubeMusicURL: parseURL(entry.youtube_music_url),
+                    bandcampURL: parseURL(entry.bandcamp_url),
+                    soundcloudURL: parseURL(entry.soundcloud_url),
                     artistBio: entry.artist_bio,
-                    artistWikipediaURL: entry.artist_wikipedia_url.flatMap { URL(string: $0) },
+                    artistWikipediaURL: parseURL(entry.artist_wikipedia_url),
                     genres: entry.genres,
                     styles: entry.styles,
                     artistId: entry.artist_id,
@@ -92,28 +92,16 @@ enum FlowsheetConverter {
                 breakpoints.append(Breakpoint(id: id, hour: breakpointHour, chronOrderID: chronOrderID, timeCreated: hour))
 
             case .showStart(let djName):
-                let marker = ShowMarker(
-                    id: id,
-                    hour: hour,
-                    chronOrderID: chronOrderID,
-                    timeCreated: hour,
-                    isStart: true,
-                    djName: djName,
-                    message: entry.message ?? ""
-                )
-                showMarkers.append(marker)
+                showMarkers.append(makeShowMarker(
+                    id: id, hour: hour, chronOrderID: chronOrderID,
+                    isStart: true, djName: djName, message: entry.message
+                ))
 
             case .showEnd(let djName):
-                let marker = ShowMarker(
-                    id: id,
-                    hour: hour,
-                    chronOrderID: chronOrderID,
-                    timeCreated: hour,
-                    isStart: false,
-                    djName: djName,
-                    message: entry.message ?? ""
-                )
-                showMarkers.append(marker)
+                showMarkers.append(makeShowMarker(
+                    id: id, hour: hour, chronOrderID: chronOrderID,
+                    isStart: false, djName: djName, message: entry.message
+                ))
             }
         }
 
@@ -232,6 +220,40 @@ enum FlowsheetConverter {
             return id
         }
         return (show << 32) | order
+    }
+
+    /// Builds a ``ShowMarker`` for a `showStart`/`showEnd` entry. The two cases
+    /// in `convert(_:onAir:)` differ only in `isStart`'s Bool literal; this is
+    /// the shared construction both call.
+    private static func makeShowMarker(
+        id: UInt64,
+        hour: UInt64,
+        chronOrderID: UInt64,
+        isStart: Bool,
+        djName: String?,
+        message: String?
+    ) -> ShowMarker {
+        ShowMarker(
+            id: id,
+            hour: hour,
+            chronOrderID: chronOrderID,
+            timeCreated: hour,
+            isStart: isStart,
+            djName: djName,
+            message: message ?? ""
+        )
+    }
+
+    /// Parses a URL string tolerantly, returning `nil` for an absent, empty, or
+    /// malformed value instead of throwing — the same tolerant-decode shape as
+    /// `Concert.parseURL(_:)` in the sibling Concerts package (not reusable
+    /// directly here: it's `internal` to that module). `URL(string:)` alone
+    /// already returns `nil` for an empty string, so the explicit `isEmpty`
+    /// guard below is belt-and-suspenders, matching `Concert.parseURL(_:)`'s
+    /// documented intent rather than changing behavior.
+    private static func parseURL(_ raw: String?) -> URL? {
+        guard let raw, !raw.isEmpty else { return nil }
+        return URL(string: raw)
     }
 
     /// Parses an ISO 8601 timestamp string to milliseconds since 1970.
