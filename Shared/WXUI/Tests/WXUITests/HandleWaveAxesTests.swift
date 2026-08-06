@@ -1,6 +1,6 @@
 //
 //  HandleWaveAxesTests.swift
-//  Playlist
+//  WXUI
 //
 //  Verifies the on-air handle wave's presentation math that the banner view drives
 //  per letter and per frame: mapping a crest intensity onto the SF Pro grade and
@@ -12,7 +12,7 @@
 
 import Testing
 import Foundation
-@testable import Playlist
+@testable import WXUI
 
 @Suite("Handle wave presentation")
 struct HandleWaveAxesTests {

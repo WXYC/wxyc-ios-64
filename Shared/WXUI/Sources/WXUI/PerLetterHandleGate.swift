@@ -1,6 +1,6 @@
 //
 //  PerLetterHandleGate.swift
-//  Playlist
+//  WXUI
 //
 //  Decides whether the on-air DJ handle renders as the rigid per-letter row (the
 //  wave row) or the flexible single `Text`. The per-letter row pins each glyph to

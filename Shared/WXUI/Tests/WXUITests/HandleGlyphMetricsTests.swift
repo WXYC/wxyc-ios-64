@@ -1,6 +1,6 @@
 //
 //  HandleGlyphMetricsTests.swift
-//  Playlist
+//  WXUI
 //
 //  Verifies the per-character advance widths used to render the on-air handle's
 //  grade wave letter-by-letter. The advances fold kerning in — summing them
@@ -16,7 +16,7 @@ import Testing
 import Foundation
 import CoreText
 import CoreGraphics
-@testable import Playlist
+@testable import WXUI
 
 @Suite("Handle glyph metrics")
 struct HandleGlyphMetricsTests {

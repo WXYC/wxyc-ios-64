@@ -1,6 +1,6 @@
 //
 //  HSLTests.swift
-//  Playlist
+//  WXUI
 //
 //  Tests for the HSL -> RGB conversion used by the on-air banner theme controls.
 //
@@ -10,7 +10,7 @@
 
 import Testing
 import Foundation
-@testable import Playlist
+@testable import WXUI
 
 // MARK: - HSL Tests
 

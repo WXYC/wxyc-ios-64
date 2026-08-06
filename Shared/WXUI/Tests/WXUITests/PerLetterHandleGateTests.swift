@@ -1,6 +1,6 @@
 //
 //  PerLetterHandleGateTests.swift
-//  Playlist
+//  WXUI
 //
 //  Verifies the pure gate that decides whether the on-air handle renders as the
 //  rigid per-letter row or the flexible single `Text`. The crux is the startup
@@ -15,7 +15,7 @@
 
 import Testing
 import CoreGraphics
-@testable import Playlist
+@testable import WXUI
 
 @Suite("Per-letter handle gate")
 struct PerLetterHandleGateTests {

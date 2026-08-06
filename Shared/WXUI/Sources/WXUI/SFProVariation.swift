@@ -1,6 +1,6 @@
 //
 //  SFProVariation.swift
-//  Playlist
+//  WXUI
 //
 //  A point in SF Pro's variable-font design space, used by the on-air banner controls.
 //

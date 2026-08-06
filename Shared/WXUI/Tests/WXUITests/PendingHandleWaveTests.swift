@@ -1,6 +1,6 @@
 //
 //  PendingHandleWaveTests.swift
-//  Playlist
+//  WXUI
 //
 //  Verifies the pure gate that holds a one-shot handle wave until it can actually
 //  be seen — the app foregrounded and the handle on-screen. A sign-on that lands
@@ -13,7 +13,7 @@
 
 import Testing
 import Foundation
-@testable import Playlist
+@testable import WXUI
 
 @Suite("Pending handle wave")
 struct PendingHandleWaveTests {

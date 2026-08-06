@@ -1,6 +1,6 @@
 //
 //  HandleWaveAxes.swift
-//  Playlist
+//  WXUI
 //
 //  The on-air handle wave's presentation math: how the banner turns a crest
 //  ``HandleGradeWave/intensity(characterIndex:count:progress:)`` into per-letter
