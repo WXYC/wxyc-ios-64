@@ -227,7 +227,13 @@ public final class AudioPlayerController {
 
     // MARK: - State
 
-    private var wasPlayingBeforeInterruption = false
+    /// Whether playback was active immediately before the last route
+    /// disconnect (e.g. headphones unplugged), so a later reconnect knows
+    /// whether to resume. `wasPlayingBeforeInterruption` has no equivalent
+    /// field here — it moved entirely into `PlaybackInterruptionRouteHandler`
+    /// (#756), since neither controller read it outside interruption
+    /// handling. This flag stays controller-owned because `play()` and
+    /// `PlaybackStopTeardown` also touch it.
     private var wasPlayingBeforeRouteDisconnect = false
     /// Tracks if we intend to be playing (survives transient state changes)
     private var playbackIntended = false
@@ -279,8 +285,14 @@ public final class AudioPlayerController {
     /// closure captures `self` weakly, which Swift only permits once every
     /// other stored property has a value (mirrors `setUpCPUAggregator()`).
     @ObservationIgnored private var heartbeat: PlaybackHeartbeat?
-    @ObservationIgnored private var interruptionObservation: (any NSObjectProtocol)?
-    @ObservationIgnored private var routeChangeObservation: (any NSObjectProtocol)?
+    #if os(iOS) || os(tvOS)
+    /// Owns the interruption/route-change notification subscription, the
+    /// case switch, and the shared `PlaybackStoppedEvent` capture (#756),
+    /// extracted into `PlaybackCore` so both this controller and
+    /// `RadioPlayerController` compose the same implementation instead of
+    /// each maintaining a duplicated copy. Populated by `setUpNotifications()`.
+    @ObservationIgnored private var interruptionRouteHandler: PlaybackInterruptionRouteHandler?
+    #endif
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
 
     @ObservationIgnored private var eventTask: Task<Void, Never>?
@@ -531,10 +543,9 @@ public final class AudioPlayerController {
         heartbeat?.stop()
         #if os(iOS) || os(tvOS)
         sessionActivationRetryTask?.cancel()
-        #endif
-        if let interruptionObservation { notificationCenter.removeObserver(interruptionObservation) }
-        if let routeChangeObservation { notificationCenter.removeObserver(routeChangeObservation) }
-        #if os(iOS) || os(tvOS)
+        // interruptionRouteHandler's own deinit removes its notification
+        // observers; nothing to do here beyond releasing the reference,
+        // which happens automatically once this deinit body returns.
         removeRemoteCommandTargets()
         #endif
     }
@@ -1480,18 +1491,26 @@ public final class AudioPlayerController {
     // MARK: - Notifications (iOS/tvOS only)
 
     #if os(iOS) || os(tvOS)
+    /// Constructs the shared `PlaybackInterruptionRouteHandler` (#756). This
+    /// controller's only genuine extra beyond the shared switch is
+    /// `reactivateAfterInterruptionIfPending()` on an `.ended` that isn't
+    /// resuming prior playback — everything else (the `.interrupted` state,
+    /// the `InterruptionEvent` capture, the route-change restart fallback) is
+    /// `RadioPlayerController`-only and left at the handler's no-op defaults
+    /// here.
     private func setUpNotifications() {
-        interruptionObservation = notificationCenter.addMainActorObserver(
-            for: InterruptionMessage.self
-        ) { [weak self] message in
-            self?.handleInterruption(message)
-        }
-
-        routeChangeObservation = notificationCenter.addMainActorObserver(
-            for: RouteChangeMessage.self
-        ) { [weak self] message in
-            self?.handleRouteChange(message)
-        }
+        interruptionRouteHandler = PlaybackInterruptionRouteHandler(
+            notificationCenter: notificationCenter,
+            isPlaying: { [weak self] in self?.isPlaying ?? false },
+            sessionID: { [weak self] in self?.sessionID },
+            playbackDuration: { [weak self] in self?.playbackDuration ?? 0 },
+            analytics: analytics,
+            stop: { [weak self] reason in self?.stop(reason: reason) },
+            play: { [weak self] reason in self?.play(reason: reason) },
+            getWasPlayingBeforeRouteDisconnect: { [weak self] in self?.wasPlayingBeforeRouteDisconnect ?? false },
+            setWasPlayingBeforeRouteDisconnect: { [weak self] value in self?.wasPlayingBeforeRouteDisconnect = value },
+            onInterruptionEndedWithoutResume: { [weak self] in self?.reactivateAfterInterruptionIfPending() }
+        )
     }
     #endif
 
@@ -1574,56 +1593,6 @@ public final class AudioPlayerController {
                 // and emit a spurious playback-start. Just re-affirm the session.
                 activateAudioSession()
             }
-        }
-    }
-    #endif
-
-    #if os(iOS) || os(tvOS)
-    private func handleInterruption(_ message: InterruptionMessage) {
-        switch message.type {
-        case .began:
-            wasPlayingBeforeInterruption = isPlaying
-            if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, source: PlaybackReason.interruptionBegan.playbackSource, duration: playbackDuration, sessionID: sessionID))
-                stop(reason: .interruptionBegan)
-            }
-
-        case .ended:
-            if message.options.contains(.shouldResume) && wasPlayingBeforeInterruption {
-                play(reason: .resumeAfterInterruption)
-            } else {
-                // No prior in-app interruption to resume from, but the system
-                // says the interruption is over. If a session activation was
-                // deferred (CannotInterruptOthers), try it now instead of
-                // waiting out the retry cadence. See #514.
-                reactivateAfterInterruptionIfPending()
-            }
-            wasPlayingBeforeInterruption = false
-
-        @unknown default:
-            break
-        }
-    }
-
-    private func handleRouteChange(_ message: RouteChangeMessage) {
-        switch message.reason {
-        case .oldDeviceUnavailable:
-            // Headphones unplugged - stop playback per Apple HIG
-            wasPlayingBeforeRouteDisconnect = isPlaying
-            if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, source: PlaybackReason.routeDisconnected.playbackSource, duration: playbackDuration, sessionID: sessionID))
-                stop(reason: .routeDisconnected)
-            }
-
-        case .newDeviceAvailable:
-            // Device reconnected (e.g., AirPod reinserted) - resume if we were playing before disconnect
-            if wasPlayingBeforeRouteDisconnect {
-                play(reason: .resumeAfterRouteReconnect)
-            }
-
-        default:
-            // AudioEnginePlayer handles restarting the engine on configuration changes
-            break
         }
     }
     #endif
