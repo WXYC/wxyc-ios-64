@@ -351,17 +351,11 @@ public final class AudioPlayerTestHarness {
         #endif
     }
 
-    /// Polls until `condition` is met or `timeout` expires. The inner backoff
-    /// is `Task.yield()` rather than a fixed sleep, so on a `MainActor`-isolated
-    /// test the loop progresses as fast as the executor can drain pending work.
-    public func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = .seconds(1)) async {
-        let deadline = ContinuousClock.now.advanced(by: timeout)
-        while !condition() {
-            if ContinuousClock.now >= deadline {
-                return
-            }
-            await Task.yield()
-        }
+    /// Polls until `condition` is met or `timeout` expires. Delegates to the
+    /// package-wide `pollUntil` so every suite shares one set of timeout
+    /// mechanics.
+    public func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = .seconds(5)) async {
+        await pollUntil(condition, timeout: timeout)
     }
 
     /// Awaits a task with timeout, cancelling if timeout expires.

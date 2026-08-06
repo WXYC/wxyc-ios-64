@@ -106,7 +106,7 @@ struct AudioPlayerControllerTests {
         // mock recording the call — the mock records it while the controller is
         // still holding the session lock, so a play() started then would defer
         // and never activate at all. See PauseResponsivenessTests.
-        await waitUntil { !controller.debugState.sessionDeactivationInFlight }
+        await pollUntil { !controller.debugState.sessionDeactivationInFlight }
         #expect(mockSession.lastActiveState == false, "precondition: the handback never landed")
         controller.play()
 
@@ -356,21 +356,4 @@ final class MockAudioPlayerForController: AudioPlayerProtocol, @unchecked Sendab
 
     func installRenderTap() {}
     func removeRenderTap() {}
-}
-
-// MARK: - Test Helpers
-
-/// Polls until `condition` holds or the timeout expires.
-///
-/// `AudioPlayerController` hands the audio session back off the caller's turn,
-/// so a test that counts `setActive` calls has to wait for the deactivation
-/// rather than read the count inline. The suites built on
-/// `PlayerControllerTestHarness` use its `waitUntil`; these tests construct a
-/// controller directly, so they need their own.
-@MainActor
-private func waitUntil(_ condition: () -> Bool, timeout: Duration = .seconds(1)) async {
-    let deadline = ContinuousClock().now + timeout
-    while !condition(), ContinuousClock().now < deadline {
-        await Task.yield()
-    }
 }

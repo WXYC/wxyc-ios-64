@@ -115,6 +115,12 @@ public final class PlayerControllerTestHarness {
     /// `debugStateSnapshot`, so renaming the field breaks this at compile time
     /// instead of leaving every caller silently waiting out its full timeout
     /// and then passing anyway.
+    ///
+    /// For the `RadioPlayerController` arm this is constantly `true` — the
+    /// honest answer, not a stub: that controller hands the session back
+    /// synchronously on the caller's turn (see #778), so there is never an
+    /// unsettled handback to wait on. A settlement-gated assertion is a no-op
+    /// there, not a hidden vacuous pass.
     public var sessionDeactivationSettled: Bool {
         audioPlayerController.map { !$0.debugState.sessionDeactivationInFlight } ?? true
     }
@@ -313,21 +319,21 @@ public final class PlayerControllerTestHarness {
         return true
     }
 
-    /// Polls until condition is met or timeout expires
-    public func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = .seconds(1)) async {
-        let start = Date()
-        let timeoutSeconds = Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18
-        while !condition() {
-            if Date().timeIntervalSince(start) > timeoutSeconds {
-                return
-            }
-            await Task.yield()
-        }
+    /// Polls until condition is met or timeout expires. Delegates to the
+    /// package-wide `pollUntil` so every suite shares one set of timeout
+    /// mechanics.
+    public func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = .seconds(5)) async {
+        await pollUntil(condition, timeout: timeout)
     }
 
-    /// Resets all tracked state
-    public func reset() {
+    /// Resets all tracked state. Settles the deferred audio-session handback
+    /// the `stop()` here schedules before zeroing the mocks — otherwise the
+    /// handback lands in the freshly-reset mock after this returns, and a test
+    /// that resets mid-flight sees a phantom `setActive(false, …)` in its
+    /// counters.
+    public func reset() async {
         controller.stop(reason: .test)
+        await waitUntil({ self.sessionDeactivationSettled })
         mockPlayer.reset()
         mockSession.reset()
         mockCommandCenter?.reset()
