@@ -268,6 +268,51 @@ struct PauseResponsivenessTests {
     }
 
     #if os(iOS)
+    @Test("An interruption ending mid-handback leaves the deferred play parked on the handback")
+    func interruptionEndedDuringHandbackKeepsDeferredPlayParked() async {
+        // A short bounded-retry cadence (4 × 10ms) so the adversarial wait
+        // below can outlast the whole budget in a fraction of a second.
+        let harness = PlayerControllerTestHarness.make(
+            for: .audioPlayerController,
+            sessionActivationRetryDelay: .milliseconds(10)
+        )
+        harness.mockSession.holdDeactivations()
+
+        harness.controller.play()
+        harness.controller.stop()
+        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
+
+        let playsBefore = harness.playCallCount
+        harness.controller.play()
+        #expect(harness.playCallCount == playsBefore, "precondition: the play was not deferred")
+
+        // A Siri query / alarm / declined call ends while the handback still
+        // holds the session. `wasPlayingBeforeInterruption` is false (the play
+        // is still deferred), so this routes through
+        // `reactivateAfterInterruptionIfPending()` — which must notice the
+        // blocker is our own handback and stay parked on its completion, not
+        // demote the wait onto the bounded budget.
+        harness.postInterruptionEnded(shouldResume: false)
+
+        // Keep the gate shut past the entire bounded budget: a demoted wait
+        // exhausts here, clears pendingPlaybackReason, and can never resume
+        // once the gate opens.
+        try? await Task.sleep(for: .milliseconds(200))
+        harness.mockSession.releaseDeactivations()
+
+        await harness.waitUntil({ harness.playCallCount > playsBefore }, timeout: .seconds(5))
+        #expect(
+            harness.playCallCount > playsBefore,
+            "the deferred play was abandoned when the demoted retry budget ran out"
+        )
+        #expect(harness.sessionActivated, "the session was never re-activated")
+        #expect(
+            harness.streamErrorEvents.filter({ $0.errorType == .silentStartup }).isEmpty,
+            "waiting out our own handback was reported as a silent startup"
+        )
+    }
+
     @Test("A backgrounded resume colliding with the handback defers instead of escalating")
     func backgroundedPlayDuringHandbackDefersRatherThanEscalating() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
