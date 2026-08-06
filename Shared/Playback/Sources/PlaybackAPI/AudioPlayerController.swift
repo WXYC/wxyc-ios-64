@@ -112,9 +112,66 @@ public final class AudioPlayerController {
     /// Single-line snapshot of internal state, intended for diagnostics (e.g.
     /// `Issue.record` on a test timeout). Captures the otherwise-private fields
     /// that distinguish "audio session activation failed" from "stream took
-    /// too long to start" — see #251.
+    /// too long to start" — see #251. This is `debugState`'s rendering; tests
+    /// that *branch* on a field should read `debugState` directly rather than
+    /// substring-match here.
     public var debugStateSnapshot: String {
-        "playerState=\(playerState), playbackIntended=\(playbackIntended), isPlaying=\(isPlaying), isLoading=\(isLoading), audioSessionActivated=\(audioSessionActivated), sessionDeactivationInFlight=\(sessionDeactivationInFlight), isForegrounded=\(isForegrounded), holdingPatternEngaged=\(holdingPatternEngaged), holdingReconnectInFlight=\(holdingReconnectInFlight), reachabilitySatisfied=\(lastReachabilitySatisfied.map(String.init(describing:)) ?? "nil"), holdingReconnectTrigger=\(holdingReconnectTrigger.rawValue)"
+        debugState.description
+    }
+
+    /// Typed counterpart to `debugStateSnapshot`. Still one accessor returning
+    /// one value — not per-field visibility relaxation on the controller — but
+    /// a test can wait on `debugState.sessionDeactivationInFlight` instead of
+    /// matching a substring of the rendered snapshot, where a renamed field
+    /// turns every waiting caller into "run out the timeout, then pass
+    /// vacuously".
+    public var debugState: DebugState {
+        DebugState(
+            playerState: playerState,
+            playbackIntended: playbackIntended,
+            isPlaying: isPlaying,
+            isLoading: isLoading,
+            audioSessionActivated: audioSessionActivated,
+            sessionDeactivationInFlight: sessionDeactivationInFlight,
+            isForegrounded: isForegrounded,
+            holdingPatternEngaged: holdingPatternEngaged,
+            holdingReconnectInFlight: holdingReconnectInFlight,
+            reachabilitySatisfied: lastReachabilitySatisfied,
+            holdingReconnectTrigger: holdingReconnectTrigger
+        )
+    }
+
+    /// A point-in-time capture of the controller's diagnostic state, one field
+    /// per machine flag. `description` renders the single-line `key=value` form
+    /// `debugStateSnapshot` has always produced, so log output is unchanged.
+    public struct DebugState: CustomStringConvertible, Sendable {
+        public let playerState: PlayerState
+        public let playbackIntended: Bool
+        public let isPlaying: Bool
+        public let isLoading: Bool
+        public let audioSessionActivated: Bool
+        public let sessionDeactivationInFlight: Bool
+        public let isForegrounded: Bool
+        public let holdingPatternEngaged: Bool
+        public let holdingReconnectInFlight: Bool
+        public let reachabilitySatisfied: Bool?
+        public let holdingReconnectTrigger: RecoveryMethod
+
+        public var description: String {
+            [
+                "playerState=\(playerState)",
+                "playbackIntended=\(playbackIntended)",
+                "isPlaying=\(isPlaying)",
+                "isLoading=\(isLoading)",
+                "audioSessionActivated=\(audioSessionActivated)",
+                "sessionDeactivationInFlight=\(sessionDeactivationInFlight)",
+                "isForegrounded=\(isForegrounded)",
+                "holdingPatternEngaged=\(holdingPatternEngaged)",
+                "holdingReconnectInFlight=\(holdingReconnectInFlight)",
+                "reachabilitySatisfied=\(reachabilitySatisfied.map(String.init(describing:)) ?? "nil")",
+                "holdingReconnectTrigger=\(holdingReconnectTrigger.rawValue)",
+            ].joined(separator: ", ")
+        }
     }
 
     /// Whether the CPU-usage aggregation session is currently open. Exposed for

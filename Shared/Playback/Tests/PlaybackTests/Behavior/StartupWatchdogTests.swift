@@ -281,7 +281,7 @@ struct StartupWatchdogTests {
         await Self.poll(until: { fixture.mockSession.setActiveCallCount >= 5 }, timeout: .seconds(3))
 
         #expect(fixture.mockSession.setActiveCallCount >= 5)
-        #expect(fixture.controller.debugStateSnapshot.contains("playbackIntended=true"))
+        #expect(fixture.controller.debugState.playbackIntended)
 
         fixture.controller.stop(reason: .test)
     }
