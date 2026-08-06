@@ -242,6 +242,16 @@ struct StationSection<Content: View>: View {
                 .foregroundStyle(.white.opacity(0.55))
                 .padding(.horizontal, 10)
 
+            // Deliberately NOT WXUI's WallpaperCard/its 0.12-opacity canon
+            // stroke: this is a flat, non-wallpaper-material fill (plain
+            // `.white.opacity(0.06)`, no `BackgroundLayer`), a different
+            // chrome family from the wallpaper-tinted list rows/cards
+            // WallpaperCard generalizes. The 0.08-opacity `strokeBorder` here
+            // has drifted from the 0.12 `stroke` ConcertDetailView's matching
+            // flat-fill cards (WHERE/About the Artist) use at the same corner
+            // radius — flagged rather than silently reconciled, since neither
+            // value is obviously "more correct" and the difference is a
+            // one-hairline-opacity delta (#765).
             VStack(spacing: 0) {
                 content()
             }
