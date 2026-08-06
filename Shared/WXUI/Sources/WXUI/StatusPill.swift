@@ -2,13 +2,16 @@
 //  StatusPill.swift
 //  WXUI
 //
-//  A stroked, monospaced status chip: one palette table shared by every "state"
-//  tag in the app (On Tour feed rows, the Box Office ticket, the concert poster
-//  hero) instead of four independently hand-maintained (fill, border, ink)
+//  A solid-filled, monospaced status chip: one palette table shared by every
+//  "state" tag in the app (On Tour feed rows, the Box Office ticket, the concert
+//  poster hero) instead of four independently hand-maintained (fill, border, ink)
 //  switches. Canon mechanics — padding, stroke width, font, kerning — are fixed;
 //  only the color triple varies per ``Style``, and only via the shared table
 //  unless a caller has a genuine reason (a theme-derived accent, say) to supply
 //  its own via `paletteOverride`.
+//
+//  Every canon style is a solid fill with no outline — see ``palette(for:)``
+//  for why the earlier solid/translucent split was collapsed.
 //
 //  Created by Jake Bromberg on 08/06/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -103,20 +106,38 @@ public struct StatusPill: View {
     /// The single canon palette table. Every adopting surface reads its
     /// colors from here by default — this is the "ONE palette table" the
     /// four hand-maintained switches collapsed into.
+    ///
+    /// **Every style is a solid fill with no outline**, the way "on sale" has
+    /// always read. Differentiation is carried by hue alone, never by fill
+    /// weight. The earlier table made only `.prominent` solid and rendered the
+    /// other five as 18–24% washes behind a stroke, which sorted the chips into
+    /// two visual families — "solid = act on this" and "translucent = don't
+    /// bother" — and put FREE in the second one. A free show is among the most
+    /// actionable rows in the feed, so the two-family split is gone: a chip's
+    /// state is its color, and its weight never varies.
+    ///
+    /// Fills sit at 0.92 rather than 1.0 so a chip settles onto the ticket
+    /// material it's printed on instead of floating above it. Inks are dark
+    /// members of each fill's own hue — a solid chip needs dark ink, which is
+    /// why the old light inks moved with the fills rather than staying put.
+    ///
+    /// `border` stays in the triple because a `paletteOverride` caller may
+    /// still want one; no canon style uses it.
     public static func palette(for style: Style) -> (fill: Color, border: Color, ink: Color) {
         switch style {
         case .prominent:
             (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), .clear, Color(red: 0.03, green: 0.19, blue: 0.10))
         case .free:
-            (Color.teal.opacity(0.20), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+            // #4FD6C8 over #04302B — the stub's original free teal, restored.
+            (Color(red: 0.310, green: 0.839, blue: 0.784).opacity(0.92), .clear, Color(red: 0.016, green: 0.188, blue: 0.169))
         case .muted:
-            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.2), Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.71))
+            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.92), .clear, Color(red: 0.24, green: 0.08, blue: 0.03))
         case .negative:
-            (Color.red.opacity(0.24), Color.red.opacity(0.55), Color(red: 1.0, green: 0.7, blue: 0.7))
+            (Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.92), .clear, Color(red: 0.26, green: 0.03, blue: 0.03))
         case .caution:
-            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+            (Color(red: 1.0, green: 0.65, blue: 0.20).opacity(0.92), .clear, Color(red: 0.24, green: 0.13, blue: 0.01))
         case .neutral:
-            (Color.white.opacity(0.14), Color.white.opacity(0.3), Color.white.opacity(0.8))
+            (Color(red: 0.82, green: 0.85, blue: 0.89).opacity(0.92), .clear, Color(red: 0.11, green: 0.13, blue: 0.16))
         }
     }
 }
