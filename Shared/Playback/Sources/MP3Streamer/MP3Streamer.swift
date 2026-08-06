@@ -108,6 +108,10 @@ public final class MP3Streamer {
     /// explicit signal instead of racing scheduler latency against whatever
     /// async event the watchdog's outcome depends on (e.g.
     /// `isWaitingForConnectivity`). See issue #787.
+    ///
+    /// Must throw only on cancellation: `armStartupWatchdog()` cannot tell a
+    /// deadline that elapsed from a sleep that failed, so it treats every thrown
+    /// error as "no deadline" and declines to escalate.
     @ObservationIgnored
     private let startupWatchdogSleep: @Sendable (Duration) async throws -> Void
     @ObservationIgnored
@@ -584,7 +588,16 @@ public final class MP3Streamer {
         let timeout = configuration.startupTimeout
         let sleep = startupWatchdogSleep
         startupWatchdogTask = Task { @MainActor [weak self] in
-            try? await sleep(.seconds(timeout))
+            do {
+                try await sleep(.seconds(timeout))
+            } catch {
+                // Cancellation — the ordinary disarm/re-arm path — or an
+                // injected sleep that failed outright. Neither means "the
+                // deadline elapsed", so neither may escalate. A `try?` here
+                // would send a failed sleep straight into handleStartupTimeout()
+                // and emit a startup_timeout that never happened.
+                return
+            }
             guard let self, !Task.isCancelled else { return }
             self.handleStartupTimeout()
         }
