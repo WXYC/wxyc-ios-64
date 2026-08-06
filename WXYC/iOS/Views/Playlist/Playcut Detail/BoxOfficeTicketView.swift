@@ -18,6 +18,7 @@
 import Concerts
 import Playlist
 import SwiftUI
+import WXUI
 import Wallpaper
 import WXUI
 

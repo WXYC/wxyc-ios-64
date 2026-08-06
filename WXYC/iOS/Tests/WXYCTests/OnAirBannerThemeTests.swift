@@ -23,8 +23,8 @@
 //
 
 import Testing
-import Playlist
 import SwiftUI
+import WXUI
 @testable import WXYC
 
 @Suite("OnAirBannerTheme")
