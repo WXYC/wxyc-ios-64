@@ -42,7 +42,7 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
         var setActiveError: (any Error)?
         var failSetActiveCount = 0
         var outputLatency: TimeInterval = 0
-        var deactivationDelay: TimeInterval = 0
+        var deactivationHoldArmed = false
         var shouldThrowOnDeactivate = false
     }
 
@@ -124,15 +124,34 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
         set { state.withLock { $0.outputLatency = newValue } }
     }
 
-    /// Seconds `setActive(false, …)` blocks before returning, modelling the
-    /// hundreds-of-milliseconds XPC round-trip the real session makes. Lets a
-    /// test hold a deactivation open and prove the main actor doesn't wait
-    /// behind it. Applied outside the state lock, so the recorded call is
-    /// observable while it is still "in flight".
-    public var deactivationDelay: TimeInterval {
-        get { state.withLock { $0.deactivationDelay } }
-        set { state.withLock { $0.deactivationDelay = newValue } }
+    /// Arms the deactivation gate: every subsequent `setActive(false, …)`
+    /// records the call and then blocks until `releaseDeactivations()` opens
+    /// the gate, modelling the hundreds-of-milliseconds XPC round-trip the
+    /// real session makes — but driven by the test's signal rather than the
+    /// wall clock, so a stalled scheduler can neither let the hold lapse
+    /// before the test's next step (a vacuous pass) nor stretch a sleep into
+    /// a spurious failure. The block happens outside the state lock, so the
+    /// recorded call is observable while it is still "in flight".
+    ///
+    /// `deactivationHoldCap` bounds the block: a regression that routes a
+    /// *blocking* caller through the gate — the main actor waiting out the
+    /// handback is the defect #773 fixed — fails its test's elapsed bound
+    /// instead of deadlocking the suite.
+    public func holdDeactivations() {
+        state.withLock { $0.deactivationHoldArmed = true }
     }
+
+    /// Opens the gate: a currently blocked deactivation returns within ~1ms,
+    /// and later ones pass straight through. Idempotent. `reset()` also opens
+    /// it, so a held mock can't strand a blocked thread past its test.
+    public func releaseDeactivations() {
+        state.withLock { $0.deactivationHoldArmed = false }
+    }
+
+    /// Upper bound on how long an armed gate holds a deactivation open.
+    /// Generous enough that no healthy path ever reaches it; small enough
+    /// that a regression fails inside the suite's patience.
+    public static let deactivationHoldCap: Duration = .seconds(5)
 
     /// When true, `setActive(false, …)` throws. Deactivation otherwise always
     /// succeeds — `shouldThrowOnSetActive` only models activation failures.
@@ -173,7 +192,7 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
     }
 
     public func setActive(_ active: Bool, options: AVAudioSession.SetActiveOptions) throws {
-        let delay: TimeInterval = try state.withLock { state in
+        let shouldBlock: Bool = try state.withLock { state in
             state.setActiveCallCount += 1
             state.lastActiveState = active
             state.lastActiveOptions = options
@@ -188,19 +207,26 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
                     state.failSetActiveCount -= 1
                     throw state.setActiveError ?? MockAudioSessionError.setActiveFailed
                 }
-                return 0
+                return false
             }
 
             if state.shouldThrowOnDeactivate {
                 throw MockAudioSessionError.setActiveFailed
             }
-            return state.deactivationDelay
+            return state.deactivationHoldArmed
         }
 
-        // Held outside the state lock so a test polling the recorded call isn't
-        // blocked by the very delay it is waiting on.
-        if delay > 0 {
-            Thread.sleep(forTimeInterval: delay)
+        // Blocked outside the state lock so a test polling the recorded call
+        // isn't blocked by the very hold it is waiting on. A 1ms poll rather
+        // than a condition variable: the blocked thread is the controller's
+        // detached handback task, so the wait is honest about being a blocked
+        // thread while staying release-driven instead of duration-driven.
+        if shouldBlock {
+            let clock = ContinuousClock()
+            let deadline = clock.now + Self.deactivationHoldCap
+            while state.withLock({ $0.deactivationHoldArmed }), clock.now < deadline {
+                Thread.sleep(forTimeInterval: 0.001)
+            }
         }
     }
 

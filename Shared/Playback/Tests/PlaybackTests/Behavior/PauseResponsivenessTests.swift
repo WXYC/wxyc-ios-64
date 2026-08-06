@@ -34,13 +34,15 @@ struct PauseResponsivenessTests {
     @Test("stop() publishes the paused state without waiting out the deactivation")
     func stopPublishesPausedStateBeforeDeactivating() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
-        // Hold the deactivation open for far longer than the XPC call really
-        // takes, so a `stop()` that waits for it is unmistakable. Asserted on
-        // elapsed time rather than on the mock's recorded state: reading that
-        // from the main actor immediately after `stop()` races the detached
-        // deactivation, which is the very non-determinism this suite exists to
-        // keep out of the codebase.
-        harness.mockSession.deactivationDelay = 0.5
+        // Hold the deactivation open on a gate the test controls, so a `stop()`
+        // that waits for it is unmistakable: a healthy stop() returns while the
+        // gate is still shut, and a regressed one blocks into the gate's safety
+        // cap and fails the elapsed bound below. Asserted on elapsed time
+        // rather than on the mock's recorded state: reading that from the main
+        // actor immediately after `stop()` races the detached deactivation,
+        // which is the very non-determinism this suite exists to keep out of
+        // the codebase.
+        harness.mockSession.holdDeactivations()
         harness.controller.play()
         #expect(harness.sessionActivated)
 
@@ -52,13 +54,17 @@ struct PauseResponsivenessTests {
         // control returns — SwiftUI cannot render until it does.
         #expect(harness.controller.isPlaying == false)
         #expect(harness.controller.isLoading == false)
+        // A healthy stop() measures ~0ms; a regressed one blocks into the 5s
+        // safety cap. One second sits far from both, so scheduler preemption
+        // can't fail a healthy run spuriously.
         #expect(
-            elapsed < .milliseconds(250),
+            elapsed < .seconds(1),
             "stop() blocked for \(elapsed) on the deactivation, so no view can render the paused state until it finishes"
         )
 
         // It still has to happen — just not on the caller's turn.
-        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        harness.mockSession.releaseDeactivations()
+        await harness.waitUntil({ harness.sessionDeactivationSettled }, timeout: .seconds(5))
         #expect(harness.sessionDeactivated)
     }
 
@@ -112,31 +118,43 @@ struct PauseResponsivenessTests {
     @Test("play() defers rather than blocking behind an in-flight deactivation")
     func playDoesNotBlockBehindDeactivation() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
-        // Hold the deactivation open for far longer than the XPC call really
-        // takes, so a main actor that waits on it is unmistakable.
-        harness.mockSession.deactivationDelay = 0.5
+        // Hold the deactivation open on the test's gate, so the session lock is
+        // provably still held when the play() below arrives — a wall-clock hold
+        // could lapse on a stalled scheduler and turn the rest of the test into
+        // a vacuous pass that never exercises the deferral.
+        harness.mockSession.holdDeactivations()
 
         harness.controller.play()
         harness.controller.stop()
         // Let the detached deactivation reach `setActive(false, …)` and start
         // holding the session. Asserted, not assumed: `waitUntil` returns
-        // silently on timeout, and a play() that finds the lock free measures
-        // ~0ms and passes below without ever exercising the deferral.
+        // silently on timeout.
         await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
         #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
 
+        let playsBefore = harness.playCallCount
         let timer = ContinuousClock().now
         harness.controller.play()
         let elapsed = ContinuousClock().now - timer
 
+        // A healthy play() measures ~0ms; a regressed one blocks into the 5s
+        // safety cap. One second sits far from both.
         #expect(
-            elapsed < .milliseconds(250),
+            elapsed < .seconds(1),
             "play() blocked for \(elapsed) waiting out the deactivation — the freeze moved from the pause tap to the play tap"
         )
+        // The gate is still shut, so the only correct move was to defer: a
+        // play() that started the player here either blocked (caught above) or
+        // activated a session the handback still holds.
+        #expect(harness.playCallCount == playsBefore, "play() started the player without the session — the deferral never engaged")
 
-        // Deferring is only acceptable because the bounded retry finishes the job.
+        // Deferring is only acceptable because the handback's own completion
+        // finishes the job.
+        harness.mockSession.releaseDeactivations()
         await harness.waitUntil({ harness.sessionActivated }, timeout: .seconds(5))
         #expect(harness.sessionActivated, "the deferred activation never completed")
+        await harness.waitUntil({ harness.playCallCount > playsBefore }, timeout: .seconds(5))
+        #expect(harness.playCallCount > playsBefore, "the deferred play never started the player")
     }
 
     @Test("A failed deactivation leaves the session retryable")
@@ -201,12 +219,19 @@ struct PauseResponsivenessTests {
 
     @Test("A handback slower than the retry budget still resumes playback promptly")
     func playResumesAfterHandbackOutlastsRetryBudget() async {
-        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
-        // Longer than the bounded activation retry can cover on its own: four
-        // attempts, 250ms apart, is a one-second budget — and the block this
-        // whole change exists to remove was itself measured at about a second.
-        // Polling alone would exhaust here and abandon the play.
-        harness.mockSession.deactivationDelay = 1.5
+        // A short bounded-retry cadence (4 × 10ms) so the hold below can
+        // outlast the entire budget in a fraction of a second. With the
+        // production 250ms spacing the same hold would need to stay shut for
+        // over a second of wall-clock — the budget-vs-handback race is about
+        // ordering, not real time.
+        let harness = PlayerControllerTestHarness.make(
+            for: .audioPlayerController,
+            sessionActivationRetryDelay: .milliseconds(10)
+        )
+        // Held on the test's gate: however long the handback takes, polling
+        // alone would exhaust its bounded budget first and abandon the play —
+        // the deferral must instead ride the handback's own completion.
+        harness.mockSession.holdDeactivations()
 
         harness.controller.play()
         harness.controller.stop()
@@ -216,6 +241,13 @@ struct PauseResponsivenessTests {
         let stopsBefore = harness.stopCallCount
         let playsBefore = harness.playCallCount
         harness.controller.play()
+        #expect(harness.playCallCount == playsBefore, "precondition: the play was not deferred")
+
+        // Keep the gate shut past the whole bounded budget: a deferral that was
+        // (wrongly) demoted onto that budget exhausts here, clears its
+        // bookkeeping, and can never resume once the gate opens.
+        try? await Task.sleep(for: .milliseconds(200))
+        harness.mockSession.releaseDeactivations()
 
         // The handback's own completion re-drives the deferred activation, so the
         // wait is proportional to the handback rather than to a fixed budget.
@@ -239,7 +271,7 @@ struct PauseResponsivenessTests {
     @Test("A backgrounded resume colliding with the handback defers instead of escalating")
     func backgroundedPlayDuringHandbackDefersRatherThanEscalating() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
-        harness.mockSession.deactivationDelay = 0.5
+        harness.mockSession.holdDeactivations()
 
         harness.controller.play()
         harness.controller.stop()
@@ -255,7 +287,9 @@ struct PauseResponsivenessTests {
         harness.controller.handleAppDidEnterBackground()
         let playsBefore = harness.playCallCount
         harness.controller.play()
+        #expect(harness.playCallCount == playsBefore, "precondition: the play was not deferred")
 
+        harness.mockSession.releaseDeactivations()
         await harness.waitUntil({ harness.playCallCount > playsBefore }, timeout: .seconds(10))
         #expect(harness.playCallCount > playsBefore, "the backgrounded resume never started the player")
         #expect(harness.sessionActivated, "the backgrounded resume never re-activated the session")

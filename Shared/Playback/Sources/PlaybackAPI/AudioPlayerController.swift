@@ -317,8 +317,9 @@ public final class AudioPlayerController {
     private var pendingPlaybackReason: PlaybackReason?
     /// Maximum number of deferred activation retries before giving up.
     private let maxSessionActivationRetries = 4
-    /// Delay between deferred activation retries.
-    private let sessionActivationRetryDelay: Duration = .milliseconds(250)
+    /// Delay between deferred activation retries. Injected so a test can run
+    /// the whole bounded budget out in a fraction of a second.
+    private let sessionActivationRetryDelay: Duration
 
     /// The in-flight deferred deactivation, if any. See
     /// `scheduleAudioSessionDeactivation()` for why deactivation doesn't run on
@@ -369,6 +370,9 @@ public final class AudioPlayerController {
     ///   - notificationCenter: Notification center for system notifications
     ///   - analytics: Analytics service for playback events
     ///   - backoffTimer: Exponential backoff timer for reconnection attempts
+    ///   - sessionActivationRetryDelay: Spacing of the bounded `'!int'`
+    ///     activation retries (#514). Production keeps the default; tests
+    ///     shrink it to exhaust the budget quickly.
     public init(
         player: AudioPlayerProtocol,
         audioSession: AudioSessionProtocol?,
@@ -379,11 +383,13 @@ public final class AudioPlayerController {
         startupWatchdogDeadline: Duration = .seconds(15),
         reachability: NetworkReachability? = nil,
         defaults: DefaultsStorage = UserDefaults.standard,
-        heartbeatInterval: Duration = .seconds(60)
+        heartbeatInterval: Duration = .seconds(60),
+        sessionActivationRetryDelay: Duration = .milliseconds(250)
     ) {
         self.player = player
         self.audioSession = audioSession
         self.remoteCommandCenter = remoteCommandCenter
+        self.sessionActivationRetryDelay = sessionActivationRetryDelay
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
