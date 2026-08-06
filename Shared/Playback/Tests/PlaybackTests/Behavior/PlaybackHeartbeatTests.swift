@@ -42,7 +42,7 @@ struct PlaybackHeartbeatTests {
     )
     func neverPausedSessionEmitsReconstructableHeartbeats(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase, heartbeatInterval: Self.testInterval)
-        harness.reset()
+        await harness.reset()
 
         harness.controller.play()
         harness.simulatePlaybackStarted()
@@ -81,7 +81,7 @@ struct PlaybackHeartbeatTests {
     )
     func heartbeatsFireAtFixedCadence(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase, heartbeatInterval: Self.testInterval)
-        harness.reset()
+        await harness.reset()
 
         harness.controller.play()
         harness.simulatePlaybackStarted()
@@ -111,7 +111,7 @@ struct PlaybackHeartbeatTests {
     )
     func heartbeatStopsOnGenuineStop(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase, heartbeatInterval: Self.testInterval)
-        harness.reset()
+        await harness.reset()
 
         harness.controller.play()
         harness.simulatePlaybackStarted()
@@ -140,7 +140,7 @@ struct PlaybackHeartbeatTests {
     )
     func heartbeatStopsOnStall(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase, heartbeatInterval: Self.testInterval)
-        harness.reset()
+        await harness.reset()
 
         harness.controller.play()
         harness.simulatePlaybackStarted()
@@ -169,7 +169,7 @@ struct PlaybackHeartbeatTests {
         // AudioPlayerController's NotificationCenter-driven path in this
         // harness (mirrors SessionIdentityTests.interruptionAutoResumePreservesSessionID).
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController, heartbeatInterval: Self.testInterval)
-        harness.reset()
+        await harness.reset()
 
         harness.controller.play()
         harness.simulatePlaybackStarted()

@@ -28,7 +28,7 @@ struct AnalyticsIntegrationTests {
     @Test("play() calls analytics", arguments: PlayerControllerTestCase.allCases)
     func playCallsAnalytics(testCase: PlayerControllerTestCase) async {
         let harness = PlayerControllerTestHarness.make(for: testCase)
-        harness.reset()
+        await harness.reset()
         harness.controller.play()
         #expect(harness.analyticsPlayCallCount > 0, "play() should call analytics")
     }
@@ -36,7 +36,7 @@ struct AnalyticsIntegrationTests {
     @Test("toggle() to stop calls analytics with duration", arguments: PlayerControllerTestCase.allCases)
     func toggleToStopCallsAnalyticsWithDuration(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
-        harness.reset()
+        await harness.reset()
         harness.controller.play()
 
         // Small delay to ensure non-zero duration
@@ -77,7 +77,7 @@ struct AnalyticsIntegrationTests {
     @Test("Play, stall, stall, and a genuine stop report a single duration measurement (#667)", arguments: PlayerControllerTestCase.allCases)
     func stallDoesNotDoubleCountDuration(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
-        harness.reset()
+        await harness.reset()
 
         harness.controller.play()
         harness.simulatePlaybackStarted()

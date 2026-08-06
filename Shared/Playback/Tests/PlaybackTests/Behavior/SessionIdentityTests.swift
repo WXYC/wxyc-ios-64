@@ -30,7 +30,7 @@ struct SessionIdentityTests {
     @Test("Play, stall, and a genuine stop share one session id", arguments: PlayerControllerTestCase.allCases)
     func playStallStopShareSessionID(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
-        harness.reset()
+        await harness.reset()
 
         harness.controller.play()
         harness.simulatePlaybackStarted()
@@ -69,7 +69,7 @@ struct SessionIdentityTests {
     @Test("A genuine user stop followed by play mints a new session id", arguments: PlayerControllerTestCase.allCases)
     func userStopThenPlayMintsNewSessionID(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
-        harness.reset()
+        await harness.reset()
 
         harness.controller.play()
         harness.simulatePlaybackStarted()
