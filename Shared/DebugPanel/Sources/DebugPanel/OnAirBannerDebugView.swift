@@ -10,6 +10,7 @@
 
 import Playlist
 import SwiftUI
+import WXUI
 
 #if DEBUG
 /// A sheet of live design controls for the on-air banner — indicator color/glow, DJ-handle
@@ -18,7 +19,6 @@ import SwiftUI
 /// Presented by tapping the banner itself rather than living in the general debug sheet.
 public struct OnAirBannerDebugView: View {
     @Bindable private var state = OnAirDebugState.shared
-    @Environment(\.dismiss) private var dismiss
 
     // Disclosure-group open/closed state persists across presentations so the
     // panel reopens the way it was left, rather than resetting every time.
@@ -101,15 +101,7 @@ public struct OnAirBannerDebugView: View {
                     labeledSlider("Handle Line Spacing", value: $state.handleLineSpacing, in: 0...30, format: "%.1f")
                 }
             }
-            .navigationTitle("On Air Banner")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
+            .sheetChrome(title: "On Air Banner")
         }
     }
 

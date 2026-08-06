@@ -14,6 +14,7 @@
 //
 
 import SwiftUI
+import WXUI
 
 #if DEBUG
 /// A sheet of debug switches for the For You recommendation shelf. The dismissed-
@@ -21,7 +22,6 @@ import SwiftUI
 /// package needs no dependency on the Concerts store that actually holds the set.
 public struct OnTourForYouDebugView: View {
     @Bindable private var state = OnTourForYouSeedDebugState.shared
-    @Environment(\.dismiss) private var dismiss
 
     /// Clears the persisted "Not interested" dismissals. Injected because the store
     /// lives in the Concerts package, which DebugPanel deliberately doesn't link.
@@ -77,15 +77,7 @@ public struct OnTourForYouDebugView: View {
                     Text("Dumps the app's donated view of wxyc.concerts (OT-Q2, #632) and can force a reconcile pass on demand.")
                 }
             }
-            .navigationTitle("For You Shelf")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
+            .sheetChrome(title: "For You Shelf")
         }
     }
 }
