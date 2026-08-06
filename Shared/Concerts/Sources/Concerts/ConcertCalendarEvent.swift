@@ -17,6 +17,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
 /// The calendar entry for a concert, ready to be copied into an `EKEvent`.

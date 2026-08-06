@@ -13,6 +13,7 @@ import AppIntents
 import AppServices
 import Artwork
 import Concerts
+import Core
 import LikedSongs
 import Logger
 import MusicShareKit
@@ -343,7 +344,7 @@ struct ToursNearMeSnippetView: View {
 private struct ToursNearMeConcertRow: View {
     let concert: Concert
 
-    private static let dateFormat = Date.FormatStyle(timeZone: TimeZone(identifier: "America/New_York") ?? .gmt)
+    private static let dateFormat = Date.FormatStyle(timeZone: .wxycStation)
         .weekday(.abbreviated)
         .month(.abbreviated)
         .day()

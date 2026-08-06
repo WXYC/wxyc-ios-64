@@ -10,6 +10,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Concerts
 
@@ -28,17 +29,12 @@ extension Venue {
 }
 
 extension Concert {
-    /// The station (venue) time zone, mirrored here so the stub helpers can build
-    /// deterministic wall-clock instants without reaching into the `Concerts`
-    /// module's internal `TimeZone.wxycStation`.
-    private static let stationTimeZone = TimeZone(identifier: "America/New_York") ?? .gmt
-
     /// A fixed, deterministic default `starts_on` (2026-08-01, station zone) for
     /// stubs. Falls back to a fixed epoch offset so the helper stays
     /// force-unwrap-free.
     public static let defaultStartsOn: Date = {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = stationTimeZone
+        calendar.timeZone = .wxycStation
         let components = DateComponents(year: 2026, month: 8, day: 1)
         return calendar.date(from: components) ?? Date(timeIntervalSince1970: 1_785_898_800)
     }()
@@ -50,7 +46,7 @@ extension Concert {
     public static func stubInstant(hour: Int?, minute: Int = 0) -> Date? {
         guard let hour else { return nil }
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = stationTimeZone
+        calendar.timeZone = .wxycStation
         var components = calendar.dateComponents([.year, .month, .day], from: defaultStartsOn)
         components.hour = hour
         components.minute = minute

@@ -15,6 +15,7 @@
 
 import Analytics
 import Concerts
+import Core
 import DebugPanel
 import LikedSongs
 import MusicShareKit
@@ -627,7 +628,7 @@ extension Concert {
     /// main-actor-isolated by default.
     nonisolated static var previewList: [Concert] {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+        calendar.timeZone = .wxycStation
         func day(_ offset: Int) -> Date {
             let base = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1)) ?? Date(timeIntervalSince1970: 1_785_898_800)
             return calendar.date(byAdding: .day, value: offset, to: base) ?? base

@@ -10,6 +10,7 @@
 //
 
 import Concerts
+import Core
 import Foundation
 import Logger
 
@@ -18,13 +19,6 @@ extension URL {
 #if WXYC_320_STREAM_ENABLED
     static let WXYCStream320kMP3 = URL(string: "https://audio-mp3.ibiblio.org:8000/wxyc-alt.mp3")!
 #endif
-}
-
-extension TimeZone {
-    /// The station's broadcast time zone. WXYC broadcasts from Chapel Hill, NC
-    /// (US Eastern). The `?? .gmt` fallback is unreachable for this fixed,
-    /// always-known identifier but keeps the declaration force-unwrap-free.
-    static let wxycStation = TimeZone(identifier: "America/New_York") ?? .gmt
 }
 
 public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hashable, Comparable {

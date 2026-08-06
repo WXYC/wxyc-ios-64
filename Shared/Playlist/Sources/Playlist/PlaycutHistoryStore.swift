@@ -11,6 +11,7 @@
 //
 
 import Caching
+import Core
 import Foundation
 import Logger
 
