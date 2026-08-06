@@ -48,20 +48,21 @@ struct ConcertRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .center, spacing: 14) {
-                dateBlock
-                details
-                Spacer(minLength: 8)
-                feedTag
+            // WallpaperCard's fill is the same theme-aware material as the
+            // playlist's playcut rows, so the two list surfaces match.
+            WallpaperCard(cornerRadius: 12, stroked: true) {
+                BackgroundLayer(cornerRadius: 12)
+            } content: {
+                HStack(alignment: .center, spacing: 14) {
+                    dateBlock
+                    details
+                    Spacer(minLength: 8)
+                    feedTag
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // The same theme-aware material as the playlist's playcut rows
-            // (`BackgroundLayer`), so the two list surfaces match.
-            .background(BackgroundLayer(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.12), lineWidth: 1))
-            .contentShape(.rect(cornerRadius: 12))
             // A cancelled show reads "dead": desaturated and dimmed.
             .saturation(presenter.isCancelled ? 0.4 : 1)
             .opacity(presenter.isCancelled ? 0.7 : 1)
