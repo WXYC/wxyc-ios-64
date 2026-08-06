@@ -13,6 +13,7 @@
 //
 
 #if DEBUG
+import DebugPanel
 import SwiftUI
 import WXUI
 
@@ -66,7 +67,8 @@ struct LikeEffectTuningView: View {
     /// A labelled slider that replays the current haptic once the drag ends, so
     /// the felt result matches where the thumb lands rather than buzzing through
     /// every intermediate value. The value label still tracks the drag live.
-    @ViewBuilder
+    /// The Particles sliders are visual-only, so they pass `playsHaptic: false`
+    /// and their touch-up is a no-op.
     private func tuner(
         _ title: String,
         value: Binding<Double>,
@@ -75,36 +77,18 @@ struct LikeEffectTuningView: View {
         unit: String? = nil,
         integer: Bool = false,
         playsHaptic: Bool = true
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(label(for: value.wrappedValue, unit: unit, integer: integer))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+    ) -> LabeledSlider {
+        LabeledSlider(
+            title,
+            value: value,
+            in: range,
+            step: step > 0 ? step : nil,
+            format: { label(for: $0, unit: unit, integer: integer) },
+            monospacedDigitReadout: true,
+            onEditingChanged: { editing in
+                if playsHaptic, !editing { play() }
             }
-            slider(value: value, in: range, step: step, playsHaptic: playsHaptic)
-        }
-    }
-
-    @ViewBuilder
-    private func slider(
-        value: Binding<Double>,
-        in range: ClosedRange<Double>,
-        step: Double,
-        playsHaptic: Bool
-    ) -> some View {
-        // The Particles sliders are visual-only, so they pass `playsHaptic: false`
-        // and their touch-up is a no-op. Haptic sliders replay on release only.
-        let onEditingChanged: (Bool) -> Void = { editing in
-            if playsHaptic, !editing { play() }
-        }
-        if step > 0 {
-            Slider(value: value, in: range, step: step, onEditingChanged: onEditingChanged)
-        } else {
-            Slider(value: value, in: range, onEditingChanged: onEditingChanged)
-        }
+        )
     }
 
     private func label(for value: Double, unit: String?, integer: Bool) -> String {
