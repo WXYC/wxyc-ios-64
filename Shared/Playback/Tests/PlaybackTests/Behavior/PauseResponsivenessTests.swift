@@ -299,6 +299,40 @@ struct PauseResponsivenessTests {
         )
     }
 
+    @Test("Backgrounding mid-handback keeps the deferred play alive")
+    func backgroundingDuringHandbackPreservesDeferredPlay() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+        harness.mockSession.holdDeactivations()
+
+        harness.controller.play()
+        harness.controller.stop()
+        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
+
+        // The play lands while the handback holds the session — it defers —
+        // and THEN the user locks the phone. The inverse ordering (background,
+        // then play) is covered above; this is the pause → play → pocket
+        // sequence. The deferral's driver is the handback continuation, which
+        // deliberately runs regardless of foreground state, so backgrounding
+        // must not wipe the deferral bookkeeping out from under it.
+        let playsBefore = harness.playCallCount
+        harness.controller.play()
+        #expect(harness.playCallCount == playsBefore, "precondition: the play was not deferred")
+        harness.controller.handleAppDidEnterBackground()
+
+        harness.mockSession.releaseDeactivations()
+        await harness.waitUntil({ harness.playCallCount > playsBefore }, timeout: .seconds(5))
+        #expect(
+            harness.playCallCount > playsBefore,
+            "backgrounding wiped the deferred play — the lock-screen play is lost until the next foreground"
+        )
+        #expect(harness.sessionActivated, "the deferred play never re-activated the session")
+        #expect(
+            harness.streamErrorEvents.filter({ $0.errorType == .silentStartup }).isEmpty,
+            "a deferral we imposed on ourselves was reported as a silent startup"
+        )
+    }
+
     @Test("Backgrounding hands the session back on the caller's turn")
     func backgroundingHandsBackWithoutDeferring() {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)

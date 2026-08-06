@@ -1258,7 +1258,19 @@ public final class AudioPlayerController {
         // foreground reactivation path early-out of `scheduleSessionActivationRetry`
         // and never reschedule, stranding playback (#514). Foregrounding
         // re-drives activation from scratch via `handleAppWillEnterForeground`.
-        clearPendingSessionActivation()
+        //
+        // Not when the deferral is keyed to an in-flight handback, though. That
+        // deferral's driver is `resumeDeferredActivationAfterHandback()`, which
+        // is deliberately not foreground-gated — a pause → play → lock-the-phone
+        // sequence must still start playing once the handback completes, and
+        // clearing here severs the continuation's only re-drive key, losing the
+        // play until the next foreground. The continuation is guaranteed to run
+        // whenever the flag is set (backgrounding can observe the flag only
+        // before the continuation's turn), and it cleans this bookkeeping up
+        // itself when the play can't proceed.
+        if !sessionDeactivationInFlight {
+            clearPendingSessionActivation()
+        }
 
         // Suspend render tap - no point running visualization in background
         if renderTapDesired {
