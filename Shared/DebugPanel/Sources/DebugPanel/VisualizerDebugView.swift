@@ -280,18 +280,21 @@ public struct VisualizerDebugView: View {
                     ) {
                         Toggle("Enabled", isOn: $visualizer.signalBoostEnabled)
 
-                        HStack {
-                            Text("Signal Boost")
-                            Spacer()
-                            Text(String(format: "%.2fx", visualizer.signalBoost))
-                                .foregroundStyle(.secondary)
-                        }
-                        Slider(value: $visualizer.signalBoost, in: 0.1...10.0)
-                            .disabled(!visualizer.signalBoostEnabled)
-                        Button("Reset to 1.0x") {
-                            visualizer.resetSignalBoost()
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        LabeledSlider(
+                            "Signal Boost",
+                            // `signalBoost` is `Float`; `LabeledSlider` is
+                            // `Double`-only (its readers are all Double), so
+                            // this bridges the same way "Boost" below already
+                            // bridges `Double` through a manual `Binding`.
+                            value: Binding(
+                                get: { Double(visualizer.signalBoost) },
+                                set: { visualizer.signalBoost = Float($0) }
+                            ),
+                            in: 0.1...10.0,
+                            format: { String(format: "%.2fx", $0) },
+                            resetLabel: "Reset to 1.0x",
+                            onReset: { visualizer.resetSignalBoost() }
+                        )
                         .disabled(!visualizer.signalBoostEnabled)
                     }
 
@@ -300,26 +303,21 @@ public struct VisualizerDebugView: View {
                         header: "Stream Gain",
                         footer: streamGainFooter
                     ) {
-                        HStack {
-                            Text("Boost")
-                            Spacer()
-                            Text(String(format: "%+.1f dB", audioController.gainDecibels))
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                        }
-                        Slider(
+                        LabeledSlider(
+                            "Boost",
+                            // `gainDecibels` is `Float`; bridge to `Double`
+                            // the same way "Signal Boost" above does.
                             value: Binding(
-                                get: { audioController.gainDecibels },
-                                set: { audioController.gainDecibels = $0 }
+                                get: { Double(audioController.gainDecibels) },
+                                set: { audioController.gainDecibels = Float($0) }
                             ),
                             in: 0...12,
-                            step: 0.5
+                            step: 0.5,
+                            format: { String(format: "%+.1f dB", $0) },
+                            monospacedDigitReadout: true,
+                            resetLabel: "Reset to 0 dB",
+                            onReset: { audioController.gainDecibels = 0 }
                         )
-                        .disabled(!audioController.supportsGainBoost)
-                        Button("Reset to 0 dB") {
-                            audioController.gainDecibels = 0
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         .disabled(!audioController.supportsGainBoost)
                     }
 
