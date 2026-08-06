@@ -56,11 +56,9 @@ struct SeamRowView: View {
         .fixedSize()
         .padding(.horizontal, 16)
         .padding(.vertical, 7)
-        .background(
-            GeometryReader { proxy in
-                BackgroundLayer(cornerRadius: proxy.size.height / 2)
-            }
-        )
+        .pillBackground { radius in
+            BackgroundLayer(cornerRadius: CGFloat(radius))
+        }
     }
 }
 

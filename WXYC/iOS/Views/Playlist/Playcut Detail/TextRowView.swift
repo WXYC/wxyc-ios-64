@@ -10,6 +10,7 @@
 
 import SwiftUI
 import Wallpaper
+import WXUI
 
 struct TextRowView: View {
     let text: String
@@ -20,10 +21,8 @@ struct TextRowView: View {
             .foregroundColor(.white)
             .padding(.horizontal, 20)
             .padding(.vertical, 8)
-            .background(
-                GeometryReader { proxy in
-                    BackgroundLayer(cornerRadius: proxy.size.height / 2)
-                }
-            )
+            .pillBackground { radius in
+                BackgroundLayer(cornerRadius: CGFloat(radius))
+            }
     }
 }
