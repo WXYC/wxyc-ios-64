@@ -19,6 +19,7 @@ import Concerts
 import Playlist
 import SwiftUI
 import Wallpaper
+import WXUI
 
 /// Renders a ``Concert`` as the Box Office ticket. All display strings come
 /// from ``BoxOfficeTicketPresenter`` (unit-tested); this view is pure layout.
@@ -164,17 +165,7 @@ struct BoxOfficeTicketView: View {
     }
 
     private func statusPill(_ text: String) -> some View {
-        let colors = pillColors
-        return Text(text.uppercased())
-            .font(.system(.caption2, design: .monospaced))
-            .fontWeight(.bold)
-            .kerning(1)
-            .foregroundStyle(colors.ink)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(colors.fill))
-            .overlay(Capsule().stroke(colors.border, lineWidth: 1))
-            .fixedSize()
+        StatusPill(text: text, style: presenter.statusPillStyle.wxuiStyle)
     }
 
     // MARK: - Stats (doors / show / price)
@@ -343,23 +334,6 @@ struct BoxOfficeTicketView: View {
                 .frame(height: 2)
         }
     }
-
-    private var pillColors: (fill: Color, border: Color, ink: Color) {
-        switch show.status {
-        case .onSale:
-            return (Palette.ok.opacity(1.0), Palette.ok.opacity(0.5), Palette.okInk)
-        case .soldOut:
-            return (Palette.soldout.opacity(0.18), Palette.soldout.opacity(0.5), Palette.soldoutInk)
-        case .cancelled:
-            return (Palette.cancel.opacity(0.20), Palette.cancel.opacity(0.55), Palette.cancelInk)
-        case .rescheduled:
-            return (colors.accentInkColor.opacity(0.18), colors.accentInkColor.opacity(0.5), colors.accentInkColor)
-        case .free:
-            return (Palette.free.opacity(0.18), Palette.free.opacity(0.5), Palette.freeInk)
-        case .unknown:
-            return (.white.opacity(0.12), .white.opacity(0.3), Palette.inkDim)
-        }
-    }
 }
 
 // MARK: - Stat cell
@@ -401,21 +375,15 @@ private struct CTAButtonStyle: ViewModifier {
 
 // MARK: - Palette
 
-/// The ticket's **status** palette — deliberately NOT theme-derived. On-sale
-/// green, sold-out coral, cancelled red, and free teal read as universal signals
-/// across every wallpaper; only the ticket's accent chrome and glass tint follow
-/// the theme (see ``TicketColors``). Translated from the prototype's CSS into HSL
-/// so the hue relationships read at a glance; trailing hex is the prototype value.
-/// File-private so it doesn't leak into the app-wide color system.
+/// Colors for the ticket's non-pill status treatments (the cancelled notice's
+/// text/border, the caption ink on the CTA caption and passed-show keepsake).
+/// The status *pill* itself now reads from ``StatusPill``'s canon table — see
+/// ``BoxOfficeTicketView/statusPill(_:)`` — so this file no longer keeps its
+/// own copy of those colors. File-private so it doesn't leak into the
+/// app-wide color system.
 private enum Palette {
-    static let ok = Color(HSL(hue: 0.3753, saturation: 0.5857, lightness: 0.4922)) // #34C759
-    static let okInk = Color(HSL(hue: 0.3851, saturation: 0.7115, lightness: 0.7961)) // #A6F0BD
-    static let soldout = Color(HSL(hue: 0.0405, saturation: 1, lightness: 0.7098)) // #FF8F6B
-    static let soldoutInk = Color(HSL(hue: 0.0422, saturation: 1, lightness: 0.8529)) // #FFC7B4
     static let cancel = Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)) // #FF6B6B
     static let cancelInk = Color(HSL(hue: 0, saturation: 1, lightness: 0.851)) // #FFB3B3
-    static let free = Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)) // #4FD6C8
-    static let freeInk = Color(HSL(hue: 0.4762, saturation: 0.6512, lightness: 0.8314)) // #B8F0E8
 
     /// Neutral secondary ink — plain white on the deep body tint reads in every theme.
     static let inkDim = Color.white.opacity(0.72)
@@ -614,14 +582,14 @@ private struct BoxOfficeTicketDetailContextPreview: View {
         }
     }
 
-    /// A placeholder standing in for a real section (streaming links, more info),
-    /// using the same `.detailSectionHeader` style + `.opacity(0.1)` container so
-    /// the ticket's distinct material reads as intentionally different.
+    /// A placeholder standing in for a real section (streaming links, more
+    /// info), using the real `DetailCard` container — the same one every real
+    /// section now adopts — so the ticket's distinct material reads as
+    /// intentionally different from an accurate neighbor, not a stand-in
+    /// approximation of one. (Previously a hand-drawn `.white.opacity(0.1)`
+    /// copy of the card, drifted from the canon `.primary.opacity(0.1)`.)
     private func mockSection(title: String, tiles: Int) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline.smallCaps())
-                .frame(maxWidth: .infinity, alignment: .leading)
+        DetailCard(title: title) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(0..<tiles, id: \.self) { _ in
                     RoundedRectangle(cornerRadius: 10)
@@ -630,9 +598,6 @@ private struct BoxOfficeTicketDetailContextPreview: View {
                 }
             }
         }
-        .foregroundStyle(.white)
-        .padding()
-        .background(RoundedRectangle(cornerRadius: 16).fill(.white.opacity(0.1)))
     }
 }
 

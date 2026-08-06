@@ -19,12 +19,7 @@ struct StreamingLinksSection: View {
     var onServiceTapped: ((MusicService) -> Void)?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Add it to your library")
-                .font(.detailSectionHeader)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
+        DetailCard(title: "Add it to your library") {
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible())
@@ -65,10 +60,5 @@ struct StreamingLinksSection: View {
                 )
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.primary.opacity(0.1))
-        )
     }
 }

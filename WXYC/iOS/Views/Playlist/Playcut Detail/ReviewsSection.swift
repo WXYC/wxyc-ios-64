@@ -21,22 +21,12 @@ struct ReviewsSection: View {
     var onLinkTapped: ((String) -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Reviews")
-                .font(.detailSectionHeader)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+        DetailCard(title: "Reviews") {
             ForEach(reviews, id: \.url) { review in
                 ReviewCard(review: review, onLinkTapped: onLinkTapped)
             }
         }
         .tint(.primary)
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.primary.opacity(0.1))
-        )
     }
 }
 
