@@ -267,6 +267,43 @@ struct PauseResponsivenessTests {
         #expect(harness.stopCallCount == stopsBefore, "the player was torn down again while resuming")
     }
 
+    @Test("A hard activation failure after the handback escalates instead of spinning out the retries")
+    func hardActivationFailureAfterHandbackEscalates() async {
+        // A short bounded-retry cadence so a wrongly-scheduled budget runs out
+        // well inside the await below rather than masking the missing signal.
+        let harness = PlayerControllerTestHarness.make(
+            for: .audioPlayerController,
+            sessionActivationRetryDelay: .milliseconds(10)
+        )
+        harness.mockSession.holdDeactivations()
+
+        harness.controller.play()
+        harness.controller.stop()
+        await harness.waitUntil({ harness.sessionDeactivated }, timeout: .seconds(5))
+        #expect(harness.sessionDeactivated, "precondition: the handback never started holding the session")
+
+        let playsBefore = harness.playCallCount
+        harness.controller.play()
+        #expect(harness.playCallCount == playsBefore, "precondition: the play was not deferred")
+
+        // The session comes back broken: every later activation fails with a
+        // generic (non-'!int') error. Reached directly through play() this
+        // class of failure escalates recovery immediately (#518, design 6-A);
+        // reached through the handback's re-drive it must do the same, not
+        // burn a doomed bounded budget and then give up in silence for the
+        // rest of the watchdog deadline.
+        harness.mockSession.shouldThrowOnSetActive = true
+        harness.mockSession.releaseDeactivations()
+
+        await harness.waitUntil({
+            harness.streamErrorEvents.contains(where: { $0.errorType == .silentStartup })
+        }, timeout: .seconds(5))
+        #expect(
+            harness.streamErrorEvents.contains(where: { $0.errorType == .silentStartup }),
+            "the hard failure was fed to the bounded retry, whose exhaustion gives up without escalating"
+        )
+    }
+
     #if os(iOS)
     @Test("An interruption ending mid-handback leaves the deferred play parked on the handback")
     func interruptionEndedDuringHandbackKeepsDeferredPlayParked() async {
