@@ -20,16 +20,14 @@ protocol NowPlayingWidgetEntryView: View {
 
 extension NowPlayingWidgetEntryView {
     var artwork: some View {
-        Group {
-            if let artwork = entry.artwork {
-                artwork
-                    .resizable()
-                    .frame(maxWidth: 800, maxHeight: 800)
-                    .aspectRatio(contentMode: .fit)
-                    .cornerRadius(5)
-            } else {
-                Image.logo
-            }
+        artworkOrLogo(entry.artwork) { artwork in
+            artwork
+                .resizable()
+                .frame(maxWidth: 800, maxHeight: 800)
+                .aspectRatio(contentMode: .fit)
+                .cornerRadius(5)
+        } fallback: {
+            Image.logo
         }
     }
     

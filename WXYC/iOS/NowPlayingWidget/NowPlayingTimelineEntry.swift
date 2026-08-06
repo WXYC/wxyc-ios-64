@@ -64,3 +64,19 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.family = family
     }
 }
+
+extension NowPlayingTimelineEntry: SongDisplayable {
+    /// Bridges `artist` onto `SongDisplayable`'s `artistName`, so `Header`,
+    /// `MediumNowPlayingWidgetEntryView`, and `SmallNowPlayingWidgetEntryView`
+    /// can feed the entry straight into `SongInfoColumn` instead of hand-rolling
+    /// their own title/artist `Text` stack. `nonisolated` to satisfy
+    /// `SongDisplayable`'s nonisolated requirement under this target's default
+    /// `MainActor` isolation — `artist` is a plain `let`, so reading it off the
+    /// main actor is safe.
+    nonisolated var artistName: String { artist }
+
+    /// The timeline entry carries no release field — always `nil`. Only
+    /// affects `SongDisplayable.artworkCacheKey`, which the widget rows don't
+    /// use (their artwork is pre-resolved into `artwork` by `Provider`).
+    nonisolated var releaseTitle: String? { nil }
+}

@@ -12,35 +12,31 @@ import SwiftUI
 
 struct Header: View {
     var entry: NowPlayingTimelineEntry
-    
+
     var body: some View {
         HStack(alignment: .center) {
-            if let artwork = entry.artwork {
+            artworkOrLogo(entry.artwork) { artwork in
                 artwork
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .cornerRadius(10)
                     .frame(width: 100, height: 100)
-            } else {
+            } fallback: {
                 Image.logo
                     .frame(width: 100, height: 100, alignment: .leading)
             }
-            
+
             VStack(alignment: .leading) {
-                Text(entry.artist)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                
-                Text(entry.songTitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                                
+                SongInfoColumn(
+                    song: entry,
+                    leadingField: .artistName,
+                    leadingFont: .headline,
+                    trailingFont: .subheadline,
+                    leadingLineLimit: 1,
+                    trailingLineLimit: 1
+                ) { EmptyView() }
+
                 PlayButton()
-                    .background(Capsule().fill(Color.red))
-                    .clipped()
                     .frame(alignment: .bottom)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

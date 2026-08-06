@@ -24,21 +24,16 @@ struct MediumNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     .aspectRatio(contentMode: .fit)
                 
                 VStack(alignment: .leading) {
-                    Text(entry.artist)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    
-                    Text(entry.songTitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
+                    SongInfoColumn(
+                        song: entry,
+                        leadingField: .artistName,
+                        leadingFont: .headline,
+                        trailingFont: .subheadline,
+                        leadingLineLimit: 1,
+                        trailingLineLimit: 1
+                    ) { EmptyView() }
 
                     PlayButton()
-                        .background(Capsule().fill(Color.red))
-                        .clipped()
-                    
                 }
             }
         }
