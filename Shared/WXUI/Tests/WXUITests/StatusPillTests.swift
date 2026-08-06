@@ -27,15 +27,15 @@ struct StatusPillTests {
         case .prominent:
             (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), .clear, Color(red: 0.03, green: 0.19, blue: 0.10))
         case .free:
-            (Color.teal.opacity(0.20), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+            (Color(red: 0.310, green: 0.839, blue: 0.784).opacity(0.92), .clear, Color(red: 0.016, green: 0.188, blue: 0.169))
         case .muted:
-            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.2), Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.71))
+            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.92), .clear, Color(red: 0.24, green: 0.08, blue: 0.03))
         case .negative:
-            (Color.red.opacity(0.24), Color.red.opacity(0.55), Color(red: 1.0, green: 0.7, blue: 0.7))
+            (Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.92), .clear, Color(red: 0.26, green: 0.03, blue: 0.03))
         case .caution:
-            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+            (Color(red: 1.0, green: 0.65, blue: 0.20).opacity(0.92), .clear, Color(red: 0.24, green: 0.13, blue: 0.01))
         case .neutral:
-            (Color.white.opacity(0.14), Color.white.opacity(0.3), Color.white.opacity(0.8))
+            (Color(red: 0.82, green: 0.85, blue: 0.89).opacity(0.92), .clear, Color(red: 0.11, green: 0.13, blue: 0.16))
         }
     }
 
@@ -80,6 +80,35 @@ struct StatusPillTests {
         // assertions above would pass by coincidence rather than by resolution.
         let canon = StatusPill.palette(for: .free)
         #expect(resolved.fill.resolve(in: Self.environment) != canon.fill.resolve(in: Self.environment))
+    }
+
+    /// The design rule the canon table exists to enforce: every chip is a solid
+    /// fill with no outline, the way "on sale" always read. Differentiation is
+    /// carried by hue alone, never by fill weight — so a "free" show can't end
+    /// up looking as unreachable as a sold-out one. Before this, only
+    /// `.prominent` was solid and the other five were 18–24% washes with a
+    /// stroke, which put FREE in the same visual family as SOLD OUT.
+    @Test("every canon style is a solid fill with no outline", arguments: StatusPill.Style.allCases)
+    func canonStylesAreSolidAndUnstroked(style: StatusPill.Style) {
+        let palette = StatusPill.palette(for: style)
+        #expect(
+            palette.border.resolve(in: Self.environment) == Color.clear.resolve(in: Self.environment),
+            "\(style) draws an outline — canon chips are fill-only"
+        )
+        #expect(
+            palette.fill.resolve(in: Self.environment).opacity >= 0.9,
+            "\(style) fill is a wash, not a solid"
+        )
+    }
+
+    /// Solid fills need dark ink to stay legible; the old translucent styles
+    /// used light ink over a dark surface. A style that kept light ink after the
+    /// switch to solid fills would be near-invisible.
+    @Test("every canon style pairs its solid fill with dark ink", arguments: StatusPill.Style.allCases)
+    func canonInkIsDark(style: StatusPill.Style) {
+        let ink = StatusPill.palette(for: style).ink.resolve(in: Self.environment)
+        let luminance = 0.2126 * Double(ink.red) + 0.7152 * Double(ink.green) + 0.0722 * Double(ink.blue)
+        #expect(luminance < 0.3, "\(style) ink is too light to read on a solid fill (luminance \(luminance))")
     }
 
     @Test("canon mechanics match the ticket: padding 10/4, 1pt stroke, kerning 1")
