@@ -101,21 +101,22 @@ public final class PlayerControllerTestHarness {
     public var sessionDeactivated: Bool { mockSession.lastActiveState == false }
 
     /// The concrete `AudioPlayerController`, when this harness wraps one. Lets a
-    /// test read `debugStateSnapshot` for async state the `PlaybackController`
+    /// test read `debugState` for async state the `PlaybackController`
     /// protocol doesn't surface — notably whether a deferred audio-session
     /// deactivation has finished.
     public var audioController: AudioPlayerController? { audioPlayerController }
 
     /// Whether a deferred audio-session handback has run and been accounted for.
     ///
-    /// Set synchronously by `stop()` and cleared only once the deactivation's
-    /// continuation has recorded its outcome, so this is an edge a test can wait
-    /// on instead of guessing a duration. Kept here rather than grepped inline so
-    /// the one string match against `debugStateSnapshot` lives in a single place —
-    /// otherwise renaming the field leaves every caller silently waiting out its
-    /// full timeout and then passing anyway.
+    /// `sessionDeactivationInFlight` is set synchronously by `stop()` and
+    /// cleared only once the deactivation's continuation has recorded its
+    /// outcome, so this is an edge a test can wait on instead of guessing a
+    /// duration. Reads the typed `debugState` rather than substring-matching
+    /// `debugStateSnapshot`, so renaming the field breaks this at compile time
+    /// instead of leaving every caller silently waiting out its full timeout
+    /// and then passing anyway.
     public var sessionDeactivationSettled: Bool {
-        audioPlayerController?.debugStateSnapshot.contains("sessionDeactivationInFlight=false") ?? true
+        audioPlayerController.map { !$0.debugState.sessionDeactivationInFlight } ?? true
     }
 
     public var analyticsPlayCallCount: Int {

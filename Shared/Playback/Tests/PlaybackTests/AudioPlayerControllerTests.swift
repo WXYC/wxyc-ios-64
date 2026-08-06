@@ -106,7 +106,7 @@ struct AudioPlayerControllerTests {
         // mock recording the call — the mock records it while the controller is
         // still holding the session lock, so a play() started then would defer
         // and never activate at all. See PauseResponsivenessTests.
-        await waitUntil { controller.debugStateSnapshot.contains("sessionDeactivationInFlight=false") }
+        await waitUntil { !controller.debugState.sessionDeactivationInFlight }
         #expect(mockSession.lastActiveState == false, "precondition: the handback never landed")
         controller.play()
 

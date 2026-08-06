@@ -241,7 +241,7 @@ struct ReachabilityReconnectTests {
     func recoveryLeavesHoldingPattern() async {
         let fixture = Self.makeFixture(initialSatisfied: false)
         await Self.driveIntoHoldingPattern(fixture)
-        #expect(fixture.controller.debugStateSnapshot.contains("holdingPatternEngaged=true"),
+        #expect(fixture.controller.debugState.holdingPatternEngaged,
                 "Precondition: the holding pattern should be engaged while idling. \(fixture.controller.debugStateSnapshot)")
 
         // Let the reachability-triggered reconnect reach .playing.
@@ -254,9 +254,9 @@ struct ReachabilityReconnectTests {
         // pattern (and its pending-scoped monitor) must be torn down, not left
         // stranded across healthy playback.
         await Self.poll(until: {
-            fixture.controller.debugStateSnapshot.contains("holdingPatternEngaged=false")
+            !fixture.controller.debugState.holdingPatternEngaged
         })
-        #expect(fixture.controller.debugStateSnapshot.contains("holdingPatternEngaged=false"),
+        #expect(!fixture.controller.debugState.holdingPatternEngaged,
                 "Recovery must leave the holding pattern. \(fixture.controller.debugStateSnapshot)")
 
         // A post-recovery flap must not resurrect a reconnect: the monitor is
@@ -283,7 +283,7 @@ struct ReachabilityReconnectTests {
         // false → satisfied transition (attributed .reachabilityResume) rather
         // than the monitor's very first delivery (attributed .holdingFallback).
         await Self.poll(until: {
-            fixture.controller.debugStateSnapshot.contains("reachabilitySatisfied=false")
+            fixture.controller.debugState.reachabilitySatisfied == false
         })
 
         // The reachability edge is what drives this reconnect to success, so the
@@ -380,7 +380,7 @@ struct ReachabilityReconnectTests {
             mockAnalytics.typedEvents(ofType: StreamErrorEvent.self)
                 .contains { $0.errorType == .backoffExhausted }
         })
-        #expect(controller.debugStateSnapshot.contains("holdingPatternEngaged=true"),
+        #expect(controller.debugState.holdingPatternEngaged,
                 "Precondition: the blind holding pattern should be engaged with its first fallback timer sleeping. \(controller.debugStateSnapshot)")
 
         // Let the fallback timer's task run its pre-sleep guards (which see
@@ -395,9 +395,9 @@ struct ReachabilityReconnectTests {
         // holding pattern but deliberately does NOT cancel that sleeping timer.
         mockPlayer.simulateStateChange(to: .playing)
         await Self.poll(until: {
-            controller.debugStateSnapshot.contains("holdingPatternEngaged=false")
+            !controller.debugState.holdingPatternEngaged
         })
-        #expect(controller.debugStateSnapshot.contains("holdingPatternEngaged=false"),
+        #expect(!controller.debugState.holdingPatternEngaged,
                 "Recovery must leave the holding pattern. \(controller.debugStateSnapshot)")
 
         // When the stranded timer wakes, the left pattern must make the attempt a
