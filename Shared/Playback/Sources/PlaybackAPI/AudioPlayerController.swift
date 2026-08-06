@@ -321,11 +321,6 @@ public final class AudioPlayerController {
     /// the whole bounded budget out in a fraction of a second.
     private let sessionActivationRetryDelay: Duration
 
-    /// The in-flight deferred deactivation, if any. See
-    /// `scheduleAudioSessionDeactivation()` for why deactivation doesn't run on
-    /// the caller's turn.
-    @ObservationIgnored private var sessionDeactivationTask: Task<Void, Never>?
-
     /// Whether a handback was asked for while one was already in flight. The
     /// request can't be served immediately and must not be dropped: the in-flight
     /// one may decline as stale. Consumed once, by
@@ -1004,11 +999,11 @@ public final class AudioPlayerController {
         // without an explicit `MainActor.run`. `self` is captured strongly on
         // purpose: the handback is what lets every other audio app resume, so it
         // has to finish even if the controller is being torn down. (That is also
-        // why `deinit` doesn't cancel this task — and cancelling it would be
-        // pointless rather than dangerous, since the detached child doesn't
-        // inherit cancellation and `.value` on a non-throwing task never checks
-        // it.)
-        sessionDeactivationTask = Task { [self] in
+        // why no handle to this task is kept: there is nothing `deinit` should
+        // cancel, and cancelling would be pointless rather than dangerous, since
+        // the detached child doesn't inherit cancellation and `.value` on a
+        // non-throwing task never checks it.)
+        Task { [self] in
             let handedBack = await Task.detached(priority: .userInitiated) {
                 self.deactivateAudioSession(ifGenerationIs: generation)
             }.value
