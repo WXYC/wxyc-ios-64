@@ -3,11 +3,11 @@
 //  Playlist
 //
 //  Drives FlowsheetLiveEventSource end-to-end over a stubbed URLSession serving
-//  a real `text/event-stream` byte body, covering the transport's byte-to-frame
-//  seam. SSEFrameAccumulatorTests covers frame reassembly from lines; these
-//  cover that the transport actually produces those lines — the gap that let
-//  the stream go silent while every unit test stayed green. See
-//  WXYC/wxyc-ios-64#269.
+//  a body in `text/event-stream` wire format, covering the transport's
+//  byte-to-frame seam. SSEFrameAccumulatorTests covers frame reassembly from
+//  lines; these cover that the transport actually produces those lines — the gap
+//  that let the stream go silent while every unit test stayed green. See
+//  WXYC/wxyc-ios-64#780.
 //
 //  Created by Jake Bromberg on 08/05/26.
 //  Copyright © 2026 WXYC. All rights reserved.
