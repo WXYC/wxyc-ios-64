@@ -168,10 +168,15 @@ public final class PlayerControllerTestHarness {
     ///   - heartbeatInterval: Cadence for the `playback_heartbeat` timer (#666).
     ///     Defaults to the 60s production value; tests exercising the cadence
     ///     itself inject a short interval so several ticks happen quickly.
+    ///   - sessionActivationRetryDelay: Spacing of the bounded `'!int'`
+    ///     activation retries (#514). Defaults to the 250ms production value;
+    ///     tests that must outlast the whole budget inject a short delay.
+    ///     Applies to the `.audioPlayerController` case only.
     public static func make(
         for testCase: PlayerControllerTestCase,
         backoffTimer: ExponentialBackoff = .default,
-        heartbeatInterval: Duration = .seconds(60)
+        heartbeatInterval: Duration = .seconds(60),
+        sessionActivationRetryDelay: Duration = .milliseconds(250)
     ) -> PlayerControllerTestHarness {
         let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
         let mockPlayer = MockAudioPlayer(url: streamURL)
@@ -191,7 +196,8 @@ public final class PlayerControllerTestHarness {
                 notificationCenter: notificationCenter,
                 analytics: mockAnalytics,
                 backoffTimer: backoffTimer,
-                heartbeatInterval: heartbeatInterval
+                heartbeatInterval: heartbeatInterval,
+                sessionActivationRetryDelay: sessionActivationRetryDelay
             )
 
             return PlayerControllerTestHarness(
