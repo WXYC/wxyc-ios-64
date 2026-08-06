@@ -39,10 +39,7 @@ public struct OpenVenue: AppIntent, OpenIntent {
         // this guard only covers a value that can't arise in practice rather
         // than crashing on a force-unwrap.
         if let venueID = target.id.venueID {
-            NotificationCenter.default.post(
-                VenueOpenMessage(venueID: venueID),
-                subject: nil
-            )
+            postOpenMessage(VenueOpenMessage(venueID: venueID))
         }
         return .result()
     }
