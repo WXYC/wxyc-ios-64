@@ -9,7 +9,7 @@
 //
 
 import Foundation
-import Playlist
+import WXUI
 
 #if DEBUG
 /// Shared debug state for the playlist "on air" banner.

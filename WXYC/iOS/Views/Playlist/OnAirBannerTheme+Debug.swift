@@ -12,8 +12,8 @@
 
 #if DEBUG || DEBUG_TESTFLIGHT
 import DebugPanel
-import Playlist
 import SwiftUI
+import WXUI
 
 extension OnAirBannerTheme {
     /// Snapshots ``OnAirDebugState/shared`` into a theme value. The composition root
