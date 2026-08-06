@@ -12,6 +12,7 @@
 
 import Concerts
 import SwiftUI
+import WXUI
 
 /// A horizontally-scrolling strip of "clear this facet" pills.
 struct OnTourFilterPills: View {
@@ -65,12 +66,9 @@ struct OnTourFilterPills: View {
                 Text(label).font(.footnote).fontWeight(.semibold)
                 Image(systemName: "xmark").font(.system(size: 9, weight: .bold))
             }
-            .foregroundStyle(.white)
             .padding(.horizontal, 11).padding(.vertical, 6)
-            .background(Capsule().fill(.white.opacity(0.16)))
-            .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassChip)
         .accessibilityLabel("Clear \(label) filter")
     }
 }

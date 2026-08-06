@@ -231,12 +231,9 @@ struct ConcertDetailView: View {
                                 Text("Directions")
                             }
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
                             .padding(.horizontal, 14).padding(.vertical, 9)
-                            .background(Capsule().fill(.white.opacity(0.16)))
-                            .overlay(Capsule().stroke(.white.opacity(0.22), lineWidth: 1))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.glassChip)
                         .accessibilityLabel("Directions to \(concert.venue.name)")
                     }
                 }
