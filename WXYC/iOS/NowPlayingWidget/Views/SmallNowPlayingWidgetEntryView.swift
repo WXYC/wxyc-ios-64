@@ -20,21 +20,17 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             
             VStack(alignment: .leading) {
                 self.artwork
-                
-                Text(entry.artist)
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                
-                Text(entry.songTitle)
-                    .font(.caption)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                
+
+                SongInfoColumn(
+                    song: entry,
+                    leadingField: .artistName,
+                    leadingFont: .caption,
+                    trailingFont: .caption,
+                    leadingLineLimit: 1,
+                    trailingLineLimit: 1
+                ) { EmptyView() }
+
                 PlayButton()
-                    .background(Capsule().fill(Color.red))
-                    .clipped()
             }
         }
         .containerBackground(Color.clear, for: .widget)

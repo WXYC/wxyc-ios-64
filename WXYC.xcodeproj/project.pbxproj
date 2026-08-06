@@ -171,6 +171,7 @@
 				iOS/NowPlayingWidget/Views/PlayButton.swift,
 				iOS/NowPlayingWidget/Views/RecentlyPlayedRow.swift,
 				iOS/NowPlayingWidget/Views/SmallNowPlayingWidgetEntryView.swift,
+				iOS/Views/Shared/SongInfoColumn.swift,
 			);
 			target = 236B51CD2EFC651A0058AD01 /* NowPlayingWidget */;
 		};
@@ -193,6 +194,7 @@
 				iOS/Tests/WXYCTests/MarketingRouteTests.swift,
 				iOS/Tests/WXYCTests/MarketingThemeCyclingTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
+				iOS/Tests/WXYCTests/NowPlayingTimelineEntrySongDisplayableTests.swift,
 				iOS/Tests/WXYCTests/OnAirBannerThemeTests.swift,
 				iOS/Tests/WXYCTests/PlaycutOpenRouterTests.swift,
 				iOS/Tests/WXYCTests/PlaycutSelectionTests.swift,
@@ -274,6 +276,7 @@
 				iOS/Tests/WXYCTests/MarketingRouteTests.swift,
 				iOS/Tests/WXYCTests/MarketingThemeCyclingTests.swift,
 				iOS/Tests/WXYCTests/NowPlayingInfoCenterManagerTests.swift,
+				iOS/Tests/WXYCTests/NowPlayingTimelineEntrySongDisplayableTests.swift,
 				iOS/Tests/WXYCTests/OnAirBannerThemeTests.swift,
 				iOS/Tests/WXYCTests/PlaycutOpenRouterTests.swift,
 				iOS/Tests/WXYCTests/PlaycutSelectionTests.swift,

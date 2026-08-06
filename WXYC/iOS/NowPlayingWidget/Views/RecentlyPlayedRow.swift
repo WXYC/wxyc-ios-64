@@ -23,49 +23,43 @@ struct RecentlyPlayedRow: View {
     var body: some View {
         HStack(alignment: .center) {
             artwork
-            
-            VStack(alignment: .leading) {
-                Text(nowPlayingItem.playcut.artistName)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                
-                Text(nowPlayingItem.playcut.songTitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-            }
+
+            SongInfoColumn(
+                song: nowPlayingItem.playcut,
+                leadingField: .artistName,
+                leadingFont: .headline,
+                trailingFont: .subheadline,
+                leadingLineLimit: 1,
+                trailingLineLimit: 1
+            ) { EmptyView() }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.lighten)
         .cornerRadius(10)
         .clipped()
     }
-    
+
     var artwork: some View {
-        Group {
-            if let artwork = nowPlayingItem.artwork {
-                Image(uiImage: artwork)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .cornerRadius(10)
-                    .clipped()
-                    .frame(
-                        width: imageDimension,
-                        height: imageDimension,
-                        alignment: .leading
-                    )
-                    .padding(5)
-            } else {
-                Image.logo
-                    .frame(
-                        width: imageDimension,
-                        height: imageDimension,
-                        alignment: .leading
-                    )
-                    .padding(5)
-            }
+        artworkOrLogo(nowPlayingItem.artwork.map(Image.init(uiImage:))) { artwork in
+            artwork
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .cornerRadius(10)
+                .clipped()
+                .frame(
+                    width: imageDimension,
+                    height: imageDimension,
+                    alignment: .leading
+                )
+                .padding(5)
+        } fallback: {
+            Image.logo
+                .frame(
+                    width: imageDimension,
+                    height: imageDimension,
+                    alignment: .leading
+                )
+                .padding(5)
         }
     }
 }

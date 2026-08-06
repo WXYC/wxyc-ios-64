@@ -49,6 +49,28 @@ extension SwiftUI.Image {
     }
 }
 
+// MARK: - Artwork Fallback
+
+/// Renders `artwork` when present, or `fallback()` otherwise — the branch
+/// every widget artwork slot (`Header`, `RecentlyPlayedRow`, and the
+/// `NowPlayingWidgetEntryView` protocol default) needs when a played track has
+/// no cached image yet. Each of the three call sites frames and
+/// corner-radiuses the loaded artwork (and, in two of the three, the fallback
+/// logo) differently, so both branches are supplied as builder closures rather
+/// than baking one fixed size/style into the helper.
+@ViewBuilder
+func artworkOrLogo<Loaded: View, Fallback: View>(
+    _ artwork: SwiftUI.Image?,
+    @ViewBuilder loaded: (SwiftUI.Image) -> Loaded,
+    @ViewBuilder fallback: () -> Fallback
+) -> some View {
+    if let artwork {
+        loaded(artwork)
+    } else {
+        fallback()
+    }
+}
+
 // MARK: - Collection Async
 
 extension Collection where Self: Sendable, Element: Sendable {
