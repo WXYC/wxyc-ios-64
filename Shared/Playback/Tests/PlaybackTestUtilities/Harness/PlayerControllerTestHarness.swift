@@ -85,9 +85,13 @@ public final class PlayerControllerTestHarness {
     public let mockSession: MockAudioSession
     public let mockCommandCenter: MockRemoteCommandCenter?
     public let mockAnalytics: MockStructuredAnalytics
-    /// Stands in for `UIApplication`'s background-task assertions. Only
-    /// `AudioPlayerController` takes any; it is created for every controller so
-    /// a test can assert the *absence* of one just as easily.
+    /// Stands in for `UIApplication`'s background-task assertions.
+    ///
+    /// Injected only into `AudioPlayerController` — it is the only controller
+    /// with a deferred handback to protect. It is still constructed for the
+    /// `RadioPlayerController` harnesses so the field is non-optional, but
+    /// nothing there writes to it, so asserting against it from a radio test
+    /// would pass no matter what the code did.
     public let mockBackgroundTasks: MockBackgroundTaskAssertion
 
     // For controller-specific backoff access
