@@ -48,6 +48,10 @@ struct TimedOperationTests {
 
     @Test("returns fallback on CancellationError without reporting")
     func returnsFallbackOnCancellationError() async {
+        // `CancellationError` is structured concurrency's own signal — something in
+        // the task tree asked to stop. Always silent, regardless of `Task.isCancelled`
+        // (a cancelled child can raise it while this task is still alive). Only the
+        // URLSession-originated `URLError(.cancelled)` gets the #812 treatment.
         let reporter = MockErrorReporter()
 
         let result = await timedOperation(
@@ -123,11 +127,13 @@ struct TimedOperationTests {
         #expect(data?["duration"] != nil)
     }
 
-    @Test("returns fallback on URLError(.cancelled) without reporting")
-    func returnsFallbackOnURLCancellationWithoutReporting() async {
+    @Test("returns fallback on URLError(.cancelled) and reports it when the enclosing task is alive")
+    func reportsNetworkOriginatedCancellation() async {
         // URLSession surfaces cancellation as URLError(.cancelled), which does not
-        // bridge to CancellationError. It must be treated as cancellation (silent
-        // fallback, no error report), not as a reportable failure.
+        // bridge to CancellationError. When the enclosing Swift task has NOT been
+        // cancelled, nobody asked for this — the network stack tore the request
+        // down on its own — so it is a genuine failure and must reach the error
+        // reporter, tagged so it can be told apart from an ordinary error (#812).
         let reporter = MockErrorReporter()
 
         let result = await timedOperation(
@@ -139,8 +145,66 @@ struct TimedOperationTests {
             throw URLError(.cancelled)
         }
 
+        #expect(result == 0, "The fallback is still returned — reporting must not change the value")
+        #expect(reporter.allReportedErrors.count == 1)
+        let reported = reporter.allReportedErrors.first
+        #expect(reported?.context == "fetchPlaylist(API v2)")
+        #expect(reported?.additionalData["cancellation"] == "network")
+        #expect(reported?.additionalData["duration"] != nil)
+    }
+
+    @Test("stays silent on URLError(.cancelled) when the enclosing task was cancelled")
+    func silentOnTaskOriginatedCancellation() async {
+        // The user dismissed the view and SwiftUI cancelled the `.task`; URLSession
+        // reports URLError(.cancelled) as a consequence. That is routine cleanup,
+        // not a failure, and must stay out of Sentry (#812).
+        let reporter = MockErrorReporter()
+
+        let task = Task {
+            while !Task.isCancelled {
+                await Task.yield()
+            }
+            return await timedOperation(
+                context: "fetchPlaylist(API v2)",
+                category: .network,
+                fallback: 0,
+                errorReporter: reporter
+            ) {
+                throw URLError(.cancelled)
+            }
+        }
+        task.cancel()
+        let result = await task.value
+
         #expect(result == 0)
         #expect(reporter.allReportedErrors.isEmpty)
+    }
+
+    @Test("still reports a non-cancellation URLError raised inside a cancelled task")
+    func cancelledTaskDoesNotSwallowRealErrors() async {
+        // Guard against over-reading `Task.isCancelled`: a real failure must still
+        // be reported even when the task happens to be cancelled, because the
+        // silence is keyed on the error being a cancellation, not on the task state.
+        let reporter = MockErrorReporter()
+
+        let task = Task {
+            while !Task.isCancelled {
+                await Task.yield()
+            }
+            return await timedOperation(
+                context: "fetchPlaylist(API v2)",
+                category: .network,
+                fallback: 0,
+                errorReporter: reporter
+            ) {
+                throw URLError(.badServerResponse)
+            }
+        }
+        task.cancel()
+        _ = await task.value
+
+        #expect(reporter.allReportedErrors.count == 1)
+        #expect(reporter.allReportedErrors.first?.additionalData["cancellation"] == nil)
     }
 
     @Test("passes through the return type correctly for non-optional types")
