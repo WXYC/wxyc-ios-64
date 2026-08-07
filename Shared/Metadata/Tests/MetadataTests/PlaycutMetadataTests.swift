@@ -281,6 +281,20 @@ struct PlaycutMetadataTests {
         #expect(AlbumMetadata.empty.isDiscogsUnavailable == false)
     }
 
+    // MARK: - isSparse (#812)
+
+    @Test("isSparse is true only when every enrichment-sourced album field is nil")
+    func isSparseGate() {
+        // The label is a base flowsheet column, not enrichment output — an album
+        // carrying only a label is exactly the poisoned pre-enrichment shape.
+        #expect(AlbumMetadata.empty.isSparse)
+        #expect(AlbumMetadata(label: "Houndstooth").isSparse)
+
+        #expect(AlbumMetadata(releaseYear: 2024).isSparse == false)
+        #expect(AlbumMetadata(discogsURL: URL(string: "https://www.discogs.com/release/1")).isSparse == false)
+        #expect(AlbumMetadata(artworkURL: URL(string: "https://i.discogs.com/a.jpg")).isSparse == false)
+    }
+
     @Test("hasMetadataSectionContent ignores fields that do not mount in PlaycutMetadataSection")
     func hasMetadataSectionContentIgnoresUngatedFields() {
         // wikipediaURL renders in ExternalLinksSection (gated separately at PlaycutDetailView:94).

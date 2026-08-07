@@ -689,6 +689,97 @@ struct PlaycutMetadataServiceV2FallbackTests {
         )
     }
 
+    // MARK: - Short TTL on sparse-album cache entries (#812)
+
+    @Test("A sparse album response is cached with the short TTL constant, not seven days")
+    func sparseAlbumUsesShortTTL() async throws {
+        // Given — the row is mid-enrichment, so the proxy has nothing but the
+        // base label column to give back. Pinning that for a week is what made
+        // #812 survive closing and reopening the card.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataV2MockWebSession()
+        let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Crawl",
+            labelName: "Houndstooth",
+            artistName: "Djrum",
+            releaseTitle: "Meaning's Edge"
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "artworkUrl": null,
+            "spotifyUrl": "https://open.spotify.com/track/crawl",
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        _ = await service.fetchMetadata(for: playcut)
+
+        // Then
+        let albumKey = MetadataCacheKey.album(artistName: "Djrum", releaseTitle: "Meaning's Edge")
+        let metadata = mockCache.metadata(for: albumKey)
+        #expect(metadata != nil, "Album entry should be cached")
+        #expect(
+            metadata?.lifespan == PlaycutMetadataService.sparseAlbumLifespan,
+            "Sparse album entry must use sparseAlbumLifespan, not .sevenDays"
+        )
+        #expect(
+            PlaycutMetadataService.sparseAlbumLifespan < .sevenDays,
+            "Short TTL must be strictly shorter than the enriched-album TTL"
+        )
+    }
+
+    @Test("An enriched album response keeps the seven-day TTL")
+    func enrichedAlbumKeepsSevenDayTTL() async throws {
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataV2MockWebSession()
+        let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Back, Baby",
+            labelName: "Drag City",
+            artistName: "Jessica Pratt",
+            releaseTitle: "On Your Own Love Again"
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": "https://www.discogs.com/release/6577044",
+            "releaseYear": 2015,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        _ = await service.fetchMetadata(for: playcut)
+
+        // Then
+        let albumKey = MetadataCacheKey.album(
+            artistName: "Jessica Pratt",
+            releaseTitle: "On Your Own Love Again"
+        )
+        let metadata = mockCache.metadata(for: albumKey)
+        #expect(metadata?.lifespan == .sevenDays, "An album carrying enrichment should retain the .sevenDays TTL")
+    }
+
     // MARK: - Explicit metadataStatus branch gates the proxy fetch (#270)
 
     @Test(
