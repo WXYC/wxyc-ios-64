@@ -149,12 +149,18 @@ DEPS[MusicShareKit]="WXUI Logger Core Analytics Caching"
 DEPS[Wallpaper]="Analytics Caching ColorPalette Core Logger WXUI"
 DEPS[Metadata]="Artwork Core Caching Playlist Logger WXYCAPIModels"
 DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
-DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger"
+# `Intents` and `Concerts` are both declared in Shared/AppServices/Package.swift
+# (platform-conditioned on iOS/macCatalyst/macOS) and had never reached this
+# table. This PR is the demonstration: renaming Intents' reindexer protocols
+# breaks AppServices' conformances to them, yet without this edge a
+# WXYCIntents-only change selects WXYCIntentsTests and never AppServicesTests.
+DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger Intents Concerts"
 # `Caching` is #751's addition (the widget bootstrap's in-memory
 # PlaycutHistoryStore default). `Concerts` had been in Shared/Intents/Package.swift
-# for some time without ever reaching this table. Neither Concerts nor a
-# ConcertsTests has a row of its own here, so a Concerts-only change still
-# selects no test target at all — that gap belongs to #797, not here.
+# for some time without ever reaching this table. Concerts still has no row of
+# its own, so `ConcertsTests` runs in no configuration — but with the edges
+# above, a Concerts-only change does now reach WXYCIntentsTests and
+# AppServicesTests through its dependents. The missing row belongs to #797.
 DEPS[Intents]="Analytics Caching Concerts Core Logger Playback Playlist"
 # Packages without test targets (included as dependency intermediaries)
 DEPS[DebugPanel]="AppServices Caching Playback Playlist Wallpaper PlayerHeaderView WXUI"

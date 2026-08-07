@@ -39,7 +39,7 @@ import Foundation
 /// the entity. Preserves `identifiers`' order and drops ids nothing in
 /// `source` produced. If two source items derive the same entity id, the
 /// first one (in `source`'s order) wins — the query never traps.
-public func resolveEntities<Owner, Source, Entity>(
+func resolveEntities<Owner, Source, Entity>(
     identifiers: [EntityID<Owner>],
     from source: () async -> [Source],
     makeEntity: (Source) -> Entity?
@@ -63,7 +63,7 @@ public func resolveEntities<Owner, Source, Entity>(
 /// entry `rawID` couldn't bridge at all — and drops ids `source` couldn't
 /// resolve or that failed to build an entity. If `source` returns duplicate
 /// ids, the first one wins — the query never traps.
-public func resolveEntities<Owner, RawID: Hashable, Source, Entity>(
+func resolveEntities<Owner, RawID: Hashable, Source, Entity>(
     identifiers: [EntityID<Owner>],
     rawID: (EntityID<Owner>) -> RawID?,
     from source: (_ rawIDs: [RawID]) async -> [Source],
