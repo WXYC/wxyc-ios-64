@@ -224,9 +224,16 @@ struct NormalizedKeyEntityCase: Sendable {
     let normalizedName: @Sendable (String) -> String
     let entityIdentifierString: @Sendable (String) -> String
     let displayTitle: @Sendable (String) -> String
-    #if !os(watchOS) && !os(tvOS)
+    /// Reads the entity's Spotlight attribute set. Declared unconditionally
+    /// even though only the `#if !os(watchOS) && !os(tvOS)` test above calls
+    /// it: Swift has no `#if` inside an argument list, so gating the property
+    /// would leave every `attributeSetFields:` argument in the case array
+    /// below unconditional and break the watch/tv build outright. The
+    /// condition lives inside each closure body instead, where the
+    /// CoreSpotlight-only `attributeSet` is actually named; the `(nil, nil)`
+    /// branch is unreachable, because its only caller is compiled out on the
+    /// same platforms.
     let attributeSetFields: @Sendable (String) -> (title: String?, relatedUniqueIdentifier: String?)
-    #endif
 }
 
 let normalizedKeyEntityCases: [NormalizedKeyEntityCase] = [
@@ -241,8 +248,12 @@ let normalizedKeyEntityCases: [NormalizedKeyEntityCase] = [
         entityIdentifierString: { DJEntity(djName: $0).id.entityIdentifierString },
         displayTitle: { String(localized: DJEntity(djName: $0).displayRepresentation.title) },
         attributeSetFields: { raw in
+            #if !os(watchOS) && !os(tvOS)
             let set = DJEntity(djName: raw).attributeSet
             return (set.title, set.relatedUniqueIdentifier)
+            #else
+            return (nil, nil)
+            #endif
         }
     ),
     NormalizedKeyEntityCase(
@@ -256,8 +267,12 @@ let normalizedKeyEntityCases: [NormalizedKeyEntityCase] = [
         entityIdentifierString: { LabelEntity(labelName: $0).id.entityIdentifierString },
         displayTitle: { String(localized: LabelEntity(labelName: $0).displayRepresentation.title) },
         attributeSetFields: { raw in
+            #if !os(watchOS) && !os(tvOS)
             let set = LabelEntity(labelName: raw).attributeSet
             return (set.title, set.relatedUniqueIdentifier)
+            #else
+            return (nil, nil)
+            #endif
         }
     ),
     NormalizedKeyEntityCase(
@@ -271,8 +286,12 @@ let normalizedKeyEntityCases: [NormalizedKeyEntityCase] = [
         entityIdentifierString: { ArtistEntity(artistName: $0).id.entityIdentifierString },
         displayTitle: { String(localized: ArtistEntity(artistName: $0).displayRepresentation.title) },
         attributeSetFields: { raw in
+            #if !os(watchOS) && !os(tvOS)
             let set = ArtistEntity(artistName: raw).attributeSet
             return (set.title, set.relatedUniqueIdentifier)
+            #else
+            return (nil, nil)
+            #endif
         }
     ),
 ]

@@ -167,9 +167,12 @@ struct BackendKeyedEntityCase: Sendable {
     let expectedDisplayTitle: String
     let entityIdentifierString: @Sendable () -> String
     let displayTitle: @Sendable () -> String
-    #if !os(watchOS) && !os(tvOS)
+    /// Reads the entity's Spotlight attribute set. Declared unconditionally,
+    /// with the platform condition inside each closure body instead — Swift
+    /// has no `#if` inside an argument list, so gating the property here would
+    /// leave the `attributeSetFields:` arguments below unconditional and break
+    /// the watch/tv build. See `NormalizedKeyEntityCase` for the same note.
     let attributeSetFields: @Sendable () -> (title: String?, relatedUniqueIdentifier: String?)
-    #endif
 }
 
 let backendKeyedEntityCases: [BackendKeyedEntityCase] = [
@@ -184,8 +187,12 @@ let backendKeyedEntityCases: [BackendKeyedEntityCase] = [
             String(localized: ShowEntity(start: .stub(id: 99, djName: "Jake B")).displayRepresentation.title)
         },
         attributeSetFields: {
+            #if !os(watchOS) && !os(tvOS)
             let set = ShowEntity(start: .stub(id: 99, djName: "Jake B")).attributeSet
             return (set.title, set.relatedUniqueIdentifier)
+            #else
+            return (nil, nil)
+            #endif
         }
     ),
     BackendKeyedEntityCase(
@@ -201,10 +208,14 @@ let backendKeyedEntityCases: [BackendKeyedEntityCase] = [
             } ?? ""
         },
         attributeSetFields: {
+            #if !os(watchOS) && !os(tvOS)
             guard let set = VenueEntity(venue: .stub(id: 3, name: "Cat's Cradle"))?.attributeSet else {
                 return (nil, nil)
             }
             return (set.title, set.relatedUniqueIdentifier)
+            #else
+            return (nil, nil)
+            #endif
         }
     ),
 ]

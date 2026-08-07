@@ -86,14 +86,20 @@ struct AppIntentsDependenciesManifestTests {
         )
     }
 
-    /// Scans every `.swift` file in `Sources/Intents` for the `@Dependency`
-    /// attribute immediately followed by `var name: Type`, and returns the
-    /// set of distinct (`any `-stripped) type names found. A declaration
-    /// whose attribute and `var` line aren't adjacent (none currently are --
-    /// see `PlaycutEntityQuery.swift`/`ConcertEntityQuery.swift`) would slip
-    /// past this regex; that's an accepted, narrow gap enforced by this same
-    /// test staying meaningful only as long as the existing declaration
-    /// style holds.
+    /// Scans every `.swift` file under `Sources/Intents` for the `@Dependency`
+    /// attribute followed by `var name: Type`, and returns the set of distinct
+    /// (`any `-stripped) type names found.
+    ///
+    /// The walk is recursive and the separator is `\s+` rather than
+    /// `\s*\n\s*`, so neither a future `Sources/Intents/<Subdir>/` nor the
+    /// single-line `@Dependency var x: Y` spelling can slip a declaration past
+    /// the completeness check. Both used to: the directory listing was flat
+    /// and the pattern required a newline, so a declaration in either shape
+    /// would leave this test green while the widget process regained exactly
+    /// the unregistered-`@Dependency` trap #751 exists to prevent. The
+    /// remaining gap is narrow and deliberate -- an attribute and its `var`
+    /// separated by a comment, or a type name spanning a line break, still
+    /// escape.
     private static func declaredDependencyTypeNames() throws -> Set<String> {
         let sourcesDirectory = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // this file -> WXYCIntentsTests/
@@ -101,10 +107,13 @@ struct AppIntentsDependenciesManifestTests {
             .deletingLastPathComponent() // -> Intents/ (package root)
             .appendingPathComponent("Sources/Intents", isDirectory: true)
 
-        let files = try FileManager.default.contentsOfDirectory(at: sourcesDirectory, includingPropertiesForKeys: nil)
-            .filter { $0.pathExtension == "swift" }
+        guard let walker = FileManager.default.enumerator(at: sourcesDirectory, includingPropertiesForKeys: nil) else {
+            Issue.record("Couldn't enumerate \(sourcesDirectory.path) -- the completeness check would pass vacuously.")
+            return []
+        }
+        let files = walker.compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
 
-        let pattern = /@Dependency\s*\n\s*(?:public |private |internal )?var\s+\w+\s*:\s*([^\n]+)/
+        let pattern = /@Dependency\s+(?:public |private |internal )?var\s+\w+\s*:\s*([^\n]+)/
 
         var found: Set<String> = []
         for file in files {
