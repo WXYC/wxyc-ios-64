@@ -186,6 +186,15 @@ struct PlaycutMetadataServiceCachingTests {
     /// Asserts on `url.path` rather than `absoluteString` so a query-parameter
     /// change doesn't fail this test for an unrelated reason — the same
     /// convention `ConcertsFetcherTests` uses for `/concerts`.
+    /// The complete set of proxy endpoints `PlaycutMetadataService` is allowed
+    /// to reach. Deliberately does NOT include `/proxy/entity/resolve`: that
+    /// endpoint belongs to `DiscogsAPIEntityResolver`, and this service has no
+    /// path to it.
+    static let expectedProxyEndpointPaths: Set<String> = [
+        "/proxy/metadata/album",
+        "/proxy/metadata/artist",
+    ]
+
     @Test("Requests the exact proxy endpoint paths, not merely paths containing them")
     func requestsExactProxyEndpointPaths() async throws {
         let mockCache = PlaycutMetadataMockCache()
@@ -195,11 +204,17 @@ struct PlaycutMetadataServiceCachingTests {
             cache: CacheCoordinator(cache: mockCache)
         )
 
+        // `discogsArtistId` is load-bearing: `fetchArtistMetadata` returns
+        // `.empty` without ever issuing a request when it's nil, so an album
+        // fixture that omits it leaves `/proxy/metadata/artist` unexercised --
+        // and this test then pins only one of the two endpoint literals it
+        // exists to pin.
         let albumResponse = """
         {
             "discogsReleaseId": 42,
             "discogsUrl": null,
             "releaseYear": 2024,
+            "discogsArtistId": 7,
             "spotifyUrl": null,
             "appleMusicUrl": null,
             "youtubeMusicUrl": null,
@@ -208,17 +223,17 @@ struct PlaycutMetadataServiceCachingTests {
         }
         """.data(using: .utf8)!
         mockSession.responses["proxy/metadata/album"] = albumResponse
+        mockSession.responses["proxy/metadata/artist"] = """
+        {
+            "discogsArtistId": 7,
+            "bio": "Cordoban musician and producer."
+        }
+        """.data(using: .utf8)!
 
         _ = await service.fetchMetadata(for: Playcut.stub())
 
         let paths = Set(mockSession.requestedURLs.map(\.path))
-        #expect(!paths.isEmpty, "the service made no request at all — this test would pass vacuously")
-        for path in paths {
-            #expect(
-                ["/proxy/metadata/album", "/proxy/metadata/artist", "/proxy/metadata/resolve"].contains(path),
-                "unrecognized proxy endpoint path \(path) — a typo here is invisible to the substring stub matcher"
-            )
-        }
+        #expect(paths == Self.expectedProxyEndpointPaths)
     }
 
     @Test("Returns cached metadata without making API calls")

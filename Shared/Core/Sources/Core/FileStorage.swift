@@ -43,7 +43,19 @@ public struct AppSupportFileStorage: FileStorage {
 
     public init(filename: String) {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        self.fileURL = base.appendingPathComponent(filename)
+        self.init(directory: base, filename: filename)
+    }
+
+    /// Resolves `filename` against `directory` rather than Application
+    /// Support. `internal` because production always wants the real
+    /// container; this exists so `FileStorageTests` can exercise the genuine
+    /// `save`/`load`/`fileURL` behavior against a temporary directory. Under
+    /// the simulator test plan the Application Support root is the WXYC app's
+    /// own container -- the folder holding the user's real `liked-songs.json`
+    /// and `dismissed-concerts.json` -- and a killed test run leaves its
+    /// fixtures sitting next to them, since cleanup is a best-effort `defer`.
+    init(directory: URL, filename: String) {
+        self.fileURL = directory.appendingPathComponent(filename)
     }
 
     public func load() throws -> Data? {
