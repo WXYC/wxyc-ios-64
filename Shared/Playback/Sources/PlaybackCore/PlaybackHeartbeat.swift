@@ -35,11 +35,26 @@ public final class PlaybackHeartbeat {
         self.onTick = onTick
     }
 
+    /// Cancels a running loop when the heartbeat is released without an
+    /// explicit `stop()`.
+    ///
+    /// Load-bearing, not defensive. The controller-owned loops this replaces
+    /// captured their owner weakly and ended themselves on `guard ... let
+    /// self else { return }`; this loop captures `interval` and `onTick` by
+    /// value and never mentions `self`, so it has no equivalent exit. Without
+    /// this `deinit` a released heartbeat would wake the main actor every
+    /// interval for the life of the process.
+    @MainActor
+    deinit {
+        task?.cancel()
+    }
+
     /// Starts (or restarts) the periodic cadence.
     ///
     /// Only `interval` and `onTick` are captured by value across the sleep —
-    /// not `self` — so a live loop never extends this instance's lifetime,
-    /// matching the original controller-owned implementations this replaces.
+    /// not `self` — so a live loop never extends this instance's lifetime.
+    /// Termination on release is `deinit`'s job, since the loop itself has no
+    /// reference to the owner to notice it going away.
     public func start() {
         task?.cancel()
         task = Task { [interval, onTick] in
