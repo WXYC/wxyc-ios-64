@@ -9,21 +9,22 @@
 //
 
 import SwiftUI
+import WXUI
 
 struct PlaycutLoadingSection: View {
     var body: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .tint(.white)
-            Text("Loading...")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        // padded: false — this section sizes itself with a fixed height rather
+        // than the standard interior padding, so the card doesn't grow past it.
+        DetailCard(padded: false) {
+            VStack(spacing: 12) {
+                ProgressView()
+                    .tint(.white)
+                Text("Loading...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 80)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 80)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.primary.opacity(0.1))
-        )
     }
 }

@@ -10,12 +10,18 @@
 //  artwork prefetch) are applied by the caller, and the hairline border is opt-in
 //  via `stroked` since only the Liked row draws one.
 //
+//  The chrome itself (background/stroke/contentShape) now delegates to WXUI's
+//  `WallpaperCard`; this type keeps the row-specific plumbing — the
+//  `GeometryReader` proxy sizing the artwork, the 2.5 aspect ratio, and the tap
+//  gesture — that `WallpaperCard` deliberately doesn't own.
+//
 //  Created by Jake Bromberg on 07/20/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import SwiftUI
 import Wallpaper
+import WXUI
 
 /// The card chrome behind a `SongRowContent`. The caller supplies the row body
 /// (via the `GeometryReader` proxy that sizes its artwork) and the tap action;
@@ -31,17 +37,11 @@ struct SongRowPanel<Content: View>: View {
 
     var body: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .leading) {
+            WallpaperCard(cornerRadius: cornerRadius, stroked: stroked) {
                 BackgroundLayer(cornerRadius: cornerRadius)
+            } content: {
                 content(proxy)
             }
-            .overlay {
-                if stroked {
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(.white.opacity(0.12), lineWidth: 1)
-                }
-            }
-            .contentShape(.rect(cornerRadius: cornerRadius))
             .onTapGesture(perform: onTap)
         }
         .aspectRatio(2.5, contentMode: .fill)

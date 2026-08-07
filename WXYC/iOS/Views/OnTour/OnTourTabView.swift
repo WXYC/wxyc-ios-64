@@ -20,6 +20,7 @@ import LikedSongs
 import MusicShareKit
 import SwiftUI
 import Wallpaper
+import WXUI
 
 #if DEBUG
 import AppServices  // Concert Spotlight inspector (OT-Q2, #632)
@@ -197,12 +198,9 @@ struct OnTourTabView: View {
                 }
             }
             .font(.subheadline).fontWeight(.semibold)
-            .foregroundStyle(.white)
             .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(Capsule().fill(.white.opacity(0.16)))
-            .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glassChip)
         .accessibilityIdentifier("onTour.filterButton")
         .accessibilityLabel(
             model.filter.activeFacetCount > 0

@@ -17,12 +17,7 @@ struct ExternalLinksSection: View {
     var onLinkTapped: ((String) -> Void)?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("More Info")
-                .font(.detailSectionHeader)
-                .foregroundStyle(.primary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            
+        DetailCard(title: "More Info") {
             HStack(spacing: 12) {
                 if let discogsURL = metadata.discogsURL {
                     ExternalLinkButton(
@@ -32,7 +27,7 @@ struct ExternalLinksSection: View {
                         onTap: onLinkTapped
                     )
                 }
-                
+
                 if let wikipediaURL = metadata.wikipediaURL {
                     ExternalLinkButton(
                         title: "Wikipedia",
@@ -44,10 +39,5 @@ struct ExternalLinksSection: View {
             }
         }
         .tint(.primary)
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.primary.opacity(0.1))
-        )
     }
 }

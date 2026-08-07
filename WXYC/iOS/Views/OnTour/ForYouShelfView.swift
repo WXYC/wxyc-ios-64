@@ -26,6 +26,7 @@
 import Concerts
 import SwiftUI
 import Wallpaper
+import WXUI
 
 /// The horizontal For You rail shown above the On Tour list.
 struct ForYouShelfView: View {
@@ -106,13 +107,18 @@ private struct ForYouCard: View {
         // menu is drawn above, pinned to the poster's top-trailing corner.
         ZStack(alignment: .topTrailing) {
             Button(action: action) {
-                VStack(alignment: .leading, spacing: 0) {
-                    poster
-                    info
+                WallpaperCard(cornerRadius: 14, stroked: true) {
+                    BackgroundLayer(cornerRadius: 14)
+                } content: {
+                    VStack(alignment: .leading, spacing: 0) {
+                        poster
+                        info
+                    }
+                    .frame(width: Self.cardWidth)
                 }
-                .frame(width: Self.cardWidth)
-                .background(BackgroundLayer(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.12), lineWidth: 1))
+                // The poster art can bleed past the rounded corners
+                // (`WallpaperCard`'s own `contentShape` only affects hit
+                // testing), so this crops the whole card to match.
                 .clipShape(.rect(cornerRadius: 14))
                 // A cancelled show reads "dead", matching the list row.
                 .saturation(presenter.isCancelled ? 0.4 : 1)

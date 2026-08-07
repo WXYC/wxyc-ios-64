@@ -12,6 +12,7 @@
 
 import Analytics
 import SwiftUI
+import WXUI
 
 struct BugReportView: View {
     @State private var viewModel: BugReportViewModel
@@ -53,8 +54,7 @@ struct BugReportView: View {
                         .textInputAutocapitalization(.never)
                 }
             }
-            .navigationTitle("Report a bug")
-            .navigationBarTitleDisplayMode(.inline)
+            .sheetChrome(title: "Report a bug", showsDoneButton: false)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) {

@@ -11,6 +11,7 @@
 import SwiftUI
 import Metadata
 import Playlist
+import WXUI
 
 struct PlaycutMetadataSection: View {
     let metadata: PlaycutMetadata
@@ -21,54 +22,51 @@ struct PlaycutMetadataSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Label and Year
-            Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 10) {
-                if let label = metadata.label {
-                    GridRow {
-                        MetadataLabel(title: "Label")
-                        MetadataValue(value: DiscogsMarkupParser.stripDisambiguationSuffix(from: label))
+        DetailCard {
+            VStack(alignment: .leading, spacing: 16) {
+                // Label and Year
+                Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 10) {
+                    if let label = metadata.label {
+                        GridRow {
+                            MetadataLabel(title: "Label")
+                            MetadataValue(value: DiscogsMarkupParser.stripDisambiguationSuffix(from: label))
+                        }
                     }
-                }
-                if let year = metadata.releaseYear {
-                    GridRow {
-                        MetadataLabel(title: "Year")
-                        HStack {
-                            MetadataValue(value: String(year))
-                            Spacer()
+                    if let year = metadata.releaseYear {
+                        GridRow {
+                            MetadataLabel(title: "Year")
+                            HStack {
+                                MetadataValue(value: String(year))
+                                Spacer()
+                            }
                         }
                     }
                 }
-            }
 
-            // Genre/Style Tags
-            if !tags.isEmpty {
-                GenreTagsView(tags: tags)
-            }
+                // Genre/Style Tags
+                if !tags.isEmpty {
+                    GenreTagsView(tags: tags)
+                }
 
-            // "Not on Discogs" (#390) — the MD flag that also suppresses the
-            // artwork above. The note is optional free text; when absent, the
-            // label alone still tells the listener why artwork is missing
-            // instead of leaving it unexplained.
-            if metadata.album.isDiscogsUnavailable {
-                Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 10) {
-                    GridRow {
-                        MetadataLabel(title: "Discogs")
-                        MetadataValue(value: metadata.album.discogsUnavailableNote ?? "Not on Discogs")
+                // "Not on Discogs" (#390) — the MD flag that also suppresses the
+                // artwork above. The note is optional free text; when absent, the
+                // label alone still tells the listener why artwork is missing
+                // instead of leaving it unexplained.
+                if metadata.album.isDiscogsUnavailable {
+                    Grid(alignment: .leadingFirstTextBaseline, verticalSpacing: 10) {
+                        GridRow {
+                            MetadataLabel(title: "Discogs")
+                            MetadataValue(value: metadata.album.discogsUnavailableNote ?? "Not on Discogs")
+                        }
                     }
                 }
-            }
 
-            // Artist Bio
-            if let bio = metadata.artistBio, !bio.isEmpty {
-                ArtistBioSection(bio: bio, bioTokens: metadata.artist.bioTokens, expandedBio: $expandedBio)
+                // Artist Bio
+                if let bio = metadata.artistBio, !bio.isEmpty {
+                    ArtistBioSection(bio: bio, bioTokens: metadata.artist.bioTokens, expandedBio: $expandedBio)
+                }
             }
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.primary.opacity(0.1))
-        )
     }
 }
 
@@ -76,7 +74,7 @@ struct PlaycutMetadataSection: View {
     @Previewable @State var expandedBio = false
     @Previewable @State var isShowingLightbox = false
     @Previewable @Namespace var previewNamespace
-    
+
     let metadata = PlaycutMetadata(
         artist: .empty,
         album: AlbumMetadata(
@@ -87,9 +85,9 @@ struct PlaycutMetadataSection: View {
         ),
         streaming: .empty
     )
-    
+
     PlaycutLoadingSection()
-    
+
     PlaycutHeaderSection(
         playcut: Playcut(
             id: 0,
@@ -108,11 +106,11 @@ struct PlaycutMetadataSection: View {
         artworkGeometryID: "preview-artwork",
         onArtworkTap: {}
     )
-    
+
     PlaycutMetadataSection(
         metadata: metadata,
         expandedBio: $expandedBio
     )
-    
+
     ExternalLinksSection(metadata: metadata)
 }

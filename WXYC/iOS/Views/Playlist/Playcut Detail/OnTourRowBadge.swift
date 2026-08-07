@@ -7,11 +7,12 @@
 //  contents — date · venue · status tag on one line, plus a dashed tear line
 //  along the top seam. The surrounding ``PlaycutRowView`` supplies the shared
 //  wallpaper background and the perforated ticket outline (the semicircle
-//  punch-outs at the seam), so this view never draws its own surface. State-
-//  colored tag: the theme accent for on-sale, teal free, dimmed sold-out, red
-//  cancelled — the date and tag tint with the theme (see ``TicketColors``), so the
-//  stub stays consistent with ``BoxOfficeTicketView`` and its discovery CTA.
-//  Mirrors the prototype's `.rstub` (docs/ideas/touring-shows-box-office.html).
+//  punch-outs at the seam), so this view never draws its own surface. The
+//  status tag reads from `StatusPill`'s canon palette, except on-sale, which
+//  keeps tinting with the theme accent (see ``TicketColors``) so the "go" chip
+//  matches ``BoxOfficeTicketView``'s discovery CTA below it; the date also
+//  tints with the theme. Mirrors the prototype's `.rstub`
+//  (docs/ideas/touring-shows-box-office.html).
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -21,6 +22,7 @@ import Concerts
 import Playlist
 import SwiftUI
 import Wallpaper
+import WXUI
 
 struct OnTourRowBadge: View {
     let show: Concert
@@ -74,55 +76,24 @@ struct OnTourRowBadge: View {
         .accessibilityLabel(accessibilityText)
     }
 
-    /// The state-colored status tag on the right (`.rtag`).
+    /// The state-colored status tag on the right (`.rtag`). Reads from
+    /// ``StatusPill``'s canon table for every style except `.prominent`
+    /// ("on sale"), which keeps tinting with the active theme's accent — the
+    /// "go" chip is meant to match the ticket it sits below, and a static
+    /// canon table can't express that. See the file header's "State-colored
+    /// tag" note.
     private var tag: some View {
-        let colors = tagColors
-        return Text(presenter.feedTagText.uppercased())
-            .font(.system(size: 10, weight: .heavy))
-            .kerning(0.5)
-            .foregroundStyle(colors.ink)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Capsule().fill(colors.fill))
-            .overlay(Capsule().stroke(colors.border, lineWidth: colors.border == .clear ? 0 : 0.75))
-            .fixedSize()
-    }
-
-    /// Tag fill / border / ink per ``FeedTagStyle`` — the theme accent and teal
-    /// read as solid "go" chips; sold-out and cancelled are translucent and muted
-    /// so the feed doesn't entice toward a show you can't attend.
-    private var tagColors: (fill: Color, border: Color, ink: Color) {
-        switch presenter.feedTagStyle {
-        case .prominent:
-            return (colors.accentInkColor, .clear, buttonInk)
-        case .free:
-            return (Palette.free, .clear, Palette.freeText)
-        case .muted:
-            return (.white.opacity(0.12), .white.opacity(0.25), .white.opacity(0.72))
-        case .negative:
-            return (Palette.cancel.opacity(0.2), Palette.cancel.opacity(0.5), Palette.cancelInk)
-        case .neutral:
-            return (.white.opacity(0.1), .white.opacity(0.2), .white.opacity(0.7))
-        }
+        let style = presenter.feedTagStyle.statusPillStyle
+        let override: (fill: Color, border: Color, ink: Color)? = style == .prominent
+            ? (colors.accentInkColor, .clear, buttonInk)
+            : nil
+        return StatusPill(text: presenter.feedTagText, style: style, paletteOverride: override)
     }
 
     private var accessibilityText: String {
         [show.venue.name, presenter.compactDateLabel, presenter.feedTagText]
             .joined(separator: ", ")
     }
-}
-
-// MARK: - Palette
-
-/// The stub's **status** palette — free teal and cancelled red stay universal
-/// across every theme; the accent-colored "go" tag, the date, and the perforation
-/// now tint with the wallpaper (see ``TicketColors``). Translated from the
-/// prototype's CSS into HSL; trailing hex is the prototype value. File-private.
-private enum Palette {
-    static let free = Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)) // #4FD6C8
-    static let freeText = Color(HSL(hue: 0.4811, saturation: 0.8462, lightness: 0.102)) // #04302B
-    static let cancel = Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)) // #FF6B6B
-    static let cancelInk = Color(HSL(hue: 0, saturation: 1, lightness: 0.851)) // #FFB3B3
 }
 
 // MARK: - Previews

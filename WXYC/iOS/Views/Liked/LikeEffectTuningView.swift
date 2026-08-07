@@ -14,6 +14,7 @@
 
 #if DEBUG
 import SwiftUI
+import WXUI
 
 struct LikeEffectTuningView: View {
     @Bindable private var settings = LikeHapticSettings.shared
@@ -47,8 +48,7 @@ struct LikeEffectTuningView: View {
                     tuner("Travel", value: $settings.travel, in: 0.3 ... 2.0, unit: "×", playsHaptic: false)
                 }
             }
-            .navigationTitle("Like FX")
-            .navigationBarTitleDisplayMode(.inline)
+            .sheetChrome(title: "Like FX", showsDoneButton: false)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     LikeHeartButton(isLiked: testLiked) { testLiked.toggle() }
