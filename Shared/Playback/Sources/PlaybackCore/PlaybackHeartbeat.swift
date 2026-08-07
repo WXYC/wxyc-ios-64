@@ -26,13 +26,30 @@ public final class PlaybackHeartbeat {
     private let interval: Duration
     private let onTick: () -> Void
     private var task: Task<Void, Never>?
+    /// The sleep behind each tick's cadence. Defaults to the real `Task.sleep`,
+    /// so production is untouched; tests substitute a gate so ticks are driven
+    /// by an explicit signal instead of racing a wall-clock deadline against
+    /// however long the test process actually gets scheduled — see
+    /// `MP3Streamer.startupWatchdogSleep` (issue #787) for the seam this
+    /// mirrors, and issue #807 for why this component needed the same one.
+    private let sleep: @Sendable (Duration) async throws -> Void
 
     /// - Parameters:
     ///   - interval: Cadence between ticks.
+    ///   - sleep: The sleep behind each tick's cadence. Defaults to the real
+    ///     wall clock; tests inject a gate. Every call must throw only on
+    ///     cancellation, exactly like `Task.sleep(for:)`. Ordered before
+    ///     `onTick`, not after, so production call sites that pass `onTick`
+    ///     as a trailing closure are unaffected by this parameter's addition.
     ///   - onTick: Invoked on the main actor once per elapsed interval while running.
-    public init(interval: Duration, onTick: @escaping () -> Void) {
+    public init(
+        interval: Duration,
+        sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+        onTick: @escaping () -> Void
+    ) {
         self.interval = interval
         self.onTick = onTick
+        self.sleep = sleep
     }
 
     /// Cancels a running loop when the heartbeat is released without an
@@ -57,10 +74,10 @@ public final class PlaybackHeartbeat {
     /// reference to the owner to notice it going away.
     public func start() {
         task?.cancel()
-        task = Task { [interval, onTick] in
+        task = Task { [interval, onTick, sleep] in
             while true {
                 do {
-                    try await Task.sleep(for: interval)
+                    try await sleep(interval)
                 } catch {
                     // Cancelled mid-sleep.
                     return
