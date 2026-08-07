@@ -150,7 +150,12 @@ DEPS[Wallpaper]="Analytics Caching ColorPalette Core Logger WXUI"
 DEPS[Metadata]="Artwork Core Caching Playlist Logger WXYCAPIModels"
 DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
 DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger"
-DEPS[Intents]="Analytics Core Logger Playback Playlist"
+# `Caching` is #751's addition (the widget bootstrap's in-memory
+# PlaycutHistoryStore default). `Concerts` had been in Shared/Intents/Package.swift
+# for some time without ever reaching this table. Neither Concerts nor a
+# ConcertsTests has a row of its own here, so a Concerts-only change still
+# selects no test target at all — that gap belongs to #797, not here.
+DEPS[Intents]="Analytics Caching Concerts Core Logger Playback Playlist"
 # Packages without test targets (included as dependency intermediaries)
 DEPS[DebugPanel]="AppServices Caching Playback Playlist Wallpaper PlayerHeaderView WXUI"
 DEPS[PartyHorn]=""
