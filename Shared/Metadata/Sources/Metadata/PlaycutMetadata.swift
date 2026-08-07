@@ -151,15 +151,68 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// the shape `PlaycutMetadataService`'s throw-path fallback synthesizes
     /// (`AlbumMetadata(label: playcut.labelName)`).
     ///
-    /// Keyed on the three fields that only ever come from enrichment. `label`
-    /// is deliberately excluded: it's a base flowsheet column, so an album
-    /// carrying nothing but a label is exactly the pre-enrichment snapshot, not
-    /// a partial success. Gates the short cache TTL in
+    /// Every enrichment-sourced field counts, not just the headline three: a
+    /// genre-only answer is a real (if thin) result, and treating it as sparse
+    /// would re-fetch it every ``PlaycutMetadataService/sparseAlbumLifespan``
+    /// forever. `label` is the one deliberate exclusion — it's a base flowsheet
+    /// column, so an album carrying nothing but a label is exactly the
+    /// pre-enrichment snapshot rather than a partial success.
+    ///
+    /// Gates the short cache TTL in
     /// `PlaycutMetadataService.fetchAlbumAndStreaming` (#812), mirroring what
     /// ``PlaycutMetadataService/emptyStreamingLifespan`` does on the streaming
     /// side (#303).
     public var isSparse: Bool {
-        releaseYear == nil && discogsURL == nil && artworkURL == nil
+        releaseYear == nil
+            && discogsURL == nil
+            && discogsArtistId == nil
+            && artworkURL == nil
+            && fullReleaseDate == nil
+            && discogsUnavailable == nil
+            && (genres ?? []).isEmpty
+            && (styles ?? []).isEmpty
+            && (criticReviews ?? []).isEmpty
+    }
+
+    /// Field-by-field coalesce: this record's populated fields win, `fallback`
+    /// fills every gap. Neither side can remove information the other has.
+    ///
+    /// One definition serves both callers that need to combine two partial
+    /// views of the same album: `PlaycutMetadataService`'s V2 fallthrough
+    /// (proxy preferred over the inline flowsheet row) and the detail card's
+    /// enrichment repair (the finished row preferred over whatever the proxy
+    /// resolved first — #812).
+    ///
+    /// Absence is `nil`, not emptiness: an explicitly empty `genres` array on
+    /// the preferred side still wins over a populated fallback. No serving
+    /// path distinguishes the two today — the flowsheet decoder and the proxy
+    /// decoder both produce `nil` for an absent list.
+    public func coalescing(over fallback: AlbumMetadata) -> AlbumMetadata {
+        AlbumMetadata(
+            label: label ?? fallback.label,
+            releaseYear: releaseYear ?? fallback.releaseYear,
+            discogsURL: discogsURL ?? fallback.discogsURL,
+            discogsArtistId: discogsArtistId ?? fallback.discogsArtistId,
+            genres: genres ?? fallback.genres,
+            styles: styles ?? fallback.styles,
+            fullReleaseDate: fullReleaseDate ?? fallback.fullReleaseDate,
+            artworkURL: artworkURL ?? fallback.artworkURL,
+            criticReviews: criticReviews ?? fallback.criticReviews,
+            discogsUnavailable: discogsUnavailable ?? fallback.discogsUnavailable,
+            discogsUnavailableNote: discogsUnavailableNote ?? fallback.discogsUnavailableNote
+        )
+    }
+}
+
+public extension ArtistMetadata {
+    /// Field-by-field coalesce; see ``AlbumMetadata/coalescing(over:)``.
+    func coalescing(over fallback: ArtistMetadata) -> ArtistMetadata {
+        ArtistMetadata(
+            bio: bio ?? fallback.bio,
+            bioTokens: bioTokens ?? fallback.bioTokens,
+            wikipediaURL: wikipediaURL ?? fallback.wikipediaURL,
+            discogsArtistId: discogsArtistId ?? fallback.discogsArtistId
+        )
     }
 }
 
@@ -205,6 +258,17 @@ public struct StreamingLinks: Sendable, Equatable, Codable {
         youtubeMusicURL != nil ||
         bandcampURL != nil ||
         soundcloudURL != nil
+    }
+
+    /// Field-by-field coalesce; see ``AlbumMetadata/coalescing(over:)``.
+    public func coalescing(over fallback: StreamingLinks) -> StreamingLinks {
+        StreamingLinks(
+            spotifyURL: spotifyURL ?? fallback.spotifyURL,
+            appleMusicURL: appleMusicURL ?? fallback.appleMusicURL,
+            youtubeMusicURL: youtubeMusicURL ?? fallback.youtubeMusicURL,
+            bandcampURL: bandcampURL ?? fallback.bandcampURL,
+            soundcloudURL: soundcloudURL ?? fallback.soundcloudURL
+        )
     }
 }
 
@@ -315,5 +379,15 @@ public struct PlaycutMetadata: Sendable, Equatable, Codable {
             || album.styles?.isEmpty == false
             || artistBio?.isEmpty == false
             || album.isDiscogsUnavailable
+    }
+
+    /// Field-by-field coalesce across all three sub-records; see
+    /// ``AlbumMetadata/coalescing(over:)``.
+    public func coalescing(over fallback: PlaycutMetadata) -> PlaycutMetadata {
+        PlaycutMetadata(
+            artist: artist.coalescing(over: fallback.artist),
+            album: album.coalescing(over: fallback.album),
+            streaming: streaming.coalescing(over: fallback.streaming)
+        )
     }
 }

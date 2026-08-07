@@ -144,12 +144,12 @@ struct PlaycutMetadataServiceV2FallbackTests {
 
     @Test("Inline V2 genres/styles ride through the short-circuit without a proxy fetch")
     func inlineV2GenresStylesRideThroughShortCircuit() async throws {
-        // Mirrors PlaycutDetailView.loadMetadata()'s inline-PlaycutMetadata
-        // construction: a V2 playcut carrying genres/styles plus at least one
-        // streaming URL. The service must return the inline metadata verbatim
-        // (genres/styles intact) and never touch the proxy (#402). Asserting at
-        // the PlaycutMetadata inline-construction boundary because loadMetadata
-        // lives in the app target and isn't reachable from a package unit test.
+        // Mirrors PlaycutMetadataResolver.inlineMetadata(for:)'s construction:
+        // a V2 playcut carrying genres/styles plus at least one streaming URL.
+        // The service must return the inline metadata verbatim (genres/styles
+        // intact) and never touch the proxy (#402). This asserts the service
+        // boundary specifically; the builder itself is covered directly in
+        // PlaycutMetadataResolverTests.
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = MetadataV2MockWebSession()
@@ -163,8 +163,9 @@ struct PlaycutMetadataServiceV2FallbackTests {
             genres: ["Rock"],
             styles: ["Folk, World, & Country"]
         )
-        // Same construction PlaycutDetailView.loadMetadata() performs for an
-        // inline V2 row, including the genres/styles threaded through #402.
+        // Same construction PlaycutMetadataResolver.inlineMetadata(for:)
+        // performs for an inline V2 row, including the genres/styles threaded
+        // through #402.
         let inline = PlaycutMetadata(
             artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
             album: AlbumMetadata(
@@ -383,11 +384,11 @@ struct PlaycutMetadataServiceV2FallbackTests {
     @Test("Non-terminal row with only genres inline (no streaming, no other fields) merges inline genres when the proxy omits them")
     func nonTerminalGenresOnlyRowMergesInlineGenres() async throws {
         // #685 widened hasV2Metadata to 12 fields unconditionally on
-        // metadataStatus, so PlaycutDetailView now builds a non-nil `inline`
+        // metadataStatus, so the resolver now builds a non-nil `inline`
         // for a pending/enriching row carrying only genres — where before,
         // hasV2Metadata (artwork/discogs/spotify only) would have been false
         // and `inline` would have been nil. That routes fetchMetadata through
-        // the merge branch (mergeAlbum) instead of the old pure-proxy
+        // the coalescing branch (AlbumMetadata.coalescing(over:)) instead of the old pure-proxy
         // early-return, so this row's inline genres now survive a proxy
         // response that doesn't return genres itself. Locking in that this is
         // the actual, intended behavior (proxy wins when present, inline is a
@@ -553,8 +554,9 @@ struct PlaycutMetadataServiceV2FallbackTests {
             criticReviews: [review],
             metadataStatus: .enrichedMatch
         )
-        // Same construction PlaycutDetailView.loadMetadata() performs for an
-        // inline V2 row, including criticReviews threaded through #695.
+        // Same construction PlaycutMetadataResolver.inlineMetadata(for:)
+        // performs for an inline V2 row, including criticReviews threaded
+        // through #695.
         let inline = PlaycutMetadata(
             artist: .empty,
             album: AlbumMetadata(label: "Sonamos", criticReviews: [review]),
@@ -801,11 +803,11 @@ struct PlaycutMetadataServiceV2FallbackTests {
     /// inline streaming URL would short-circuit independent of status (see
     /// "Inline V2 with at least one streaming URL skips the proxy fetch"
     /// above), which would confound a status-only assertion. This mirrors
-    /// the decision `PlaycutDetailView.loadMetadata()`'s explicit
-    /// `metadataStatus` switch now makes structurally (it never calls
-    /// `fetchMetadata` at all for the three terminal statuses); asserting
-    /// here at the `PlaycutMetadataService` boundary because `loadMetadata`
-    /// lives in the app target and isn't reachable from a package unit test.
+    /// the decision `PlaycutMetadataResolver.resolve(for:)`'s explicit
+    /// `metadataStatus` switch makes structurally (it never calls
+    /// `fetchMetadata` at all for the three terminal statuses). This asserts
+    /// the `PlaycutMetadataService` boundary; the resolver's own branch is
+    /// covered directly in `PlaycutMetadataResolverTests`.
     private func assertMetadataStatusGatesProxyCall(status: MetadataStatus?, expectsProxyCall: Bool) async throws {
         let mockCache = PlaycutMetadataMockCache()
         let cache = CacheCoordinator(cache: mockCache)

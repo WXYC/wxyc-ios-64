@@ -2,102 +2,31 @@
 //  PlaycutMetadataResolverTests.swift
 //  Metadata
 //
-//  Tests for PlaycutMetadataResolver: the detail card's inline-vs-proxy
-//  resolution decision, and the terminal-transition re-resolution that repairs
-//  a card opened during the ~2s pre-enrichment window (#812).
+//  Tests for the playcut detail card's metadata resolution: the two-source
+//  accumulator that makes arrival order irrelevant, the inline-vs-proxy
+//  decision, and the enrichment repair that fixes a card opened before its
+//  row finished enriching (#812).
 //
 //  Created by Jake Bromberg on 08/07/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
-//  This suite owns `MetadataResolverMockWebSession`, its own stub-`URLProtocol`
-//  double, for the same reason `PlaycutMetadataServiceV2FallbackTests.swift`
-//  owns `MetadataV2MockWebSession`: `URLProtocol` registration is by class, so
-//  two suites sharing one double would race even when each is individually
-//  `.serialized`. Hence the file-scoped type and the `.serialized` trait here.
+//  The suites here that need a live `PlaycutMetadataService` are declared as an
+//  `extension` of `PlaycutMetadataServiceHTTPTests` rather than as a suite of
+//  their own. `CoreTesting.QueuedStubURLProtocol` registers by class, so its
+//  header doc allows at most one adopting suite per test bundle and directs
+//  further adopters to extend the existing one — the same arrangement
+//  `DiscogsAPIEntityResolverCachingTests.swift` uses. Everything above that
+//  extension is pure and touches no `URLSession` at all.
 //
 
 import Testing
 import Foundation
-import os
 import Core
+import CoreTesting
 import Playlist
 import PlaylistTesting
 @testable import Caching
 @testable import Metadata
-
-// MARK: - Mock WebSession for this file's suite
-
-/// See `PlaycutMetadataServiceCachingTests.swift`'s `MetadataMockWebSession`
-/// for the design rationale — this is the same shape, kept as a separate type
-/// so this suite's `.serialized` trait doesn't have to share static state with
-/// the other suites'.
-final class MetadataResolverMockWebSession: @unchecked Sendable {
-    private struct State {
-        var responses: [String: Data] = [:]
-        var requestedURLs: [URL] = []
-        var requestCount = 0
-    }
-
-    private final class StubProtocol: URLProtocol, @unchecked Sendable {
-        override class func canInit(with request: URLRequest) -> Bool { true }
-        override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-        override func startLoading() {
-            guard let url = request.url else {
-                client?.urlProtocol(self, didFailWithError: URLError(.badURL))
-                return
-            }
-
-            let matchedData: Data? = MetadataResolverMockWebSession.lock.withLock { state in
-                state.requestCount += 1
-                state.requestedURLs.append(url)
-                let urlString = url.absoluteString
-                return state.responses.first { urlString.contains($0.key) }?.value
-            }
-
-            guard let matchedData, let response = HTTPURLResponse(
-                url: url,
-                statusCode: 200,
-                httpVersion: "HTTP/1.1",
-                headerFields: ["Content-Type": "application/json"]
-            ) else {
-                client?.urlProtocol(self, didFailWithError: URLError(.resourceUnavailable))
-                return
-            }
-
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: matchedData)
-            client?.urlProtocolDidFinishLoading(self)
-        }
-
-        override func stopLoading() {}
-    }
-
-    private static let lock = OSAllocatedUnfairLock(initialState: State())
-
-    /// The `URLSession` to inject as `PlaycutMetadataService`'s `urlSession`.
-    let urlSession: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [StubProtocol.self]
-        return URLSession(configuration: config)
-    }()
-
-    var responses: [String: Data] {
-        get { Self.lock.withLock { $0.responses } }
-        set { Self.lock.withLock { $0.responses = newValue } }
-    }
-
-    var requestedURLs: [URL] { Self.lock.withLock { $0.requestedURLs } }
-    var requestCount: Int { Self.lock.withLock { $0.requestCount } }
-
-    init() {
-        reset()
-    }
-
-    func reset() {
-        Self.lock.withLock { $0 = State() }
-    }
-}
 
 // MARK: - Fixtures
 
@@ -142,21 +71,176 @@ private func enrichedRow(id: UInt64 = 5305276) -> Playcut {
     )
 }
 
-private func makeResolver(
-    session: MetadataResolverMockWebSession,
-    cache: CacheCoordinator
-) -> PlaycutMetadataResolver {
-    PlaycutMetadataResolver(
-        service: PlaycutMetadataService(urlSession: session.urlSession, cache: cache)
+/// The row landing as `enrichedNoMatch`: LML found no Discogs release, so only
+/// the synthesized search URLs are populated. Terminal, and strictly poorer
+/// than what a successful proxy fetch can return — the shape that made a
+/// wholesale replacement downgrade the card.
+private func noMatchRow(id: UInt64 = 5305276) -> Playcut {
+    Playcut(
+        id: id,
+        hour: 1000,
+        chronOrderID: id,
+        timeCreated: 1000,
+        songTitle: "Crawl",
+        labelName: "Houndstooth",
+        artistName: "Djrum",
+        releaseTitle: "Meaning's Edge",
+        youtubeMusicURL: URL(string: "https://music.youtube.com/search?q=Djrum+Crawl"),
+        bandcampURL: URL(string: "https://bandcamp.com/search?q=Djrum"),
+        metadataStatus: .enrichedNoMatch
     )
 }
 
-// MARK: - Tests
+/// What a successful `/proxy/metadata/album` fetch contributes: the enrichment
+/// fields plus the three the V2 flowsheet row never carries
+/// (`discogsArtistId`, `fullReleaseDate`, `bioTokens` — the #685 casualty list).
+private let proxyResolvedMetadata = PlaycutMetadata(
+    artist: ArtistMetadata(
+        bio: "British electronic producer Felix Manuel.",
+        bioTokens: [],
+        discogsArtistId: 1_234
+    ),
+    album: AlbumMetadata(
+        label: "Houndstooth",
+        releaseYear: 2024,
+        discogsURL: URL(string: "https://www.discogs.com/release/30000001"),
+        discogsArtistId: 1_234,
+        fullReleaseDate: "2024-10-25",
+        artworkURL: URL(string: "https://i.discogs.com/meanings-edge.jpg")
+    ),
+    streaming: StreamingLinks(
+        spotifyURL: URL(string: "https://open.spotify.com/track/crawl"),
+        appleMusicURL: URL(string: "https://music.apple.com/album/crawl")
+    )
+)
 
-@Suite("PlaycutMetadataResolver", .serialized)
-struct PlaycutMetadataResolverTests {
+// MARK: - PlaycutMetadataResolution (arrival-order independence)
 
-    // MARK: - Inline construction
+@Suite("PlaycutMetadataResolution")
+struct PlaycutMetadataResolutionTests {
+
+    @Test("Starts empty and loading")
+    func startsEmptyAndLoading() {
+        let resolution = PlaycutMetadataResolution()
+
+        #expect(resolution.metadata == .empty)
+        #expect(resolution.isLoading)
+    }
+
+    @Test("A single initial resolve is rendered verbatim")
+    func initialOnly() {
+        var resolution = PlaycutMetadataResolution()
+        resolution.recordInitial(proxyResolvedMetadata)
+
+        #expect(resolution.metadata == proxyResolvedMetadata)
+        #expect(!resolution.isLoading)
+    }
+
+    @Test("A repair that lands before the initial resolve is rendered verbatim")
+    func repairOnly() throws {
+        var resolution = PlaycutMetadataResolution()
+        let repair = try #require(PlaycutMetadataResolver.inlineMetadata(for: enrichedRow()))
+        resolution.recordRepair(repair)
+
+        #expect(resolution.metadata == repair)
+        #expect(!resolution.isLoading)
+    }
+
+    @Test("A slow initial resolve landing after the repair cannot overwrite it")
+    func lateInitialResolveCannotClobberRepair() throws {
+        // The #812 aggravator case: the proxy fetch takes ~180s (the QUIC read
+        // timeouts this ticket documents) and returns *after* the repair. It
+        // must not restore the pre-enrichment snapshot over the enriched one.
+        var resolution = PlaycutMetadataResolution()
+
+        let repair = try #require(PlaycutMetadataResolver.inlineMetadata(for: enrichedRow()))
+        resolution.recordRepair(repair)
+
+        // The stale answer: what the proxy had to say while the row was still
+        // mid-enrichment — the label, and nothing else.
+        resolution.recordInitial(PlaycutMetadata(album: AlbumMetadata(label: "Houndstooth")))
+
+        #expect(resolution.metadata.releaseYear == 2024, "The repair's year must survive the late initial resolve")
+        #expect(resolution.metadata.album.artworkURL != nil)
+        #expect(resolution.metadata.album.genres == ["Electronic"])
+        #expect(resolution.metadata.spotifyURL != nil)
+    }
+
+    @Test("A repair never removes information the initial resolve already had")
+    func repairCoalescesRatherThanReplaces() throws {
+        // A row landing as `enrichedNoMatch` carries only synthesized search
+        // links. Replacing wholesale would strip the year, artwork, bio tokens
+        // and Spotify/Apple links the proxy already resolved.
+        var resolution = PlaycutMetadataResolution()
+        resolution.recordInitial(proxyResolvedMetadata)
+
+        let repair = try #require(PlaycutMetadataResolver.inlineMetadata(for: noMatchRow()))
+        resolution.recordRepair(repair)
+
+        // Kept from the initial resolve.
+        #expect(resolution.metadata.releaseYear == 2024)
+        #expect(resolution.metadata.album.artworkURL != nil)
+        #expect(resolution.metadata.album.discogsArtistId == 1_234)
+        #expect(resolution.metadata.album.fullReleaseDate == "2024-10-25")
+        #expect(resolution.metadata.artist.bioTokens != nil)
+        #expect(resolution.metadata.spotifyURL != nil)
+        #expect(resolution.metadata.appleMusicURL != nil)
+
+        // Gained from the repair.
+        #expect(resolution.metadata.youtubeMusicURL != nil)
+        #expect(resolution.metadata.bandcampURL != nil)
+    }
+
+    @Test("The repair wins on a field both sources populate")
+    func repairWinsOnConflict() {
+        var resolution = PlaycutMetadataResolution()
+        resolution.recordInitial(PlaycutMetadata(album: AlbumMetadata(releaseYear: 2023)))
+        resolution.recordRepair(PlaycutMetadata(album: AlbumMetadata(releaseYear: 2024)))
+
+        #expect(
+            resolution.metadata.releaseYear == 2024,
+            "Backend's finished enrichment outranks whatever the proxy fuzzy-matched"
+        )
+    }
+}
+
+// MARK: - Coalescing
+
+@Suite("PlaycutMetadata coalescing")
+struct PlaycutMetadataCoalescingTests {
+
+    @Test("Non-nil fields win, nil fields fall through")
+    func albumCoalescing() {
+        let preferred = AlbumMetadata(releaseYear: 2024, genres: ["Electronic"])
+        let fallback = AlbumMetadata(
+            label: "Houndstooth",
+            releaseYear: 1999,
+            artworkURL: URL(string: "https://i.discogs.com/a.jpg")
+        )
+
+        let merged = preferred.coalescing(over: fallback)
+
+        #expect(merged.releaseYear == 2024, "preferred wins where populated")
+        #expect(merged.label == "Houndstooth", "fallback fills where preferred is nil")
+        #expect(merged.artworkURL != nil)
+        #expect(merged.genres == ["Electronic"])
+    }
+
+    @Test("Coalescing over .empty is the identity")
+    func coalescingOverEmptyIsIdentity() {
+        #expect(proxyResolvedMetadata.coalescing(over: .empty) == proxyResolvedMetadata)
+    }
+
+    @Test("Coalescing .empty over a record preserves the record")
+    func emptyCoalescingPreservesFallback() {
+        #expect(PlaycutMetadata.empty.coalescing(over: proxyResolvedMetadata) == proxyResolvedMetadata)
+    }
+}
+
+// MARK: - Resolver policy (pure)
+
+@Suite("PlaycutMetadataResolver policy")
+struct PlaycutMetadataResolverPolicyTests {
 
     @Test("inlineMetadata returns nil for a row with no V2 metadata at all")
     func inlineMetadataNilForBareRow() {
@@ -185,24 +269,52 @@ struct PlaycutMetadataResolverTests {
         #expect(inline.streaming.spotifyURL?.absoluteString == "https://open.spotify.com/track/crawl")
     }
 
-    // MARK: - resolve(for:)
-
-    @Test("A row that is already terminal on first appearance makes zero proxy requests (#685)")
-    func terminalRowMakesNoProxyRequest() async throws {
-        let session = MetadataResolverMockWebSession()
-        let cache = CacheCoordinator(cache: PlaycutMetadataMockCache())
-        let resolver = makeResolver(session: session, cache: cache)
-
-        let resolved = await resolver.resolve(for: enrichedRow())
-
-        #expect(session.requestCount == 0, "Terminal rows must never spend a /proxy/metadata/album round-trip")
-        #expect(resolved.releaseYear == 2024)
+    @Test(
+        "Only a row Backend is still working on is worth watching",
+        arguments: [
+            (MetadataStatus.pending, true),
+            (MetadataStatus.enriching, true),
+            (MetadataStatus.enrichedMatch, false),
+            (MetadataStatus.enrichedNoMatch, false),
+            (MetadataStatus.failedNoRetry, false),
+        ] as [(MetadataStatus, Bool)]
+    )
+    func shouldObserveEnrichmentByStatus(status: MetadataStatus, expected: Bool) {
+        let playcut = Playcut.stub(metadataStatus: status)
+        #expect(PlaycutMetadataResolver.shouldObserveEnrichment(for: playcut) == expected)
     }
 
-    @Test("A row still enriching falls through to the proxy")
-    func enrichingRowFallsThroughToProxy() async throws {
-        let session = MetadataResolverMockWebSession()
-        session.responses["proxy/metadata/album"] = """
+    @Test("A row with no metadataStatus is never worth watching")
+    func shouldNotObserveStatuslessRow() {
+        // `nil` means the v1 API, a feed predating #280's `metadata_status`, or
+        // the Liked tab's synthesized `LikedSongSnapshot.toPlaycut()` (which
+        // hardcodes id 0). None of them will ever produce a status transition,
+        // so subscribing only pins the playlist polling loop open for nothing.
+        #expect(PlaycutMetadataResolver.shouldObserveEnrichment(for: Playcut.stub(metadataStatus: nil)) == false)
+    }
+}
+
+// MARK: - Resolution and repair against a live service
+//
+// Declared as an extension of `PlaycutMetadataServiceHTTPTests` — see this
+// file's header for why there is no second `QueuedStubURLProtocol` adopter.
+
+extension PlaycutMetadataServiceHTTPTests {
+
+    private static func makeResolver() -> PlaycutMetadataResolver {
+        PlaycutMetadataResolver(
+            service: PlaycutMetadataService(
+                urlSession: QueuedStubURLProtocol.makeSession(),
+                cache: CacheCoordinator(cache: PlaycutMetadataMockCache())
+            )
+        )
+    }
+
+    /// A `/proxy/metadata/album` body with every field null — enough to satisfy
+    /// a fetch without contributing anything, so a test can tell "the proxy was
+    /// consulted" apart from "the proxy had something to say".
+    private static var emptyAlbumBody: Data {
+        """
         {
             "discogsReleaseId": null,
             "discogsUrl": null,
@@ -214,35 +326,52 @@ struct PlaycutMetadataResolverTests {
             "soundcloudUrl": null
         }
         """.data(using: .utf8)!
-        let cache = CacheCoordinator(cache: PlaycutMetadataMockCache())
-        let resolver = makeResolver(session: session, cache: cache)
+    }
+
+    // MARK: resolve(for:)
+
+    @Test("A row that is already terminal on first appearance makes zero proxy requests (#685)")
+    func terminalRowMakesNoProxyRequest() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
+
+        let resolved = await resolver.resolve(for: enrichedRow())
+
+        #expect(
+            QueuedStubURLProtocol.capturedRequests().isEmpty,
+            "Terminal rows must never spend a /proxy/metadata/album round-trip"
+        )
+        #expect(resolved.releaseYear == 2024)
+    }
+
+    @Test("A row still enriching falls through to the proxy")
+    func enrichingRowFallsThroughToProxy() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
 
         let resolved = await resolver.resolve(for: enrichingRow())
 
-        #expect(session.requestCount >= 1)
+        #expect(!QueuedStubURLProtocol.capturedRequests().isEmpty)
         // The pre-enrichment card: the label renders, everything else is blank.
         #expect(resolved.label == "Houndstooth")
         #expect(resolved.releaseYear == nil)
         #expect(resolved.hasStreamingLinks == false)
     }
 
-    // MARK: - Terminal-transition re-resolution (#812)
+    // MARK: repairs(for:playlists:)
 
-    @Test("An enriching → enriched_match transition re-resolves the card with the full record")
-    func terminalTransitionReresolves() async throws {
-        let session = MetadataResolverMockWebSession()
-        let cache = CacheCoordinator(cache: PlaycutMetadataMockCache())
-        let resolver = makeResolver(session: session, cache: cache)
+    @Test("An enriching → enriched_match transition repairs the card", .timeLimit(.minutes(1)))
+    func transitionRepairsTheCard() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
 
-        let (transitions, continuation) = AsyncStream.makeStream(of: Playcut.self)
-        var reresolutions = resolver.reresolutions(
-            for: enrichingRow(),
-            transitions: transitions
-        ).makeAsyncIterator()
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
 
-        continuation.yield(enrichedRow())
+        continuation.yield(.stub(playcuts: [enrichingRow()]))
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
 
-        let repaired = try #require(await reresolutions.next())
+        let repaired = try #require(await repairs.next())
 
         #expect(repaired.releaseYear == 2024)
         #expect(repaired.album.genres == ["Electronic"])
@@ -253,65 +382,126 @@ struct PlaycutMetadataResolverTests {
         continuation.finish()
     }
 
-    @Test("The re-resolve spends zero /proxy/metadata/album requests (#685 regression guard)")
-    func terminalTransitionMakesNoProxyRequest() async throws {
-        let session = MetadataResolverMockWebSession()
-        let cache = CacheCoordinator(cache: PlaycutMetadataMockCache())
-        let resolver = makeResolver(session: session, cache: cache)
+    @Test("The repair spends zero /proxy/metadata/album requests (#685 regression guard)", .timeLimit(.minutes(1)))
+    func repairMakesNoProxyRequest() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
 
-        let (transitions, continuation) = AsyncStream.makeStream(of: Playcut.self)
-        var reresolutions = resolver.reresolutions(
-            for: enrichingRow(),
-            transitions: transitions
-        ).makeAsyncIterator()
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
 
-        continuation.yield(enrichedRow())
-        _ = await reresolutions.next()
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+        _ = await repairs.next()
 
         #expect(
-            session.requestCount == 0,
-            "The row transitioned *into* terminal, so the re-resolve renders from inline fields alone"
+            QueuedStubURLProtocol.capturedRequests().isEmpty,
+            "The row arrived terminal, so the repair renders from inline fields alone"
         )
 
         continuation.finish()
     }
 
-    @Test("Transitions belonging to other rows are ignored")
-    func otherRowsAreIgnored() async throws {
-        let session = MetadataResolverMockWebSession()
-        let cache = CacheCoordinator(cache: PlaycutMetadataMockCache())
-        let resolver = makeResolver(session: session, cache: cache)
+    @Test(
+        "A row that reached terminal before the card subscribed is still repaired",
+        .timeLimit(.minutes(1))
+    )
+    func repairsAgainstTheCurrentRowAtSubscribeTime() async throws {
+        // The seed race `terminalMetadataTransitions` structurally cannot
+        // report (#443's baseline snapshot is discarded by design): the cover
+        // transition plus task scheduling costs a few hundred ms inside a ~2s
+        // window, so the row can flip to terminal between row-tap and the
+        // card's subscription. Reconciling against the store's *current* row —
+        // not only against subsequent transitions — is what closes it.
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
 
-        let (transitions, continuation) = AsyncStream.makeStream(of: Playcut.self)
-        var reresolutions = resolver.reresolutions(
-            for: enrichingRow(id: 5305276),
-            transitions: transitions
-        ).makeAsyncIterator()
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
 
-        // A different flowsheet row landing its enrichment must not repaint
-        // this card; only the matching id gets through.
-        continuation.yield(enrichedRow(id: 5305277))
-        continuation.yield(enrichedRow(id: 5305276))
+        // The very first snapshot the card sees already has the row terminal.
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
 
-        let repaired = try #require(await reresolutions.next())
+        let repaired = try #require(await repairs.next())
         #expect(repaired.releaseYear == 2024)
 
-        // The 5305277 yield produced nothing of its own — after the matching
-        // row is consumed and the stream finishes, there is no second element.
         continuation.finish()
-        #expect(await reresolutions.next() == nil)
     }
 
-    @Test("A row already terminal at first appearance never subscribes, so it can never re-resolve")
-    func alreadyTerminalRowYieldsNothing() async throws {
-        let session = MetadataResolverMockWebSession()
-        let cache = CacheCoordinator(cache: PlaycutMetadataMockCache())
-        let resolver = makeResolver(session: session, cache: cache)
+    @Test("Other rows landing their enrichment never repaint this card", .timeLimit(.minutes(1)))
+    func otherRowsAreIgnored() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
 
-        #expect(
-            resolver.shouldObserveEnrichment(for: enrichedRow()) == false,
-            "Backend already finished this row — there is nothing to repair, and #685 forbids re-spending on it"
-        )
-        #expect(resolver.shouldObserveEnrichment(for: enrichingRow()))
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(id: 5305276), playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [enrichedRow(id: 5305277)]))
+        continuation.yield(.stub(playcuts: [enrichedRow(id: 5305277), enrichedRow(id: 5305276)]))
+
+        let repaired = try #require(await repairs.next())
+        #expect(repaired.releaseYear == 2024)
+
+        continuation.finish()
+    }
+
+    @Test("The card is repaired at most once, then the stream finishes", .timeLimit(.minutes(1)))
+    func repairsAtMostOnce() async throws {
+        // The #685 budget depends on this: a repair fires on the transition
+        // into terminal and never again, however many further snapshots carry
+        // the (still terminal) row.
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
+
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+
+        _ = try #require(await repairs.next())
+
+        #expect(await repairs.next() == nil, "One repair per card, then done")
+        #expect(QueuedStubURLProtocol.capturedRequests().isEmpty)
+
+        continuation.finish()
+    }
+
+    @Test(
+        "A row already terminal at first appearance yields no repair at all",
+        .timeLimit(.minutes(1))
+    )
+    func alreadyTerminalRowYieldsNoRepair() async throws {
+        // `shouldObserveEnrichment` is the caller-facing guard; `repairs`
+        // enforces it too so a caller that skips the check can't spend a
+        // subscription — or a resolve — on a row Backend already finished.
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
+
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichedRow(), playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+
+        #expect(await repairs.next() == nil)
+        #expect(QueuedStubURLProtocol.capturedRequests().isEmpty)
+
+        continuation.finish()
+    }
+
+    @Test("A row with no metadataStatus yields no repair at all", .timeLimit(.minutes(1)))
+    func statuslessRowYieldsNoRepair() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let resolver = Self.makeResolver()
+
+        let v1Row = Playcut.stub(id: 0, metadataStatus: nil)
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: v1Row, playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [v1Row]))
+
+        #expect(await repairs.next() == nil)
+
+        continuation.finish()
     }
 }

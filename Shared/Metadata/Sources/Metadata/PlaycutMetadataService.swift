@@ -177,33 +177,17 @@ public actor PlaycutMetadataService {
         // back to the inline values. This protects inline album fields (label,
         // releaseYear) and the inline artist bio when the proxy returns only
         // streaming URLs.
+        // Album: proxy preferred field-by-field, inline filling the gaps, so
+        // inline fields the proxy didn't refresh (label, releaseYear, artworkURL
+        // on the LML synth-shape) survive — and `discogsUnavailable` takes the
+        // proxy's answer when the BS read path resolved it (BS#1901), falling
+        // back to the inline V2 row when the response omits it (e.g. a cache
+        // hit predating the field). Same coalescer the detail card's enrichment
+        // repair uses (#812); see ``AlbumMetadata/coalescing(over:)``.
         return PlaycutMetadata(
             artist: artist == .empty ? inline.artist : artist,
-            album: Self.mergeAlbum(proxy: album, inline: inline.album),
+            album: album.coalescing(over: inline.album),
             streaming: streaming
-        )
-    }
-
-    /// Coalesces two `AlbumMetadata` records field-by-field, preferring `proxy`
-    /// values where present and falling back to `inline` otherwise. Used on the
-    /// V2 fallthrough path so inline album fields the proxy didn't refresh
-    /// (label, releaseYear, artworkURL on the LML synth-shape) survive.
-    private static func mergeAlbum(proxy: AlbumMetadata, inline: AlbumMetadata) -> AlbumMetadata {
-        AlbumMetadata(
-            label: proxy.label ?? inline.label,
-            releaseYear: proxy.releaseYear ?? inline.releaseYear,
-            discogsURL: proxy.discogsURL ?? inline.discogsURL,
-            discogsArtistId: proxy.discogsArtistId ?? inline.discogsArtistId,
-            genres: proxy.genres ?? inline.genres,
-            styles: proxy.styles ?? inline.styles,
-            fullReleaseDate: proxy.fullReleaseDate ?? inline.fullReleaseDate,
-            artworkURL: proxy.artworkURL ?? inline.artworkURL,
-            criticReviews: proxy.criticReviews ?? inline.criticReviews,
-            // Proxy wins when the BS read path resolved it (BS#1901); falls
-            // back to whatever the inline V2 row carried when the proxy
-            // response omits it (e.g. a cache hit that predates the field).
-            discogsUnavailable: proxy.discogsUnavailable ?? inline.discogsUnavailable,
-            discogsUnavailableNote: proxy.discogsUnavailableNote ?? inline.discogsUnavailableNote
         )
     }
 

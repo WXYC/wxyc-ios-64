@@ -21,12 +21,16 @@ import Playlist
 /// 1. ``resolve(for:)`` — the one-shot decision the card makes on appear:
 ///    render straight from the row's inline V2 fields when Backend has finished
 ///    enrichment, else fall through to `/proxy/metadata/album`.
-/// 2. ``reresolutions(for:transitions:)`` — the repair path (#812). The
-///    flowsheet feed serves a real, renderable row carrying only its base
-///    columns for roughly two seconds after insert. A card opened in that window
-///    used to latch the pre-enrichment snapshot forever, because
-///    `PlaycutDetailView` held a `let playcut` value and resolved it exactly
-///    once. This re-resolves it when the row's own enrichment lands.
+/// 2. ``repairs(for:playlists:)`` — the repair path (#812). The flowsheet feed
+///    serves a real, renderable row carrying only its base columns for roughly
+///    two seconds after insert. A card opened in that window used to latch the
+///    pre-enrichment snapshot forever, because `PlaycutDetailView` held a
+///    `let playcut` value and resolved it exactly once. This re-resolves it
+///    from the store's row once that row's enrichment lands.
+///
+/// The two are independent producers and may finish in either order; the card
+/// combines them through ``PlaycutMetadataResolution`` rather than letting the
+/// later one win.
 public struct PlaycutMetadataResolver: Sendable {
     private let service: PlaycutMetadataService
 
@@ -107,43 +111,71 @@ public struct PlaycutMetadataResolver: Sendable {
         }
     }
 
-    // MARK: - Re-resolution on enrichment (#812)
+    // MARK: - Repair on enrichment (#812)
 
     /// Whether a card showing `playcut` has anything to gain from watching the
     /// feed for this row's enrichment.
     ///
-    /// `false` once the row is terminal: Backend has finished with it, so no
-    /// later feed tick can carry more than the snapshot already in hand, and
-    /// #685's contract (never spend a degradable LML round-trip on a row
-    /// Backend already finished) makes re-resolving it pointless as well as
-    /// unwanted. Callers use this to skip subscribing at all, so the common
-    /// case — opening an older, fully-enriched row — costs nothing.
-    public func shouldObserveEnrichment(for playcut: Playcut) -> Bool {
-        playcut.metadataStatus?.isTerminal != true
+    /// `false` in two cases, both of which would otherwise pin a playlist
+    /// subscription open for a repair that can never arrive:
+    ///
+    /// - **Terminal.** Backend has finished with the row, so no later feed tick
+    ///   can carry more than the snapshot already in hand — and #685's contract
+    ///   (never spend a degradable LML round-trip on a row Backend already
+    ///   finished) makes re-resolving it unwanted as well as pointless. This is
+    ///   the common case: opening an older, fully-enriched row costs nothing.
+    /// - **No status at all.** `nil` means the v1 API, a feed decoded before
+    ///   #280 added `metadata_status`, or a synthesized playcut with no
+    ///   live-feed counterpart (the Liked tab's `LikedSongSnapshot.toPlaycut()`
+    ///   hardcodes id 0). None of them will ever produce a status transition.
+    public static func shouldObserveEnrichment(for playcut: Playcut) -> Bool {
+        guard let status = playcut.metadataStatus else { return false }
+        return !status.isTerminal
     }
 
-    /// Re-resolved metadata for `playcut`, one element per time *this* row
-    /// transitions into a terminal enrichment state.
+    /// Repaired metadata for `playcut`: at most one element, produced the first
+    /// time the store reports this row in a terminal enrichment state.
     ///
-    /// `transitions` is `PlaylistService.terminalMetadataTransitions()`, which
-    /// already yields only on a transition *into* terminal (never a re-broadcast
-    /// of an already-terminal status, and never a terminal → terminal change),
-    /// so the #685 budget is respected structurally: at most one repair per row,
-    /// and because the row arrives terminal, ``resolve(for:)`` takes the inline
-    /// branch and issues **zero** `/proxy/metadata/album` requests.
+    /// `playlists` is `PlaylistService.updates()`. Reading the raw snapshots
+    /// rather than `terminalMetadataTransitions()` is deliberate. That stream
+    /// discards its first snapshot to seed a per-subscriber baseline, which is
+    /// correct for #443's Spotlight consumer but structurally blind to the
+    /// race this repair exists for: the cover transition plus task scheduling
+    /// costs a few hundred milliseconds inside a ~2 second window, so the row
+    /// can reach terminal between row-tap and subscription. The baseline would
+    /// then record it as already-terminal and no transition would ever fire.
+    /// Reconciling against the store's *current* row closes that hole without
+    /// touching semantics #443 depends on.
     ///
-    /// Filtered by `id` so a sibling row landing its enrichment — the common
-    /// case, since the feed enriches every new track — never repaints this card.
-    /// A synthesized playcut with no live-feed counterpart (the Liked tab's
-    /// `LikedSongSnapshot.toPlaycut()` hardcodes id 0) simply never matches.
-    public func reresolutions(
+    /// The #685 budget is respected structurally rather than by care: the row
+    /// is terminal by the time it is yielded, so ``resolve(for:)`` takes the
+    /// inline branch and issues **zero** `/proxy/metadata/album` requests. The
+    /// stream finishes after one repair, so no amount of further polling can
+    /// re-fire it.
+    ///
+    /// Matching is by `id`, so a sibling row landing its enrichment — the
+    /// common case, since the feed enriches every new track — never repaints
+    /// this card. Enforces ``shouldObserveEnrichment(for:)`` itself: a caller
+    /// that skips the check gets an immediately-finished stream rather than a
+    /// live subscription.
+    public func repairs(
         for playcut: Playcut,
-        transitions: AsyncStream<Playcut>
+        playlists: AsyncStream<Playlist>
     ) -> AsyncStream<PlaycutMetadata> {
         AsyncStream { continuation in
+            guard Self.shouldObserveEnrichment(for: playcut) else {
+                continuation.finish()
+                return
+            }
+
             let task = Task {
-                for await enriched in transitions where enriched.id == playcut.id {
-                    continuation.yield(await resolve(for: enriched))
+                for await playlist in playlists {
+                    guard let row = playlist.playcuts.first(where: { $0.id == playcut.id }),
+                          row.metadataStatus?.isTerminal == true
+                    else { continue }
+
+                    continuation.yield(await resolve(for: row))
+                    break
                 }
                 continuation.finish()
             }

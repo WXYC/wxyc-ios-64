@@ -29,8 +29,10 @@ struct PlaycutDetailView: View {
         self._artwork = State(initialValue: artwork)
     }
 
-    @State private var metadata: PlaycutMetadata = .empty
-    @State private var isLoadingMetadata = true
+    /// Both metadata sources, accumulated rather than overwritten, so the
+    /// on-appear resolve and the enrichment repair can land in either order
+    /// without either degrading the card (#812).
+    @State private var resolution = PlaycutMetadataResolution()
     @State private var expandedBio = false
     @State private var isLightboxActive = false
     @State private var showLightboxContainer = false
@@ -54,6 +56,10 @@ struct PlaycutDetailView: View {
     private let resolver = PlaycutMetadataResolver(
         service: PlaycutMetadataService(tokenProvider: MusicShareKit.tokenProvider)
     )
+
+    /// What the card renders — both sources coalesced. See
+    /// ``PlaycutMetadataResolution`` for the precedence rule.
+    private var metadata: PlaycutMetadata { resolution.metadata }
 
     private var artworkGeometryID: String {
         "playcut-artwork-\(playcut.id)"
@@ -96,7 +102,7 @@ struct PlaycutDetailView: View {
                 }
 
                 // Metadata section
-                if isLoadingMetadata {
+                if resolution.isLoading {
                     PlaycutLoadingSection()
                         .foregroundStyle(.white)
                 } else if metadata.hasMetadataSectionContent {
@@ -127,10 +133,10 @@ struct PlaycutDetailView: View {
                 }
 
                 // Streaming links
-                if metadata.hasStreamingLinks || !isLoadingMetadata {
+                if metadata.hasStreamingLinks || !resolution.isLoading {
                     StreamingLinksSection(
                         metadata: metadata,
-                        isLoading: isLoadingMetadata,
+                        isLoading: resolution.isLoading,
                         onServiceTapped: { service in
                             StructuredPostHogAnalytics.shared.capture(StreamingLinkTapped(
                                 service: service.displayName,
@@ -185,7 +191,11 @@ struct PlaycutDetailView: View {
             ))
         }
         .task {
-            await apply(resolver.resolve(for: playcut))
+            let resolved = await resolver.resolve(for: playcut)
+            withAnimation(.easeInOut(duration: 0.3)) {
+                resolution.recordInitial(resolved)
+            }
+            await loadArtworkIfNeeded()
         }
         // Repair path for a card opened during the ~2s window in which the feed
         // serves a real row that hasn't finished enriching (#812).
@@ -198,14 +208,26 @@ struct PlaycutDetailView: View {
         // updated selection wouldn't re-present the cover. The fresh row has to
         // come from the store, not the parent.
         //
+        // This task and the resolve above are unordered by design: they write
+        // to different slots of `resolution`, which derives what to render from
+        // both. A slow resolve returning after the repair therefore cannot
+        // restore the pre-enrichment snapshot.
+        //
         // Read off `appState` rather than `\.playlistService` because
         // `Singletonia` is the one dependency both presentation sites
-        // explicitly re-inject into the cover's separate context.
+        // explicitly re-inject into the cover's separate context. The guard is
+        // `repairs`' own precondition too; checking it here as well is what
+        // keeps a row that can never be repaired from opening a playlist
+        // subscription and holding the polling loop alive for the cover's
+        // lifetime.
         .task {
-            guard resolver.shouldObserveEnrichment(for: playcut) else { return }
-            let transitions = appState.playlistService.terminalMetadataTransitions()
-            for await repaired in resolver.reresolutions(for: playcut, transitions: transitions) {
-                await apply(repaired)
+            guard PlaycutMetadataResolver.shouldObserveEnrichment(for: playcut) else { return }
+            let playlists = appState.playlistService.updates()
+            for await repaired in resolver.repairs(for: playcut, playlists: playlists) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    resolution.recordRepair(repaired)
+                }
+                await loadArtworkIfNeeded()
             }
         }
         .animation(.easeInOut(duration: 0.3), value: upcomingShow)
@@ -257,33 +279,26 @@ struct PlaycutDetailView: View {
         .padding(.top, 8)
     }
 
-    /// Renders a resolved metadata record into the card. Runs on both the
-    /// initial resolve and every enrichment repair, so the two paths land the
-    /// same animation and the same artwork follow-up.
+    /// Fetches cover art once the coalesced metadata has an artwork URL and the
+    /// card doesn't already have an image. Runs after both the initial resolve
+    /// and any repair, since either can be the one that supplies the URL.
     ///
-    /// The inline-vs-proxy decision itself, and the 12-field inline builder
-    /// that feeds it, live in `PlaycutMetadataResolver` (`Metadata`) — that
-    /// builder is one of three hand-synced enumerations of the same field list,
-    /// alongside `Playcut`'s `CodingKeys`/`init(from:)` and
-    /// `Playcut.hasV2Metadata`.
-    private func apply(_ resolvedMetadata: PlaycutMetadata) async {
-        await MainActor.run {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.metadata = resolvedMetadata
-                self.isLoadingMetadata = false
-            }
-        }
+    /// Skipped when the MD has flagged the release "Not on Discogs" (#390): the
+    /// URL, if present at all, is a preserved false match the flag exists
+    /// specifically to stop rendering — PlaycutHeaderSection falls back to
+    /// PlaceholderArtworkView whenever `artwork` stays nil.
+    ///
+    /// The inline-vs-proxy decision, and the 12-field inline builder that feeds
+    /// it, live in `PlaycutMetadataResolver` (`Metadata`) — that builder is one
+    /// of three hand-synced enumerations of the same field list, alongside
+    /// `Playcut`'s `CodingKeys`/`init(from:)` and `Playcut.hasV2Metadata`.
+    private func loadArtworkIfNeeded() async {
+        guard artwork == nil,
+              let artworkURL = metadata.album.artworkURL,
+              !metadata.album.isDiscogsUnavailable
+        else { return }
 
-        // If we still have no artwork and metadata provided an artwork URL, fetch it.
-        // Skipped when the MD has flagged the release "Not on Discogs" (#390):
-        // the URL, if present at all, is a preserved false match the flag
-        // exists specifically to stop rendering — PlaycutHeaderSection falls
-        // back to PlaceholderArtworkView whenever `artwork` stays nil.
-        if artwork == nil,
-           let artworkURL = resolvedMetadata.album.artworkURL,
-           !resolvedMetadata.album.isDiscogsUnavailable {
-            await loadArtwork(from: artworkURL)
-        }
+        await loadArtwork(from: artworkURL)
     }
 
     private func loadArtwork(from url: URL) async {
