@@ -164,8 +164,17 @@ struct BoxOfficeTicketView: View {
         }
     }
 
+    /// The ticket keeps its prototype-derived status palette rather than
+    /// ``StatusPill``'s canon table — see
+    /// ``StatusPillSurfacePalette/boxOfficeTicket(_:accent:)``. Only the
+    /// rescheduled chip tracks the theme. Mechanics stay canon.
     private func statusPill(_ text: String) -> some View {
-        StatusPill(text: text, style: presenter.statusPillStyle.wxuiStyle)
+        let style = presenter.statusPillStyle.wxuiStyle
+        return StatusPill(
+            text: text,
+            style: style,
+            paletteOverride: StatusPillSurfacePalette.boxOfficeTicket(style, accent: colors.accentInkColor)
+        )
     }
 
     // MARK: - Stats (doors / show / price)
@@ -377,10 +386,10 @@ private struct CTAButtonStyle: ViewModifier {
 
 /// Colors for the ticket's non-pill status treatments (the cancelled notice's
 /// text/border, the caption ink on the CTA caption and passed-show keepsake).
-/// The status *pill* itself now reads from ``StatusPill``'s canon table — see
-/// ``BoxOfficeTicketView/statusPill(_:)`` — so this file no longer keeps its
-/// own copy of those colors. File-private so it doesn't leak into the
-/// app-wide color system.
+/// The status *pill* draws from ``StatusPillSurfacePalette/boxOfficeTicket(_:accent:)``,
+/// which holds this ticket's full prototype-derived status palette — see
+/// ``BoxOfficeTicketView/statusPill(_:)``. File-private so it doesn't leak into
+/// the app-wide color system.
 private enum Palette {
     static let cancel = Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)) // #FF6B6B
     static let cancelInk = Color(HSL(hue: 0, saturation: 1, lightness: 0.851)) // #FFB3B3

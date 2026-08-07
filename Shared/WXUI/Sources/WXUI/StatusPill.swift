@@ -13,6 +13,13 @@
 //  Every canon style is a solid fill with no outline — see ``palette(for:)``
 //  for why the earlier solid/translucent split was collapsed.
 //
+//  NOTE: the four On Tour surfaces that prompted this type all pass a
+//  `paletteOverride` — consolidating their colors moved hues that were tuned
+//  per surface, so `StatusPillSurfacePalette` (app target) hands each one its
+//  original triple back. What they still share from here is the *mechanics*:
+//  padding, stroke width, font, kerning. The canon table below remains the
+//  default for anything adopting this type fresh.
+//
 //  Created by Jake Bromberg on 08/06/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //

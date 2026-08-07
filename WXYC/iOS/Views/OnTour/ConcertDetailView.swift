@@ -338,8 +338,16 @@ struct ConcertDetailView: View {
         DetailPresentation.chromeGlyph(systemName)
     }
 
+    /// The hero pill keeps the poster-tuned palette rather than ``StatusPill``'s
+    /// canon table — see ``StatusPillSurfacePalette/concertPosterHero(_:)``.
+    /// Mechanics stay canon.
     private func statusPill(_ text: String) -> some View {
-        StatusPill(text: text, style: presenter.statusPillStyle.wxuiStyle)
+        let style = presenter.statusPillStyle.wxuiStyle
+        return StatusPill(
+            text: text,
+            style: style,
+            paletteOverride: StatusPillSurfacePalette.concertPosterHero(style)
+        )
     }
 
     // MARK: - Palette
