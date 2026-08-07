@@ -38,14 +38,45 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: recursive
-          token: ${{ secrets.SUBMODULE_TOKEN }}
+          # No `token:` and no `submodules:` here on purpose. This repo is
+          # checked out with the built-in GITHUB_TOKEN, which is minted per run
+          # and cannot expire; the private Wallpaper submodule is fetched in the
+          # next step with a read-only deploy key. Passing a PAT here made a
+          # submodule credential the gate on the *entire* workflow — when
+          # SUBMODULE_TOKEN lapsed in Aug 2026 every run died at Checkout before
+          # compiling a line. Keep the two concerns separate.
+          #
           # fetch-depth: 0 is required for affected-tests.sh's merge-base diff.
           # A shallower clone (e.g., 50) loses the merge-base when origin/master
           # has advanced more than depth-N commits ahead of the branch's fork
           # point, causing `git diff "$BASE_REF"...HEAD` to fail and the script
           # to fall through to run-all.
           fetch-depth: 0
+
+      - name: Check out the Wallpaper submodule
+        # WALLPAPER_DEPLOY_KEY is a read-only deploy key on WXYC/wallpaper-ios
+        # (deploy keys do not expire). .gitmodules pins an SSH URL, so the key is
+        # used directly rather than rewriting the URL to HTTPS.
+        env:
+          WALLPAPER_DEPLOY_KEY: ${{ secrets.WALLPAPER_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${WALLPAPER_DEPLOY_KEY:-}" ]]; then
+            echo "::error::WALLPAPER_DEPLOY_KEY is empty — the Wallpaper submodule cannot be fetched." >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$WALLPAPER_DEPLOY_KEY" > "$HOME/.ssh/wallpaper_deploy_key"
+          chmod 600 "$HOME/.ssh/wallpaper_deploy_key"
+          ssh-keyscan -t ed25519 github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/wallpaper_deploy_key -o IdentitiesOnly=yes -o IdentityAgent=none"
+          git submodule update --init --recursive
+          # Fail loudly rather than letting a silently-empty submodule surface
+          # later as "Cannot find type 'TicketColors'" or an unresolvable package.
+          if [[ ! -f Shared/Wallpaper/Package.swift ]]; then
+            echo "::error::Wallpaper submodule checked out but Package.swift is missing." >&2
+            exit 1
+          fi
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
