@@ -32,6 +32,26 @@ struct GlassChipButtonStyleTests {
         #expect(GlassChipButtonStyle.strokeWidth == 1)
     }
 
+    // The expected values are literals rather than `GlassChipButtonStyle
+    // .pressedOpacity`, so the test pins the actual numbers instead of
+    // restating the constant back to itself and passing by construction.
+    @Test("the label dims while pressed and is opaque otherwise", arguments: [
+        (true, 0.7),
+        (false, 1.0),
+    ])
+    @MainActor
+    func labelOpacityTracksPressedState(isPressed: Bool, expected: Double) {
+        #expect(GlassChipButtonStyle.labelOpacity(isPressed: isPressed) == expected)
+    }
+
+    @Test("pressed dimming is actually a dimming, not a no-op")
+    @MainActor
+    func pressedOpacityDims() {
+        // Guards the whole point of the branch above: a `pressedOpacity` of 1
+        // would satisfy it while giving the button no press feedback at all.
+        #expect(GlassChipButtonStyle.pressedOpacity < 1)
+    }
+
     @Test(".glassChip resolves to a GlassChipButtonStyle")
     @MainActor
     func glassChipStatic() {
