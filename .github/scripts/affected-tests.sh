@@ -268,7 +268,16 @@ TEST_TARGETS[WXUI]="WXUITests"
 #       - AppServices       — MockURLProtocol static handler + WidgetCenter
 #                             cause host hangs
 #       - Logger            — global Logger.addDestination shared mutable state
-#                             races (suite-level test interference)
+#                             races (suite-level test interference). Note
+#                             this is worse than the other exclusions on this
+#                             list: LoggerTests (16 tests) is ALSO absent
+#                             from WXYC.xctestplan's targets, so excluding it
+#                             here does not fall through to xcb the way the
+#                             comment used to imply — LoggerTests currently
+#                             runs in no CI configuration at all. Tracked in
+#                             #800; do not add Logger here without either
+#                             fixing the race or adding LoggerTests to the
+#                             plan.
 #       - Playback          — dozens of #if canImport(UIKit)/os() platform-
 #                             gate directives across its test files silently
 #                             skip on the macOS host. Measured 2026-08-06:

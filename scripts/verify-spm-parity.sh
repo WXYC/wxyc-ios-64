@@ -33,13 +33,21 @@
 #   --derived-data <path>   Shared -derivedDataPath for the xcodebuild runs.
 #                           Default: .build/dd-verify-parity (repo-relative).
 #   --tolerance <n>         Maximum acceptable (simulator - host) shortfall
-#                           per package before it's flagged. Default: 1 —
-#                           observed non-zero on Concerts even in the ticket's
-#                           own investigation (222 declared / 221 host), so a
-#                           strict 0 would false-positive on a package that
-#                           is otherwise fine. Real silent-skip shortfalls
-#                           (ColorPalette: 23, Playback: ~120+) are one to two
-#                           orders of magnitude past this.
+#                           per package before it's flagged. Default: 0 —
+#                           this is the quantity the flag actually gates
+#                           (simulator count minus host count), and every
+#                           package measured through this script so far came
+#                           out at an exact match, including Concerts at
+#                           216/216. The ticket's own 222/221 figure (#797)
+#                           measured *declared* vs. *host* — a looser,
+#                           different comparison this script doesn't
+#                           perform — so it isn't evidence for slack here.
+#                           Real silent-skip shortfalls are two orders of
+#                           magnitude past zero (ColorPalette: 34, host=25/
+#                           sim=59; Playback: 120+, host=329/grep-floor=449+
+#                           — see below). Raise this for a specific package
+#                           that demonstrably needs it, not as a blanket
+#                           default.
 #   --dry-run               Print the swift test / xcodebuild commands
 #                           without executing them.
 #   -h, --help               Show this message.
@@ -50,10 +58,24 @@
 # stale copy of that list). Pass explicit packages to check a candidate
 # addition instead, e.g.:
 #
-#   scripts/verify-spm-parity.sh                          # today's SPM_RUNNABLE (must pass)
+#   scripts/verify-spm-parity.sh                          # today's SPM_RUNNABLE — every package passes except LikedSongs, which prints NOT CHECKED (see below) and is why the run still exits non-zero
 #   scripts/verify-spm-parity.sh AnalyticsMacros Core \
 #     Caching Analytics Playlist LikedSongs Metadata \
 #     MusicShareKit Concerts WXUI ColorPalette            # negative case (must fail on ColorPalette)
+#
+# LikedSongs cannot currently be measured on the simulator side at all:
+# `xcodebuild -only-testing:LikedSongsTests -testPlan WXYC` fails with
+# "isn't a member of the specified test plan or scheme", and isolating it via
+# -skip-testing of every other target instead fails with "There are no test
+# bundles available to test" — reproducible from a clean -derivedDataPath,
+# unrelated to anything in this script (see PR #798's Blockers section for
+# the full investigation). This script does not attempt LikedSongs'
+# simulator side; it reports LikedSongs as NOT CHECKED with that reason
+# rather than either skipping it silently or letting the attempt fail and
+# masking every package after it in package-list order (that masking was a
+# real bug here once — see the "Compare" section below for how per-package
+# failures are now isolated). LikedSongs' host side is unaffected and still
+# runs for real evidence.
 #
 # Playback is deliberately not runnable through this script's execution path
 # below cost limits: its xcodebuild side is four bundles (PlaybackTests,
@@ -77,9 +99,16 @@
 # Count parsing differs by side, because the two sides don't print the same
 # kind of thing:
 #
-#   - Host (`swift test`): text log parsing, handling both frameworks a test
-#     target can print (several targets in this repo mix them in one
-#     bundle):
+#   - Host (`swift test`): text log parsing. Handles both frameworks a
+#     package's test target CAN print, even though no bundle checked here
+#     currently mixes them within one target: AnalyticsMacros is XCTest-only
+#     (it tests a SwiftSyntax compiler-plugin macro expansion, which needs
+#     XCTest's `assertMacroExpansion`), and every other package this script
+#     checks is Swift Testing-only (verified: no `Shared/*/Tests/*/`
+#     directory imports both `XCTest` and `Testing`). The parser stays
+#     dual-format as future-proofing — a package could add an
+#     XCTestCase-based test alongside its Swift Testing suite without this
+#     script silently mis-parsing it — not because a current bundle needs it:
 #       - Swift Testing: "Test run with N tests in M suites {passed,failed}"
 #         (summed across every occurrence — each xctest process prints its
 #         own line, so multiple bundles in one invocation each contribute a
@@ -119,7 +148,7 @@ cd "$REPO_ROOT"
 
 SIMULATOR="id=B49BE311-B868-4E8B-AE14-85C159CAD776"
 DERIVED_DATA=".build/dd-verify-parity"
-TOLERANCE=1
+TOLERANCE=0
 DRY_RUN=0
 local -a PACKAGES=()
 
@@ -145,7 +174,9 @@ Options:
   --derived-data <path>   Shared -derivedDataPath for the xcodebuild runs.
                           Default: .build/dd-verify-parity (repo-relative).
   --tolerance <n>         Maximum acceptable (simulator - host) shortfall
-                          per package before it's flagged. Default: 1.
+                          per package before it's flagged. Default: 0 — see
+                          the file header for why (every package measured
+                          through this script so far matched exactly).
   --dry-run               Print the swift test / xcodebuild commands without
                           executing them.
   -h, --help              Show this message.
@@ -234,6 +265,18 @@ PKG_MACOS_ONLY[AnalyticsMacros]=1
 typeset -A PKG_SKIP_TEST
 PKG_SKIP_TEST[Core]="ImageCompatibilityTests"
 
+# Packages whose simulator side is known, today, to be unmeasurable through
+# no fault of this script — attempting the run would just fail and (before
+# the per-package isolation added below) could mask every package after it
+# in list order. Recorded here as an explicit, commented exception instead
+# of a bare failure so the reason is visible without re-deriving it: this
+# script reports these as NOT CHECKED rather than either silently skipping
+# them or letting a doomed attempt run. See PR #798's Blockers section for
+# the full investigation (reproduced from a clean -derivedDataPath, both
+# -only-testing and -skip-testing isolation styles tried).
+typeset -A PKG_KNOWN_BLOCKED
+PKG_KNOWN_BLOCKED[LikedSongs]="LikedSongsTests cannot be selected via xcodebuild against WXYC.xctestplan: -only-testing:LikedSongsTests fails with \"isn't a member of the specified test plan or scheme\", and isolating it via -skip-testing of every other target instead fails with \"There are no test bundles available to test\". Unrelated to this script or #797/#798 — see PR #798 Blockers."
+
 # ---------------------------------------------------------------------------
 # Default package list: today's SPM_RUNNABLE, sourced from
 # affected-tests.sh's run_all_and_exit (FORCE_RUN_ALL=1) rather than a second
@@ -309,15 +352,23 @@ host_total_count() {
 
 # count_from_xcresult <path> — the authoritative simulator-side count, read
 # from the .xcresult bundle's top-level totalTestCount rather than scraped
-# from console output (see the file header for why). Prints 0 if the bundle
-# doesn't exist (xcodebuild never got far enough to write one) or the field
-# can't be parsed. Retries a couple of times on failure — xcodebuild returns
-# once the bundle is written, but a first empty/failed read was observed in
-# practice (2026-08-06, AnalyticsMacros) with a subsequent manual read of the
-# same bundle succeeding immediately after, which looks like a brief
-# finalization lag rather than a parsing bug; retrying is cheap insurance
-# either way, and a persistent failure still surfaces its actual error
-# instead of being silently swallowed.
+# from console output (see the file header for why). Retries up to 3 times,
+# covering both failure shapes seen in practice: xcresulttool exiting
+# non-zero (a first read against a freshly-written bundle failed once —
+# 2026-08-06, AnalyticsMacros — with a manual retry succeeding immediately
+# after, suggesting a brief finalization lag), and it exiting 0 with
+# empty/unparseable output. Both are checked via an explicit `if cmd; then
+# ... else rc=$?; fi` rather than a bare `result=$(...)` assignment — under
+# this script's `set -euo pipefail`, a bare assignment whose pipeline fails
+# triggers errexit immediately, which is a real bug this had once: a
+# non-existent or invalid bundle made xcresulttool exit non-zero, `pipefail`
+# propagated that through the `| python3` stage regardless of python3's own
+# (always-zero) exit code, and the script died mid-package with a bare
+# unlabeled line and no PARITY CHECK verdict, no attempt 2 or 3, and no
+# per-package diagnostic — the retry loop below was unreachable. The `if`
+# guard is what makes retrying actually happen. Prints 0 (to stdout) if the
+# bundle doesn't exist, or after exhausting retries — the caller treats a 0
+# count as fatal for that package, not this function.
 count_from_xcresult() {
     # NOTE: the local var is deliberately not named "path" — zsh links the
     # scalar $path to the special $PATH-backing array, and shadowing it
@@ -330,32 +381,37 @@ count_from_xcresult() {
         echo 0
         return
     fi
-    local attempt result err
+    local attempt result rc
     for attempt in 1 2 3; do
-        err=$(mktemp)
-        result=$(xcrun xcresulttool get test-results summary --path "$bundle_path" 2>"$err" \
+        if result=$(xcrun xcresulttool get test-results summary --path "$bundle_path" 2>/dev/null \
             | python3 -c 'import json, sys
 try:
     print(json.load(sys.stdin).get("totalTestCount", 0))
-except Exception as e:
-    print("PARSE_ERROR:" + str(e), file=sys.stderr)
-    print(0)')
-        if [[ -n "$result" && "$result" != "0" ]]; then
-            rm -f "$err"
+except Exception:
+    print(0)'); then
+            rc=0
+        else
+            rc=$?
+        fi
+        if [[ "$rc" -eq 0 && -n "$result" && "$result" != "0" ]]; then
             echo "$result"
             return
         fi
         if (( attempt < 3 )); then
             sleep 2
         fi
-        rm -f "$err"
     done
-    # Three attempts, still 0 (or unparseable) — could be genuine (a target
-    # with no tests) or a real failure. Either way, surface what
-    # xcresulttool actually said rather than hiding it.
-    echo "xcresulttool result for $bundle_path (last attempt):" >&2
-    xcrun xcresulttool get test-results summary --path "$bundle_path" 2>&1 | tail -5 >&2
-    echo "${result:-0}"
+    # Three attempts, still 0/unparseable/erroring — surface what
+    # xcresulttool actually says rather than hiding it behind a bare "0".
+    # The `|| true` matters: this diagnostic pipeline can itself fail (that
+    # is the whole reason we're here), and under this script's
+    # `set -euo pipefail`, an unguarded failing pipeline — even one that's
+    # purely informational — triggers errexit and kills the script before
+    # `echo 0` below ever runs, which is the same failure class this
+    # function's retry loop exists to avoid.
+    echo "xcresulttool did not return a usable count for $bundle_path after 3 attempts (last exit=$rc):" >&2
+    xcrun xcresulttool get test-results summary --path "$bundle_path" 2>&1 | tail -5 >&2 || true
+    echo 0
 }
 
 # ---------------------------------------------------------------------------
@@ -458,13 +514,29 @@ run_simulator() {
 
 # ---------------------------------------------------------------------------
 # Compare
+#
+# Every package in PACKAGES gets a verdict — PASS, FAIL, or NOT_CHECKED —
+# recorded as the loop goes and printed in a final summary once the loop
+# finishes. No package's outcome can mask another's: a failure or a
+# known-blocked package (see PKG_KNOWN_BLOCKED above) moves on to the next
+# package via `continue`, never `exit`. An earlier version of this script
+# used `exit 1` on the first fatal condition, which meant LikedSongs' known,
+# unrelated xcodebuild breakage (6th in the default package-list order)
+# silently prevented Metadata, MusicShareKit, Concerts, and WXUI — the two
+# packages this ticket is actually about — from ever being checked in the
+# same run. See PR #798 review.
 # ---------------------------------------------------------------------------
 
-typeset -a failures=()
+typeset -A RESULT_STATUS   # pkg -> PASS | FAIL | NOT_CHECKED
+typeset -A RESULT_DETAIL   # pkg -> human-readable reason, always populated
+typeset -a ORDERED=()      # preserves PACKAGES order for the summary
+
 printf '%-16s %8s %8s %8s %s\n' "PACKAGE" "HOST" "SIM" "GAP" "NOTE"
 printf -- '---------------------------------------------\n'
 
 for pkg in "${PACKAGES[@]}"; do
+    ORDERED+=("$pkg")
+
     if [[ -z "${PKG_TEST_TARGETS[$pkg]:-}" ]]; then
         echo "No PKG_TEST_TARGETS entry for '$pkg' — add one to scripts/verify-spm-parity.sh" >&2
         exit 2
@@ -472,16 +544,25 @@ for pkg in "${PACKAGES[@]}"; do
 
     if (( DRY_RUN == 1 )); then
         run_host "$pkg" > /dev/null
-        run_simulator "$pkg" > /dev/null
+        if [[ -z "${PKG_KNOWN_BLOCKED[$pkg]:-}" ]]; then
+            run_simulator "$pkg" > /dev/null
+        fi
         continue
     fi
 
-    # A nonzero exit means some individual test failed or errored — not this
-    # script's concern (it compares counts, not pass/fail). Only a run that
-    # produced zero parseable tests AND a nonzero exit is treated as fatal:
-    # that's the signature of the tooling itself never starting (bad scheme,
-    # missing target, build failure), as opposed to a real test failure
-    # inside an otherwise-normal run.
+    # Host: always attempted, even for a known-blocked package — LikedSongs'
+    # host side works fine; only its simulator side is blocked.
+    #
+    # A nonzero exit alone is not fatal — it can mean an individual test
+    # failed or errored, which is not this script's concern (it compares
+    # counts, not pass/fail: e.g. CachingTests has one simulator-only test
+    # failure that has nothing to do with coverage). But an executed count
+    # of exactly 0 is fatal on its own, regardless of exit status: a clean
+    # exit with 0 tests run is the exact silent-skip signature this script
+    # exists to catch. Gating the zero-count check on a nonzero exit too (an
+    # earlier version of this check did) misses it — a 0-host/0-simulator
+    # pair where both sides happen to exit cleanly computes gap=0 and would
+    # print PARITY CHECK PASSED having verified nothing.
     host_status="ok"
     if host_output=$(run_host "$pkg" 2>&1); then
         :
@@ -489,10 +570,19 @@ for pkg in "${PACKAGES[@]}"; do
         host_status="exit $?"
     fi
     host_count=$(host_total_count "$host_output")
-    if [[ "$host_status" != "ok" && "$host_count" -eq 0 ]]; then
+    if [[ "$host_count" -eq 0 ]]; then
         echo "$host_output" >&2
-        echo "swift test produced no parseable test count for $pkg ($host_status) — treating as a tooling failure, not a test failure" >&2
-        exit 1
+        RESULT_STATUS[$pkg]="FAIL"
+        RESULT_DETAIL[$pkg]="host executed 0 tests ($host_status) — silent-skip signature, fatal regardless of exit status"
+        printf '%-16s %8s %8s %8s %s\n' "$pkg" "0" "-" "-" "FAIL: 0 host tests"
+        continue
+    fi
+
+    if [[ -n "${PKG_KNOWN_BLOCKED[$pkg]:-}" ]]; then
+        RESULT_STATUS[$pkg]="NOT_CHECKED"
+        RESULT_DETAIL[$pkg]="${PKG_KNOWN_BLOCKED[$pkg]}"
+        printf '%-16s %8s %8s %8s %s\n' "$pkg" "$host_count" "n/a" "n/a" "NOT CHECKED — see summary"
+        continue
     fi
 
     sim_status="ok"
@@ -502,27 +592,34 @@ for pkg in "${PACKAGES[@]}"; do
         sim_status="exit $?"
     fi
     sim_count=$(count_from_xcresult "$(result_bundle_path "$pkg")")
-    if [[ "$sim_status" != "ok" && "$sim_count" -eq 0 ]]; then
+    if [[ "$sim_count" -eq 0 ]]; then
         echo "$sim_output" >&2
-        echo "xcodebuild test produced no parseable test count for $pkg ($sim_status) — treating as a tooling failure, not a test failure" >&2
-        exit 1
+        RESULT_STATUS[$pkg]="FAIL"
+        RESULT_DETAIL[$pkg]="simulator executed 0 tests ($sim_status) — silent-skip signature, fatal regardless of exit status"
+        printf '%-16s %8s %8s %8s %s\n' "$pkg" "$host_count" "0" "-" "FAIL: 0 sim tests"
+        continue
     fi
 
     gap=$((sim_count - host_count))
     local note=""
     [[ "$host_status" != "ok" ]] && note="$note host:$host_status"
     [[ "$sim_status" != "ok" ]] && note="$note sim:$sim_status"
-    printf '%-16s %8d %8d %8d %s\n' "$pkg" "$host_count" "$sim_count" "$gap" "$note"
+    printf '%-16s %8s %8s %8s %s\n' "$pkg" "$host_count" "$sim_count" "$gap" "$note"
 
     if (( gap > TOLERANCE )); then
-        failures+=("$pkg: host=$host_count sim=$sim_count gap=$gap (tolerance=$TOLERANCE) — host is silently skipping simulator-only coverage")
+        RESULT_STATUS[$pkg]="FAIL"
+        RESULT_DETAIL[$pkg]="host=$host_count sim=$sim_count gap=$gap (tolerance=$TOLERANCE) — host is silently skipping simulator-only coverage"
     elif (( -gap > TOLERANCE )); then
         # The inverse shouldn't happen for real coverage (a package
         # legitimately having MORE tests on host than the simulator finds is
         # not a known scenario here) — flag it too rather than silently
         # accepting it. This exact case caught a bug in this script itself
         # once already: a broken simulator-side count reader reported 0.
-        failures+=("$pkg: host=$host_count sim=$sim_count gap=$gap (tolerance=$TOLERANCE) — simulator count is suspiciously low; verify the .xcresult bundle rather than assuming this is fine")
+        RESULT_STATUS[$pkg]="FAIL"
+        RESULT_DETAIL[$pkg]="host=$host_count sim=$sim_count gap=$gap (tolerance=$TOLERANCE) — simulator count is suspiciously low; verify the .xcresult bundle rather than assuming this is fine"
+    else
+        RESULT_STATUS[$pkg]="PASS"
+        RESULT_DETAIL[$pkg]="host=$host_count sim=$sim_count gap=$gap${note:+ ($note)}"
     fi
 done
 
@@ -533,12 +630,23 @@ if (( DRY_RUN == 1 )); then
 fi
 
 echo ""
-if (( ${#failures[@]} > 0 )); then
-    echo "PARITY CHECK FAILED — silent host-side skip detected:"
-    for f in "${failures[@]}"; do
-        echo "  - $f"
-    done
+echo "SUMMARY"
+printf -- '---------------------------------------------\n'
+typeset -i pass_count=0 fail_count=0 not_checked_count=0
+for pkg in "${ORDERED[@]}"; do
+    printf '%-16s %-11s %s\n' "$pkg" "${RESULT_STATUS[$pkg]}" "${RESULT_DETAIL[$pkg]}"
+    case "${RESULT_STATUS[$pkg]}" in
+        PASS)        pass_count=$((pass_count + 1)) ;;
+        FAIL)        fail_count=$((fail_count + 1)) ;;
+        NOT_CHECKED) not_checked_count=$((not_checked_count + 1)) ;;
+    esac
+done
+echo ""
+echo "$pass_count passed, $fail_count failed, $not_checked_count not checked (of ${#ORDERED[@]} total)."
+
+if (( fail_count > 0 || not_checked_count > 0 )); then
+    echo "PARITY CHECK FAILED"
     exit 1
 fi
 
-echo "PARITY CHECK PASSED — all ${#PACKAGES[@]} package(s) within tolerance ($TOLERANCE)."
+echo "PARITY CHECK PASSED — all ${#ORDERED[@]} package(s) within tolerance ($TOLERANCE)."
