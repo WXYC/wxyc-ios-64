@@ -47,6 +47,27 @@ struct FileStorageTests {
         #expect(storage.fileURL == base.appendingPathComponent("liked-songs.json"))
     }
 
+    /// Pins the sandbox seam the rest of these tests depend on for their
+    /// safety, not merely their correctness.
+    ///
+    /// Every other `AppSupportFileStorage` assertion below is
+    /// directory-agnostic -- `lastPathComponent`, `load() == payload`,
+    /// `load() == nil` -- so a regression in which `init(directory:filename:)`
+    /// ignored its `directory` argument and fell back to Application Support
+    /// would leave all of them green while quietly writing into the app
+    /// container again. That is a one-line edit away: someone "restoring" the
+    /// Application Support lookup into the shared init would do it.
+    @Test("init(directory:filename:) resolves under the directory it was given")
+    func directoryInitResolvesUnderTheGivenDirectory() {
+        let sandbox = makeSandbox()
+        defer { removeSandbox(sandbox) }
+
+        let storage = AppSupportFileStorage(directory: sandbox, filename: "nested/store.json")
+
+        #expect(storage.fileURL == sandbox.appendingPathComponent("nested/store.json"))
+        #expect(storage.fileURL.path.hasPrefix(sandbox.path))
+    }
+
     @Test("A fresh AppSupportFileStorage with no file yet returns nil")
     func loadWithNoFileReturnsNil() throws {
         let (storage, sandbox) = makeAppSupportFileStorage()
@@ -107,12 +128,19 @@ struct FileStorageTests {
         // `createDirectory` call was a no-op here and went unverified. The
         // sandbox root does not exist until `save(_:)` creates it, so the flat
         // case now exercises the same directory creation the nested ones do.
+        //
+        // The fixture is deliberately NOT one of production's real filenames.
+        // This is the only sandbox test that writes to the storage root rather
+        // than a subdirectory of it, so it's the one whose blast radius, if the
+        // `directory:` seam ever regressed to ignoring its argument, would be
+        // the app container's actual `liked-songs.json`. The shape is what
+        // this test cares about, not the string.
         let sandbox = makeSandbox()
-        let filename = "liked-songs.json"
+        let filename = "flat-store.json"
         let storage = AppSupportFileStorage(directory: sandbox, filename: filename)
         defer { removeSandbox(sandbox) }
 
-        #expect(storage.fileURL.lastPathComponent == filename)
+        #expect(storage.fileURL == sandbox.appendingPathComponent(filename))
         try storage.save(Data("flat".utf8))
         #expect(try storage.load() == Data("flat".utf8))
     }
