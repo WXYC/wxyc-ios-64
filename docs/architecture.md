@@ -10,8 +10,8 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 | **AppServices** | App-level services (NowPlayingInfoCenter, background refresh, AppConfiguration) |
 | **Artwork** | Album artwork fetching from multiple sources |
 | **Caching** | Disk/memory caching with TTL support |
-| **Core** | Core types (RadioStation, Playcut, etc.) |
-| **LikedSongs** | On-device liked-songs store (#492): folded song identity, durable never-evict JSON file store (`FileStorage` seam), artist-id healing for the For You shelf |
+| **Core** | Core types (RadioStation, Playcut, etc.); the `FileStorage`/`AppSupportFileStorage` durable never-evict byte-file seam (`CoreTesting` for the `InMemoryFileStorage` double), shared by LikedSongs and Concerts |
+| **LikedSongs** | On-device liked-songs store (#492): folded song identity, durable never-evict JSON file store (Core's `FileStorage` seam), artist-id healing for the For You shelf |
 | **Logger** | Logging infrastructure |
 | **Metadata** | Playlist metadata parsing |
 | **MusicShareKit** | Share extension support for music sharing |

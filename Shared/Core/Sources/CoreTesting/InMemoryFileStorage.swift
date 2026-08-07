@@ -1,17 +1,21 @@
 //
 //  InMemoryFileStorage.swift
-//  LikedSongs
+//  CoreTesting
 //
 //  Test double for `FileStorage`: bytes held in memory behind a lock, so
 //  store tests exercise the real load/decode/encode/save paths with no disk.
 //  Seed `initial` to simulate an existing (or corrupt) store file.
+//
+//  Replaces the per-package clones this double had drifted into:
+//  `LikedSongsTesting`'s and `ConcertsTesting`'s identical copies
+//  (WXYC/wxyc-ios-64#557).
 //
 //  Created by Jake Bromberg on 07/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation
-import LikedSongs
+import Core
 
 public final class InMemoryFileStorage: FileStorage, @unchecked Sendable {
     private let lock = NSLock()

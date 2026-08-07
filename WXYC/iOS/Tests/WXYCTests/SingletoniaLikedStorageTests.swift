@@ -14,7 +14,8 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import LikedSongs
+import Core
+import Foundation
 import Testing
 @testable import WXYC
 
@@ -24,12 +25,17 @@ struct SingletoniaLikedStorageTests {
     @Test("Marketing mode routes likes to an in-memory store")
     func marketingUsesInMemoryStorage() {
         let storage = Singletonia.likedStorage(isMarketing: true)
-        #expect(storage is MarketingLikedStorage)
+        #expect(storage is MarketingFileStorage)
     }
 
     @Test("Production routes likes to the durable Application Support store")
-    func productionUsesDurableStorage() {
+    func productionUsesDurableStorage() throws {
         let storage = Singletonia.likedStorage(isMarketing: false)
-        #expect(storage is LikedSongs.AppSupportFileStorage)
+        let appSupportStorage = try #require(storage as? AppSupportFileStorage)
+        // Pinning the filename, not just the type, matters: `LikedSongsStore`
+        // and `DismissedConcertsStore` both resolve to `AppSupportFileStorage`,
+        // so a type-only check can't catch the two factories being swapped and
+        // pointed at each other's file.
+        #expect(appSupportStorage.fileURL.lastPathComponent == "liked-songs.json")
     }
 }
