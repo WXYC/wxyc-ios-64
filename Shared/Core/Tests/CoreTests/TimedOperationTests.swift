@@ -127,13 +127,19 @@ struct TimedOperationTests {
         #expect(data?["duration"] != nil)
     }
 
-    @Test("returns fallback on URLError(.cancelled) and reports it when the enclosing task is alive")
-    func reportsNetworkOriginatedCancellation() async {
+    @Test("returns fallback on URLError(.cancelled) without reporting")
+    func noReportOnURLCancellation() async {
         // URLSession surfaces cancellation as URLError(.cancelled), which does not
-        // bridge to CancellationError. When the enclosing Swift task has NOT been
-        // cancelled, nobody asked for this — the network stack tore the request
-        // down on its own — so it is a genuine failure and must reach the error
-        // reporter, tagged so it can be told apart from an ordinary error (#812).
+        // bridge to CancellationError. It is classified from the error itself —
+        // never from `Task.isCancelled`, which `isCancellation(_:)` documents as
+        // unreliable in this direction — so it never mints an error event.
+        //
+        // The other half of the #812 decision, the `.warning` log that keeps a
+        // degraded card from being invisible, is deliberately not asserted here:
+        // `Logger` exposes only `addDestination`/`removeAllDestinations` over
+        // shared mutable state, and that race is why `LoggerTests` is excluded
+        // from every CI configuration (#800). Installing a recorder from this
+        // suite would import the hazard into a suite that does run everywhere.
         let reporter = MockErrorReporter()
 
         let result = await timedOperation(
@@ -145,19 +151,15 @@ struct TimedOperationTests {
             throw URLError(.cancelled)
         }
 
-        #expect(result == 0, "The fallback is still returned — reporting must not change the value")
-        #expect(reporter.allReportedErrors.count == 1)
-        let reported = reporter.allReportedErrors.first
-        #expect(reported?.context == "fetchPlaylist(API v2)")
-        #expect(reported?.additionalData["cancellation"] == "network")
-        #expect(reported?.additionalData["duration"] != nil)
+        #expect(result == 0)
+        #expect(reporter.allReportedErrors.isEmpty, "Cancellation must not mint an error event")
     }
 
-    @Test("stays silent on URLError(.cancelled) when the enclosing task was cancelled")
-    func silentOnTaskOriginatedCancellation() async {
+    @Test("stays silent in the reporter when the enclosing task was cancelled")
+    func noReportOnTaskOriginatedCancellation() async {
         // The user dismissed the view and SwiftUI cancelled the `.task`; URLSession
-        // reports URLError(.cancelled) as a consequence. That is routine cleanup,
-        // not a failure, and must stay out of Sentry (#812).
+        // reports URLError(.cancelled) as a consequence. Same treatment as any
+        // other cancellation — the task's flag is not consulted.
         let reporter = MockErrorReporter()
 
         let task = Task {
@@ -182,9 +184,9 @@ struct TimedOperationTests {
 
     @Test("still reports a non-cancellation URLError raised inside a cancelled task")
     func cancelledTaskDoesNotSwallowRealErrors() async {
-        // Guard against over-reading `Task.isCancelled`: a real failure must still
-        // be reported even when the task happens to be cancelled, because the
-        // silence is keyed on the error being a cancellation, not on the task state.
+        // The silence is keyed on the error being a cancellation, never on the
+        // task's state — so a real failure is reported even when the surrounding
+        // task happens to be cancelled.
         let reporter = MockErrorReporter()
 
         let task = Task {
@@ -204,7 +206,6 @@ struct TimedOperationTests {
         _ = await task.value
 
         #expect(reporter.allReportedErrors.count == 1)
-        #expect(reporter.allReportedErrors.first?.additionalData["cancellation"] == nil)
     }
 
     @Test("passes through the return type correctly for non-optional types")
