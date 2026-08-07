@@ -17,19 +17,17 @@ import struct Logger.Category
 /// Executes an async throwing operation with standardized timing, logging, and error handling.
 ///
 /// On success, logs the duration and returns the result. On any error, returns
-/// the fallback. Whether the error is reported depends on what kind of failure
-/// it was:
+/// the fallback. What gets recorded depends on the kind of failure:
 ///
-/// - **`CancellationError`** — structured concurrency's own signal. Always
-///   silent: something in the task tree asked to stop.
-/// - **`URLError(.cancelled)` while the enclosing task is cancelled** — the
-///   caller went away (a SwiftUI `.task` torn down on dismissal, say) and
-///   `URLSession` reported the consequence. Silent; routine cleanup.
-/// - **`URLError(.cancelled)` while the enclosing task is alive** — nobody
-///   asked for this; the network stack tore the request down on its own.
-///   Reported, tagged `cancellation: network` so it stays separable from an
-///   ordinary failure.
-/// - **Anything else** — reported with the elapsed duration.
+/// - **Cancellation** (``isCancellation(_:)`` — `CancellationError`, or
+///   `URLError(.cancelled)` from `URLSession`) — logged at `.warning` with the
+///   elapsed duration, and *not* sent to the error reporter. Cancellation is
+///   usually routine teardown, but it is never nothing: it leaves the caller
+///   holding `fallback`, which on a metadata read means a visibly degraded
+///   card. The log line makes that visible and queryable (the app forwards
+///   `.warning` and above to Sentry Logs) without minting an error event.
+/// - **Anything else** — reported to the error reporter with the elapsed
+///   duration.
 ///
 /// - Parameters:
 ///   - context: A short label describing the operation (e.g., `"fetchPlaylist"`).
@@ -62,40 +60,32 @@ public func timedOperation<T: Sendable>(
         Log(.info, category: category, "\(context): succeeded in \(duration)s")
         return result
     } catch let error where isCancellation(error) {
-        // Decision recorded for #812: report network-originated cancellation,
-        // stay silent on task-originated cancellation.
+        // Decision recorded for #812: make cancellation *visible* rather than
+        // trying to classify who caused it.
         //
-        // Returning the fallback for every cancellation used to be silent
-        // across the board, which meant a `/proxy/metadata/album` request the
-        // network stack killed on its own produced a label-only detail card
-        // with no Sentry event and no log line — visually identical to the
-        // pre-enrichment race this ticket is about, and impossible to tell
-        // apart after the fact. The clients that hit it had real trouble
-        // (180-second QUIC read timeouts against the API), so the silence was
-        // hiding a genuine failure mode behind what looks like user-initiated
-        // dismissal.
+        // Cancellation used to return the fallback in complete silence, which
+        // meant a `/proxy/metadata/album` request torn down mid-flight produced
+        // a label-only detail card with no error event and no log line —
+        // visually identical to the pre-enrichment race #812 is about, and
+        // impossible to tell apart after the fact. The clients that hit it had
+        // real network trouble (180-second QUIC read timeouts against the API),
+        // so the silence was hiding a genuine failure mode.
         //
-        // `Task.isCancelled` is the discriminator: when the enclosing task is
-        // cancelled, someone asked to stop and `URLError(.cancelled)` is just
-        // the consequence. When it isn't, nobody asked. `CancellationError` is
-        // never reported either way — it's structured concurrency's own
-        // signal, and a cancelled child can raise it while this task is very
-        // much alive.
-        guard error is URLError, !Task.isCancelled else {
-            return fallback
-        }
-        let duration = timer.duration()
-        var reportData = additionalData
-        reportData["duration"] = "\(duration)"
-        // Tagged so these stay separable from ordinary failures in Sentry —
-        // filterable, and mutable on their own if they ever get noisy.
-        reportData["cancellation"] = "network"
-        errorReporter.report(
-            error,
-            context: context,
-            category: category,
-            additionalData: reportData
-        )
+        // The obvious fix — report only when `!Task.isCancelled`, on the theory
+        // that an uncancelled task means the network stack acted alone —
+        // doesn't hold. ``isCancellation(_:)`` documents why: `URLError`
+        // `.cancelled` can surface without the surrounding task's flag being
+        // set, so a false reading proves nothing about origin. It would also
+        // mint an error event every time iOS tears down in-flight requests on
+        // app suspension, which is neither a failure nor rare.
+        //
+        // So: no origin classification, and no error report. A `.warning` log
+        // carries the context and duration, which the app forwards to Sentry
+        // Logs — queryable and correlatable, without the quota and alerting
+        // weight of an issue. If cancellations ever need to be actioned rather
+        // than merely observed, that is a decision to make against this data,
+        // not a guess to bake into the classifier.
+        Log(.warning, category: category, "\(context): cancelled after \(timer.duration())s")
         return fallback
     } catch {
         let duration = timer.duration()
