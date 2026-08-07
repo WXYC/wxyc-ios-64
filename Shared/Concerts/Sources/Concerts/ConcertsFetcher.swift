@@ -15,6 +15,13 @@
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
+//  Request-building here is now a thin wrapper over `Core.WXYCProxyClient`
+//  (#761), which owns the base URL, the optional token provider, and the
+//  URLComponents-build → authed-or-plain-fetch → JSONDecoder.shared.decode
+//  pipeline this file used to hand-roll twice (`fetchConcerts`/`fetchConcert`).
+//  `ConcertsError.invalidURL` is gone; both methods now surface
+//  `WXYCProxyClient.ProxyError.invalidURL` from the shared client instead.
+//
 
 import Foundation
 import Core
@@ -27,15 +34,7 @@ import Core
 /// session bearer token, supplied by an optional ``Core/SessionTokenProvider``.
 public final class ConcertsFetcher: Sendable {
 
-    /// Errors surfaced by the fetcher.
-    public enum ConcertsError: Error, Equatable {
-        /// The request URL could not be constructed from the base URL + params.
-        case invalidURL
-    }
-
-    private let baseURL: URL
-    private let session: URLSession
-    private let tokenProvider: SessionTokenProvider?
+    private let client: WXYCProxyClient
 
     /// Creates a concerts fetcher.
     ///
@@ -50,9 +49,7 @@ public final class ConcertsFetcher: Sendable {
         session: URLSession = .shared,
         tokenProvider: SessionTokenProvider? = nil
     ) {
-        self.baseURL = baseURL
-        self.session = session
-        self.tokenProvider = tokenProvider
+        self.client = WXYCProxyClient(baseURL: baseURL, session: session, tokenProvider: tokenProvider)
     }
 
     /// Fetches one page of concerts.
@@ -85,18 +82,7 @@ public final class ConcertsFetcher: Sendable {
         items.append(URLQueryItem(name: "page", value: String(page)))
         items.append(URLQueryItem(name: "limit", value: String(limit)))
 
-        var components = URLComponents(
-            url: baseURL.appending(path: "concerts"),
-            resolvingAgainstBaseURL: false
-        )
-        components?.queryItems = items
-        guard let url = components?.url else {
-            throw ConcertsError.invalidURL
-        }
-
-        let request = URLRequest(url: url)
-        let (data, _) = try await session.authedData(for: request, tokenProvider: tokenProvider)
-        return try JSONDecoder.shared.decode(ConcertsResponse.self, from: data)
+        return try await client.get("concerts", query: items)
     }
 
     /// Fetches a single concert by id from `GET /concerts/:id`.
@@ -111,13 +97,7 @@ public final class ConcertsFetcher: Sendable {
     /// - Parameter id: The concert's stable id.
     /// - Returns: The decoded ``Concert``.
     public func fetchConcert(id: Int) async throws -> Concert {
-        let url = baseURL
-            .appending(path: "concerts")
-            .appending(path: String(id))
-
-        let request = URLRequest(url: url)
-        let (data, _) = try await session.authedData(for: request, tokenProvider: tokenProvider)
-        return try JSONDecoder.shared.decode(Concert.self, from: data)
+        try await client.get("concerts/\(id)")
     }
 
     /// Formats a `Date` as the `yyyy-MM-dd` `starts_on` value the endpoint

@@ -7,6 +7,16 @@
 //  Created by Jake Bromberg on 11/26/25.
 //  Copyright © 2025 WXYC. All rights reserved.
 //
+//  The proxy request itself is now a thin wrapper over `Core.WXYCProxyClient`
+//  (#761): the single `urlSession` field replaces the former dual
+//  `WebSession`/`URLSession` fields this type carried solely to branch on
+//  whether a token provider existed — `WXYCProxyClient` (via
+//  `URLSession.authedData(for:tokenProvider:)`) already sends a plain
+//  unauthenticated request when `tokenProvider` is `nil`, so that branch was
+//  never needed. `ServiceError.noResults`, borrowed here to signal an
+//  unconstructible request URL, is gone too; that case is now
+//  `WXYCProxyClient.ProxyError.invalidURL`.
+//
 
 import Foundation
 import Core
@@ -21,10 +31,7 @@ public protocol DiscogsEntityResolver: Sendable {
 
 /// Resolves Discogs entity IDs by calling the backend proxy endpoint
 public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
-    private let baseURL: URL
-    private let tokenProvider: SessionTokenProvider?
-    private let session: WebSession
-    private let urlSession: URLSession
+    private let client: WXYCProxyClient
     private let cache: CacheCoordinator
 
     /// Cache lifespan: 30 days (entity names essentially never change)
@@ -40,30 +47,26 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
     init(
         baseURL: URL = URL(string: "https://api.wxyc.org")!,
         tokenProvider: SessionTokenProvider? = nil,
-        session: WebSession = URLSession.shared,
         urlSession: URLSession = .shared,
         cache: CacheCoordinator = .AlbumArt
     ) {
-        self.baseURL = baseURL
-        self.tokenProvider = tokenProvider
-        self.session = session
-        self.urlSession = urlSession
+        self.client = WXYCProxyClient(baseURL: baseURL, session: urlSession, tokenProvider: tokenProvider)
         self.cache = cache
     }
 
     /// Creates a resolver that authenticates its `proxy/entity/resolve`
     /// requests with the given token provider, so calls don't 401. Mirrors
     /// the app's existing `PlaycutMetadataService(tokenProvider:)` pattern.
-    /// `baseURL`, `session`, `urlSession`, and `cache` keep their
-    /// package-internal defaults.
+    /// `baseURL`, `urlSession`, and `cache` keep their package-internal
+    /// defaults.
     public convenience init(tokenProvider: SessionTokenProvider?) {
-        // The extra `session:` argument disambiguates this delegation to the
-        // designated `init(baseURL:tokenProvider:session:urlSession:cache:)`.
-        // Without it, `self.init(tokenProvider:)` resolves to THIS convenience
-        // initializer (an exact-arity match Swift prefers over the designated
-        // init, which would need four defaults applied), recursing until it
-        // crashes.
-        self.init(tokenProvider: tokenProvider, session: URLSession.shared)
+        // The extra `urlSession:` label disambiguates this delegation from
+        // the designated `init(baseURL:tokenProvider:urlSession:cache:)`.
+        // Without a second label, `self.init(tokenProvider:)` would resolve
+        // to THIS convenience initializer (an exact-arity match Swift
+        // prefers over the designated init, which would need three defaults
+        // applied), recursing until it crashes.
+        self.init(tokenProvider: tokenProvider, urlSession: .shared)
     }
 
     public func resolveArtist(id: Int) async throws -> String {
@@ -86,26 +89,14 @@ public final class DiscogsAPIEntityResolver: DiscogsEntityResolver, Sendable {
             cache: cache,
             lifespan: Self.cacheLifespan,
             fetch: {
-                var components = URLComponents(url: baseURL.appending(path: "proxy/entity/resolve"), resolvingAgainstBaseURL: false)!
-                components.queryItems = [
-                    URLQueryItem(name: "type", value: type),
-                    URLQueryItem(name: "id", value: String(id))
-                ]
-
-                guard let url = components.url else {
-                    throw ServiceError.noResults
-                }
-
-                let data: Data
-                if let tokenProvider {
-                    let request = URLRequest(url: url)
-                    let (responseData, _) = try await urlSession.authedData(for: request, tokenProvider: tokenProvider)
-                    data = responseData
-                } else {
-                    data = try await session.data(from: url)
-                }
-
-                return try JSONDecoder.shared.decode(EntityResolveResponse.self, from: data)
+                let response: EntityResolveResponse = try await client.get(
+                    "proxy/entity/resolve",
+                    query: [
+                        URLQueryItem(name: "type", value: type),
+                        URLQueryItem(name: "id", value: String(id))
+                    ]
+                )
+                return response
             },
             transform: { $0.name }
         )
