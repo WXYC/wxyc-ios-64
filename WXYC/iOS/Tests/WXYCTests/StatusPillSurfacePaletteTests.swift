@@ -2,10 +2,13 @@
 //  StatusPillSurfacePaletteTests.swift
 //  WXYC
 //
-//  Pins each On Tour status-chip surface to the palette it carried before the
-//  shared canon table — the four hand-maintained (fill, border, ink) switches
-//  that `StatusPill`'s one table replaced. The expected triples below are
-//  transcribed from the pre-consolidation sources rather than re-derived from
+//  Pins each On Tour status-chip surface to its pre-consolidation palette with
+//  one transformation applied: the fill takes the stroke's color and the stroke
+//  is removed. Hues are exactly the originals — only the fill's opacity moves,
+//  from the wash's value to the stroke's.
+//
+//  The expected triples below are transcribed from the pre-consolidation
+//  sources and transformed by hand, rather than re-derived from
 //  `StatusPillSurfacePalette`, so a mutation in the production switch is caught
 //  instead of mirrored.
 //
@@ -40,27 +43,39 @@ struct StatusPillSurfacePaletteTests {
         ]
     }
 
+    /// Every surface's palette, for parameterising the cross-cutting invariants.
+    private typealias SurfacePalette = @MainActor (StatusPill.Style) -> (fill: Color, border: Color, ink: Color)
+
+    private static let allSurfaces: [(name: String, palette: SurfacePalette)] = [
+        ("onTourFeedRow", StatusPillSurfacePalette.onTourFeedRow),
+        ("concertPosterHero", StatusPillSurfacePalette.concertPosterHero),
+        ("boxOfficeTicket", { StatusPillSurfacePalette.boxOfficeTicket($0, accent: accent) }),
+        ("playcutStub", { StatusPillSurfacePalette.playcutStub($0, accent: accent, accentInk: accentInk) }),
+    ]
+
     // MARK: - On Tour feed row (was ConcertRow.tagColors)
 
+    /// Original fills were 0.1–0.18 washes behind 0.25–0.5 strokes; each fill
+    /// now carries its own stroke's opacity.
     private static func expectedFeedRow(
         _ style: StatusPill.Style
     ) -> (fill: Color, border: Color, ink: Color) {
         switch style {
         case .prominent:
-            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+            (Color.orange.opacity(0.5), .clear, Color(red: 1.0, green: 0.78, blue: 0.6))
         case .free:
-            (Color.teal.opacity(0.18), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+            (Color.teal.opacity(0.5), .clear, Color(red: 0.72, green: 0.94, blue: 0.91))
         case .muted:
-            (Color.white.opacity(0.1), Color.white.opacity(0.3), Color.white.opacity(0.7))
+            (Color.white.opacity(0.3), .clear, Color.white.opacity(0.7))
         case .negative:
-            (Color.red.opacity(0.18), Color.red.opacity(0.5), Color(red: 1.0, green: 0.7, blue: 0.7))
+            (Color.red.opacity(0.5), .clear, Color(red: 1.0, green: 0.7, blue: 0.7))
         case .caution, .neutral:
-            (Color.white.opacity(0.1), Color.white.opacity(0.25), Color.white.opacity(0.8))
+            (Color.white.opacity(0.25), .clear, Color.white.opacity(0.8))
         }
     }
 
     @Test(
-        "the On Tour feed row restores ConcertRow's original palette",
+        "the On Tour feed row fills with its former stroke color",
         arguments: StatusPill.Style.allCases
     )
     func feedRowMatchesOriginal(style: StatusPill.Style) {
@@ -72,6 +87,8 @@ struct StatusPillSurfacePaletteTests {
 
     // MARK: - Concert poster hero (was ConcertDetailView.pillColors)
 
+    /// `.prominent` had no stroke to adopt — it was already a solid, unstroked
+    /// chip, so it is unchanged.
     private static func expectedPosterHero(
         _ style: StatusPill.Style
     ) -> (fill: Color, border: Color, ink: Color) {
@@ -79,20 +96,20 @@ struct StatusPillSurfacePaletteTests {
         case .prominent:
             (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), .clear, Color(red: 0.03, green: 0.19, blue: 0.10))
         case .free:
-            (Color.teal.opacity(0.20), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+            (Color.teal.opacity(0.5), .clear, Color(red: 0.72, green: 0.94, blue: 0.91))
         case .muted:
-            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.2), Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.71))
+            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), .clear, Color(red: 1.0, green: 0.78, blue: 0.71))
         case .negative:
-            (Color.red.opacity(0.24), Color.red.opacity(0.55), Color(red: 1.0, green: 0.7, blue: 0.7))
+            (Color.red.opacity(0.55), .clear, Color(red: 1.0, green: 0.7, blue: 0.7))
         case .caution:
-            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+            (Color.orange.opacity(0.5), .clear, Color(red: 1.0, green: 0.78, blue: 0.6))
         case .neutral:
-            (.white.opacity(0.14), .white.opacity(0.3), .white.opacity(0.8))
+            (.white.opacity(0.3), .clear, .white.opacity(0.8))
         }
     }
 
     @Test(
-        "the concert poster hero restores ConcertDetailView's original palette",
+        "the concert poster hero fills with its former stroke color",
         arguments: StatusPill.Style.allCases
     )
     func posterHeroMatchesOriginal(style: StatusPill.Style) {
@@ -110,30 +127,30 @@ struct StatusPillSurfacePaletteTests {
     ) -> (fill: Color, border: Color, ink: Color) {
         switch style {
         case .prominent:
-            (Color(HSL(hue: 0.3753, saturation: 0.5857, lightness: 0.4922)).opacity(1.0),
-             Color(HSL(hue: 0.3753, saturation: 0.5857, lightness: 0.4922)).opacity(0.5),
+            (Color(HSL(hue: 0.3753, saturation: 0.5857, lightness: 0.4922)).opacity(0.5),
+             .clear,
              Color(HSL(hue: 0.3851, saturation: 0.7115, lightness: 0.7961)))
         case .muted:
-            (Color(HSL(hue: 0.0405, saturation: 1, lightness: 0.7098)).opacity(0.18),
-             Color(HSL(hue: 0.0405, saturation: 1, lightness: 0.7098)).opacity(0.5),
+            (Color(HSL(hue: 0.0405, saturation: 1, lightness: 0.7098)).opacity(0.5),
+             .clear,
              Color(HSL(hue: 0.0422, saturation: 1, lightness: 0.8529)))
         case .negative:
-            (Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)).opacity(0.20),
-             Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)).opacity(0.55),
+            (Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)).opacity(0.55),
+             .clear,
              Color(HSL(hue: 0, saturation: 1, lightness: 0.851)))
         case .caution:
-            (accent.opacity(0.18), accent.opacity(0.5), accent)
+            (accent.opacity(0.5), .clear, accent)
         case .free:
-            (Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)).opacity(0.18),
-             Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)).opacity(0.5),
+            (Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)).opacity(0.5),
+             .clear,
              Color(HSL(hue: 0.4762, saturation: 0.6512, lightness: 0.8314)))
         case .neutral:
-            (.white.opacity(0.12), .white.opacity(0.3), .white.opacity(0.72))
+            (.white.opacity(0.3), .clear, .white.opacity(0.72))
         }
     }
 
     @Test(
-        "the Box Office ticket restores BoxOfficeTicketView's original palette",
+        "the Box Office ticket fills with its former stroke color",
         arguments: StatusPill.Style.allCases
     )
     func boxOfficeMatchesOriginal(style: StatusPill.Style) {
@@ -145,6 +162,8 @@ struct StatusPillSurfacePaletteTests {
 
     // MARK: - Playcut stub (was OnTourRowBadge.tagColors)
 
+    /// `.prominent` and `.free` had no stroke to adopt — both were already
+    /// solid, unstroked "go" chips, so both are unchanged.
     private static func expectedPlaycutStub(
         _ style: StatusPill.Style,
         accent: Color,
@@ -158,18 +177,18 @@ struct StatusPillSurfacePaletteTests {
              .clear,
              Color(HSL(hue: 0.4811, saturation: 0.8462, lightness: 0.102)))
         case .muted:
-            (.white.opacity(0.12), .white.opacity(0.25), .white.opacity(0.72))
+            (.white.opacity(0.25), .clear, .white.opacity(0.72))
         case .negative:
-            (Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)).opacity(0.2),
-             Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)).opacity(0.5),
+            (Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)).opacity(0.5),
+             .clear,
              Color(HSL(hue: 0, saturation: 1, lightness: 0.851)))
         case .caution, .neutral:
-            (.white.opacity(0.1), .white.opacity(0.2), .white.opacity(0.7))
+            (.white.opacity(0.2), .clear, .white.opacity(0.7))
         }
     }
 
     @Test(
-        "the playcut stub restores OnTourRowBadge's original palette",
+        "the playcut stub fills with its former stroke color",
         arguments: StatusPill.Style.allCases
     )
     func playcutStubMatchesOriginal(style: StatusPill.Style) {
@@ -182,17 +201,31 @@ struct StatusPillSurfacePaletteTests {
         )
     }
 
-    // MARK: - The regression this restores
+    // MARK: - The rule, enforced rather than described
 
-    /// The change that started this: the feed's "TICKETS" chip was rotated 99°
-    /// from amber to the canon green when the four switches collapsed into one
-    /// table. It is amber again, and specifically *not* the canon green.
+    /// "Remove the stroke, for all chips." No surface may return a visible
+    /// border for any style — `StatusPill` still draws the overlay, so a
+    /// non-clear border here puts an outline back on screen.
+    @Test("no surface draws a stroke, for any style", arguments: StatusPill.Style.allCases)
+    func noSurfaceDrawsAStroke(style: StatusPill.Style) {
+        let clear = Self.resolved((.clear, .clear, .clear))[0]
+        for surface in Self.allSurfaces {
+            #expect(
+                Self.resolved(surface.palette(style))[1] == clear,
+                "\(surface.name) draws a stroke for \(style)"
+            )
+        }
+    }
+
+    /// Hue is preserved: taking the stroke's color changes only how much of it
+    /// shows. The feed's on-sale chip stays amber, and stays off the canon
+    /// green it had been rotated 99° onto.
     @Test("the feed's on-sale chip is amber, not the canon green")
     func feedProminentIsAmberNotCanonGreen() {
         let feed = Self.resolved(StatusPillSurfacePalette.onTourFeedRow(.prominent))
         let canon = Self.resolved(StatusPill.palette(for: .prominent))
 
-        #expect(feed[0] == Self.resolved((Color.orange.opacity(0.18), .clear, .clear))[0])
+        #expect(feed[0] == Self.resolved((Color.orange.opacity(0.5), .clear, .clear))[0])
         #expect(feed[0] != canon[0], "the feed's on-sale chip is back on the canon green")
     }
 
@@ -217,17 +250,13 @@ struct StatusPillSurfacePaletteTests {
     /// override it installs is dead weight and the restoration did nothing.
     @Test("each surface actually deviates from the canon table")
     func eachSurfaceDeviatesFromCanon() {
-        #expect(Self.deviatesFromCanon(StatusPillSurfacePalette.onTourFeedRow))
-        #expect(Self.deviatesFromCanon(StatusPillSurfacePalette.concertPosterHero))
-        #expect(Self.deviatesFromCanon { StatusPillSurfacePalette.boxOfficeTicket($0, accent: Self.accent) })
-        #expect(Self.deviatesFromCanon { StatusPillSurfacePalette.playcutStub($0, accent: Self.accent, accentInk: Self.accentInk) })
-    }
-
-    private static func deviatesFromCanon(
-        _ palette: (StatusPill.Style) -> (fill: Color, border: Color, ink: Color)
-    ) -> Bool {
-        StatusPill.Style.allCases.contains { style in
-            resolved(palette(style)) != resolved(StatusPill.palette(for: style))
+        for surface in Self.allSurfaces {
+            #expect(
+                StatusPill.Style.allCases.contains { style in
+                    Self.resolved(surface.palette(style)) != Self.resolved(StatusPill.palette(for: style))
+                },
+                "\(surface.name) matches canon everywhere; its override is dead weight"
+            )
         }
     }
 }
