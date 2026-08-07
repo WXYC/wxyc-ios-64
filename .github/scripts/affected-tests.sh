@@ -160,11 +160,11 @@ DEPS[Playlist]="Analytics Core Caching Logger WXYCAPIModels Concerts"
 DEPS[LikedSongs]="Core Playlist Logger"
 DEPS[Playback]="Caching Core Analytics Logger"
 DEPS[Artwork]="Core Caching Playlist Logger"
-DEPS[ColorPalette]="Caching Core Logger"
+DEPS[ColorPalette]="Core"
 DEPS[SemanticIndex]="Core Caching Logger"
 DEPS[MusicShareKit]="WXUI Logger Core Analytics Caching"
 DEPS[Wallpaper]="Analytics Caching ColorPalette Core Logger WXUI"
-DEPS[Metadata]="Artwork Core Caching Playlist Logger WXYCAPIModels"
+DEPS[Metadata]="Core Caching Playlist Logger WXYCAPIModels"
 DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
 # `Intents` and `Concerts` are both declared in Shared/AppServices/Package.swift
 # (platform-conditioned on iOS/macCatalyst/macOS) and had long gone unrecorded
@@ -296,17 +296,22 @@ TEST_TARGETS[WXUI]="WXUITests"
 #                             lifting the platform gates and running
 #                             scripts/verify-spm-parity.sh Playback for real
 #                             (not this ticket — see #797's non-goals).
-#       - ColorPalette      — DominantColorExtractor and ColorPaletteService
-#                             are wrapped in #if canImport(UIKit) and
-#                             silently skip on the macOS host (#394).
-#                             Measured 2026-08-06 with
+#       - ColorPalette      — DominantColorExtractor is wrapped in
+#                             #if canImport(UIKit) and silently skips on the
+#                             macOS host (#394).
+#                             Measured 2026-08-07 with
 #                             `scripts/verify-spm-parity.sh ColorPalette`
 #                             (added by #797, which is also why this is an
 #                             exact rerunnable command and not just a
-#                             description): 25 executed on host, 59 on the
-#                             simulator, a 34-test gap — it fails the check
+#                             description): 21 executed on host, 44 on the
+#                             simulator, a 23-test gap — it fails the check
 #                             as expected. Run via xcb in the iOS simulator
-#                             instead.
+#                             instead. The earlier 25/59/34 reading also
+#                             counted ColorPaletteServiceTests, deleted in
+#                             #754 along with the service itself; the gap
+#                             narrowed but did not close, because
+#                             DominantColorExtractor was always the larger
+#                             half of it.
 #       - Artwork           — ArtworkTests bundle hangs at 0% CPU on
 #                             macos-latest paravirt (root cause unclear;
 #                             suspected module-init or shared-singleton
