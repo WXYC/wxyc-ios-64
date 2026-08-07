@@ -15,12 +15,34 @@
 //  importing Wallpaper back would be a package dependency cycle.
 //
 //  The resolved radius crosses the closure boundary as a `Double`, not the
-//  more natural `CGFloat`: a generic function of the shape
-//  `<T: View>(_: (CGFloat) -> T)` reliably crashes the Swift 6.2 frontend's
-//  debug-info generation (`disable-round-trip-debug-types`) — reproduced in a
-//  from-scratch SwiftPM package with no WXYC code involved, so it's a toolchain
-//  limitation, not a bug in this file. Swap to `CGFloat` once the toolchain
-//  fixes it; callers currently do `CGFloat(radius)` at the call site.
+//  more natural `CGFloat`, because a generic function whose parameter is a
+//  generic-dependent function type mentioning `CGFloat` emits debug info the
+//  compiler cannot read back:
+//
+//      Failed to reconstruct type for $s12CoreGraphics7CGFloatVxIgyr_D
+//      Abort: function getMangledName at IRGenDebugInfo.cpp:1105
+//
+//  Reduced to two lines with no SwiftUI and no WXYC code — `import CoreGraphics`
+//  plus `func f<T>(_ body: (CGFloat) -> T) {}` under `-g`. `Double`, `Float`,
+//  `Int`, `String`, and even `CGSize` all round-trip fine in the same position;
+//  a non-generic `(CGFloat) -> Int` is fine. So this is a toolchain limitation
+//  specific to `CGFloat` in a lowered generic function type, not a bug here.
+//
+//  **Do not "swap to CGFloat once the toolchain fixes it" — it is not fixed.**
+//  An earlier version of this comment said that, and it is misleading. The
+//  round-trip check that aborts is compiled out of assertions-disabled builds,
+//  which is every Apple-shipped toolchain, so newer Xcodes only *appear* to
+//  cope — they emit the same un-reconstructible mangled name into the DWARF:
+//
+//      swift.org swift-6.2-RELEASE (+assertions)  aborts under plain -g
+//      Xcode 26.6  / Apple Swift 6.3.3            compiles, bad debug info
+//      Xcode 27.0b / Apple Swift 6.4              compiles, bad debug info
+//
+//  All three abort when the check is re-enabled with
+//  `-Xfrontend -enable-round-trip-debug-types`. Retire this workaround only
+//  after that flag passes on the toolchain in use, not merely because a build
+//  stopped crashing. A minimal reproducer and a filed-ready bug report live
+//  outside the repo; regenerate with the two lines above if needed.
 //
 //  Created by Jake Bromberg on 08/06/26.
 //  Copyright © 2026 WXYC. All rights reserved.
