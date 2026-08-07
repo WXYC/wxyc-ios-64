@@ -48,12 +48,18 @@ run_all_and_exit() {
     # SPM-runnable packages run via swift test on host; xcodebuild skips their
     # test targets to avoid double coverage. Keep in sync with SPM_RUNNABLE in
     # step 8a below.
-    local spm_all="AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit"
+    local spm_all="AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit Concerts WXUI"
     local skip="-skip-testing:WXYCUITests"
     skip="$skip -skip-testing:AnalyticsMacrosTests"
     skip="$skip -skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests"
     skip="$skip -skip-testing:PlaylistTests -skip-testing:LikedSongsTests"
     skip="$skip -skip-testing:MetadataTests -skip-testing:MusicShareKitTests"
+    # ConcertsTests and WXUITests are deliberately absent from WXYC.xctestplan
+    # (they run via the swift-test step against the auto-generated per-package
+    # scheme instead — see docs/build-test.md), so these flags are inert today.
+    # They exist so a future addition of either target to the plan can't
+    # double-run it without also updating this list.
+    skip="$skip -skip-testing:ConcertsTests -skip-testing:WXUITests"
     output "run_all" "true"
     output "skip_testing_flags" "$skip"
     output "only_testing_flags" ""
@@ -62,6 +68,17 @@ run_all_and_exit() {
     output "affected_summary" "all tests ($reason)"
     exit 0
 }
+
+# ---------------------------------------------------------------------------
+# 0. FORCE_RUN_ALL — lets callers (scripts/test-affected.sh --full,
+#    scripts/verify-spm-parity.sh) get the run_all_and_exit lists (spm_all,
+#    skip flags) without duplicating them. This is the single source of truth
+#    for "what runs when everything runs" — see run_all_and_exit above.
+# ---------------------------------------------------------------------------
+
+if [[ "${FORCE_RUN_ALL:-false}" == "true" ]]; then
+    run_all_and_exit "forced (FORCE_RUN_ALL=true)"
+fi
 
 # ---------------------------------------------------------------------------
 # 1. No base ref → run everything (workflow_dispatch)
@@ -139,7 +156,7 @@ DEPS[AnalyticsMacros]=""
 DEPS[Core]="Logger"
 DEPS[Caching]="Core Logger"
 DEPS[Analytics]="AnalyticsMacros Logger"
-DEPS[Playlist]="Analytics Core Caching Logger WXYCAPIModels"
+DEPS[Playlist]="Analytics Core Caching Logger WXYCAPIModels Concerts"
 DEPS[LikedSongs]="Core Playlist Logger"
 DEPS[Playback]="Caching Core Analytics Logger"
 DEPS[Artwork]="Core Caching Playlist Logger"
@@ -150,18 +167,15 @@ DEPS[Wallpaper]="Analytics Caching ColorPalette Core Logger WXUI"
 DEPS[Metadata]="Artwork Core Caching Playlist Logger WXYCAPIModels"
 DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
 # `Intents` and `Concerts` are both declared in Shared/AppServices/Package.swift
-# (platform-conditioned on iOS/macCatalyst/macOS) and had never reached this
-# table. This PR is the demonstration: renaming Intents' reindexer protocols
-# breaks AppServices' conformances to them, yet without this edge a
-# WXYCIntents-only change selects WXYCIntentsTests and never AppServicesTests.
+# (platform-conditioned on iOS/macCatalyst/macOS) and had long gone unrecorded
+# here. #805 is the demonstration: renaming Intents' reindexer protocols breaks
+# AppServices' conformances to them, yet without this edge a WXYCIntents-only
+# change selects WXYCIntentsTests and never AppServicesTests.
 DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger Intents Concerts"
 # `Caching` is #751's addition (the widget bootstrap's in-memory
-# PlaycutHistoryStore default). `Concerts` had been in Shared/Intents/Package.swift
-# for some time without ever reaching this table. Concerts still has no row of
-# its own, so `ConcertsTests` runs in no configuration — but with the edges
-# above, a Concerts-only change does now reach WXYCIntentsTests and
-# AppServicesTests through its dependents. The missing row belongs to #797.
+# PlaycutHistoryStore default).
 DEPS[Intents]="Analytics Caching Concerts Core Logger Playback Playlist"
+DEPS[Concerts]="Core Logger"
 # Packages without test targets (included as dependency intermediaries)
 DEPS[DebugPanel]="AppServices Caching Playback Playlist Wallpaper PlayerHeaderView WXUI"
 DEPS[PartyHorn]=""
@@ -233,6 +247,8 @@ TEST_TARGETS[PlayerHeaderView]="PlayerHeaderViewTests"
 TEST_TARGETS[AppServices]="AppServicesTests"
 TEST_TARGETS[Intents]="WXYCIntentsTests"
 TEST_TARGETS[PartyHorn]="PartyHornTests"
+TEST_TARGETS[Concerts]="ConcertsTests"
+TEST_TARGETS[WXUI]="WXUITests"
 
 # ---------------------------------------------------------------------------
 # 8a. Partition affected packages into SPM-runnable vs xcodebuild-required.
@@ -241,28 +257,65 @@ TEST_TARGETS[PartyHorn]="PartyHornTests"
 #     also excluded from xcodebuild's only_testing scope to avoid double
 #     coverage.
 #
+#     Every package on this list is expected to pass
+#     scripts/verify-spm-parity.sh — the host swift-test count must match the
+#     simulator xcodebuild count (or come within the script's tolerance). Run
+#     that script before adding a package here; a package that "passes"
+#     swift test while silently skipping real coverage is not safe to add
+#     (see #797, which added this guard after two silent-skip incidents).
+#
 #     Excluded (forces xcb):
 #       - AppServices       — MockURLProtocol static handler + WidgetCenter
 #                             cause host hangs
 #       - Logger            — global Logger.addDestination shared mutable state
 #                             races (suite-level test interference)
-#       - Playback          — MP3Streamer state-tracking test diverges between
-#                             macOS host AudioToolbox and iOS simulator
+#       - Playback          — dozens of #if canImport(UIKit)/os() platform-
+#                             gate directives across its test files silently
+#                             skip on the macOS host. Measured 2026-08-06:
+#                             `swift test --package-path Shared/Playback`
+#                             actually executes 329 tests; a grep count of
+#                             `@Test` attributes across Shared/Playback/Tests
+#                             finds 449+ (a floor, not the true simulator
+#                             total — parameterized `@Test(arguments:)` cases
+#                             expand at run time, so the real gap is larger).
+#                             Same failure mode as ColorPalette below, at a
+#                             much larger scale, in the package that covers
+#                             audio playback. Also, MP3Streamer's state-
+#                             tracking test diverges between macOS host
+#                             AudioToolbox and the iOS simulator independent
+#                             of the gap above. Do not move without first
+#                             lifting the platform gates and running
+#                             scripts/verify-spm-parity.sh Playback for real
+#                             (not this ticket — see #797's non-goals).
 #       - ColorPalette      — DominantColorExtractor and ColorPaletteService
-#                             suites are wrapped in #if canImport(UIKit) and
-#                             would silently skip on the macOS host. Run via
-#                             xcb in the iOS simulator instead.
+#                             are wrapped in #if canImport(UIKit) and
+#                             silently skip on the macOS host (#394).
+#                             Measured 2026-08-06 with
+#                             `scripts/verify-spm-parity.sh ColorPalette`
+#                             (added by #797, which is also why this is an
+#                             exact rerunnable command and not just a
+#                             description): 25 executed on host, 59 on the
+#                             simulator, a 34-test gap — it fails the check
+#                             as expected. Run via xcb in the iOS simulator
+#                             instead.
 #       - Artwork           — ArtworkTests bundle hangs at 0% CPU on
 #                             macos-latest paravirt (root cause unclear;
 #                             suspected module-init or shared-singleton
 #                             interaction with @testable import Artwork).
 #                             Re-add once the hang is diagnosed.
+#       - Intents           — an 18-to-20-test gap between the declared
+#                             suite and what runs on host (182 executed on
+#                             host as of 2026-08-06), cause not yet root-
+#                             caused. Named follow-up from #368; still open
+#                             per #797's non-goals. Excluded pending
+#                             investigation, not because of a confirmed
+#                             platform-gate skip like ColorPalette/Playback.
 #       - PartyHorn         — Vortex / Bundle.module not host-portable
 #       - PlayerHeaderView  — depends on Wallpaper (a git submodule)
 #       - Wallpaper         — submodule
 # ---------------------------------------------------------------------------
 
-local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit)
+local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit Concerts WXUI)
 typeset -A SPM_RUNNABLE_SET
 for pkg in $SPM_RUNNABLE; do
     SPM_RUNNABLE_SET[$pkg]=1
