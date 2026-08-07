@@ -2,14 +2,21 @@
 //  StatusPillSurfacePalette.swift
 //  WXYC
 //
-//  The per-surface status-chip palettes, restored. ``StatusPill`` collapsed four
-//  hand-maintained (fill, border, ink) switches into one canon table, which
-//  moved hues that had been deliberately different per surface — most visibly
-//  the On Tour feed's "TICKETS" chip, rotated 99° from amber to the canon green.
-//  This file holds each surface's original triple and hands it back through
-//  `StatusPill`'s `paletteOverride`, so the four chips look the way they did
-//  while still sharing the pill's canon mechanics (padding, stroke width, font,
-//  kerning).
+//  The per-surface status-chip palettes. Each chip is its pre-consolidation
+//  original with one transformation applied: **the fill takes the stroke's
+//  color, and the stroke is removed.** Hues are exactly the originals — only
+//  how much of the hue shows changes, from the wash's opacity to the stroke's.
+//
+//  This is the change the chips were meant to get. ``StatusPill`` instead
+//  collapsed four hand-maintained (fill, border, ink) switches into one canon
+//  table, which moved hues that had been deliberately different per surface —
+//  most visibly the On Tour feed's "TICKETS" chip, rotated 99° from amber to
+//  the canon green. These tables hand each surface its own hues back, and apply
+//  the fill/stroke transformation on top.
+//
+//  Three chips had no stroke to adopt (the poster hero's on-sale, and the
+//  stub's on-sale and free) — they were already solid, unstroked "go" chips, so
+//  they are unchanged.
 //
 //  The canon table in ``StatusPill`` stays the default and stays tested; it is
 //  simply no longer what these four surfaces render. Anything adopting
@@ -23,20 +30,25 @@ import Playlist
 import SwiftUI
 import WXUI
 
-/// The original `(fill, border, ink)` triples for the four surfaces that
-/// rendered status chips before ``StatusPill``'s canon table.
+/// The `(fill, border, ink)` triples for the four surfaces that render status
+/// chips, each filled with its former stroke color and drawn without an
+/// outline.
 ///
-/// Each function mirrors exactly one pre-consolidation switch. They differ from
-/// each other on purpose: the feed row and the poster hero were tuned against
-/// different backgrounds, and two entries track the wallpaper theme, which a
-/// static table cannot express. Keying every function on `StatusPill.Style`
-/// (rather than each surface's own enum) means the call sites can convert once
-/// through `StatusPillStyleMapping` and pass the result straight through.
+/// The four differ from each other on purpose: the feed row and the poster hero
+/// were tuned against different backgrounds, and two entries track the
+/// wallpaper theme, which a static table cannot express. Keying every function
+/// on `StatusPill.Style` (rather than each surface's own enum) means the call
+/// sites can convert once through `StatusPillStyleMapping` and pass the result
+/// straight through.
+///
+/// Every function returns `.clear` for `border`. `StatusPill` still draws the
+/// overlay, so a non-clear value here would put an outline back on screen.
 enum StatusPillSurfacePalette {
-    /// `ConcertRow`'s feed tag — translucent washes behind a stroke, over the
-    /// wallpaper-backed list. On-sale is amber here, not the canon green: the
-    /// feed's job is to distinguish rows from each other, and the poster hero's
-    /// green already means "on sale" one screen deeper.
+    /// `ConcertRow`'s feed tag, over the wallpaper-backed list. On-sale is amber
+    /// here, not the canon green: the feed's job is to distinguish rows from
+    /// each other, and the poster hero's green already means "on sale" one
+    /// screen deeper. Fills were 0.1–0.18 washes behind 0.25–0.5 strokes; each
+    /// now carries its own stroke's opacity.
     ///
     /// `FeedTagStyle` has no `caution` case — rescheduled folds into `.neutral`,
     /// as it already did upstream.
@@ -45,21 +57,21 @@ enum StatusPillSurfacePalette {
     ) -> (fill: Color, border: Color, ink: Color) {
         switch style {
         case .prominent:
-            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+            (Color.orange.opacity(0.5), .clear, Color(red: 1.0, green: 0.78, blue: 0.6))
         case .free:
-            (Color.teal.opacity(0.18), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+            (Color.teal.opacity(0.5), .clear, Color(red: 0.72, green: 0.94, blue: 0.91))
         case .muted:
-            (Color.white.opacity(0.1), Color.white.opacity(0.3), Color.white.opacity(0.7))
+            (Color.white.opacity(0.3), .clear, Color.white.opacity(0.7))
         case .negative:
-            (Color.red.opacity(0.18), Color.red.opacity(0.5), Color(red: 1.0, green: 0.7, blue: 0.7))
+            (Color.red.opacity(0.5), .clear, Color(red: 1.0, green: 0.7, blue: 0.7))
         case .caution, .neutral:
-            (Color.white.opacity(0.1), Color.white.opacity(0.25), Color.white.opacity(0.8))
+            (Color.white.opacity(0.25), .clear, Color.white.opacity(0.8))
         }
     }
 
     /// `ConcertDetailView`'s hero pill, over the poster. Heavier than the feed's
-    /// (0.20–0.24 fills against 0.18) because it sits on artwork rather than on
-    /// the list's darkened wallpaper.
+    /// because it sits on artwork rather than on the list's darkened wallpaper.
+    /// `.prominent` was already a solid unstroked chip and is unchanged.
     static func concertPosterHero(
         _ style: StatusPill.Style
     ) -> (fill: Color, border: Color, ink: Color) {
@@ -67,15 +79,15 @@ enum StatusPillSurfacePalette {
         case .prominent:
             (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), .clear, Color(red: 0.03, green: 0.19, blue: 0.10))
         case .free:
-            (Color.teal.opacity(0.20), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+            (Color.teal.opacity(0.5), .clear, Color(red: 0.72, green: 0.94, blue: 0.91))
         case .muted:
-            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.2), Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.71))
+            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), .clear, Color(red: 1.0, green: 0.78, blue: 0.71))
         case .negative:
-            (Color.red.opacity(0.24), Color.red.opacity(0.55), Color(red: 1.0, green: 0.7, blue: 0.7))
+            (Color.red.opacity(0.55), .clear, Color(red: 1.0, green: 0.7, blue: 0.7))
         case .caution:
-            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+            (Color.orange.opacity(0.5), .clear, Color(red: 1.0, green: 0.78, blue: 0.6))
         case .neutral:
-            (.white.opacity(0.14), .white.opacity(0.3), .white.opacity(0.8))
+            (.white.opacity(0.3), .clear, .white.opacity(0.8))
         }
     }
 
@@ -86,6 +98,10 @@ enum StatusPillSurfacePalette {
     /// Translated from the prototype's CSS into HSL so the hue relationships
     /// read at a glance; the trailing hex is the prototype value.
     ///
+    /// Note that `.prominent` is the one chip whose fill *drops* under this
+    /// rule — it was a solid 1.0 fill behind a 0.5 stroke, so adopting the
+    /// stroke takes it to 0.5, in line with every other chip.
+    ///
     /// - Parameter accent: the theme's `accentInkColor`, for the one entry that
     ///   tracks the wallpaper.
     static func boxOfficeTicket(
@@ -94,23 +110,23 @@ enum StatusPillSurfacePalette {
     ) -> (fill: Color, border: Color, ink: Color) {
         switch style {
         case .prominent:
-            (Palette.ok.opacity(1.0), Palette.ok.opacity(0.5), Palette.okInk)
+            (Palette.ok.opacity(0.5), .clear, Palette.okInk)
         case .muted:
-            (Palette.soldout.opacity(0.18), Palette.soldout.opacity(0.5), Palette.soldoutInk)
+            (Palette.soldout.opacity(0.5), .clear, Palette.soldoutInk)
         case .negative:
-            (Palette.cancel.opacity(0.20), Palette.cancel.opacity(0.55), Palette.cancelInk)
+            (Palette.cancel.opacity(0.55), .clear, Palette.cancelInk)
         case .caution:
-            (accent.opacity(0.18), accent.opacity(0.5), accent)
+            (accent.opacity(0.5), .clear, accent)
         case .free:
-            (Palette.free.opacity(0.18), Palette.free.opacity(0.5), Palette.freeInk)
+            (Palette.free.opacity(0.5), .clear, Palette.freeInk)
         case .neutral:
-            (.white.opacity(0.12), .white.opacity(0.3), .white.opacity(0.72))
+            (.white.opacity(0.3), .clear, .white.opacity(0.72))
         }
     }
 
-    /// `OnTourRowBadge`'s stub tag. The accent-filled "go" chip and the teal
-    /// free chip read as solid; sold-out and cancelled are translucent and muted
-    /// so the feed doesn't entice toward a show you can't attend.
+    /// `OnTourRowBadge`'s stub tag. `.prominent` and `.free` were already solid
+    /// unstroked "go" chips and are unchanged; sold-out and cancelled stay
+    /// muted so the feed doesn't entice toward a show you can't attend.
     ///
     /// - Parameters:
     ///   - accent: the theme's `accentInkColor` — the "go" chip matches the
@@ -127,11 +143,11 @@ enum StatusPillSurfacePalette {
         case .free:
             (Palette.free, .clear, Palette.freeText)
         case .muted:
-            (.white.opacity(0.12), .white.opacity(0.25), .white.opacity(0.72))
+            (.white.opacity(0.25), .clear, .white.opacity(0.72))
         case .negative:
-            (Palette.cancel.opacity(0.2), Palette.cancel.opacity(0.5), Palette.cancelInk)
+            (Palette.cancel.opacity(0.5), .clear, Palette.cancelInk)
         case .caution, .neutral:
-            (.white.opacity(0.1), .white.opacity(0.2), .white.opacity(0.7))
+            (.white.opacity(0.2), .clear, .white.opacity(0.7))
         }
     }
 
