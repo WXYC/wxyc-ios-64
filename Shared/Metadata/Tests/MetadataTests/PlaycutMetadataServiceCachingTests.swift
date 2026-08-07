@@ -172,6 +172,55 @@ final class MetadataMockWebSession: @unchecked Sendable {
 @Suite("PlaycutMetadataService Caching Tests", .serialized)
 struct PlaycutMetadataServiceCachingTests {
 
+    /// Pins the exact proxy endpoint paths.
+    ///
+    /// Every other test in this file stubs responses by substring
+    /// (`urlString.contains($0.key)`), which cannot distinguish
+    /// `proxy/metadata/album` from `proxy/metadata/albumTYPO` — a typo'd
+    /// endpoint ships green across the whole suite. That gap got materially
+    /// more dangerous in #761: path construction moved out of each service's
+    /// own `fetchFromProxy` into the generic `WXYCProxyClient.get(path:)`, so
+    /// the string literal at the call site is now the only thing distinguishing
+    /// one endpoint from another, and nothing else asserts it.
+    ///
+    /// Asserts on `url.path` rather than `absoluteString` so a query-parameter
+    /// change doesn't fail this test for an unrelated reason — the same
+    /// convention `ConcertsFetcherTests` uses for `/concerts`.
+    @Test("Requests the exact proxy endpoint paths, not merely paths containing them")
+    func requestsExactProxyEndpointPaths() async throws {
+        let mockCache = PlaycutMetadataMockCache()
+        let mockSession = MetadataMockWebSession()
+        let service = PlaycutMetadataService(
+            urlSession: mockSession.urlSession,
+            cache: CacheCoordinator(cache: mockCache)
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": 42,
+            "discogsUrl": null,
+            "releaseYear": 2024,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        _ = await service.fetchMetadata(for: Playcut.stub())
+
+        let paths = Set(mockSession.requestedURLs.map(\.path))
+        #expect(!paths.isEmpty, "the service made no request at all — this test would pass vacuously")
+        for path in paths {
+            #expect(
+                ["/proxy/metadata/album", "/proxy/metadata/artist", "/proxy/metadata/resolve"].contains(path),
+                "unrecognized proxy endpoint path \(path) — a typo here is invisible to the substring stub matcher"
+            )
+        }
+    }
+
     @Test("Returns cached metadata without making API calls")
     func returnsCachedMetadata() async throws {
         // Given
