@@ -44,7 +44,8 @@ extension WXYCAPIModels.CriticReviewItem: @retroactive CriticReviewItemWire {}
 ///
 /// Uses multi-level caching to reduce redundant API calls:
 /// - Artist metadata is cached by Discogs artist ID (30-day TTL)
-/// - Album metadata is cached by artist+release key (7-day TTL)
+/// - Album metadata is cached by artist+release key (7-day TTL when it carries
+///   enrichment, ``sparseAlbumLifespan`` when it doesn't)
 /// - Streaming links are cached by artist+song key (7-day TTL when populated,
 ///   ``emptyStreamingLifespan`` when every streaming URL came back nil)
 public actor PlaycutMetadataService {
@@ -55,6 +56,23 @@ public actor PlaycutMetadataService {
     /// streaming URL minutes later) supersedes the empty entry rather than
     /// being shadowed for a week.
     static let emptyStreamingLifespan: TimeInterval = 15 * 60
+
+    /// Short TTL applied to album-cache entries that came back with no
+    /// enrichment output at all (``AlbumMetadata/isSparse``).
+    ///
+    /// Decision recorded for #812: the album side gets the same treatment #303
+    /// gave the streaming side, rather than no-cache. A row is served by the
+    /// feed for roughly two seconds before its enrichment lands, and the proxy
+    /// has nothing to say about it during that window; pinning that answer for
+    /// seven days meant a card sampled in the window stayed blank even after
+    /// closing and reopening it — the durable half of the bug. Short-TTL beats
+    /// not caching at all because the sparse answer still absorbs back-to-back
+    /// views within a session without re-hitting a proxy that would only
+    /// return the same nothing. Deliberately a separate constant from
+    /// ``emptyStreamingLifespan`` despite the equal value: the two answer to
+    /// different upstreams (BS enrichment vs. LML streaming reconciliation)
+    /// and should be tunable apart.
+    static let sparseAlbumLifespan: TimeInterval = 15 * 60
 
     private let client: WXYCProxyClient
     private let cache: CacheCoordinator
@@ -86,7 +104,8 @@ public actor PlaycutMetadataService {
     /// Fetches all available metadata for a playcut using granular caching.
     ///
     /// This method caches at three levels:
-    /// - Album metadata by artist+release (7-day TTL)
+    /// - Album metadata by artist+release (7-day TTL when it carries
+    ///   enrichment, ``sparseAlbumLifespan`` when it doesn't)
     /// - Artist metadata by Discogs artist ID (30-day TTL)
     /// - Streaming links by artist+song (7-day TTL when populated,
     ///   ``emptyStreamingLifespan`` when every URL came back nil)
@@ -123,9 +142,9 @@ public actor PlaycutMetadataService {
     /// `criticReviews` used to be on this casualty list too, but isn't
     /// anymore (#695): the V2 flowsheet feed now carries `critic_reviews`
     /// inline, `FlowsheetConverter` threads it onto `Playcut.criticReviews`,
-    /// and `PlaycutDetailView.loadMetadata()` folds it into the inline
-    /// `AlbumMetadata` it builds — so a terminal row's reviews survive the
-    /// short-circuit without ever touching the proxy.
+    /// and ``PlaycutMetadataResolver/inlineMetadata(for:)`` folds it into the
+    /// inline `AlbumMetadata` it builds — so a terminal row's reviews survive
+    /// the short-circuit without ever touching the proxy.
     ///
     /// - Parameters:
     ///   - playcut: The playcut to resolve metadata for.
@@ -313,7 +332,12 @@ public actor PlaycutMetadataService {
             )
 
             if cachedAlbum == nil {
-                await cache.set(value: album, for: albumCacheKey, lifespan: .sevenDays)
+                // Short-TTL on albums that came back with no enrichment output,
+                // so a card sampled during the pre-enrichment window isn't
+                // shadowed by that answer for a week (#812) — the album-side
+                // counterpart of the empty-streaming rule below (#303).
+                let albumLifespan: TimeInterval = album.isSparse ? Self.sparseAlbumLifespan : .sevenDays
+                await cache.set(value: album, for: albumCacheKey, lifespan: albumLifespan)
             }
             if cachedStreaming == nil {
                 // Short-TTL on empty-streaming entries so a freshly-enriched row

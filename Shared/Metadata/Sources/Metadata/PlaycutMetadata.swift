@@ -89,8 +89,8 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// MD-set marker indicating this release is intentionally not on Discogs
     /// (the "Not on Discogs" flag epic, Backend-Service#1280). When `true`,
     /// artwork rendering suppresses the Discogs-derived artwork/URL and falls
-    /// back to a placeholder — see `isDiscogsUnavailable` and `PlaycutDetailView.
-    /// loadMetadata()`'s artwork-fetch gate. Populated from either the inline
+    /// back to a placeholder — see `isDiscogsUnavailable` and
+    /// `PlaycutDetailView.apply(_:)`'s artwork-fetch gate. Populated from either the inline
     /// V2 flowsheet row (`Playcut.discogsUnavailable`) or the
     /// `/proxy/metadata/album` decode path (`WXYCAPIModels.AlbumMetadataResponse
     /// .discogsUnavailable`, wired in `PlaycutMetadataService.mergeAlbum`,
@@ -144,6 +144,22 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// more clearly than `discogsUnavailable == true` at every call site.
     public var isDiscogsUnavailable: Bool {
         discogsUnavailable == true
+    }
+
+    /// Whether this record carries no enrichment output at all — the shape the
+    /// metadata proxy returns for a row Backend hasn't finished enriching, and
+    /// the shape `PlaycutMetadataService`'s throw-path fallback synthesizes
+    /// (`AlbumMetadata(label: playcut.labelName)`).
+    ///
+    /// Keyed on the three fields that only ever come from enrichment. `label`
+    /// is deliberately excluded: it's a base flowsheet column, so an album
+    /// carrying nothing but a label is exactly the pre-enrichment snapshot, not
+    /// a partial success. Gates the short cache TTL in
+    /// `PlaycutMetadataService.fetchAlbumAndStreaming` (#812), mirroring what
+    /// ``PlaycutMetadataService/emptyStreamingLifespan`` does on the streaming
+    /// side (#303).
+    public var isSparse: Bool {
+        releaseYear == nil && discogsURL == nil && artworkURL == nil
     }
 }
 

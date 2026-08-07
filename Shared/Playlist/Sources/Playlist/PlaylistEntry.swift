@@ -337,21 +337,21 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// This field list is duplicated by hand in two other places that must be
     /// kept in sync when a field is added or removed: the `Playcut` decoder's
     /// `CodingKeys`/`init(from:)` above, and the inline `PlaycutMetadata`
-    /// construction in `PlaycutDetailView.loadMetadata()`. There's no
-    /// compiler-enforced link between the three — #685 itself was partly a fix
-    /// for one such drift (`artworkURL` was in this predicate but missing from
-    /// the `PlaycutDetailView` builder). `artistId` and `upcomingShow` are
-    /// decoded onto `Playcut` (so they do appear in the decoder) but have no
-    /// `PlaycutMetadata`/`AlbumMetadata` counterpart, so they never appear in
-    /// the `PlaycutDetailView` builder either. `criticReviews` is different:
-    /// `AlbumMetadata` *does* have a `criticReviews` field, so it rides along
-    /// in the decoder AND the `PlaycutDetailView` builder (#695) — it's just
-    /// excluded from this predicate specifically, exactly like the other two.
-    /// `discogsUnavailable`/`discogsUnavailableNote` (#390) follow the
-    /// `criticReviews` shape exactly: they ride the decoder and the
-    /// `PlaycutDetailView` builder (so the render gate can see them) but are
-    /// excluded here too — a suppression flag isn't "does this row have
-    /// enrichment metadata" in the sense this predicate cares about.
+    /// construction in `PlaycutMetadataResolver.inlineMetadata(for:)`
+    /// (`Metadata`). There's no compiler-enforced link between the three —
+    /// #685 itself was partly a fix for one such drift (`artworkURL` was in
+    /// this predicate but missing from the resolver's builder). `artistId` and
+    /// `upcomingShow` are decoded onto `Playcut` (so they do appear in the
+    /// decoder) but have no `PlaycutMetadata`/`AlbumMetadata` counterpart, so
+    /// they never appear in the resolver's builder either. `criticReviews` is
+    /// different: `AlbumMetadata` *does* have a `criticReviews` field, so it
+    /// rides along in the decoder AND the resolver's builder (#695) — it's
+    /// just excluded from this predicate specifically, exactly like the other
+    /// two. `discogsUnavailable`/`discogsUnavailableNote` (#390) follow the
+    /// `criticReviews` shape exactly: they ride the decoder and the resolver's
+    /// builder (so the render gate can see them) but are excluded here too —
+    /// a suppression flag isn't "does this row have enrichment metadata" in
+    /// the sense this predicate cares about.
     public var hasV2Metadata: Bool {
         metadataStatus?.isTerminal == true
             || artworkURL != nil

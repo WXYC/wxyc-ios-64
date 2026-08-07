@@ -51,8 +51,10 @@ struct PlaycutDetailView: View {
         upcomingShowResolver.upcomingShow(for: playcut)
     }
 
-    private let metadataService = PlaycutMetadataService(tokenProvider: MusicShareKit.tokenProvider)
-    
+    private let resolver = PlaycutMetadataResolver(
+        service: PlaycutMetadataService(tokenProvider: MusicShareKit.tokenProvider)
+    )
+
     private var artworkGeometryID: String {
         "playcut-artwork-\(playcut.id)"
     }
@@ -183,7 +185,28 @@ struct PlaycutDetailView: View {
             ))
         }
         .task {
-            await loadMetadata()
+            await apply(resolver.resolve(for: playcut))
+        }
+        // Repair path for a card opened during the ~2s window in which the feed
+        // serves a real row that hasn't finished enriching (#812).
+        //
+        // Keying the resolve `.task` on `playcut.metadataStatus` would be dead
+        // code: `playcut` is a value snapshot captured at row-tap time and
+        // parked in `RootTabView`/`LikedTabView`'s `@State selectedPlaycut`,
+        // which nothing writes to when the feed polls — and `PlaycutSelection`
+        // is `Identifiable`/`Equatable` on `transitionID` alone, so even an
+        // updated selection wouldn't re-present the cover. The fresh row has to
+        // come from the store, not the parent.
+        //
+        // Read off `appState` rather than `\.playlistService` because
+        // `Singletonia` is the one dependency both presentation sites
+        // explicitly re-inject into the cover's separate context.
+        .task {
+            guard resolver.shouldObserveEnrichment(for: playcut) else { return }
+            let transitions = appState.playlistService.terminalMetadataTransitions()
+            for await repaired in resolver.reresolutions(for: playcut, transitions: transitions) {
+                await apply(repaired)
+            }
         }
         .animation(.easeInOut(duration: 0.3), value: upcomingShow)
         .overlay {
@@ -234,66 +257,16 @@ struct PlaycutDetailView: View {
         .padding(.top, 8)
     }
 
-    private func loadMetadata() async {
-        // Build inline metadata from the V2 flowsheet row when present.
-        //
-        // This field list must be kept in sync by hand with two other
-        // enumerations of the same 12 inline fields: Playcut's CodingKeys/
-        // init(from:) (Shared/Playlist/Sources/Playlist/PlaylistEntry.swift)
-        // and Playcut.hasV2Metadata's OR-chain in the same file. There's no
-        // compiler-enforced link — #685 itself patched one drift here
-        // (artworkURL was missing from this construction).
-        //
-        // `criticReviews` below is NOT one of the 12 — like `artistId` and
-        // `upcomingShow`, it's excluded from `hasV2Metadata`'s predicate (see
-        // that doc comment) — but it still needs to ride through to
-        // `AlbumMetadata` here so a terminal row's `ReviewsSection` renders
-        // from feed data alone (#695).
-        let inline = playcut.hasV2Metadata ? PlaycutMetadata(
-            artist: ArtistMetadata(bio: playcut.artistBio, wikipediaURL: playcut.artistWikipediaURL),
-            album: AlbumMetadata(
-                label: playcut.labelName,
-                releaseYear: playcut.releaseYear,
-                discogsURL: playcut.discogsURL,
-                genres: playcut.genres,
-                styles: playcut.styles,
-                artworkURL: playcut.artworkURL,
-                criticReviews: playcut.criticReviews,
-                // Like criticReviews above, discogsUnavailable isn't one of
-                // the 12 hasV2Metadata fields (see that predicate's doc
-                // comment) but still rides along here so the artwork-fetch
-                // gate below can see it (#390).
-                discogsUnavailable: playcut.discogsUnavailable,
-                discogsUnavailableNote: playcut.discogsUnavailableNote
-            ),
-            streaming: StreamingLinks(
-                spotifyURL: playcut.spotifyURL,
-                appleMusicURL: playcut.appleMusicURL,
-                youtubeMusicURL: playcut.youtubeMusicURL,
-                bandcampURL: playcut.bandcampURL,
-                soundcloudURL: playcut.soundcloudURL
-            )
-        ) : nil
-
-        // Explicit branch on the row's server-side enrichment lifecycle
-        // (#270), replacing the old `hasV2Metadata`-only heuristic at this
-        // call site. `enrichedMatch`/`enrichedNoMatch`/`failedNoRetry` are
-        // terminal — Backend has already finished (or given up on)
-        // enrichment — so this branch renders straight from the inline V2
-        // flowsheet fields and never calls `metadataService.fetchMetadata`:
-        // no outbound `/proxy/metadata/album` request is possible on this
-        // path. `pending`/`enriching` rows are still being enriched
-        // server-side, and `nil` covers V1 rows, pre-Epic-C Backend deploys,
-        // and feeds decoded before #280's `metadata_status` field existed —
-        // both fall back to the existing metadata service, unchanged.
-        let resolvedMetadata: PlaycutMetadata
-        switch playcut.metadataStatus {
-        case .enrichedMatch, .enrichedNoMatch, .failedNoRetry:
-            resolvedMetadata = inline ?? .empty
-        case .pending, .enriching, nil:
-            resolvedMetadata = await metadataService.fetchMetadata(for: playcut, inline: inline)
-        }
-
+    /// Renders a resolved metadata record into the card. Runs on both the
+    /// initial resolve and every enrichment repair, so the two paths land the
+    /// same animation and the same artwork follow-up.
+    ///
+    /// The inline-vs-proxy decision itself, and the 12-field inline builder
+    /// that feeds it, live in `PlaycutMetadataResolver` (`Metadata`) — that
+    /// builder is one of three hand-synced enumerations of the same field list,
+    /// alongside `Playcut`'s `CodingKeys`/`init(from:)` and
+    /// `Playcut.hasV2Metadata`.
+    private func apply(_ resolvedMetadata: PlaycutMetadata) async {
         await MainActor.run {
             withAnimation(.easeInOut(duration: 0.3)) {
                 self.metadata = resolvedMetadata

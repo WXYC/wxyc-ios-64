@@ -24,8 +24,9 @@ import Foundation
 /// Lives in `Playlist` (not `Metadata`, where it originated — see #566) so
 /// that `Playcut.criticReviews` (this package) and `AlbumMetadata.criticReviews`
 /// (`Metadata`, which depends on `Playlist`) share exactly one type: the inline
-/// `PlaycutDetailView.loadMetadata()` builder passes `playcut.criticReviews`
-/// straight into `AlbumMetadata(criticReviews:)` with no conversion (#695).
+/// `PlaycutMetadataResolver.inlineMetadata(for:)` builder passes
+/// `playcut.criticReviews` straight into `AlbumMetadata(criticReviews:)` with
+/// no conversion (#695).
 public struct CriticReview: Sendable, Equatable, Hashable, Codable {
     /// Publication name, e.g. "The Quietus". Always shown as attribution.
     public let source: String
