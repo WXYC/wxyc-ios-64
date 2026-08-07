@@ -315,7 +315,8 @@ private extension TicketColors {
             bodyInk: HSBAlpha(hue: 185, saturation: 0.20, brightness: 1.00, alpha: 1),
             edge: HSBAlpha(hue: 185, saturation: 0.50, brightness: 0.85, alpha: 0.48)
         ),
-        override: nil
+        override: nil,
+        accent: AccentColor(hue: 185.41, saturation: 0.667)
     )
 
     /// An amber keepsake (like WXYC 1983) over a dark wallpaper.
@@ -328,11 +329,13 @@ private extension TicketColors {
             bodyInk: HSBAlpha(hue: 33, saturation: 0.30, brightness: 1.00, alpha: 1),
             edge: HSBAlpha(hue: 30, saturation: 0.55, brightness: 0.85, alpha: 0.50)
         ),
-        override: nil
+        override: nil,
+        accent: AccentColor(hue: 23, saturation: 0.75)
     )
 
     /// The neutral default over a *light* wallpaper — exercises the dark stub ink.
     static let previewWindowlight = TicketColors.resolve(
-        foreground: .dark, manifest: nil, override: nil
+        foreground: .dark, manifest: nil, override: nil,
+        accent: AccentColor(hue: 23, saturation: 0.232)
     )
 }
