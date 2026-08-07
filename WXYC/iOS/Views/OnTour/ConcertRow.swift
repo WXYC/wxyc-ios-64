@@ -154,8 +154,16 @@ struct ConcertRow: View {
         return pieces.isEmpty ? nil : pieces.joined(separator: "  ·  ")
     }
 
+    /// The feed row keeps its own palette (amber on-sale, teal free, white
+    /// washes) rather than ``StatusPill``'s canon table — see
+    /// ``StatusPillSurfacePalette/onTourFeedRow(_:)``. Mechanics stay canon.
     private var feedTag: some View {
-        StatusPill(text: presenter.feedTagText, style: presenter.feedTagStyle.statusPillStyle)
+        let style = presenter.feedTagStyle.statusPillStyle
+        return StatusPill(
+            text: presenter.feedTagText,
+            style: style,
+            paletteOverride: StatusPillSurfacePalette.onTourFeedRow(style)
+        )
     }
 
     private var accessibilityLabel: String {

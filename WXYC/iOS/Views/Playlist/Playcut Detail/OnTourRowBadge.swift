@@ -7,12 +7,13 @@
 //  contents — date · venue · status tag on one line, plus a dashed tear line
 //  along the top seam. The surrounding ``PlaycutRowView`` supplies the shared
 //  wallpaper background and the perforated ticket outline (the semicircle
-//  punch-outs at the seam), so this view never draws its own surface. The
-//  status tag reads from `StatusPill`'s canon palette, except on-sale, which
-//  keeps tinting with the theme accent (see ``TicketColors``) so the "go" chip
-//  matches ``BoxOfficeTicketView``'s discovery CTA below it; the date also
-//  tints with the theme. Mirrors the prototype's `.rstub`
-//  (docs/ideas/touring-shows-box-office.html).
+//  punch-outs at the seam), so this view never draws its own surface. State-
+//  colored tag: the theme accent for on-sale, teal free, dimmed sold-out, red
+//  cancelled — drawn with `StatusPill`'s canon mechanics but the stub's own
+//  colors (see ``StatusPillSurfacePalette/playcutStub(_:accent:accentInk:)``).
+//  The date and the on-sale tag tint with the theme (see ``TicketColors``) so
+//  the stub stays consistent with ``BoxOfficeTicketView`` and its discovery CTA.
+//  Mirrors the prototype's `.rstub` (docs/ideas/touring-shows-box-office.html).
 //
 //  Created by Jake Bromberg on 07/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -76,18 +77,23 @@ struct OnTourRowBadge: View {
         .accessibilityLabel(accessibilityText)
     }
 
-    /// The state-colored status tag on the right (`.rtag`). Reads from
-    /// ``StatusPill``'s canon table for every style except `.prominent`
-    /// ("on sale"), which keeps tinting with the active theme's accent — the
-    /// "go" chip is meant to match the ticket it sits below, and a static
-    /// canon table can't express that. See the file header's "State-colored
-    /// tag" note.
+    /// The state-colored status tag on the right (`.rtag`). Keeps the stub's own
+    /// palette rather than ``StatusPill``'s canon table — see
+    /// ``StatusPillSurfacePalette/playcutStub(_:accent:accentInk:)``. The
+    /// `.prominent` ("on sale") chip tints with the active theme's accent: the
+    /// "go" chip is meant to match the ticket it sits below. Mechanics stay
+    /// canon. See the file header's "State-colored tag" note.
     private var tag: some View {
         let style = presenter.feedTagStyle.statusPillStyle
-        let override: (fill: Color, border: Color, ink: Color)? = style == .prominent
-            ? (colors.accentInkColor, .clear, buttonInk)
-            : nil
-        return StatusPill(text: presenter.feedTagText, style: style, paletteOverride: override)
+        return StatusPill(
+            text: presenter.feedTagText,
+            style: style,
+            paletteOverride: StatusPillSurfacePalette.playcutStub(
+                style,
+                accent: colors.accentInkColor,
+                accentInk: buttonInk
+            )
+        )
     }
 
     private var accessibilityText: String {
