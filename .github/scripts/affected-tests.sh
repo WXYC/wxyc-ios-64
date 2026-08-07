@@ -152,7 +152,7 @@ DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
 DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger"
 DEPS[Intents]="Analytics Core Logger Playback Playlist"
 # Packages without test targets (included as dependency intermediaries)
-DEPS[DebugPanel]="AppServices Caching Playback Playlist Wallpaper PlayerHeaderView"
+DEPS[DebugPanel]="AppServices Caching Playback Playlist Wallpaper PlayerHeaderView WXUI"
 DEPS[PartyHorn]=""
 # Vendored generated DTOs (no test target). A Metadata (runtime) dep and a
 # PlaylistTests-target dep; listed on both above so a change to it marks

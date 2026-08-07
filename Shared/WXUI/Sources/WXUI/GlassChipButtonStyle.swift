@@ -27,14 +27,30 @@ public struct GlassChipButtonStyle: ButtonStyle {
     public static var strokeOpacity: Double { 0.25 }
     /// The capsule stroke's line width. Canon: 1pt.
     public static var strokeWidth: CGFloat { 1 }
+    /// The label's opacity while the chip is held down. Canon: 0.7.
+    public static var pressedOpacity: Double { 0.7 }
 
     public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .foregroundStyle(.white)
+            .opacity(Self.labelOpacity(isPressed: configuration.isPressed))
             .background(Capsule().fill(.white.opacity(Self.fillOpacity)))
             .overlay(Capsule().stroke(.white.opacity(Self.strokeOpacity), lineWidth: Self.strokeWidth))
+    }
+
+    /// The label's opacity for a given press state. Exposed as a pure function
+    /// (rather than inlined in `makeBody`) so the branch is directly testable —
+    /// the rendered view isn't inspectable without a snapshot dependency this
+    /// package deliberately doesn't take on.
+    ///
+    /// A custom `ButtonStyle` gets no press feedback for free: the moment these
+    /// three buttons stopped being `.buttonStyle(.plain)`, whatever dimming they
+    /// had became this style's job. Without it, tapping "Filter" on the On Tour
+    /// tab acknowledges nothing until the sheet animates in.
+    static func labelOpacity(isPressed: Bool) -> Double {
+        isPressed ? pressedOpacity : 1
     }
 }
 
