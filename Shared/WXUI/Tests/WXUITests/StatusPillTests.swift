@@ -22,29 +22,28 @@ struct StatusPillTests {
     /// The canon palette, kept independent of `StatusPill.palette(for:)` so a
     /// mutation in the production switch is actually caught rather than the test
     /// re-deriving the same values from the same source.
-    private static func expectedPalette(for style: StatusPill.Style) -> (fill: Color, border: Color, ink: Color) {
+    private static func expectedPalette(for style: StatusPill.Style) -> (fill: Color, ink: Color) {
         switch style {
         case .prominent:
-            (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), .clear, Color(red: 0.03, green: 0.19, blue: 0.10))
+            (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), Color(red: 0.03, green: 0.19, blue: 0.10))
         case .free:
-            (Color(red: 0.310, green: 0.839, blue: 0.784).opacity(0.92), .clear, Color(red: 0.016, green: 0.188, blue: 0.169))
+            (Color(red: 0.310, green: 0.839, blue: 0.784).opacity(0.92), Color(red: 0.016, green: 0.188, blue: 0.169))
         case .muted:
-            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.92), .clear, Color(red: 0.24, green: 0.08, blue: 0.03))
+            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.92), Color(red: 0.24, green: 0.08, blue: 0.03))
         case .negative:
-            (Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.92), .clear, Color(red: 0.26, green: 0.03, blue: 0.03))
+            (Color(red: 1.0, green: 0.42, blue: 0.42).opacity(0.92), Color(red: 0.26, green: 0.03, blue: 0.03))
         case .caution:
-            (Color(red: 1.0, green: 0.65, blue: 0.20).opacity(0.92), .clear, Color(red: 0.24, green: 0.13, blue: 0.01))
+            (Color(red: 1.0, green: 0.65, blue: 0.20).opacity(0.92), Color(red: 0.24, green: 0.13, blue: 0.01))
         case .neutral:
-            (Color(red: 0.82, green: 0.85, blue: 0.89).opacity(0.92), .clear, Color(red: 0.11, green: 0.13, blue: 0.16))
+            (Color(red: 0.82, green: 0.85, blue: 0.89).opacity(0.92), Color(red: 0.11, green: 0.13, blue: 0.16))
         }
     }
 
-    @Test("palette(for:) resolves the canon triple for every style", arguments: StatusPill.Style.allCases)
+    @Test("palette(for:) resolves the canon pair for every style", arguments: StatusPill.Style.allCases)
     func paletteMatchesCanon(style: StatusPill.Style) {
         let resolved = StatusPill.palette(for: style)
         let expected = Self.expectedPalette(for: style)
         #expect(resolved.fill.resolve(in: Self.environment) == expected.fill.resolve(in: Self.environment))
-        #expect(resolved.border.resolve(in: Self.environment) == expected.border.resolve(in: Self.environment))
         #expect(resolved.ink.resolve(in: Self.environment) == expected.ink.resolve(in: Self.environment))
     }
 
@@ -65,16 +64,14 @@ struct StatusPillTests {
         let resolved = StatusPill.resolvedPalette(style: .free, override: nil)
         let expected = StatusPill.palette(for: .free)
         #expect(resolved.fill.resolve(in: Self.environment) == expected.fill.resolve(in: Self.environment))
-        #expect(resolved.border.resolve(in: Self.environment) == expected.border.resolve(in: Self.environment))
         #expect(resolved.ink.resolve(in: Self.environment) == expected.ink.resolve(in: Self.environment))
     }
 
     @Test("resolvedPalette prefers an explicit override over the canon table")
     func resolvedPaletteHonorsOverride() {
-        let override = (fill: Color.purple, border: Color.pink, ink: Color.yellow)
+        let override = (fill: Color.purple, ink: Color.yellow)
         let resolved = StatusPill.resolvedPalette(style: .free, override: override)
         #expect(resolved.fill.resolve(in: Self.environment) == override.fill.resolve(in: Self.environment))
-        #expect(resolved.border.resolve(in: Self.environment) == override.border.resolve(in: Self.environment))
         #expect(resolved.ink.resolve(in: Self.environment) == override.ink.resolve(in: Self.environment))
         // And it must differ from the canon table it's overriding, or the
         // assertions above would pass by coincidence rather than by resolution.
@@ -82,21 +79,18 @@ struct StatusPillTests {
         #expect(resolved.fill.resolve(in: Self.environment) != canon.fill.resolve(in: Self.environment))
     }
 
-    /// The design rule the canon table exists to enforce: every chip is a solid
-    /// fill with no outline, the way "on sale" always read. Differentiation is
+    /// The design rule the canon table exists to enforce: differentiation is
     /// carried by hue alone, never by fill weight — so a "free" show can't end
     /// up looking as unreachable as a sold-out one. Before this, only
-    /// `.prominent` was solid and the other five were 18–24% washes with a
-    /// stroke, which put FREE in the same visual family as SOLD OUT.
-    @Test("every canon style is a solid fill with no outline", arguments: StatusPill.Style.allCases)
-    func canonStylesAreSolidAndUnstroked(style: StatusPill.Style) {
-        let palette = StatusPill.palette(for: style)
+    /// `.prominent` was solid and the other five were 18–24% washes.
+    ///
+    /// The companion "no outline" half of this rule is no longer asserted here:
+    /// `StatusPill` has no border to draw, so it is structural rather than
+    /// testable.
+    @Test("every canon style is a solid fill", arguments: StatusPill.Style.allCases)
+    func canonStylesAreSolid(style: StatusPill.Style) {
         #expect(
-            palette.border.resolve(in: Self.environment) == Color.clear.resolve(in: Self.environment),
-            "\(style) draws an outline — canon chips are fill-only"
-        )
-        #expect(
-            palette.fill.resolve(in: Self.environment).opacity >= 0.9,
+            StatusPill.palette(for: style).fill.resolve(in: Self.environment).opacity >= 0.9,
             "\(style) fill is a wash, not a solid"
         )
     }
@@ -111,11 +105,10 @@ struct StatusPillTests {
         #expect(luminance < 0.3, "\(style) ink is too light to read on a solid fill (luminance \(luminance))")
     }
 
-    @Test("canon mechanics match the ticket: padding 10/4, 1pt stroke, kerning 1")
+    @Test("canon mechanics match the ticket: padding 10/4, kerning 1")
     func canonMechanics() {
         #expect(StatusPill.horizontalPadding == 10)
         #expect(StatusPill.verticalPadding == 4)
-        #expect(StatusPill.strokeWidth == 1)
         #expect(StatusPill.kerning == 1)
     }
 }
