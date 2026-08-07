@@ -1,0 +1,152 @@
+//
+//  StatusPillSurfacePalette.swift
+//  WXYC
+//
+//  The per-surface status-chip palettes, restored. ``StatusPill`` collapsed four
+//  hand-maintained (fill, border, ink) switches into one canon table, which
+//  moved hues that had been deliberately different per surface — most visibly
+//  the On Tour feed's "TICKETS" chip, rotated 99° from amber to the canon green.
+//  This file holds each surface's original triple and hands it back through
+//  `StatusPill`'s `paletteOverride`, so the four chips look the way they did
+//  while still sharing the pill's canon mechanics (padding, stroke width, font,
+//  kerning).
+//
+//  The canon table in ``StatusPill`` stays the default and stays tested; it is
+//  simply no longer what these four surfaces render. Anything adopting
+//  ``StatusPill`` from here on gets canon unless it opts into a surface below.
+//
+//  Created by Jake Bromberg on 08/07/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+import Playlist
+import SwiftUI
+import WXUI
+
+/// The original `(fill, border, ink)` triples for the four surfaces that
+/// rendered status chips before ``StatusPill``'s canon table.
+///
+/// Each function mirrors exactly one pre-consolidation switch. They differ from
+/// each other on purpose: the feed row and the poster hero were tuned against
+/// different backgrounds, and two entries track the wallpaper theme, which a
+/// static table cannot express. Keying every function on `StatusPill.Style`
+/// (rather than each surface's own enum) means the call sites can convert once
+/// through `StatusPillStyleMapping` and pass the result straight through.
+enum StatusPillSurfacePalette {
+    /// `ConcertRow`'s feed tag — translucent washes behind a stroke, over the
+    /// wallpaper-backed list. On-sale is amber here, not the canon green: the
+    /// feed's job is to distinguish rows from each other, and the poster hero's
+    /// green already means "on sale" one screen deeper.
+    ///
+    /// `FeedTagStyle` has no `caution` case — rescheduled folds into `.neutral`,
+    /// as it already did upstream.
+    static func onTourFeedRow(
+        _ style: StatusPill.Style
+    ) -> (fill: Color, border: Color, ink: Color) {
+        switch style {
+        case .prominent:
+            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+        case .free:
+            (Color.teal.opacity(0.18), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+        case .muted:
+            (Color.white.opacity(0.1), Color.white.opacity(0.3), Color.white.opacity(0.7))
+        case .negative:
+            (Color.red.opacity(0.18), Color.red.opacity(0.5), Color(red: 1.0, green: 0.7, blue: 0.7))
+        case .caution, .neutral:
+            (Color.white.opacity(0.1), Color.white.opacity(0.25), Color.white.opacity(0.8))
+        }
+    }
+
+    /// `ConcertDetailView`'s hero pill, over the poster. Heavier than the feed's
+    /// (0.20–0.24 fills against 0.18) because it sits on artwork rather than on
+    /// the list's darkened wallpaper.
+    static func concertPosterHero(
+        _ style: StatusPill.Style
+    ) -> (fill: Color, border: Color, ink: Color) {
+        switch style {
+        case .prominent:
+            (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), .clear, Color(red: 0.03, green: 0.19, blue: 0.10))
+        case .free:
+            (Color.teal.opacity(0.20), Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+        case .muted:
+            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.2), Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.71))
+        case .negative:
+            (Color.red.opacity(0.24), Color.red.opacity(0.55), Color(red: 1.0, green: 0.7, blue: 0.7))
+        case .caution:
+            (Color.orange.opacity(0.18), Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+        case .neutral:
+            (.white.opacity(0.14), .white.opacity(0.3), .white.opacity(0.8))
+        }
+    }
+
+    /// `BoxOfficeTicketView`'s pill. Deliberately NOT theme-derived except for
+    /// `.caution` (rescheduled): on-sale green, sold-out coral, cancelled red,
+    /// and free teal read as universal signals across every wallpaper, while
+    /// only the ticket's accent chrome follows the theme (see `TicketColors`).
+    /// Translated from the prototype's CSS into HSL so the hue relationships
+    /// read at a glance; the trailing hex is the prototype value.
+    ///
+    /// - Parameter accent: the theme's `accentInkColor`, for the one entry that
+    ///   tracks the wallpaper.
+    static func boxOfficeTicket(
+        _ style: StatusPill.Style,
+        accent: Color
+    ) -> (fill: Color, border: Color, ink: Color) {
+        switch style {
+        case .prominent:
+            (Palette.ok.opacity(1.0), Palette.ok.opacity(0.5), Palette.okInk)
+        case .muted:
+            (Palette.soldout.opacity(0.18), Palette.soldout.opacity(0.5), Palette.soldoutInk)
+        case .negative:
+            (Palette.cancel.opacity(0.20), Palette.cancel.opacity(0.55), Palette.cancelInk)
+        case .caution:
+            (accent.opacity(0.18), accent.opacity(0.5), accent)
+        case .free:
+            (Palette.free.opacity(0.18), Palette.free.opacity(0.5), Palette.freeInk)
+        case .neutral:
+            (.white.opacity(0.12), .white.opacity(0.3), .white.opacity(0.72))
+        }
+    }
+
+    /// `OnTourRowBadge`'s stub tag. The accent-filled "go" chip and the teal
+    /// free chip read as solid; sold-out and cancelled are translucent and muted
+    /// so the feed doesn't entice toward a show you can't attend.
+    ///
+    /// - Parameters:
+    ///   - accent: the theme's `accentInkColor` — the "go" chip matches the
+    ///     themed `BoxOfficeTicketView` CTA below it.
+    ///   - accentInk: the stub's derived dark `buttonInk` for that chip.
+    static func playcutStub(
+        _ style: StatusPill.Style,
+        accent: Color,
+        accentInk: Color
+    ) -> (fill: Color, border: Color, ink: Color) {
+        switch style {
+        case .prominent:
+            (accent, .clear, accentInk)
+        case .free:
+            (Palette.free, .clear, Palette.freeText)
+        case .muted:
+            (.white.opacity(0.12), .white.opacity(0.25), .white.opacity(0.72))
+        case .negative:
+            (Palette.cancel.opacity(0.2), Palette.cancel.opacity(0.5), Palette.cancelInk)
+        case .caution, .neutral:
+            (.white.opacity(0.1), .white.opacity(0.2), .white.opacity(0.7))
+        }
+    }
+
+    /// The prototype-derived status colors the ticket and stub share. Expressed
+    /// in HSL so the hue relationships read at a glance; trailing hex is the
+    /// prototype value.
+    private enum Palette {
+        static let ok = Color(HSL(hue: 0.3753, saturation: 0.5857, lightness: 0.4922)) // #34C759
+        static let okInk = Color(HSL(hue: 0.3851, saturation: 0.7115, lightness: 0.7961)) // #A6F0BD
+        static let soldout = Color(HSL(hue: 0.0405, saturation: 1, lightness: 0.7098)) // #FF8F6B
+        static let soldoutInk = Color(HSL(hue: 0.0422, saturation: 1, lightness: 0.8529)) // #FFC7B4
+        static let cancel = Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)) // #FF6B6B
+        static let cancelInk = Color(HSL(hue: 0, saturation: 1, lightness: 0.851)) // #FFB3B3
+        static let free = Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)) // #4FD6C8
+        static let freeInk = Color(HSL(hue: 0.4762, saturation: 0.6512, lightness: 0.8314)) // #B8F0E8
+        static let freeText = Color(HSL(hue: 0.4811, saturation: 0.8462, lightness: 0.102)) // #04302B
+    }
+}
