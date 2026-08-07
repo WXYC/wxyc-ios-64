@@ -135,8 +135,12 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
     ///
     /// `deactivationHoldCap` bounds the block: a regression that routes a
     /// *blocking* caller through the gate — the main actor waiting out the
-    /// handback is the defect #773 fixed — fails its test's elapsed bound
-    /// instead of deadlocking the suite.
+    /// handback is the defect #773 fixed — is a deadlock backstop, not a
+    /// timing assertion (#807 review corrected this: the suite's own
+    /// elapsed-time assertions against this cap were restructured onto
+    /// ordering checks, so nothing here still fails a test's elapsed bound —
+    /// this cap exists only so a regressed caller's block eventually
+    /// releases the thread instead of hanging the suite forever).
     public func holdDeactivations() {
         state.withLock { $0.deactivationHoldArmed = true }
     }
@@ -150,8 +154,17 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
 
     /// Upper bound on how long an armed gate holds a deactivation open.
     /// Generous enough that no healthy path ever reaches it; small enough
-    /// that a regression fails inside the suite's patience.
-    public static let deactivationHoldCap: Duration = .seconds(5)
+    /// that a regression's block eventually releases the thread instead of
+    /// hanging the suite forever.
+    ///
+    /// 60s = 2x the suite's 30s `stallTolerantTimeout` wait bound, ~6x the
+    /// ~10.5s stall measured in CI run 31205214380 (#807). It was 5s — 6x
+    /// *below* that same stall — meaning the stall could lapse this cap
+    /// mid-hold and produce a misleading failure (e.g.
+    /// `playDoesNotBlockBehindDeactivation` reporting "the freeze moved from
+    /// the pause tap to the play tap" for what was really just scheduler
+    /// starvation) rather than the deadlock backstop this cap is meant to be.
+    public static let deactivationHoldCap: Duration = .seconds(60)
 
     /// When true, `setActive(false, …)` throws. Deactivation otherwise always
     /// succeeds — `shouldThrowOnSetActive` only models activation failures.
