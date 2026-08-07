@@ -118,6 +118,14 @@ DESTINATION="platform=iOS Simulator,${SIMULATOR}"
 
 # ---------------------------------------------------------------------------
 # Compute affected test scope
+#
+# Both the --full path and the normal diff-based path delegate entirely to
+# .github/scripts/affected-tests.sh — neither carries its own copy of "what
+# runs when everything runs" (the spm_all / skip list inside
+# run_all_and_exit). That duplication is exactly what let this script's
+# --full path drift from CI: it kept hosting ColorPalette long after #394
+# moved it off SPM_RUNNABLE in the CI script, because the two lists lived in
+# two places and only one got the fix. See #797.
 # ---------------------------------------------------------------------------
 
 SKIP_FLAGS="-skip-testing:WXYCUITests -skip-testing:CoreTests"
@@ -135,20 +143,28 @@ if (( FORCE_FULL == 0 )); then
     fi
 fi
 
-if (( FORCE_FULL == 1 )); then
-    RUN_ALL="true"
-    XCB_REQUIRED="true"
-    # Match affected-tests.sh's run_all_and_exit: swift-test all SPM-runnable
-    # packages on host, xcodebuild runs the rest (skip spm-covered targets to
-    # avoid double coverage).
-    SPM_AFFECTED="AnalyticsMacros Core Caching Analytics ColorPalette Playlist LikedSongs"
-    SKIP_FLAGS="-skip-testing:WXYCUITests \
--skip-testing:AnalyticsMacrosTests \
--skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests \
--skip-testing:ColorPaletteTests -skip-testing:PlaylistTests -skip-testing:LikedSongsTests"
-fi
+STDERR_FILE=$(mktemp)
+OUTPUT_FILE=$(mktemp)
 
-if (( FORCE_FULL == 0 )); then
+if (( FORCE_FULL == 1 )); then
+    # FORCE_RUN_ALL=true makes affected-tests.sh jump straight to
+    # run_all_and_exit, emitting the exact same spm_all/skip lists CI's
+    # workflow_dispatch run gets — no second copy to drift.
+    (
+        export FORCE_RUN_ALL=true
+        export GITHUB_OUTPUT="$OUTPUT_FILE"
+        zsh .github/scripts/affected-tests.sh
+    ) > /dev/null 2> "$STDERR_FILE" || {
+        echo "affected-tests.sh failed under FORCE_RUN_ALL=true (no further fallback for --full)" >&2
+        if [[ -s "$STDERR_FILE" ]]; then
+            echo "--- affected-tests.sh stderr ---" >&2
+            cat "$STDERR_FILE" >&2
+            echo "--------------------------------" >&2
+        fi
+        rm -f "$OUTPUT_FILE" "$STDERR_FILE"
+        exit 1
+    }
+else
     # Local diff: use the merge-base of HEAD and BASE_REF so phantom changes
     # from a moved-ahead origin/master don't inflate the affected set. Then
     # layer working-tree (staged + unstaged) and untracked non-ignored files.
@@ -164,8 +180,6 @@ if (( FORCE_FULL == 0 )); then
         } | grep -v -E '(^|/)(\.DS_Store|Package\.resolved)$' || true
     )
 
-    STDERR_FILE=$(mktemp)
-    OUTPUT_FILE=$(mktemp)
     # Containment: subshell isolates `set -e`, `exit 0` in run-all path, and
     # cwd changes inside the script. Stdout is silenced (success-path chatter),
     # but stderr is captured to a tempfile and dumped on failure so a future
@@ -187,21 +201,21 @@ if (( FORCE_FULL == 0 )); then
         RUN_ALL="true"
         XCB_REQUIRED="true"
     }
-    rm -f "$STDERR_FILE"
+fi
+rm -f "$STDERR_FILE"
 
-    if [[ -n "$OUTPUT_FILE" && -s "$OUTPUT_FILE" ]]; then
-        while IFS='=' read -r key value; do
-            case "$key" in
-                run_all)            RUN_ALL="$value" ;;
-                skip_testing_flags) SKIP_FLAGS="$value" ;;
-                only_testing_flags) ONLY_FLAGS="$value" ;;
-                spm_affected)       SPM_AFFECTED="$value" ;;
-                xcb_required)       XCB_REQUIRED="$value" ;;
-                affected_summary)   AFFECTED_SUMMARY="$value" ;;
-            esac
-        done < "$OUTPUT_FILE"
-        rm -f "$OUTPUT_FILE"
-    fi
+if [[ -n "$OUTPUT_FILE" && -s "$OUTPUT_FILE" ]]; then
+    while IFS='=' read -r key value; do
+        case "$key" in
+            run_all)            RUN_ALL="$value" ;;
+            skip_testing_flags) SKIP_FLAGS="$value" ;;
+            only_testing_flags) ONLY_FLAGS="$value" ;;
+            spm_affected)       SPM_AFFECTED="$value" ;;
+            xcb_required)       XCB_REQUIRED="$value" ;;
+            affected_summary)   AFFECTED_SUMMARY="$value" ;;
+        esac
+    done < "$OUTPUT_FILE"
+    rm -f "$OUTPUT_FILE"
 fi
 
 if (( SKIP_SPM == 1 )); then
