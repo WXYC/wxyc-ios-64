@@ -174,6 +174,7 @@ private extension TicketColors {
             bodyInk: HSBAlpha(hue: 185, saturation: 0.20, brightness: 1.00, alpha: 1),
             edge: HSBAlpha(hue: 185, saturation: 0.50, brightness: 0.85, alpha: 0.48)
         ),
-        override: nil
+        override: nil,
+        accent: AccentColor(hue: 185.41, saturation: 0.667)
     )
 }
