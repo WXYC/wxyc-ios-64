@@ -227,7 +227,13 @@ public final class AudioPlayerController {
 
     // MARK: - State
 
-    private var wasPlayingBeforeInterruption = false
+    /// Whether playback was active immediately before the last route
+    /// disconnect (e.g. headphones unplugged), so a later reconnect knows
+    /// whether to resume. `wasPlayingBeforeInterruption` has no equivalent
+    /// field here — it moved entirely into `PlaybackInterruptionRouteHandler`
+    /// (#756), since neither controller read it outside interruption
+    /// handling. This flag stays controller-owned because `play()` and
+    /// `PlaybackStopTeardown` also touch it.
     private var wasPlayingBeforeRouteDisconnect = false
     /// Tracks if we intend to be playing (survives transient state changes)
     private var playbackIntended = false
@@ -271,9 +277,22 @@ public final class AudioPlayerController {
     /// minute. Injectable so tests can use a short interval and observe
     /// several ticks quickly.
     private let heartbeatInterval: Duration
-    @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
-    @ObservationIgnored private var interruptionObservation: (any NSObjectProtocol)?
-    @ObservationIgnored private var routeChangeObservation: (any NSObjectProtocol)?
+    /// Owns the `playback_heartbeat` cancel-then-loop-sleep-emit task shape
+    /// (#666), extracted into `PlaybackCore` so both this controller and
+    /// `RadioPlayerController` compose the same implementation instead of
+    /// each maintaining a byte-identical copy (#755). Populated by
+    /// `setUpHeartbeat()`, called at the end of `init` — its `onTick`
+    /// closure captures `self` weakly, which Swift only permits once every
+    /// other stored property has a value (mirrors `setUpCPUAggregator()`).
+    @ObservationIgnored private var heartbeat: PlaybackHeartbeat?
+    #if os(iOS) || os(tvOS)
+    /// Owns the interruption/route-change notification subscription, the
+    /// case switch, and the shared `PlaybackStoppedEvent` capture (#756),
+    /// extracted into `PlaybackCore` so both this controller and
+    /// `RadioPlayerController` compose the same implementation instead of
+    /// each maintaining a duplicated copy. Populated by `setUpNotifications()`.
+    @ObservationIgnored private var interruptionRouteHandler: PlaybackInterruptionRouteHandler?
+    #endif
     @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
 
     @ObservationIgnored private var eventTask: Task<Void, Never>?
@@ -476,6 +495,7 @@ public final class AudioPlayerController {
         setUpNotifications()
         setUpPlayerObservation()
         setUpCPUAggregator()
+        setUpHeartbeat()
         applyPersistedGain()
     }
     #else
@@ -508,6 +528,7 @@ public final class AudioPlayerController {
 
         setUpPlayerObservation()
         setUpCPUAggregator()
+        setUpHeartbeat()
         applyPersistedGain()
     }
     #endif
@@ -519,13 +540,12 @@ public final class AudioPlayerController {
         reconnectTask?.cancel()
         reachabilityMonitorTask?.cancel()
         startupWatchdogTask?.cancel()
-        heartbeatTask?.cancel()
+        heartbeat?.stop()
         #if os(iOS) || os(tvOS)
         sessionActivationRetryTask?.cancel()
-        #endif
-        if let interruptionObservation { notificationCenter.removeObserver(interruptionObservation) }
-        if let routeChangeObservation { notificationCenter.removeObserver(routeChangeObservation) }
-        #if os(iOS) || os(tvOS)
+        // interruptionRouteHandler's own deinit removes its notification
+        // observers; nothing to do here beyond releasing the reference,
+        // which happens automatically once this deinit body returns.
         removeRemoteCommandTargets()
         #endif
     }
@@ -642,28 +662,28 @@ public final class AudioPlayerController {
         Log(.info, category: .playback, "Stop requested (reason: \(reason.rawValue))")
         cpuAggregator?.endSession(reason: .userStopped)
 
-        reconnectTask?.cancel()
-        reconnectTask = nil
         leaveHoldingPattern()
         disarmStartupWatchdog()
-        stopHeartbeat()
-        backoffTimer.reset()
+        // Shared six-step teardown (#755): cancels the reconnect, resets
+        // backoff, stops the heartbeat, clears playback intent, and applies
+        // the #665 sessionID-survival rule. See `PlaybackStopTeardown`.
+        PlaybackStopTeardown.run(
+            reason: reason,
+            cancelReconnect: {
+                reconnectTask?.cancel()
+                reconnectTask = nil
+            },
+            resetBackoff: { backoffTimer.reset() },
+            stopHeartbeat: { heartbeat?.stop() },
+            playbackIntended: &playbackIntended,
+            wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
+            sessionID: &sessionID
+        )
 
-        playbackIntended = false
         stallStartTime = nil
-        if reason != .routeDisconnected {
-            wasPlayingBeforeRouteDisconnect = false
-        }
         player.stop()
         playerState = player.state
         playbackTimer = nil
-        // Interruption/route-disconnect stops are an implementation detail of
-        // "pause, then auto-resume" — the listen itself isn't over, so the
-        // session id must survive them. Any other reason is a genuine end of
-        // the listen; the next `play()` mints a fresh id. See #665.
-        if reason != .interruptionBegan && reason != .routeDisconnected {
-            sessionID = nil
-        }
         #if os(iOS) || os(tvOS)
         // Cancel any deferred session-activation retry — the user (or system)
         // no longer wants playback, so we must not keep trying to interrupt.
@@ -1471,18 +1491,26 @@ public final class AudioPlayerController {
     // MARK: - Notifications (iOS/tvOS only)
 
     #if os(iOS) || os(tvOS)
+    /// Constructs the shared `PlaybackInterruptionRouteHandler` (#756). This
+    /// controller's only genuine extra beyond the shared switch is
+    /// `reactivateAfterInterruptionIfPending()` on an `.ended` that isn't
+    /// resuming prior playback — everything else (the `.interrupted` state,
+    /// the `InterruptionEvent` capture, the route-change restart fallback) is
+    /// `RadioPlayerController`-only and left at the handler's no-op defaults
+    /// here.
     private func setUpNotifications() {
-        interruptionObservation = notificationCenter.addMainActorObserver(
-            for: InterruptionMessage.self
-        ) { [weak self] message in
-            self?.handleInterruption(message)
-        }
-
-        routeChangeObservation = notificationCenter.addMainActorObserver(
-            for: RouteChangeMessage.self
-        ) { [weak self] message in
-            self?.handleRouteChange(message)
-        }
+        interruptionRouteHandler = PlaybackInterruptionRouteHandler(
+            notificationCenter: notificationCenter,
+            isPlaying: { [weak self] in self?.isPlaying ?? false },
+            sessionID: { [weak self] in self?.sessionID },
+            playbackDuration: { [weak self] in self?.playbackDuration ?? 0 },
+            analytics: analytics,
+            stop: { [weak self] reason in self?.stop(reason: reason) },
+            play: { [weak self] reason in self?.play(reason: reason) },
+            getWasPlayingBeforeRouteDisconnect: { [weak self] in self?.wasPlayingBeforeRouteDisconnect ?? false },
+            setWasPlayingBeforeRouteDisconnect: { [weak self] value in self?.wasPlayingBeforeRouteDisconnect = value },
+            onInterruptionEndedWithoutResume: { [weak self] in self?.reactivateAfterInterruptionIfPending() }
+        )
     }
     #endif
 
@@ -1565,56 +1593,6 @@ public final class AudioPlayerController {
                 // and emit a spurious playback-start. Just re-affirm the session.
                 activateAudioSession()
             }
-        }
-    }
-    #endif
-
-    #if os(iOS) || os(tvOS)
-    private func handleInterruption(_ message: InterruptionMessage) {
-        switch message.type {
-        case .began:
-            wasPlayingBeforeInterruption = isPlaying
-            if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.interruptionBegan.rawValue, source: PlaybackReason.interruptionBegan.playbackSource, duration: playbackDuration, sessionID: sessionID))
-                stop(reason: .interruptionBegan)
-            }
-
-        case .ended:
-            if message.options.contains(.shouldResume) && wasPlayingBeforeInterruption {
-                play(reason: .resumeAfterInterruption)
-            } else {
-                // No prior in-app interruption to resume from, but the system
-                // says the interruption is over. If a session activation was
-                // deferred (CannotInterruptOthers), try it now instead of
-                // waiting out the retry cadence. See #514.
-                reactivateAfterInterruptionIfPending()
-            }
-            wasPlayingBeforeInterruption = false
-
-        @unknown default:
-            break
-        }
-    }
-
-    private func handleRouteChange(_ message: RouteChangeMessage) {
-        switch message.reason {
-        case .oldDeviceUnavailable:
-            // Headphones unplugged - stop playback per Apple HIG
-            wasPlayingBeforeRouteDisconnect = isPlaying
-            if isPlaying {
-                analytics.capture(PlaybackStoppedEvent(reason: PlaybackReason.routeDisconnected.rawValue, source: PlaybackReason.routeDisconnected.playbackSource, duration: playbackDuration, sessionID: sessionID))
-                stop(reason: .routeDisconnected)
-            }
-
-        case .newDeviceAvailable:
-            // Device reconnected (e.g., AirPod reinserted) - resume if we were playing before disconnect
-            if wasPlayingBeforeRouteDisconnect {
-                play(reason: .resumeAfterRouteReconnect)
-            }
-
-        default:
-            // AudioEnginePlayer handles restarting the engine on configuration changes
-            break
         }
     }
     #endif
@@ -1846,36 +1824,30 @@ extension AudioPlayerController {
     /// `setUpPlayerObservation()`), so the cadence only ever runs while audio
     /// is genuinely rendering — not while loading, stalled, or stopped.
     ///
-    /// Idempotent by construction: cancels any prior loop first, so a
-    /// redundant `.playing` transition collapses to a single live timer
-    /// rather than stacking overlapping loops (mirrors `armStartupWatchdog()`).
-    ///
-    /// `self` is held weakly across the sleep so an armed heartbeat never
-    /// extends the controller's lifetime; only the interval is captured by value.
+    /// Delegates to the shared `PlaybackHeartbeat` component (#755); see that
+    /// type for the cancel-then-loop-sleep-emit implementation and its
+    /// lifetime guarantees.
     private func startHeartbeat() {
-        heartbeatTask?.cancel()
-        heartbeatTask = Task { [weak self, interval = heartbeatInterval] in
-            while true {
-                do {
-                    try await Task.sleep(for: interval)
-                } catch {
-                    // Cancelled mid-sleep.
-                    return
-                }
-                guard !Task.isCancelled, let self else { return }
-                self.emitHeartbeat()
-            }
-        }
+        heartbeat?.start()
     }
 
-    /// Stops the heartbeat cadence and cancels its task. Idempotent — safe to
-    /// call whether or not a heartbeat is currently running. Called on every
-    /// transition away from `.playing` in `setUpPlayerObservation()`, and
-    /// explicitly from `stop(reason:)` for an immediate cancellation
-    /// guarantee that doesn't wait on the async state-stream round-trip.
+    /// Stops the heartbeat cadence. Idempotent — safe to call whether or not
+    /// a heartbeat is currently running. Called on every transition away from
+    /// `.playing` in `setUpPlayerObservation()`, and explicitly from
+    /// `stop(reason:)` for an immediate cancellation guarantee that doesn't
+    /// wait on the async state-stream round-trip.
     private func stopHeartbeat() {
-        heartbeatTask?.cancel()
-        heartbeatTask = nil
+        heartbeat?.stop()
+    }
+
+    /// Creates the `PlaybackHeartbeat` component. Called at the end of
+    /// `init` (mirroring `setUpCPUAggregator()`) because its `onTick`
+    /// closure captures `self` weakly, which Swift only permits once every
+    /// stored property already has a value.
+    private func setUpHeartbeat() {
+        heartbeat = PlaybackHeartbeat(interval: heartbeatInterval) { [weak self] in
+            self?.emitHeartbeat()
+        }
     }
 
     /// Captures one `PlaybackHeartbeatEvent` using the same monotonic

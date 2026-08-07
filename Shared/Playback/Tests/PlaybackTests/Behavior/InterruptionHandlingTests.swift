@@ -85,5 +85,62 @@ struct InterruptionHandlingTests {
         #expect(harness.playCallCount > playCountBefore,
                "Interruption ended with shouldResume should resume playback")
     }
+
+    // MARK: - RadioPlayerController-only extras (#756)
+
+    /// RadioPlayerController, unlike AudioPlayerController, tracks interruption
+    /// as a controller-level `.interrupted` state (`PlayerState` itself has no
+    /// such case — see `PlayerState.swift`) so a view can distinguish "stopped
+    /// because of an interruption" from an ordinary idle stop. This must be
+    /// set on every `.began`, whether or not playback was actually active.
+    @Test("RadioPlayerController enters .interrupted state on interruption began, whether or not playback was active")
+    func radioPlayerControllerEntersInterruptedState() async {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
+        #expect(!harness.controller.isPlaying)
+
+        harness.postInterruptionBegan(shouldResume: false)
+        await harness.waitForAsync()
+
+        #expect(harness.controller.state == .interrupted,
+               "RadioPlayerController should enter .interrupted even when nothing was playing")
+    }
+
+    /// RadioPlayerController captures a dedicated `InterruptionEvent` in
+    /// addition to the shared `PlaybackStoppedEvent` — AudioPlayerController
+    /// does not. This is a genuine per-controller extra (#756), not
+    /// duplicated shared behavior.
+    @Test("RadioPlayerController captures InterruptionEvent when interruption begins while playing")
+    func radioPlayerControllerCapturesInterruptionEvent() async {
+        let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+        #expect(harness.controller.isPlaying)
+
+        harness.postInterruptionBegan(shouldResume: false)
+        await harness.waitForAsync()
+
+        let interruptionEvents = harness.mockAnalytics.events.compactMap { $0 as? InterruptionEvent }
+        #expect(interruptionEvents.count == 1)
+        #expect(interruptionEvents.first?.type == .began)
+    }
+
+    /// AudioPlayerController has no equivalent `InterruptionEvent` capture —
+    /// pins the negative side of the same #756 contract.
+    @Test("AudioPlayerController does not capture InterruptionEvent on interruption began")
+    func audioPlayerControllerDoesNotCaptureInterruptionEvent() async {
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        harness.postInterruptionBegan(shouldResume: false)
+        await harness.waitForAsync()
+
+        let interruptionEvents = harness.mockAnalytics.events.compactMap { $0 as? InterruptionEvent }
+        #expect(interruptionEvents.isEmpty)
+    }
 }
 #endif
