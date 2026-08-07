@@ -26,9 +26,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.SUBMODULE_TOKEN }}
+        # This repo uses the built-in GITHUB_TOKEN; the private Wallpaper
+        # submodule is fetched in the next step with a read-only deploy key.
+        # See build-and-test.yml for why the two are kept separate.
+
+      - name: Check out the Wallpaper submodule
+        env:
+          WALLPAPER_DEPLOY_KEY: ${{ secrets.WALLPAPER_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${WALLPAPER_DEPLOY_KEY:-}" ]]; then
+            echo "::error::WALLPAPER_DEPLOY_KEY is empty — the Wallpaper submodule cannot be fetched." >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$WALLPAPER_DEPLOY_KEY" > "$HOME/.ssh/wallpaper_deploy_key"
+          chmod 600 "$HOME/.ssh/wallpaper_deploy_key"
+          ssh-keyscan -t ed25519 github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/wallpaper_deploy_key -o IdentitiesOnly=yes -o IdentityAgent=none"
+          git submodule update --init --recursive
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
