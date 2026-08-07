@@ -26,16 +26,16 @@ struct FileStorageTests {
 
     @Test("A fresh AppSupportFileStorage with no file yet returns nil")
     func loadWithNoFileReturnsNil() throws {
-        let (storage, subdirectory) = makeAppSupportFileStorage()
-        defer { removeApplicationSupportSubdirectory(subdirectory) }
+        let (storage, sandbox) = makeAppSupportFileStorage()
+        defer { removeSandbox(sandbox) }
 
         #expect(try storage.load() == nil)
     }
 
     @Test("save then load round-trips the exact bytes")
     func saveThenLoadRoundTrips() throws {
-        let (storage, subdirectory) = makeAppSupportFileStorage()
-        defer { removeApplicationSupportSubdirectory(subdirectory) }
+        let (storage, sandbox) = makeAppSupportFileStorage()
+        defer { removeSandbox(sandbox) }
 
         let payload = Data("liked-songs-fixture".utf8)
         try storage.save(payload)
@@ -44,8 +44,8 @@ struct FileStorageTests {
 
     @Test("A second save atomically replaces the first")
     func secondSaveReplacesFirst() throws {
-        let (storage, subdirectory) = makeAppSupportFileStorage()
-        defer { removeApplicationSupportSubdirectory(subdirectory) }
+        let (storage, sandbox) = makeAppSupportFileStorage()
+        defer { removeSandbox(sandbox) }
 
         try storage.save(Data("first".utf8))
         try storage.save(Data("second".utf8))
@@ -54,9 +54,9 @@ struct FileStorageTests {
 
     @Test("save creates any missing intermediate directories")
     func saveCreatesIntermediateDirectories() throws {
-        let subdirectory = "filestorage-test-\(UUID().uuidString)"
-        let storage = AppSupportFileStorage(filename: "\(subdirectory)/nested/store.json")
-        defer { removeApplicationSupportSubdirectory(subdirectory) }
+        let sandbox = makeSandbox()
+        let storage = AppSupportFileStorage(directory: sandbox, filename: "nested/store.json")
+        defer { removeSandbox(sandbox) }
 
         try storage.save(Data("nested".utf8))
         #expect(try storage.load() == Data("nested".utf8))
@@ -64,22 +64,30 @@ struct FileStorageTests {
 
     @Test("fileURL exposes the resolved path so callers can pin which file a store targets")
     func fileURLReflectsTheFilename() {
-        let subdirectory = "filestorage-test-\(UUID().uuidString)"
-        let storage = AppSupportFileStorage(filename: "\(subdirectory)/store.json")
-        defer { removeApplicationSupportSubdirectory(subdirectory) }
+        let sandbox = makeSandbox()
+        let storage = AppSupportFileStorage(directory: sandbox, filename: "store.json")
+        defer { removeSandbox(sandbox) }
 
         #expect(storage.fileURL.lastPathComponent == "store.json")
     }
 
-    @Test("A flat filename directly under Application Support round-trips")
+    @Test("A flat filename directly under the storage root round-trips")
     func flatFilenameRoundTrips() throws {
-        // Production callers (Singletonia) pass a flat name like "liked-songs.json"
-        // with no subdirectory, so `deletingLastPathComponent()` in `save(_:)`
-        // resolves to the Application Support root itself. The other tests above
-        // only ever exercise the nested "<uuid>/store.json" shape.
-        let filename = "filestorage-flat-test-\(UUID().uuidString).json"
-        let storage = AppSupportFileStorage(filename: filename)
-        defer { removeApplicationSupportFile(filename) }
+        // Production callers (Singletonia) pass a flat name like
+        // "liked-songs.json" with no subdirectory, so
+        // `deletingLastPathComponent()` in `save(_:)` resolves to the storage
+        // root itself. The other tests above only ever exercise the nested
+        // "<subdirectory>/store.json" shape.
+        //
+        // Against Application Support this case used to be weaker than it
+        // looked: that directory always already exists, so `save(_:)`'s
+        // `createDirectory` call was a no-op here and went unverified. The
+        // sandbox root does not exist until `save(_:)` creates it, so the flat
+        // case now exercises the same directory creation the nested ones do.
+        let sandbox = makeSandbox()
+        let filename = "liked-songs.json"
+        let storage = AppSupportFileStorage(directory: sandbox, filename: filename)
+        defer { removeSandbox(sandbox) }
 
         #expect(storage.fileURL.lastPathComponent == filename)
         try storage.save(Data("flat".utf8))
@@ -114,22 +122,27 @@ struct FileStorageTests {
 
     // MARK: - Helpers
 
-    private func makeAppSupportFileStorage() -> (AppSupportFileStorage, subdirectory: String) {
-        let subdirectory = "filestorage-test-\(UUID().uuidString)"
-        return (AppSupportFileStorage(filename: "\(subdirectory)/store.json"), subdirectory)
+    /// A unique temporary directory standing in for Application Support.
+    ///
+    /// These tests exercise the real `AppSupportFileStorage` -- its atomic
+    /// write, its intermediate-directory creation, its `fileURL` resolution --
+    /// so they need a real directory, but not *that* directory. Under
+    /// `WXYC.xctestplan` the Application Support root is the WXYC app's own
+    /// container, holding the user's real `liked-songs.json` and
+    /// `dismissed-concerts.json`; a run killed mid-test used to leave fixture
+    /// files sitting beside them, because cleanup is a best-effort `defer`.
+    /// Leaking into `NSTemporaryDirectory()` costs nothing.
+    private func makeSandbox() -> URL {
+        FileManager.default.temporaryDirectory
+            .appending(path: "filestorage-test-\(UUID().uuidString)", directoryHint: .isDirectory)
     }
 
-    private func removeApplicationSupportSubdirectory(_ subdirectory: String) {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return
-        }
-        try? FileManager.default.removeItem(at: base.appending(path: subdirectory))
+    private func makeAppSupportFileStorage() -> (AppSupportFileStorage, sandbox: URL) {
+        let sandbox = makeSandbox()
+        return (AppSupportFileStorage(directory: sandbox, filename: "store.json"), sandbox)
     }
 
-    private func removeApplicationSupportFile(_ filename: String) {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return
-        }
-        try? FileManager.default.removeItem(at: base.appending(path: filename))
+    private func removeSandbox(_ sandbox: URL) {
+        try? FileManager.default.removeItem(at: sandbox)
     }
 }
