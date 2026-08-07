@@ -24,6 +24,29 @@ struct FileStorageTests {
 
     // MARK: - AppSupportFileStorage
 
+    /// The one test that goes through the production `init(filename:)`.
+    ///
+    /// Every other `AppSupportFileStorage` test below uses the
+    /// `init(directory:filename:)` sandbox seam, so without this the base
+    /// directory would be pinned by nothing: swapping
+    /// `.applicationSupportDirectory` for `.documentDirectory` would leave the
+    /// whole suite green while relocating the user's liked songs and dismissed
+    /// concerts. `Singletonia` builds both of its stores through this init and
+    /// no other.
+    ///
+    /// Pure path arithmetic -- no `save`, so this doesn't reintroduce the
+    /// container writes the sandbox seam exists to avoid.
+    @Test("init(filename:) resolves against Application Support")
+    func publicInitResolvesUnderApplicationSupport() throws {
+        let base = try #require(
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        )
+
+        let storage = AppSupportFileStorage(filename: "liked-songs.json")
+
+        #expect(storage.fileURL == base.appendingPathComponent("liked-songs.json"))
+    }
+
     @Test("A fresh AppSupportFileStorage with no file yet returns nil")
     func loadWithNoFileReturnsNil() throws {
         let (storage, sandbox) = makeAppSupportFileStorage()

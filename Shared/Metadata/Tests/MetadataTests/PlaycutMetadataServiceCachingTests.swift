@@ -172,6 +172,15 @@ final class MetadataMockWebSession: @unchecked Sendable {
 @Suite("PlaycutMetadataService Caching Tests", .serialized)
 struct PlaycutMetadataServiceCachingTests {
 
+    /// The complete set of proxy endpoints `PlaycutMetadataService` is allowed
+    /// to reach. Deliberately does NOT include `/proxy/entity/resolve`: that
+    /// endpoint belongs to `DiscogsAPIEntityResolver`, and this service has no
+    /// path to it.
+    static let expectedProxyEndpointPaths: Set<String> = [
+        "/proxy/metadata/album",
+        "/proxy/metadata/artist",
+    ]
+
     /// Pins the exact proxy endpoint paths.
     ///
     /// Every other test in this file stubs responses by substring
@@ -186,15 +195,6 @@ struct PlaycutMetadataServiceCachingTests {
     /// Asserts on `url.path` rather than `absoluteString` so a query-parameter
     /// change doesn't fail this test for an unrelated reason — the same
     /// convention `ConcertsFetcherTests` uses for `/concerts`.
-    /// The complete set of proxy endpoints `PlaycutMetadataService` is allowed
-    /// to reach. Deliberately does NOT include `/proxy/entity/resolve`: that
-    /// endpoint belongs to `DiscogsAPIEntityResolver`, and this service has no
-    /// path to it.
-    static let expectedProxyEndpointPaths: Set<String> = [
-        "/proxy/metadata/album",
-        "/proxy/metadata/artist",
-    ]
-
     @Test("Requests the exact proxy endpoint paths, not merely paths containing them")
     func requestsExactProxyEndpointPaths() async throws {
         let mockCache = PlaycutMetadataMockCache()
