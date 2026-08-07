@@ -35,9 +35,16 @@
 //    ordering guarantee that a second, stacked loop has also parked by
 //    the time the first one satisfies a poll. Distinguishing "one loop"
 //    from "two stacked loops" needs a quiescence point both loops are
-//    guaranteed to have passed — `requestedDurations.count`, which grows
-//    synchronously on *entry* to `sleep(for:)`, before either loop's own
-//    suspension — not a race against whichever arm parks first.
+//    guaranteed to have passed — `requestedDurations.count`. It is not
+//    enough that `sleep(for:)` records the duration before parking with
+//    no `await` in between: two separate lock acquisitions are two
+//    separate windows to a concurrent observer regardless of Swift-level
+//    suspension points, since an OS thread can be preempted between one
+//    lock and the next. `StartupWatchdogGate` therefore records the
+//    duration inside the *same* critical section as the cancelled/fire/
+//    park decision (#807 review), so observing the count under its own
+//    lock is synchronized with that decision rather than merely close to
+//    it in program order.
 //
 //  `waitForArm` and `pollUntil` both default to a 5s timeout — half the
 //  measured 10.5s stall (#807) — so every call below passes an explicit
@@ -168,13 +175,18 @@ struct PlaybackHeartbeatComponentTests {
         // independently of the polling `pollUntil` inside `waitForArm()` —
         // there is no guarantee the second loop has parked by the time the
         // first satisfies the poll. `requestedDurations.count` is the
-        // quiescence point instead: it grows synchronously on *entry* to
-        // `sleep(for:)`, in the same uninterrupted synchronous prefix that
-        // parks the arm a few lines later, with no suspension point between
-        // the two — so observing it reach 2 on the main actor guarantees
-        // both loops have also already reached their parking decision
-        // (whether that decision is "park" or, for a properly-cancelled
-        // first loop, "retire without parking at all").
+        // quiescence point instead — but only because `StartupWatchdogGate`
+        // records each duration in the *same* critical section as its
+        // cancelled/fire/park decision (#807 review), not merely before it
+        // with no `await` in between: two separate lock acquisitions would
+        // still be two separate windows to a concurrent observer, since an
+        // OS thread can be preempted between releasing one lock and
+        // acquiring the next regardless of Swift-level suspension points.
+        // Observing the count reach 2 *under that same lock* is therefore
+        // synchronized with both loops' parking decisions (whether that
+        // decision is "park" or, for a properly-cancelled first loop,
+        // "retire without parking at all") — not merely close to them in
+        // program order.
         await pollUntil({ gate.requestedDurations.count == 2 }, timeout: Self.stallTolerantTimeout)
         try #require(gate.requestedDurations.count == 2, "not both start() loops reached sleep(for:) — pendingArmCount below would be meaningless")
         #expect(gate.pendingArmCount == 1, "start() called twice left \(gate.pendingArmCount) arms parked — a stacked loop, not a single collapsed one")
@@ -184,6 +196,14 @@ struct PlaybackHeartbeatComponentTests {
         #expect(tickCount == 1, "The surviving loop should still be ticking")
 
         heartbeat.stop()
+
+        // Drains the other loop's arm on the regressed (stacked) path:
+        // `stop()` cancels only the task the `task` property currently
+        // holds, so a stacked second loop's `CheckedContinuation` would
+        // otherwise strand past this test's lifetime and add
+        // "SWIFT TASK CONTINUATION MISUSE" noise alongside the real
+        // failure above.
+        gate.releaseAll()
     }
 
     @Test("a heartbeat released without stop() stops ticking")

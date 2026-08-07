@@ -93,13 +93,25 @@ public final class StartupWatchdogGate: @unchecked Sendable {
     public func sleep(for duration: Duration) async throws {
         let id = state.withLock { state -> UInt64 in
             state.nextArmID += 1
-            state.requestedDurations.append(duration)
             return state.nextArmID
         }
 
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
                 let resumption = state.withLock { state -> Resumption? in
+                    // Recorded here, in the same critical section as the
+                    // cancelled/fire/park decision below, not in the id-
+                    // allocating section above. Two separate lock
+                    // acquisitions are two separate windows to a concurrent
+                    // observer even with no `await` between them — an OS
+                    // thread can be preempted between releasing one lock and
+                    // acquiring the next regardless of Swift-level suspension
+                    // points — so a reader taking this lock to check
+                    // `requestedDurations.count` must see it change exactly
+                    // when the arm's disposition (parked, fired, or retired)
+                    // also changes, or the count is not a trustworthy
+                    // quiescence point. See #807.
+                    state.requestedDurations.append(duration)
                     if state.cancelledBeforeParking.remove(id) != nil { return .cancelled }
                     if state.permits > 0 {
                         state.permits -= 1
@@ -150,10 +162,15 @@ public final class StartupWatchdogGate: @unchecked Sendable {
         state.withLock { $0.fireCount }
     }
 
-    /// Every `duration` passed to ``sleep(for:)``, in arm order. The gate
-    /// ignores these when deciding *when* to fire, so this is what keeps the
-    /// deadline arithmetic behind them (clamping, relative ordering between two
-    /// layers' watchdogs) under test rather than merely configured.
+    /// Every `duration` passed to ``sleep(for:)``, in the order each arm's
+    /// cancelled/fired/parked disposition was decided — not necessarily the
+    /// order `sleep(for:)` was *called*, which two arms racing for the lock
+    /// can reorder. For a single caller driving one arm at a time (by far
+    /// the common case, and every existing use of this property) the two
+    /// orders coincide. The gate ignores these when deciding *when* to fire,
+    /// so this is what keeps the deadline arithmetic behind them (clamping,
+    /// relative ordering between two layers' watchdogs) under test rather
+    /// than merely configured.
     public var requestedDurations: [Duration] {
         state.withLock { $0.requestedDurations }
     }
