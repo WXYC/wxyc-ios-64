@@ -16,13 +16,17 @@ import Concerts
 
 extension Venue {
     /// Creates a `Venue` with sensible defaults for testing (Cat's Cradle).
+    ///
+    /// Defaults read from ``Venue/catsCradle`` in `Concerts` rather than
+    /// restating the literal, so the stub venue and the app-preview venue can
+    /// never disagree (#771).
     public static func stub(
-        id: Int = 3,
-        slug: String = "cats-cradle",
-        name: String = "Cat's Cradle",
-        city: String = "Carrboro",
-        state: String = "NC",
-        address: String? = "300 E Main St"
+        id: Int = Venue.catsCradle.id,
+        slug: String = Venue.catsCradle.slug,
+        name: String = Venue.catsCradle.name,
+        city: String = Venue.catsCradle.city,
+        state: String = Venue.catsCradle.state,
+        address: String? = Venue.catsCradle.address
     ) -> Venue {
         Venue(id: id, slug: slug, name: name, city: city, state: state, address: address)
     }
@@ -30,27 +34,21 @@ extension Venue {
 
 extension Concert {
     /// A fixed, deterministic default `starts_on` (2026-08-01, station zone) for
-    /// stubs. Falls back to a fixed epoch offset so the helper stays
-    /// force-unwrap-free.
-    public static let defaultStartsOn: Date = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        let components = DateComponents(year: 2026, month: 8, day: 1)
-        return calendar.date(from: components) ?? Date(timeIntervalSince1970: 1_785_898_800)
-    }()
+    /// stubs.
+    ///
+    /// The test-facing spelling of ``Concert/fixtureStartsOn``, which `Concerts`
+    /// owns. Kept as its own name because ~100 call sites read `defaultStartsOn`
+    /// and the two vocabularies (stub / fixture) are worth keeping legible.
+    public static var defaultStartsOn: Date { fixtureStartsOn }
 
     /// Builds an instant on the default `starts_on` day at a station-zone
     /// wall-clock `hour`/`minute` — the ergonomic replacement for the old
     /// `HH:mm:ss` time strings. Returns `nil` for `nil` input so a caller can
     /// express "no doors/show time".
+    ///
+    /// Forwards to ``Concert/fixtureInstant(hour:minute:)``.
     public static func stubInstant(hour: Int?, minute: Int = 0) -> Date? {
-        guard let hour else { return nil }
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        var components = calendar.dateComponents([.year, .month, .day], from: defaultStartsOn)
-        components.hour = hour
-        components.minute = minute
-        return calendar.date(from: components)
+        fixtureInstant(hour: hour, minute: minute)
     }
 
     /// Creates a `Concert` with sensible defaults for testing.
