@@ -19,10 +19,10 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import ColorPalette
 import Concerts
 import SwiftUI
 import Wallpaper
+import WXUI
 
 struct OnTourRowBadge: View {
     let show: Concert

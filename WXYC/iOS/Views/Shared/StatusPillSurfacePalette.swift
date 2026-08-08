@@ -28,7 +28,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Playlist
+import ColorPalette
 import SwiftUI
 import WXUI
 
