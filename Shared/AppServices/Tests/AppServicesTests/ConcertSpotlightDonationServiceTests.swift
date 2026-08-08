@@ -48,8 +48,11 @@ struct ConcertSpotlightDonationServiceTests {
         let donation = try #require(await indexer.indexCalls.first?.donations.first)
 
         // Built independently of the service's own station-zone constants so
-        // the assertion can't pass by construction.
-        let eastern = TimeZone.wxycStation
+        // the assertion can't pass by construction. Spelled as a literal, not
+        // `TimeZone.wxycStation`: the production side derives the expiry from
+        // that same constant, so sharing it here would make this assertion
+        // agree with the code under test no matter what the constant said.
+        let eastern = try #require(TimeZone(identifier: "America/New_York"))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = eastern
         let expected = try #require(calendar.dateInterval(of: .day, for: Concert.defaultStartsOn)?.end)
@@ -317,7 +320,8 @@ struct ConcertSpotlightDonationServiceTests {
         let expectedID = try #require(ConcertID(concertID: 1))
         #expect(secondDonations.map(\.entity.id) == [expectedID]) // single-row re-donation, control untouched
 
-        let eastern = TimeZone.wxycStation
+        // Literal, not `TimeZone.wxycStation` — see the expiry assertion above.
+        let eastern = try #require(TimeZone(identifier: "America/New_York"))
         var stationCalendar = Calendar(identifier: .gregorian)
         stationCalendar.timeZone = eastern
         let expectedExpiration = try #require(stationCalendar.dateInterval(of: .day, for: newDate)?.end)

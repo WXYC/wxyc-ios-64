@@ -83,7 +83,11 @@ struct ConcertSpotlightDonationServiceDebugRowsTests {
         let concert = Concert.stub(id: 1, startsOn: Concert.defaultStartsOn)
         await service.reconcile(window: [concert])
 
-        let eastern = TimeZone.wxycStation
+        // Literal, not `TimeZone.wxycStation`: this asserts that `debugRows`
+        // reports the same expiry `reconcile` donated, and the production side
+        // derives that from the constant — sharing it would make the assertion
+        // hold for any value of the constant.
+        let eastern = try #require(TimeZone(identifier: "America/New_York"))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = eastern
         let expected = try #require(calendar.dateInterval(of: .day, for: Concert.defaultStartsOn)?.end)
