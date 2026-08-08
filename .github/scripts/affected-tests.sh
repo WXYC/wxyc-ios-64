@@ -176,7 +176,7 @@ DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger Inten
 DEPS[Intents]="Analytics Caching Concerts Core Logger Playback Playlist"
 DEPS[Concerts]="Core Logger"
 # Packages without test targets (included as dependency intermediaries)
-DEPS[DebugPanel]="AppServices Caching Playback Playlist Wallpaper PlayerHeaderView WXUI"
+DEPS[DebugPanel]="AppServices Caching ColorPalette Playback Playlist Wallpaper PlayerHeaderView WXUI"
 DEPS[PartyHorn]=""
 # Vendored generated DTOs (no test target). A Metadata (runtime) dep and a
 # PlaylistTests-target dep; listed on both above so a change to it marks
