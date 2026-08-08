@@ -56,8 +56,13 @@ extension Concert {
     /// Times default to 7 PM doors / 8 PM show (station zone). Pass
     /// `doorsAt: nil` / `startsAt: nil` for a date-only concert. Use
     /// ``stubInstant(hour:minute:)`` to build other wall-clock times.
+    ///
+    /// `id` and `ticketURL` read from `Concerts`' fixture literals rather than
+    /// restating them, so the stub and the app-preview fixture can never
+    /// disagree. `eventURL` deliberately stays `nil` — see
+    /// ``Concert/fixtureEventURL``.
     public static func stub(
-        id: Int = 4821,
+        id: Int = Concert.fixtureId,
         venue: Venue = .stub(),
         startsOn: Date? = nil,
         startsAt: Date? = Concert.stubInstant(hour: 20),
@@ -66,7 +71,7 @@ extension Concert {
         headliningArtistId: Int? = 512,
         title: String? = nil,
         supportingArtistsRaw: [String] = ["Julie Byrne"],
-        ticketURL: URL? = URL(string: "https://www.etix.com/ticket/p/jessica-pratt"),
+        ticketURL: URL? = Concert.fixtureTicketURL,
         imageURL: URL? = nil,
         eventURL: URL? = nil,
         priceMin: Double? = 22.0,
