@@ -302,21 +302,26 @@ TEST_TARGETS[WXUI]="WXUITests"
 #                             `scripts/verify-spm-parity.sh ColorPalette`
 #                             (added by #797, which is also why this is an
 #                             exact rerunnable command and not just a
-#                             description): 21 executed on host, 44 on the
+#                             description): 29 executed on host, 52 on the
 #                             simulator, a 23-test gap — it fails the check
 #                             as expected. Run via xcb in the iOS simulator
-#                             instead. The earlier 25/59/34 reading counted
-#                             two suites #754 deleted, and they moved
-#                             different halves of it: ColorPaletteCacheKey-
-#                             Tests (4 tests, ungated) is the whole host-side
-#                             drop, 25 → 21, and ColorPaletteServiceTests
-#                             (11 tests, entirely inside canImport(UIKit), so
-#                             0 on host) came off the simulator alone. Sim
-#                             59 → 44 is those 15 together. The gap narrowed
-#                             by exactly the 11 gated service tests but did
-#                             not close, because DominantColorExtractorTests
-#                             (21 tests, all gated) was always the larger
-#                             half of it.
+#                             instead. The gap, not the totals, is the number
+#                             that means anything here: it has held at 23
+#                             across three readings while both totals moved,
+#                             because it is exactly DominantColorExtractor-
+#                             Tests (21 tests, whole file gated) plus the two
+#                             UIKit-bridging cases inside PaletteGenerator-
+#                             Tests ("HSBColor converts to UIColor" and
+#                             "ColorPalette uiColors returns correct count").
+#                             The 21/44 reading before this one was #767
+#                             moving HSLTests in from Playlist — 8 tests with
+#                             no UIKit gate, so they land on both sides and
+#                             cancel. The 25/59/34 reading before *that* was
+#                             #754 deleting two suites: ColorPaletteCacheKey-
+#                             Tests (4 ungated, host-side drop 25 → 21) and
+#                             ColorPaletteServiceTests (11 entirely inside
+#                             canImport(UIKit), so simulator-only). Only the
+#                             second kind moves the gap.
 #       - Artwork           — ArtworkTests bundle hangs at 0% CPU on
 #                             macos-latest paravirt (root cause unclear;
 #                             suspected module-init or shared-singleton
