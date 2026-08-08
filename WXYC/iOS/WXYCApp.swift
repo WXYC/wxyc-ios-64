@@ -40,6 +40,10 @@ private enum SettingsBundleKeys {
 
 @main
 struct WXYCApp: App {
+    // Returns PlayMediaIntentHandler for a directly-dispatched INPlayMediaIntent
+    // — the media-suggestion tile's background entry point (#829). See
+    // AppDelegate.swift for the constraints on what this type may implement.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appState = Singletonia.shared
     @State private var foregroundRefreshTask: Task<Void, Never>?
     @State private var cacheCleanupTask: Task<Void, Never>?
