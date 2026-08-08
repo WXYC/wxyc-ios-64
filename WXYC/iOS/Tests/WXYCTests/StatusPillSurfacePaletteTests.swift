@@ -47,7 +47,6 @@ struct StatusPillSurfacePaletteTests {
 
     private static let allSurfaces: [(name: String, palette: SurfacePalette)] = [
         ("onTourFeedRow", StatusPillSurfacePalette.onTourFeedRow),
-        ("concertPosterHero", StatusPillSurfacePalette.concertPosterHero),
         ("boxOfficeTicket", { StatusPillSurfacePalette.boxOfficeTicket($0, accent: accent) }),
         ("playcutStub", { StatusPillSurfacePalette.playcutStub($0, accent: accent, accentInk: accentInk) }),
     ]
@@ -81,40 +80,6 @@ struct StatusPillSurfacePaletteTests {
         #expect(
             Self.resolved(StatusPillSurfacePalette.onTourFeedRow(style))
                 == Self.resolved(Self.expectedFeedRow(style))
-        )
-    }
-
-    // MARK: - Concert poster hero (was ConcertDetailView.pillColors)
-
-    /// `.prominent` had no stroke to adopt — it was already a solid, unstroked
-    /// chip, so it is unchanged.
-    private static func expectedPosterHero(
-        _ style: StatusPill.Style
-    ) -> (fill: Color, ink: Color) {
-        switch style {
-        case .prominent:
-            (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), Color(red: 0.03, green: 0.19, blue: 0.10))
-        case .free:
-            (Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
-        case .muted:
-            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.71))
-        case .negative:
-            (Color.red.opacity(0.55), Color(red: 1.0, green: 0.7, blue: 0.7))
-        case .caution:
-            (Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
-        case .neutral:
-            (.white.opacity(0.3), .white.opacity(0.8))
-        }
-    }
-
-    @Test(
-        "the concert poster hero fills with its former stroke color",
-        arguments: StatusPill.Style.allCases
-    )
-    func posterHeroMatchesOriginal(style: StatusPill.Style) {
-        #expect(
-            Self.resolved(StatusPillSurfacePalette.concertPosterHero(style))
-                == Self.resolved(Self.expectedPosterHero(style))
         )
     }
 
