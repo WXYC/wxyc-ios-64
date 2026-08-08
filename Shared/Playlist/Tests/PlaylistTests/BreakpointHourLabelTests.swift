@@ -6,7 +6,6 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Core
 import Testing
 import Foundation
 @testable import Playlist
@@ -17,7 +16,14 @@ import PlaylistTesting
 // a listener elsewhere sees their local hour alongside the station's.
 @Suite("Breakpoint hour-label formatting")
 struct BreakpointHourLabelTests {
-    private let eastern = TimeZone.wxycStation
+    // Literal, not `TimeZone.wxycStation`: `hourLabel` defaults its
+    // `stationTimeZone` to that constant and collapses to a single label when
+    // the local and station *offsets* agree. Passing the same object as
+    // `localTimeZone` would satisfy that guard by identity, so replacing the
+    // offset comparison with `localTimeZone == stationTimeZone` — a stricter,
+    // wrong check that breaks the Toronto case below — would still pass
+    // (#771 review).
+    private let eastern = TimeZone(identifier: "America/New_York")!
     private let pacific = TimeZone(identifier: "America/Los_Angeles")!
     private let toronto = TimeZone(identifier: "America/Toronto")!
 

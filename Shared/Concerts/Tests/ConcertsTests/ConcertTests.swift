@@ -9,7 +9,6 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Core
 import Foundation
 import Testing
 @testable import Concerts
@@ -86,8 +85,15 @@ struct ConcertTests {
     func parsesDateInStationZone() throws {
         let concert = try JSONDecoder().decode(Concert.self, from: Data(Self.fullJSON.utf8))
 
+        // Literal, not `Calendar.wxycStation`. `Concert.dateParser` parses
+        // through that constant, so reading the result back through it too
+        // would be a round trip that holds for any value it takes: point
+        // `wxycStation` at Asia/Tokyo and the parser produces midnight Tokyo,
+        // this reads back 2026/8/1 in Tokyo, and the test still passes while
+        // every `starts_on` window in the On Tour tab shifts a day. The
+        // literal is the independent oracle (#771 review).
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.wxycStation
+        calendar.timeZone = try #require(TimeZone(identifier: "America/New_York"))
         let components = calendar.dateComponents([.year, .month, .day], from: concert.startsOn)
         #expect(components.year == 2026)
         #expect(components.month == 8)
@@ -98,8 +104,12 @@ struct ConcertTests {
     func parsesInstants() throws {
         let concert = try JSONDecoder().decode(Concert.self, from: Data(Self.fullJSON.utf8))
 
+        // Literal for the same reason as `parsesDateInStationZone` above: the
+        // point of this test is that these instants read as Eastern wall-clock
+        // times, which only means something spelled independently of the
+        // constant the app derives them with.
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.wxycStation
+        calendar.timeZone = try #require(TimeZone(identifier: "America/New_York"))
 
         // 2026-08-02T00:00:00Z is 8 PM Eastern on 2026-08-01 (EDT, UTC-4).
         let showHour = calendar.component(.hour, from: try #require(concert.startsAt))

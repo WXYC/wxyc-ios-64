@@ -13,7 +13,6 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Core
 import Foundation
 import Testing
 @testable import Concerts
@@ -26,9 +25,19 @@ struct ConcertMonthSectionTests {
 
     /// A `starts_on`-shaped `Date`: midnight of the given calendar day in the
     /// station zone, exactly as `Concert.dateParser` produces from a `yyyy-MM-dd`.
+    ///
+    /// The zone is a literal, not `Calendar.wxycStation`, because these dates
+    /// make a full round trip: `ConcertMonthSection.sections(for:)` buckets
+    /// through `Calendar.wxycStation` and titles through
+    /// `DateFormatter.station`, both derived from `TimeZone.wxycStation`.
+    /// Building the input through that same constant would let both ends shift
+    /// together — `sections[0].title == "August 2026"` would hold with
+    /// `wxycStation` pointed anywhere (#771 review).
+    private static let eastern = TimeZone(identifier: "America/New_York") ?? .gmt
+
     private func stationDay(_ year: Int, _ month: Int, _ day: Int) -> Date {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.wxycStation
+        calendar.timeZone = Self.eastern
         return calendar.date(from: DateComponents(year: year, month: month, day: day))
             ?? Date(timeIntervalSince1970: 0)
     }
