@@ -49,7 +49,7 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 |------|-------------|
 | `WXYC/iOS/WXYCApp.swift` | Main app entry point |
 | `WXYC/iOS/Views/Root/RootTabView.swift` | Root navigation |
-| `WXYC/iOS/Views/Root/BackgroundLayer.swift` | Animated background |
-| `Shared/Playback/Sources/Playback/AudioPlayerController.swift` | Audio playback |
+| `Shared/Wallpaper/Sources/WallpaperTheme/BackgroundLayer.swift` | Animated background (in the Wallpaper submodule) |
+| `Shared/Playback/Sources/PlaybackAPI/AudioPlayerController.swift` | Audio playback (Playback splits into `PlaybackAPI` and `PlaybackCore`) |
 | `Shared/Playlist/Sources/Playlist/PlaylistService.swift` | Playlist fetching |
 | `Shared/Artwork/Sources/Artwork/MultisourceArtworkService.swift` | Artwork fetching |

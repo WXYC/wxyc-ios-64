@@ -21,7 +21,6 @@ App configuration (PostHog API key, API base URL, request-o-matic URL) is manage
 - Widget refresh budget: 40-70 updates/day
 - Foreground refreshes don't count against budget
 - Background refresh scheduled every 15 minutes
-- OpenNSFW model seeded to shared container for widget access
 
 ## App Store Previews
 

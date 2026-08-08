@@ -43,7 +43,7 @@ Nothing. No view in the app currently carries an `appEntityIdentifier`, no `nowP
 |---|---|---|
 | Now Playing view (iOS/iPad) | `WXYC/iOS/` somewhere under the playback flow | The single highest-value annotation site. Drives lock-screen Siri context indirectly via the same data the user sees in-app. |
 | Playlist / Flowsheet view | likely `WXYC/iOS/` or a Playlist-package view | Per-row entity annotation makes "what was the song before this?" tractable. |
-| `MPNowPlayingInfoCenter` updater | `WXYC/iOS/NowPlayingInfoCenterManager.swift` (single canonical write site; Playback only exposes a `NowPlayingInfoCenterProtocol` abstraction) | Drives Lock Screen, CarPlay, AirPods spatial-audio overlay, HomePod handoff. One field change reaches all of them. |
+| `MPNowPlayingInfoCenter` updater | `WXYC/iOS/NowPlayingInfoCenterManager.swift` (single canonical write site; the `NowPlayingInfoCenterProtocol` seam is declared in that same file, in the app target — Playback exposes no equivalent) | Drives Lock Screen, CarPlay, AirPods spatial-audio overlay, HomePod handoff. One field change reaches all of them. |
 | Show schedule grid | not present today; would be built | Voice queries about upcoming shows are a natural fit. |
 | Widget timeline | `Shared/AppServices/NowPlayingWidgetIntent.swift` and friends | Each timeline entry could carry an entity identifier. |
 | Wallpaper background | `Shared/Wallpaper/` (private submodule → `WXYC/wallpaper-ios`; init with `git submodule update --init`) | Metal-backed generative shader background, not a per-playcut tile mosaic — `appEntityUIElements` does not apply; a single `appEntityIdentifier` on the SwiftUI container is what's viable. See CC-C4. |
