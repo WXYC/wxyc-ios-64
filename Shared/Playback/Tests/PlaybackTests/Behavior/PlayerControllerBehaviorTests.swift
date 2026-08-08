@@ -129,6 +129,28 @@ struct PlayerControllerBehaviorTests {
         #expect(harness.controller.isPlaying, "Multiple play calls should keep isPlaying true")
     }
 
+    @Test(
+        "A media-suggestion tile's handler-started playback survives a racing NSUserActivity continuation (#829 double-start)",
+        arguments: PlayerControllerTestCase.allCases
+    )
+    func mediaSuggestionHandlerSurvivesRacingContinuation(testCase: PlayerControllerTestCase) async throws {
+        let harness = PlayerControllerTestHarness.make(for: testCase)
+
+        // PlayMediaIntentHandler starts playback in the background via IntentPlayback.
+        try harness.controller.play(reason: .mediaSuggestion)
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+        #expect(harness.controller.isPlaying)
+
+        // AppLifecycleModifier's NSUserActivity continuation branch
+        // (AppLifecycleModifier.swift:144) can also fire for the same tap.
+        // play(reason:) must stay idempotent rather than double-starting or
+        // crashing when the handler already started playback.
+        try harness.controller.play(reason: .siriIntent)
+        await harness.waitForAsync()
+        #expect(harness.controller.isPlaying, "A racing continuation call should not disrupt playback already started by the handler")
+    }
+
     @Test("Multiple stop calls are idempotent", arguments: PlayerControllerTestCase.allCases)
     func multipleStopCallsAreIdempotent(testCase: PlayerControllerTestCase) async {
         let harness = PlayerControllerTestHarness.make(for: testCase)
