@@ -17,6 +17,15 @@ public struct RadioStation: Sendable {
     public let streamURL: URL
     public let hlsStreamURL: URL
     public let merchURL: URL
+    /// The one identifier shared by every media-domain surface that names
+    /// this station: the SiriKit media item (`MediaIntentBuilder`, in
+    /// `PlaybackCore`) and the App Intents audio-schema entity
+    /// (`LiveRadioStationEntity`, in `WXYCIntents`). Before #828 those two
+    /// surfaces (plus the SiriKit donation identifiers) each carried their
+    /// own literal — `"Play WXYC"`, `"WXYC"`, `"org.wxyc.live"` — which split
+    /// whatever per-item learning iOS's media-suggestion engine does across
+    /// unrelated buckets.
+    public let identifier: String
 }
 
 public extension RadioStation {
@@ -26,6 +35,7 @@ public extension RadioStation {
         requestLine: URL(string: "tel://9199628989")!,
         streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
         hlsStreamURL: URL(string: "https://hls.wxyc.org/live/live.m3u8")!,
-        merchURL: URL(string: "https://merch.wxyc.org")!
+        merchURL: URL(string: "https://merch.wxyc.org")!,
+        identifier: "org.wxyc.live"
     )
 }
