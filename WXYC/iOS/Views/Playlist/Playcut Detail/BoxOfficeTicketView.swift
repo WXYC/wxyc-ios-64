@@ -402,6 +402,14 @@ private enum Palette {
 
 // MARK: - Previews
 
+// `#if DEBUG` because everything below is preview-only scaffolding that reaches
+// `Concert.previewFixture`, which is itself `#if DEBUG` in the Concerts package.
+// Release and TestFlight define `TEST_FLIGHT`, never `DEBUG`, so without this
+// the file compiles in every Debug build and every test-plan run and then fails
+// the first archive. `ConcertDetailView.swift` and `UpcomingShowProvider.swift`
+// gate their preview scaffolding the same way; this one was the leak.
+#if DEBUG
+
 #Preview("On Sale") {
     BoxOfficeTicketPreviewStage(show: .previewOnSale)
 }
@@ -619,6 +627,10 @@ private struct BoxOfficeTicketDetailContextPreview: View {
 }
 
 private extension Concert {
+    /// Thin wrapper over the shared ``Concert/previewFixture(id:headliningArtistRaw:supportingArtistsRaw:doorsHour:showHour:ticketURL:eventURL:priceMin:priceMax:ageRestriction:status:artistBio:)``
+    /// factory — this file's own `venueName`/`venueCity` overrides were never
+    /// exercised by any of the `preview*` constants below, so they're dropped
+    /// rather than threaded through to the now-shared Cat's Cradle venue.
     static func preview(
         headliningArtistRaw: String = "Jessica Pratt",
         status: ShowStatus,
@@ -628,25 +640,13 @@ private extension Concert {
         showHour: Int? = 20,
         supportingArtistsRaw: [String] = ["Julie Byrne"],
         ageRestriction: String? = "All Ages",
-        venueName: String = "Cat's Cradle",
-        venueCity: String = "Carrboro",
         eventURL: URL? = URL(string: "https://catscradle.com/event/jessica-pratt")
     ) -> Concert {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
-        let startsOn = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))
-            ?? Date(timeIntervalSince1970: 1_785_898_800)
-        let doorsAt = doorsHour.flatMap { calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: $0)) }
-        let startsAt = showHour.flatMap { calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: $0)) }
-        return Concert(
-            id: 4821,
-            venue: Venue(id: 3, slug: "cats-cradle", name: venueName, city: venueCity, state: "NC", address: nil),
-            startsOn: startsOn,
-            startsAt: startsAt,
-            doorsAt: doorsAt,
+        .previewFixture(
             headliningArtistRaw: headliningArtistRaw,
             supportingArtistsRaw: supportingArtistsRaw,
-            ticketURL: URL(string: "https://www.etix.com/ticket/p/jessica-pratt"),
+            doorsHour: doorsHour,
+            showHour: showHour,
             eventURL: eventURL,
             priceMin: priceMin,
             priceMax: priceMax,
@@ -677,3 +677,5 @@ private extension Concert {
         supportingArtistsRaw: ["Tapir!"]
     )
 }
+
+#endif
