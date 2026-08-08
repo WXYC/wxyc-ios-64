@@ -13,6 +13,7 @@
 
 import Concerts
 import ConcertsTesting
+import Core
 import Foundation
 import Testing
 @testable import WXYCIntents
@@ -22,7 +23,7 @@ import Testing
 /// is unambiguous regardless of the host machine's zone.
 private func stationDay(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12) -> Date {
     var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+    calendar.timeZone = TimeZone.wxycStation
     return calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour)) ?? .distantPast
 }
 

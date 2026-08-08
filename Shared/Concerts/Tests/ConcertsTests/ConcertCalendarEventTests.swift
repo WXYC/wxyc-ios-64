@@ -30,6 +30,11 @@ struct ConcertCalendarEventTests {
         #expect(event.startDate == Concert.stubInstant(hour: 20))
         // No end instant on the wire, so the event blocks the default duration.
         #expect(event.endDate == Concert.stubInstant(hour: 20)?.addingTimeInterval(ConcertCalendarEvent.defaultDuration))
+        // Spelled literally, not as `TimeZone.wxycStation` — this is the one
+        // assertion that pins *which* zone a calendar event carries, so it has
+        // to be an oracle independent of the constant under test. Every other
+        // station-zone reference in the test suites arranges a fixture and does
+        // use `.wxycStation` (#771).
         #expect(event.timeZone == TimeZone(identifier: "America/New_York"))
     }
 
