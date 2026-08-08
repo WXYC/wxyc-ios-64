@@ -15,7 +15,7 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 | **Concerts** | On Tour concert models, the dismissed-concerts store, and the Box Office ticket presenter |
 | **Core** | Core types (RadioStation, Playcut, etc.); the `FileStorage`/`AppSupportFileStorage` durable never-evict byte-file seam (`CoreTesting` for the `InMemoryFileStorage` double), shared by LikedSongs and Concerts |
 | **DebugPanel** | DEBUG-only settings/HUD panel: performance metrics overlay, feature toggles, cache purge |
-| **Intents** | App Intents (`WXYCIntents` product): Siri/Spotlight entities and queries (PlayWXYC, artist/release/venue lookups) |
+| **Intents** | App Intents (`WXYCIntents` product): Siri/Spotlight entities and queries (PlayWXYC, artist/release/venue lookups). Also home to `PlayMediaIntentHandler` (#829) — the repo's first SiriKit `INPlayMediaIntentHandling` conformer, a different technology from App Intents, returned by `WXYC/iOS/AppDelegate.swift` so a media-suggestion tile's `INPlayMediaIntent` can dispatch in the background |
 | **LikedSongs** | On-device liked-songs store (#492): folded song identity, durable never-evict JSON file store (Core's `FileStorage` seam), artist-id healing for the For You shelf |
 | **Logger** | Logging infrastructure |
 | **Metadata** | Playlist metadata parsing |
