@@ -707,15 +707,23 @@ struct PlaycutMetadataServiceV2FallbackTests {
             songTitle: "Crawl",
             labelName: "Houndstooth",
             artistName: "Djrum",
-            releaseTitle: "Meaning's Edge"
+            releaseTitle: "Meaning's Edge",
+            metadataStatus: .enriching
         )
 
+        // The production payload shape, not a minimal one: `discogs_unavailable`
+        // is `NOT NULL DEFAULT false` on `library`, and the proxy assigns it for
+        // every row that resolved to a catalog album, so `false` rides along on
+        // the otherwise-empty pre-enrichment response. A stub that omitted it
+        // would pass against a gate that keys on the field's presence — which is
+        // exactly how that gate stayed inert in production.
         let albumResponse = """
         {
             "discogsReleaseId": null,
             "discogsUrl": null,
             "releaseYear": null,
             "artworkUrl": null,
+            "discogsUnavailable": false,
             "spotifyUrl": "https://open.spotify.com/track/crawl",
             "appleMusicUrl": null,
             "youtubeMusicUrl": null,
@@ -742,6 +750,64 @@ struct PlaycutMetadataServiceV2FallbackTests {
         )
     }
 
+    @Test(
+        "A sparse album keeps the seven-day TTL when the row is not mid-enrichment",
+        arguments: [MetadataStatus?.none, .enrichedNoMatch]
+    )
+    func sparseAlbumOutsideTheEnrichmentWindowKeepsSevenDayTTL(status: MetadataStatus?) async throws {
+        // The short TTL exists for one population: a row the feed is serving
+        // while Backend is still enriching it, where the sparse answer is known
+        // to be temporary. A free-text play that never linked to a catalog album
+        // produces the same sparse shape permanently — LML has nothing to match
+        // — so short-TTLing it would re-issue the proxy round-trip on every card
+        // open forever and return the same nothing each time. `nil` covers that
+        // cohort along with v1 rows; a terminal status covers a row Backend has
+        // already given up on.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataV2MockWebSession()
+        let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Sisters",
+            labelName: nil,
+            artistName: "Csillagrablók",
+            releaseTitle: "Nem Latszik Semmi",
+            metadataStatus: status
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "artworkUrl": null,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // `fetchMetadata(for:inline:)` with a nil `inline` reaches the proxy for
+        // any status, so a terminal row exercises the caching branch here even
+        // though `PlaycutMetadataResolver` would have short-circuited it.
+        _ = await service.fetchMetadata(for: playcut, inline: nil)
+
+        let albumKey = MetadataCacheKey.album(
+            artistName: "Csillagrablók",
+            releaseTitle: "Nem Latszik Semmi"
+        )
+        let metadata = mockCache.metadata(for: albumKey)
+        #expect(metadata != nil, "Album entry should be cached")
+        #expect(
+            metadata?.lifespan == .sevenDays,
+            "Only a mid-enrichment row should get the short TTL"
+        )
+    }
+
     @Test("An enriched album response keeps the seven-day TTL")
     func enrichedAlbumKeepsSevenDayTTL() async throws {
         let mockCache = PlaycutMetadataMockCache()
@@ -749,11 +815,14 @@ struct PlaycutMetadataServiceV2FallbackTests {
         let mockSession = MetadataV2MockWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
+        // Mid-enrichment, so the enrichment-window gate is satisfied and the
+        // seven days can only come from the payload carrying real enrichment.
         let playcut = Playcut.stub(
             songTitle: "Back, Baby",
             labelName: "Drag City",
             artistName: "Jessica Pratt",
-            releaseTitle: "On Your Own Love Again"
+            releaseTitle: "On Your Own Love Again",
+            metadataStatus: .enriching
         )
 
         let albumResponse = """
