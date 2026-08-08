@@ -20,6 +20,13 @@ Build*.txt
 # Test result bundles emitted by scripts/test-affected.sh and CI
 *.xcresult
 
+# Merge/rebase conflict leftovers. Untracked and unignored, one of these inside
+# a package's Sources/ is picked up by scripts/test-affected.sh (which reads
+# `git ls-files --others --exclude-standard`) and permanently marks that
+# package affected, and SwiftPM treats it as an unhandled source file.
+*.orig
+*.rej
+
 # Local gitignore files in packages
 WXYC/Shared/*/.gitignore
 
