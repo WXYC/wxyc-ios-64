@@ -43,8 +43,8 @@
 #                           different comparison this script doesn't
 #                           perform — so it isn't evidence for slack here.
 #                           Real silent-skip shortfalls are two orders of
-#                           magnitude past zero (ColorPalette: 23, host=21/
-#                           sim=44; Playback: 120+, host=329/grep-floor=449+
+#                           magnitude past zero (ColorPalette: 23, host=29/
+#                           sim=52; Playback: 120+, host=329/grep-floor=449+
 #                           — see below). Raise this for a specific package
 #                           that demonstrably needs it, not as a blanket
 #                           default.
