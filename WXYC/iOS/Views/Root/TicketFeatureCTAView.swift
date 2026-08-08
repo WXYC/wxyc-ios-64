@@ -302,9 +302,11 @@ private struct TicketFeatureCTAPreviewStage: View {
     )
 }
 
-/// Ticket samples for the previews. Each authors every role, `bodyInk` included, so
-/// they pin a fixed look rather than deriving the ink from the `accent:` passed
-/// alongside.
+/// Ticket samples for the previews. The two themed samples author five of the six
+/// roles — `bodyInk` among them, so their ink is pinned and the `accent:` alongside
+/// is inert; `stubInk` is left to the foreground-aware default and will move if that
+/// default does. `previewWindowlight` (`manifest: nil`) authors nothing and is the
+/// one sample that exercises the accent derivation.
 private extension TicketColors {
     /// A teal keepsake (like The Plastic Pulse) over a dark wallpaper.
     static let previewPlasticPulse = TicketColors.resolve(

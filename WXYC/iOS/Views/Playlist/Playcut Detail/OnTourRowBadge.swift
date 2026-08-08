@@ -162,8 +162,9 @@ private struct OnTourRowStubPreview: View {
 }
 
 /// A ticket sample for the preview: a teal keepsake (like The Plastic Pulse) over a
-/// dark wallpaper. It authors every role, `bodyInk` included, so it pins a fixed
-/// look rather than deriving the ink from the `accent:` passed alongside.
+/// dark wallpaper. It authors five of the six roles — `bodyInk` among them, so the
+/// ink is pinned and the `accent:` alongside is inert; `stubInk` is left to the
+/// foreground-aware default and will move if that default does.
 private extension TicketColors {
     static let previewPlasticPulse = TicketColors.resolve(
         foreground: .light,
