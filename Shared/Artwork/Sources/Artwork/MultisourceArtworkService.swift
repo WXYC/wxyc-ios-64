@@ -2,8 +2,9 @@
 //  MultisourceArtworkService.swift
 //  Artwork
 //
-//  Aggregates multiple artwork sources (iTunes, Last.fm, Discogs) with
-//  caching and NSFW filtering. Tries sources in order until artwork is found.
+//  Aggregates artwork sources — the on-disk cache and the URL fetcher by
+//  default, plus any fetcher added at runtime via `addFetcher(_:)`, such as the
+//  Discogs fallback. Tries sources in order until artwork is found.
 //
 //  Created by Jake Bromberg on 04/12/23.
 //  Copyright © 2023 WXYC. All rights reserved.
@@ -61,6 +62,10 @@ public extension CGImage {
 public final actor MultisourceArtworkService: ArtworkService {
     enum Error: Swift.Error, Codable, CaseIterable {
         case noArtworkAvailable
+        // Nothing writes this any more — the on-device NSFW filter is gone — but
+        // this enum is the `Codable` payload persisted in `.ArtworkErrors` with a
+        // 30-day lifespan, so the case stays until any entry that names it has
+        // aged out. Dropping it makes those entries fail to decode.
         case nsfw
     }
 
