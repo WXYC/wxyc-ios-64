@@ -12,6 +12,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
 /// The facet selections applied to the fetched concert window.

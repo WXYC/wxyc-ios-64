@@ -15,6 +15,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
 /// A run of concerts that fall in the same calendar month, used to break the

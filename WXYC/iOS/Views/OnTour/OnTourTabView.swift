@@ -627,11 +627,9 @@ extension Concert {
     /// preview's (nonisolated) stub fetcher can read it — the app target is
     /// main-actor-isolated by default.
     nonisolated static var previewList: [Concert] {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
         func day(_ offset: Int) -> Date {
             let base = Concert.fixtureStartsOn
-            return calendar.date(byAdding: .day, value: offset, to: base) ?? base
+            return Calendar.wxycStation.date(byAdding: .day, value: offset, to: base) ?? base
         }
         let cradle = Venue.catsCradle
         let motorco = Venue(id: 7, slug: "motorco", name: "Motorco", city: "Durham", state: "NC", address: nil)

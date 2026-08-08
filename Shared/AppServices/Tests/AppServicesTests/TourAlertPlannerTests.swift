@@ -15,6 +15,7 @@
 #if !os(watchOS) && !os(tvOS)
 import Concerts
 import ConcertsTesting
+import Core
 import Foundation
 import Playlist
 import PlaylistTesting

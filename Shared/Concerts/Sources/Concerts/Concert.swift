@@ -17,6 +17,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
 /// A live-music venue whose calendar WXYC ingests. Embedded whole in ``Concert``.

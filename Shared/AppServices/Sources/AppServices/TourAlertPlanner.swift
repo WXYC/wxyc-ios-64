@@ -18,6 +18,7 @@
 
 #if !os(watchOS) && !os(tvOS)
 import Concerts
+import Core
 import Foundation
 import Playlist
 

@@ -2,10 +2,11 @@
 //  TimeZone+Station.swift
 //  Core
 //
-//  The station's broadcast time zone, and the `en_US_POSIX` station
-//  `DateFormatter` factory built on it, so a label renders identically
-//  regardless of the device's zone or locale. Hoisted here (rather than
-//  declared per-package) because it was previously duplicated verbatim in
+//  The station's broadcast time zone, the `en_US_POSIX` station
+//  `DateFormatter` factory built on it, and the Gregorian `Calendar` pinned to
+//  it — so a label renders, and a date decomposes, identically regardless of
+//  the device's zone or locale. Hoisted here (rather than declared
+//  per-package) because they were previously duplicated verbatim in
 //  `Concerts`, `Playlist`, and `ConcertsTesting` — each package avoided taking
 //  on a dependency for one constant, even though all three already depend on
 //  `Core`. See issue #771.
@@ -21,6 +22,22 @@ extension TimeZone {
     /// (US Eastern). The `?? .gmt` fallback is unreachable for this fixed,
     /// always-known identifier but keeps the declaration force-unwrap-free.
     public static let wxycStation = TimeZone(identifier: "America/New_York") ?? .gmt
+}
+
+extension Calendar {
+    /// A Gregorian calendar pinned to the station zone, for deriving calendar
+    /// components (day/month/year) from an instant independent of the device's
+    /// zone or calendar.
+    ///
+    /// Lives beside ``TimeZone/wxycStation`` rather than in `Concerts` because
+    /// `AppServices`, `Playlist`, the app target, and four test suites all
+    /// derive one, and a calendar declared inside `Concerts` is invisible to
+    /// every one of them.
+    public static let wxycStation: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .wxycStation
+        return calendar
+    }()
 }
 
 extension DateFormatter {
