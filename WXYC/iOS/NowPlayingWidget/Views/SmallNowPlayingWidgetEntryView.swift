@@ -27,7 +27,8 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     leadingFont: .caption,
                     trailingFont: .caption,
                     leadingLineLimit: 1,
-                    trailingLineLimit: 1
+                    trailingLineLimit: 1,
+                    spacing: nil
                 ) { EmptyView() }
 
                 PlayButton()

@@ -13,10 +13,11 @@
 //
 //  The widget rows lead with the artist (bold, larger) rather than the song
 //  title, use widget-appropriate fonts/line limits instead of the
-//  flowsheet/Liked defaults, and have no third line — `leadingField`,
-//  `leadingFont`/`trailingFont`, and `leadingLineLimit`/`trailingLineLimit`
-//  cover that without changing the two existing callers, which don't pass
-//  them and keep passing their own `detailLine` (issue #771).
+//  flowsheet/Liked defaults, sit at SwiftUI's default stack spacing rather than
+//  the flowsheet's tighter 4pt, and have no third line — `leadingField`,
+//  `leadingFont`/`trailingFont`, `leadingLineLimit`/`trailingLineLimit`, and
+//  `spacing` cover that without changing the two existing callers, which don't
+//  pass them and keep passing their own `detailLine` (issue #771).
 //
 //  Created by Jake Bromberg on 07/20/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -47,20 +48,39 @@ struct SongInfoColumn<Song: SongDisplayable, Detail: View>: View {
     // title truncates rather than overflowing the fixed height.
     var leadingLineLimit: Int = 2
     var trailingLineLimit: Int = 1
+    /// Vertical spacing between the lines. `4` is the flowsheet/Liked row's
+    /// tighter-than-default value; the widget rows pass `nil` because their
+    /// text used to sit directly in the layout's own `VStack` at SwiftUI's
+    /// default spacing, and nesting it here at 4pt would silently retighten
+    /// every widget family.
+    var spacing: CGFloat? = 4
     @ViewBuilder var detailLine: () -> Detail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(leadingText)
-                .font(leadingFont)
-                .fontWeight(.bold)
-                .foregroundStyle(.white)
-                .lineLimit(leadingLineLimit)
-            Text(trailingText)
-                .font(trailingFont)
-                .foregroundStyle(.white)
-                .lineLimit(trailingLineLimit)
+        VStack(alignment: .leading, spacing: spacing) {
+            line(Text(leadingText).fontWeight(.bold), font: leadingFont, lineLimit: leadingLineLimit)
+            line(Text(trailingText), font: trailingFont, lineLimit: trailingLineLimit)
             detailLine()
+        }
+    }
+
+    /// Applies the shared row typography to one line.
+    ///
+    /// `font` is applied only when non-`nil`. `View.font(_:)` writes its
+    /// argument straight into `EnvironmentValues.font`, so `.font(nil)` doesn't
+    /// mean "leave it alone" — it *overrides* an ancestor's font with "unset",
+    /// which `Text` then resolves to `.body`. The flowsheet and Liked callers
+    /// pass no font and applied no `.font` modifier before this column existed,
+    /// so they have to keep inheriting.
+    @ViewBuilder
+    private func line(_ text: Text, font: Font?, lineLimit: Int) -> some View {
+        let styled = text
+            .foregroundStyle(.white)
+            .lineLimit(lineLimit)
+        if let font {
+            styled.font(font)
+        } else {
+            styled
         }
     }
 

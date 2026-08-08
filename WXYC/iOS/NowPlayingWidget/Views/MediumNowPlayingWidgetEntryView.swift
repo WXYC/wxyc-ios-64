@@ -30,7 +30,8 @@ struct MediumNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                         leadingFont: .headline,
                         trailingFont: .subheadline,
                         leadingLineLimit: 1,
-                        trailingLineLimit: 1
+                        trailingLineLimit: 1,
+                        spacing: nil
                     ) { EmptyView() }
 
                     PlayButton()
