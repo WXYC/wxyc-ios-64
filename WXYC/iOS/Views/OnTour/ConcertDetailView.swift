@@ -443,25 +443,13 @@ private extension Concert {
         // the body fallback.
         artistBio: String? = nil
     ) -> Concert {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
-        let startsOn = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))
-            ?? Date(timeIntervalSince1970: 1_785_898_800)
-        let doorsAt = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 19))
-        let startsAt = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 20))
-        return Concert(
-            id: 4821,
-            venue: Venue(id: 3, slug: "cats-cradle", name: "Cat's Cradle", city: "Carrboro", state: "NC", address: "300 E Main St"),
-            startsOn: startsOn,
-            startsAt: startsAt,
-            doorsAt: doorsAt,
+        .previewFixture(
             headliningArtistRaw: headliningArtistRaw,
             supportingArtistsRaw: ["Tapir!"],
             ticketURL: URL(string: "https://www.etix.com/ticket/p/x"),
             eventURL: URL(string: "https://catscradle.com/event/nilufer-yanya"),
             priceMin: priceMin,
             priceMax: priceMax,
-            ageRestriction: "All Ages",
             status: status,
             artistBio: artistBio
                 ?? "\(headliningArtistRaw) is a touring act featured on WXYC 89.3 FM. Placeholder biography copy standing in for the artist's Discogs profile in previews."

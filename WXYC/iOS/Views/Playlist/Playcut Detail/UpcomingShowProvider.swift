@@ -64,25 +64,12 @@ struct DebugUpcomingShowResolver: UpcomingShowResolving {
     /// Shared with the dev-only tour-notification wiring (`Singletonia`) so a test
     /// notification points at the same fabricated show the Box Office ticket shows.
     static func mockShow(for playcut: Playcut) -> Concert {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
-        let startsOn = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1))
-            ?? Date(timeIntervalSince1970: 1_785_898_800)
-        let doorsAt = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 19))
-        let startsAt = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 20))
-        return Concert(
+        .previewFixture(
             id: 900_000 + Int(playcut.id % 100_000),
-            venue: Venue(id: 3, slug: "cats-cradle", name: "Cat's Cradle", city: "Carrboro", state: "NC", address: nil),
-            startsOn: startsOn,
-            startsAt: startsAt,
-            doorsAt: doorsAt,
             headliningArtistRaw: playcut.artistName,
             supportingArtistsRaw: ["Tapir!"],
             ticketURL: URL(string: "https://www.etix.com/ticket/p/mock"),
             eventURL: URL(string: "https://catscradle.com/event/mock"),
-            priceMin: 22,
-            priceMax: 25,
-            ageRestriction: "All Ages",
             status: .onSale
         )
     }
