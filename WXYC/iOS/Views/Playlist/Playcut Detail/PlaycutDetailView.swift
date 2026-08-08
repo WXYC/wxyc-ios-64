@@ -24,6 +24,10 @@ struct PlaycutDetailView: View {
     let playcut: Playcut
     @State private var artwork: UIImage?
 
+    /// The artwork URL a download is already in flight for, so the two callers
+    /// of ``loadArtworkIfNeeded()`` can't both start one. See that method.
+    @State private var loadingArtworkURL: URL?
+
     init(playcut: Playcut, artwork: UIImage?) {
         self.playcut = playcut
         self._artwork = State(initialValue: artwork)
@@ -288,6 +292,14 @@ struct PlaycutDetailView: View {
     /// specifically to stop rendering — PlaycutHeaderSection falls back to
     /// PlaceholderArtworkView whenever `artwork` stays nil.
     ///
+    /// `artwork == nil` alone stopped being enough once there were two callers:
+    /// it doesn't survive the suspension inside `loadArtwork`, so a repair
+    /// landing while the initial resolve's download is in flight passes the
+    /// same guard and starts a second download of the same URL — two transfers,
+    /// two `cacheExternalArtwork` writes, two animated assignments. Latching the
+    /// in-flight URL closes that, while still letting a repair that supplies a
+    /// *different* URL supersede the one being fetched.
+    ///
     /// The inline-vs-proxy decision, and the 12-field inline builder that feeds
     /// it, live in `PlaycutMetadataResolver` (`Metadata`) — that builder is one
     /// of three hand-synced enumerations of the same field list, alongside
@@ -295,9 +307,11 @@ struct PlaycutDetailView: View {
     private func loadArtworkIfNeeded() async {
         guard artwork == nil,
               let artworkURL = metadata.album.artworkURL,
-              !metadata.album.isDiscogsUnavailable
+              !metadata.album.isDiscogsUnavailable,
+              loadingArtworkURL != artworkURL
         else { return }
 
+        loadingArtworkURL = artworkURL
         await loadArtwork(from: artworkURL)
     }
 
