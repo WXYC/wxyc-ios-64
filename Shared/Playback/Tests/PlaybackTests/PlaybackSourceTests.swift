@@ -49,6 +49,7 @@ struct PlaybackSourceTests {
         (PlaybackReason.pauseIntent, PlaybackSource.siri),
         (PlaybackReason.toggleIntent, PlaybackSource.siri),
         (PlaybackReason.playAudioSchemaIntent, PlaybackSource.siri),
+        (PlaybackReason.mediaSuggestion, PlaybackSource.siri),
 
         // The widget's own dedicated reason (#668).
         (PlaybackReason.widgetToggle, PlaybackSource.widget),
@@ -88,7 +89,7 @@ struct PlaybackSourceTests {
             .foregroundNotPlaying, .foregroundToggle, .resumeAfterForeground,
             .watchPlayPause, .tvOSCommand, .carPlay, .quickAction, .deepLink,
             .menuBar, .dockMenu,
-            .siriIntent, .playIntent, .pauseIntent, .toggleIntent, .playAudioSchemaIntent,
+            .siriIntent, .playIntent, .pauseIntent, .toggleIntent, .playAudioSchemaIntent, .mediaSuggestion,
             .widgetToggle, .test, .testToggle, .userTappedPlay, .userStartedStream, .initial, .errorHandlingTest,
         ].map(\.playbackSource).reduce(into: Set<PlaybackSource>()) { $0.insert($1) }
 

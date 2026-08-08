@@ -47,8 +47,9 @@ public enum PlaybackSource: String, Sendable, Equatable, CaseIterable {
 
     /// Siri, Shortcuts, or an App Intent: `PlayWXYC`, `PauseWXYC`,
     /// `ToggleWXYC` (when invoked via Shortcuts/Siri rather than the
-    /// widget button), the iOS 27 audio-schema intent, or a replayed
-    /// `INPlayMediaIntent` donation.
+    /// widget button), the iOS 27 audio-schema intent, a replayed
+    /// `INPlayMediaIntent` donation, or a background-dispatched media-
+    /// suggestion tile handled in-app by `PlayMediaIntentHandler` (#829).
     case siri
 
     /// The watchOS app's play/pause button.
@@ -60,6 +61,12 @@ public enum PlaybackSource: String, Sendable, Equatable, CaseIterable {
     /// `remote*` commands, so nothing maps to this case today. See `.remote`,
     /// and don't guess a mapping into this case without a real distinguishing
     /// signal (see #668's discussion of over-claiming precision).
+    ///
+    /// The media-suggestion tile (`PlaybackReason.mediaSuggestion`, #829) was
+    /// considered and rejected as that signal: it appears in the Home Screen
+    /// Siri Suggestions row and CarPlay as well as the Lock Screen, so it
+    /// cannot distinguish one surface from another either. It maps to `.siri`
+    /// instead.
     case lockScreen
 
     /// Lock Screen, Control Center, or CarPlay's built-in (steering wheel /
@@ -145,7 +152,8 @@ extension PlaybackReason {
              PlaybackReason.playIntent.rawValue,
              PlaybackReason.pauseIntent.rawValue,
              PlaybackReason.toggleIntent.rawValue,
-             PlaybackReason.playAudioSchemaIntent.rawValue:
+             PlaybackReason.playAudioSchemaIntent.rawValue,
+             PlaybackReason.mediaSuggestion.rawValue:
             return .siri
 
         // WXYC's own widget-style UI (see `.widgetToggle`'s doc comment).
