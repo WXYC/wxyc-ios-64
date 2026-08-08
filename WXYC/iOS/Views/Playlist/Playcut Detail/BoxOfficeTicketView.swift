@@ -485,8 +485,10 @@ private struct BoxOfficeTicketPreviewStage: View {
     )
 }
 
-/// Authored ticket samples so previews match on-device, now that the palette is
-/// fully authored (nothing derived from the accent).
+/// Ticket samples for the previews. The two themed samples author every role,
+/// `bodyInk` included, so they pin a fixed look and their `accent:` argument is
+/// only what the *unauthored* roles would derive from — `previewWindowlight`
+/// (`manifest: nil`) is the one that actually exercises the accent derivation.
 private extension TicketColors {
     /// A teal keepsake (like The Plastic Pulse) over a dark wallpaper.
     static let previewPlasticPulse = TicketColors.resolve(

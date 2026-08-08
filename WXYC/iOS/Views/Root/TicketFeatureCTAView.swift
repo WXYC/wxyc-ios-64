@@ -302,8 +302,9 @@ private struct TicketFeatureCTAPreviewStage: View {
     )
 }
 
-/// Authored ticket samples so previews match on-device, now that the palette is
-/// fully authored (nothing derived from the accent).
+/// Ticket samples for the previews. Each authors every role, `bodyInk` included, so
+/// they pin a fixed look rather than deriving the ink from the `accent:` passed
+/// alongside.
 private extension TicketColors {
     /// A teal keepsake (like The Plastic Pulse) over a dark wallpaper.
     static let previewPlasticPulse = TicketColors.resolve(

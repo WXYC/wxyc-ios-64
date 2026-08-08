@@ -161,9 +161,9 @@ private struct OnTourRowStubPreview: View {
     }
 }
 
-/// An authored ticket sample so the preview matches on-device, now that the palette
-/// is fully authored (nothing derived from the accent). A teal keepsake (like The
-/// Plastic Pulse) over a dark wallpaper.
+/// A ticket sample for the preview: a teal keepsake (like The Plastic Pulse) over a
+/// dark wallpaper. It authors every role, `bodyInk` included, so it pins a fixed
+/// look rather than deriving the ink from the `accent:` passed alongside.
 private extension TicketColors {
     static let previewPlasticPulse = TicketColors.resolve(
         foreground: .light,
