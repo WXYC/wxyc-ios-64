@@ -630,10 +630,10 @@ extension Concert {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .wxycStation
         func day(_ offset: Int) -> Date {
-            let base = calendar.date(from: DateComponents(year: 2026, month: 8, day: 1)) ?? Date(timeIntervalSince1970: 1_785_898_800)
+            let base = Concert.fixtureStartsOn
             return calendar.date(byAdding: .day, value: offset, to: base) ?? base
         }
-        let cradle = Venue(id: 3, slug: "cats-cradle", name: "Cat's Cradle", city: "Carrboro", state: "NC", address: "300 E Main St")
+        let cradle = Venue.catsCradle
         let motorco = Venue(id: 7, slug: "motorco", name: "Motorco", city: "Durham", state: "NC", address: nil)
         let local506 = Venue(id: 1, slug: "local-506", name: "Local 506", city: "Chapel Hill", state: "NC", address: nil)
         // Spread across two calendar months so the preview exercises the month
