@@ -102,6 +102,10 @@ struct PlaycutRowView: View {
     @Environment(Singletonia.self) private var appState
     @Environment(\.wallpaperMeshGradientPalette) private var wallpaperPalette
     @Environment(\.upcomingShowResolver) private var upcomingShowResolver
+    /// The interpolated theme snapshot, source of the stub badge's palette. Reading
+    /// it from the environment rather than off `ThemeConfiguration` is what keeps
+    /// the badge's ink crossfading in step with the header during a picker swipe.
+    @Environment(\.themeAppearance) private var appearance
 
     /// The upcoming show to render on this row, resolved synchronously from the
     /// playcut's embedded feed value (no network call). A DEBUG override may
@@ -182,7 +186,7 @@ struct PlaycutRowView: View {
                 }
                 .aspectRatio(2.5, contentMode: .fill)
 
-                OnTourRowBadge(show: show, colors: appState.themeConfiguration.effectiveTicketColors)
+                OnTourRowBadge(show: show, colors: appearance.ticketColors)
                     .frame(height: OnTourRowBadge.preferredHeight)
             }
         }

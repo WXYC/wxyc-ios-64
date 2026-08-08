@@ -25,10 +25,11 @@ import WXUI
 /// from ``BoxOfficeTicketPresenter`` (unit-tested); this view is pure layout.
 ///
 /// The ticket's accent chrome and glass tint come from ``colors`` — the theme-
-/// derived ``TicketColors`` the host passes down from
-/// `themeConfiguration.effectiveTicketColors` — so the ticket belongs to the
-/// active wallpaper rather than a fixed amber. Status semantics stay universal
-/// (see the file-private `Palette`).
+/// derived ``TicketColors`` the host passes down from the interpolated
+/// `\.themeAppearance` snapshot — so the ticket belongs to the active wallpaper
+/// rather than a fixed amber, and crossfades with the rest of the accent chrome
+/// while the theme picker is swiped. Status semantics stay universal (see the
+/// file-private `Palette`).
 struct BoxOfficeTicketView: View {
     let show: Concert
     let colors: TicketColors
