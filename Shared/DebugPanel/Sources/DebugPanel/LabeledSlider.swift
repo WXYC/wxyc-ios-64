@@ -10,18 +10,24 @@
 //  `VisualizerDebugView` ("Signal Boost", "Stream Gain") — three ad hoc
 //  versions of the identical control (issue #771).
 //
-//  `body` is a `Group` of its three pieces (readout row, slider, optional reset
-//  button) rather than a `VStack`, so it flattens transparently in both call
-//  contexts: inside a `Form`/`List` each piece becomes its own row, matching
-//  `OnAirBannerDebugView`'s pre-#771 `labeledSlider` free function exactly; and
-//  inside a plain `VStack` (`VisualizerDebugView`'s `DebugSection`) the three
-//  pieces become separate `VStack` children at the section's own spacing,
-//  again matching pre-#771 output exactly. The one place this is NOT a pixel
-//  match: `LikeEffectTuningView`'s pre-#771 `tuner` grouped its readout+slider
-//  into a single tight `Form` row (`VStack(spacing: 2)`); consolidated onto
-//  this control, each parameter now renders as two `Form` rows instead of one
-//  — a deliberate, minor layout normalization judged acceptable for a
-//  DEBUG-only tuning bench, not a pixel-for-pixel port.
+//  Two knobs exist purely so consolidating onto one control doesn't change how
+//  any of the three call sites lays out or reads:
+//
+//  `layout` picks how `body` presents its pieces. `.flattened` (the default) is
+//  a `Group`, so each piece becomes its own container child — inside a
+//  `Form`/`List` its own row, matching `OnAirBannerDebugView`'s pre-#771
+//  `labeledSlider` free function; inside a plain `VStack`
+//  (`VisualizerDebugView`'s `DebugSection`) its own `VStack` child at the
+//  section's spacing, again matching pre-#771 output. `.grouped` packs the
+//  readout and slider into one tight `VStack(spacing: 2)` — one `Form` row per
+//  parameter, which is what `LikeEffectTuningView`'s pre-#771 `tuner` produced
+//  and what its `.medium`-detent sheet has room for.
+//
+//  `controlsDisabled` greys the slider and reset button while leaving the title
+//  and value readout legible. A `.disabled(_:)` on the whole control would
+//  propagate through the flattened `Group` to the label too — which is not what
+//  `VisualizerDebugView` did before #771, and its Amplification section rests
+//  in the disabled state, so the section would normally read greyed out.
 //
 //  Created by Jake Bromberg on 08/06/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -32,6 +38,16 @@ import SwiftUI
 #if DEBUG
 /// A labeled slider with a trailing value readout, for DEBUG tuning panels.
 public struct LabeledSlider: View {
+    /// How `body` presents the readout row, slider, and optional reset button.
+    public enum Layout {
+        /// Each piece is its own container child — a separate `Form`/`List`
+        /// row, or a separate `VStack` child at the enclosing stack's spacing.
+        case flattened
+        /// The readout and slider share one tight container child, so a `Form`
+        /// renders one row per parameter instead of two.
+        case grouped
+    }
+
     private let title: String
     @Binding private var value: Double
     private let range: ClosedRange<Double>
@@ -41,6 +57,8 @@ public struct LabeledSlider: View {
     private let onEditingChanged: (Bool) -> Void
     private let resetLabel: String
     private let onReset: (() -> Void)?
+    private let layout: Layout
+    private let controlsDisabled: Bool
 
     /// - Parameters:
     ///   - title: The control's label, shown leading.
@@ -57,6 +75,12 @@ public struct LabeledSlider: View {
     ///   - resetLabel: The reset button's title, when `onReset` is supplied.
     ///   - onReset: When non-`nil`, shows a trailing reset button beneath the
     ///     slider that calls this closure.
+    ///   - layout: Whether the pieces flatten into the enclosing container
+    ///     (the default) or pack the readout and slider into one row.
+    ///   - controlsDisabled: Disables the slider and reset button while leaving
+    ///     the title and readout legible. Prefer this to a `.disabled(_:)` on
+    ///     the whole control, which a `.flattened` layout propagates to the
+    ///     label as well.
     public init(
         _ title: String,
         value: Binding<Double>,
@@ -66,7 +90,9 @@ public struct LabeledSlider: View {
         monospacedDigitReadout: Bool = false,
         onEditingChanged: @escaping (Bool) -> Void = { _ in },
         resetLabel: String = "Reset",
-        onReset: (() -> Void)? = nil
+        onReset: (() -> Void)? = nil,
+        layout: Layout = .flattened,
+        controlsDisabled: Bool = false
     ) {
         self.title = title
         self._value = value
@@ -77,24 +103,54 @@ public struct LabeledSlider: View {
         self.onEditingChanged = onEditingChanged
         self.resetLabel = resetLabel
         self.onReset = onReset
+        self.layout = layout
+        self.controlsDisabled = controlsDisabled
     }
 
+    @ViewBuilder
     public var body: some View {
-        Group {
-            HStack {
-                Text(title)
-                Spacer()
-                readout
+        switch layout {
+        case .flattened:
+            Group {
+                readoutRow
+                slider
+                resetButton
             }
+        case .grouped:
+            VStack(alignment: .leading, spacing: 2) {
+                readoutRow
+                slider
+            }
+            resetButton
+        }
+    }
+
+    private var readoutRow: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            readout
+        }
+    }
+
+    @ViewBuilder
+    private var slider: some View {
+        Group {
             if let step {
                 Slider(value: $value, in: range, step: step, onEditingChanged: onEditingChanged)
             } else {
                 Slider(value: $value, in: range, onEditingChanged: onEditingChanged)
             }
-            if let onReset {
-                Button(resetLabel, action: onReset)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+        }
+        .disabled(controlsDisabled)
+    }
+
+    @ViewBuilder
+    private var resetButton: some View {
+        if let onReset {
+            Button(resetLabel, action: onReset)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .disabled(controlsDisabled)
         }
     }
 
