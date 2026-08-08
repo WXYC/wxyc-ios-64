@@ -67,8 +67,13 @@ struct ConcertsFetcherTests {
         QueuedStubURLProtocol.setBody(Self.responseBody)
         let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
+        // Literal, not `TimeZone.wxycStation`. These dates go in through the
+        // station zone and `ConcertsFetcher` formats them back out through the
+        // same constant, so this is a round trip, not arrangement: sharing the
+        // constant would let both ends shift together and the hard-coded
+        // `from`/`to` expectations below would keep passing.
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone.wxycStation
+        calendar.timeZone = try #require(TimeZone(identifier: "America/New_York"))
         let from = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 1)))
         let to = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 31)))
 
