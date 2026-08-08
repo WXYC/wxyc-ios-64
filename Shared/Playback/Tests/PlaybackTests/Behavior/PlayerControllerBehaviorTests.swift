@@ -130,25 +130,25 @@ struct PlayerControllerBehaviorTests {
     }
 
     @Test(
-        "A media-suggestion tile's handler-started playback survives a racing NSUserActivity continuation (#829 double-start)",
+        "play(reason: .mediaSuggestion) emits exactly one PlaybackStartedEvent carrying reason \"media suggestion\" (#829)",
         arguments: PlayerControllerTestCase.allCases
     )
-    func mediaSuggestionHandlerSurvivesRacingContinuation(testCase: PlayerControllerTestCase) async throws {
+    func mediaSuggestionPlayEmitsExactlyOneStartedEventWithReason(testCase: PlayerControllerTestCase) async throws {
         let harness = PlayerControllerTestHarness.make(for: testCase)
 
-        // PlayMediaIntentHandler starts playback in the background via IntentPlayback.
+        // PlayMediaIntentHandler starts playback via IntentPlayback, which
+        // calls this exact overload with .mediaSuggestion. Pin the handler's
+        // own contract here rather than the AppLifecycleModifier racing
+        // scenario the old version of this test claimed to cover — that
+        // scenario is unreachable (#830), and play(reason:) has no
+        // already-playing guard to test in the first place (see #830 and
+        // the non-goal recorded there).
         try harness.controller.play(reason: .mediaSuggestion)
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
-        #expect(harness.controller.isPlaying)
 
-        // AppLifecycleModifier's NSUserActivity continuation branch
-        // (AppLifecycleModifier.swift:144) can also fire for the same tap.
-        // play(reason:) must stay idempotent rather than double-starting or
-        // crashing when the handler already started playback.
-        try harness.controller.play(reason: .siriIntent)
-        await harness.waitForAsync()
-        #expect(harness.controller.isPlaying, "A racing continuation call should not disrupt playback already started by the handler")
+        #expect(harness.analyticsPlayCallCount == 1)
+        #expect(harness.lastAnalyticsPlayReason == PlaybackReason.mediaSuggestion.rawValue)
     }
 
     @Test("Multiple stop calls are idempotent", arguments: PlayerControllerTestCase.allCases)
