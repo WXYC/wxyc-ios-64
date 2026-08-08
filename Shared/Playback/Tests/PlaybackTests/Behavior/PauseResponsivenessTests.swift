@@ -61,13 +61,19 @@ struct PauseResponsivenessTests {
         #expect(harness.controller.isLoading == false)
         // Not an elapsed-time bound. A ~10.5s process stall (CI run
         // 31205214380, #807) can inflate any wall-clock measurement taken
-        // around `stop()` past the mock's own 5s safety cap, and no legal
-        // threshold sits both below that cap and above the measured stall —
-        // widening it further only shrinks a window that can't be closed.
+        // around `stop()`, so no threshold this test could pick would
+        // separate a healthy `stop()` from a regressed one under load.
         // ("One second sits far from both, so scheduler preemption can't
         // fail a healthy run spuriously" was that run's own counterexample:
         // it took this test's `stop()` — never blocking on anything — to a
-        // measured 1.2s.)
+        // measured 1.2s.) Widening the bound was never the answer; it would
+        // only shrink the spurious-failure window rather than close it.
+        //
+        // Don't reintroduce an elapsed bound on the reasoning that one now
+        // fits between the stall and `MockAudioSession.deactivationHoldCap`.
+        // That cap was 5s when this was written and is 60s today, so the
+        // arithmetic has changed — but the argument below never rested on
+        // it, and a bound that merely fits is still measuring the scheduler.
         //
         // The ordering check below is immune to the stall rather than merely
         // tolerant of a wider one: `stop()` is a plain, non-`async` function,
