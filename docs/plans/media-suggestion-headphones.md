@@ -100,15 +100,15 @@ context.becomeCurrent()
 ### Upcoming media
 
 ```swift
-INUpcomingMediaManager.sharedManager.setSuggestedMediaIntents(NSOrderedSet(array: [intent]))
-INUpcomingMediaManager.sharedManager.setPredictionMode(.onlyPredictSuggestedIntents, for: .radioStation)
+INUpcomingMediaManager.shared.setSuggestedMediaIntents(NSOrderedSet(array: [intent]))
+INUpcomingMediaManager.shared.setPredictionMode(.onlyPredictSuggestedIntents, for: .radioStation)
 ```
 
 `.onlyPredictSuggestedIntents` stops iOS from trying to predict individual playcuts — WXYC has exactly one playable thing, and letting the system invent per-track suggestions from donation history would produce tiles that cannot be honored.
 
 ### Isolation
 
-`MediaSuggestionService` is `@MainActor`: `becomeCurrent()` and `INUpcomingMediaManager.sharedManager` are app-global system state, which this codebase already models as main-actor work (`HandoffActivityManager`'s `@MainActor CurrentActivityControlling`). Passing `nil` artwork keeps it cheap enough for the main actor — that is the reason the artwork decision above is load-bearing rather than cosmetic.
+`MediaSuggestionService` is `@MainActor`: `becomeCurrent()` and `INUpcomingMediaManager.shared` are app-global system state, which this codebase already models as main-actor work (`HandoffActivityManager`'s `@MainActor CurrentActivityControlling`). Passing `nil` artwork keeps it cheap enough for the main actor — that is the reason the artwork decision above is load-bearing rather than cosmetic.
 
 It gets its **own** `Task` in `WXYCApp.init()`, next to `Task { await appState.fetchConfiguration() }` (`WXYCApp.swift:91`) — *not* the `Task` inside `donateSiriIntent()`. That `Task` is deliberately off the main actor (`WXYCApp.swift:283-328`, #740); routing a `@MainActor` service through it would force exactly the hop that comment exists to prevent. `donateSiriIntent()` is not modified beyond swapping its builder call.
 
