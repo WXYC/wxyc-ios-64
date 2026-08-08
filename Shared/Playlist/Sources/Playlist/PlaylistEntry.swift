@@ -306,18 +306,20 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// Discogs-derived artwork/URL and fall back to a placeholder rather than
     /// keep showing a preserved false match (issue #390).
     ///
-    /// `nil` today on every real feed: Backend-Service does not yet emit this
-    /// field on the V2 flowsheet-entry embed (only on the on-demand
-    /// `/proxy/metadata/album` response, which has its own gap — see
-    /// `PlaycutMetadataService.fetchAlbumAndStreaming`). This property exists
-    /// so the decoder and the render-gate are ready the moment Backend wires
-    /// the flag onto this surface; see `FlowsheetConverter` for where it
-    /// would be threaded from a future `FlowsheetEntry.discogs_unavailable`.
+    /// Backend-Service emits this on the V2 flowsheet-entry embed as well as on
+    /// the on-demand `/proxy/metadata/album` response (WXYC/Backend-Service#1908).
+    /// Both sides gate on the row having resolved to a library album rather than
+    /// on the flag's value, and `library.discogs_unavailable` is
+    /// `NOT NULL DEFAULT false` — so `false` is what arrives for the vast
+    /// majority of library-linked plays, and `nil` means "no library row"
+    /// (a free-text play) rather than "not flagged." Read the value, never the
+    /// presence; ``Metadata/AlbumMetadata/isSparse`` documents what keying on
+    /// presence cost.
     public let discogsUnavailable: Bool?
 
     /// Optional free-text reason for ``discogsUnavailable``, surfaced as
-    /// secondary text alongside the placeholder when present. Same
-    /// currently-always-`nil` caveat as ``discogsUnavailable`` above.
+    /// secondary text alongside the placeholder when present. Emitted on its own
+    /// `!= null` check, so it can arrive without the boolean beside it.
     public let discogsUnavailableNote: String?
 
     /// Whether this playcut carries inline metadata from the v2 flowsheet API.
