@@ -58,7 +58,8 @@ public actor PlaycutMetadataService {
     static let emptyStreamingLifespan: TimeInterval = 15 * 60
 
     /// Short TTL applied to album-cache entries that came back with no
-    /// enrichment output at all (``AlbumMetadata/isSparse``).
+    /// enrichment output at all (``AlbumMetadata/isSparse``) *for a row whose
+    /// `metadataStatus` says Backend is still enriching it*.
     ///
     /// Decision recorded for #812: the album side gets the same treatment #303
     /// gave the streaming side, rather than no-cache. A row is served by the
@@ -72,6 +73,10 @@ public actor PlaycutMetadataService {
     /// ``emptyStreamingLifespan`` despite the equal value: the two answer to
     /// different upstreams (BS enrichment vs. LML streaming reconciliation)
     /// and should be tunable apart.
+    ///
+    /// Scoped to mid-enrichment rows rather than to the payload shape alone —
+    /// see the gate in ``fetchAlbumAndStreaming(for:)`` for why a permanently
+    /// unmatched row must not land here.
     static let sparseAlbumLifespan: TimeInterval = 15 * 60
 
     private let client: WXYCProxyClient
@@ -316,11 +321,26 @@ public actor PlaycutMetadataService {
             )
 
             if cachedAlbum == nil {
-                // Short-TTL on albums that came back with no enrichment output,
-                // so a card sampled during the pre-enrichment window isn't
-                // shadowed by that answer for a week (#812) — the album-side
-                // counterpart of the empty-streaming rule below (#303).
-                let albumLifespan: TimeInterval = album.isSparse ? Self.sparseAlbumLifespan : .sevenDays
+                // Short-TTL on albums that came back with no enrichment output
+                // *while the row says enrichment is still in flight*, so a card
+                // sampled during the pre-enrichment window isn't shadowed by that
+                // answer for a week (#812) — the album-side counterpart of the
+                // empty-streaming rule below (#303).
+                //
+                // Both halves are load-bearing. The payload test alone would put
+                // the whole never-matching cohort on a 15-minute TTL: a free-text
+                // play that never linked to a catalog album produces the same
+                // sparse shape *permanently*, so every card open past the TTL
+                // would re-issue the round-trip and get back the same nothing —
+                // a standing cost against LML for rows that can't improve. The
+                // row's own lifecycle is what separates "not yet" from "never":
+                // `pending`/`enriching` is Backend telling us this answer is
+                // temporary. `nil` (v1 rows, free-text plays) and the terminal
+                // states are not, and keep the long TTL.
+                let midEnrichment = playcut.metadataStatus.map { !$0.isTerminal } ?? false
+                let albumLifespan: TimeInterval = album.isSparse && midEnrichment
+                    ? Self.sparseAlbumLifespan
+                    : .sevenDays
                 await cache.set(value: album, for: albumCacheKey, lifespan: albumLifespan)
             }
             if cachedStreaming == nil {
