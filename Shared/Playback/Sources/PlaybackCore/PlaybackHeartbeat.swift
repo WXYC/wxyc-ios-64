@@ -78,8 +78,20 @@ public final class PlaybackHeartbeat {
             while true {
                 do {
                     try await sleep(interval)
+                } catch is CancellationError {
+                    // The normal way a heartbeat ends: `stop()` or `deinit`
+                    // cancelled the task mid-sleep.
+                    return
                 } catch {
-                    // Cancelled mid-sleep.
+                    // Unreachable under the documented contract on `sleep`
+                    // ("must throw only on cancellation"), and split out from
+                    // the cancellation case so that contract lives in the
+                    // code rather than only in the comment above it. Ending
+                    // the loop is still the least-bad response — a seam that
+                    // threw immediately and always would turn `continue` into
+                    // a hot spin on the main actor — but a violation now
+                    // reads as its own branch instead of hiding inside the
+                    // ordinary stop path.
                     return
                 }
                 guard !Task.isCancelled else { return }
