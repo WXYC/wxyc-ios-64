@@ -11,7 +11,7 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 | **AppServices** | App-level services: `AppConfiguration` (backend `/config` bootstrap), Spotlight indexing/donation for concerts and playcuts, App Store review prompts, On Tour alert scheduling, widget state/relevance, `NowPlayingService` |
 | **Artwork** | Album artwork fetching from multiple sources |
 | **Caching** | Disk/memory caching with TTL support |
-| **ColorPalette** | Dominant-color extraction and palette generation from artwork images |
+| **ColorPalette** | Dominant-color extraction and palette generation from artwork images; also the home for both of the codebase's hue-based color models — `HSBColor` (degree-based hue, bridges to UIKit/AppKit, backs the wallpaper theming system) and `HSL` (CSS `hsl()` semantics, for design-system colors transcribed from a spec) |
 | **Concerts** | On Tour concert models, the dismissed-concerts store, and the Box Office ticket presenter |
 | **Core** | Core types (RadioStation, Playcut, etc.); the `FileStorage`/`AppSupportFileStorage` durable never-evict byte-file seam (`CoreTesting` for the `InMemoryFileStorage` double), shared by LikedSongs and Concerts |
 | **DebugPanel** | DEBUG-only settings/HUD panel: performance metrics overlay, feature toggles, cache purge |
@@ -25,7 +25,7 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 | **PlayerHeaderView** | Now playing header UI component |
 | **Playlist** | Playlist service and data models |
 | **Wallpaper** | Metal shader-based animated backgrounds (private submodule from `WXYC/wallpaper-ios`) |
-| **WXUI** | Shared SwiftUI components |
+| **WXUI** | Shared SwiftUI components (`StatusPill`, etc.), plus the on-air banner's SF Pro variable-font typography: `SFProVariation` and its axes, glyph metrics, the per-letter grade wave, and the width-axis fitter. Depends on nothing but system frameworks — keep it that way |
 | **WXYCAPIModels** | Vendored, generated (openapi-generator) Swift models from `wxyc-shared`'s `api.yaml`. Models + Infrastructure only, no endpoint clients. Regenerate via `scripts/regenerate-api-types.sh`; not yet adopted by app code (#412 Phase 0). |
 
 ## App Entry Point
