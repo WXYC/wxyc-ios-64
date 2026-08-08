@@ -295,6 +295,30 @@ struct PlaycutMetadataTests {
         #expect(AlbumMetadata(artworkURL: URL(string: "https://i.discogs.com/a.jpg")).isSparse == false)
     }
 
+    @Test("A false discogsUnavailable is the column default and does not make an album non-sparse")
+    func isSparseIgnoresTheDefaultDiscogsUnavailableFlag() {
+        // Regression guard for the defect that made the #812 short TTL inert in
+        // production. `library.discogs_unavailable` is `NOT NULL DEFAULT false`
+        // and Backend assigns it unconditionally for every library-linked row
+        // (`proxy.controller.ts`, gated only on `albumId !== null`), so an
+        // otherwise-empty pre-enrichment response arrives carrying
+        // `discogsUnavailable: false`. Keying on presence rather than on the
+        // value classified every one of those as non-sparse.
+        #expect(AlbumMetadata(discogsUnavailable: false).isSparse)
+        #expect(AlbumMetadata(label: "Houndstooth", discogsUnavailable: false).isSparse)
+    }
+
+    @Test("MD-authored Not-on-Discogs content is real content, so it defeats isSparse")
+    func isSparseCountsMDAuthoredNotOnDiscogsContent() {
+        // `true` is a fact an MD entered by hand — the release will never carry
+        // Discogs enrichment, which is a durable answer rather than a
+        // mid-enrichment gap. The note is MD-authored prose that renders next to
+        // the placeholder, and Backend emits it on its own `!== null` check, so
+        // it can arrive without the boolean.
+        #expect(AlbumMetadata(discogsUnavailable: true).isSparse == false)
+        #expect(AlbumMetadata(discogsUnavailableNote: "Embargoed promo").isSparse == false)
+    }
+
     @Test("hasMetadataSectionContent ignores fields that do not mount in PlaycutMetadataSection")
     func hasMetadataSectionContentIgnoresUngatedFields() {
         // wikipediaURL renders in ExternalLinksSection (gated separately at PlaycutDetailView:94).

@@ -89,14 +89,16 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// MD-set marker indicating this release is intentionally not on Discogs
     /// (the "Not on Discogs" flag epic, Backend-Service#1280). When `true`,
     /// artwork rendering suppresses the Discogs-derived artwork/URL and falls
-    /// back to a placeholder — see `isDiscogsUnavailable` and
-    /// `PlaycutDetailView.apply(_:)`'s artwork-fetch gate. Populated from either the inline
-    /// V2 flowsheet row (`Playcut.discogsUnavailable`) or the
-    /// `/proxy/metadata/album` decode path (`WXYCAPIModels.AlbumMetadataResponse
-    /// .discogsUnavailable`, wired in `PlaycutMetadataService.mergeAlbum`,
-    /// proxy preferred — #731). Backend emits the field on both paths,
-    /// including the flowsheet embed (`FlowsheetV2TrackEntry.discogsUnavailable`,
-    /// WXYC/Backend-Service#1908), so either source can populate it.
+    /// back to a placeholder — see ``isDiscogsUnavailable`` and
+    /// `PlaycutDetailView.loadArtworkIfNeeded()`'s artwork-fetch gate. Populated
+    /// from either the inline V2 flowsheet row (`Playcut.discogsUnavailable`) or
+    /// the `/proxy/metadata/album` decode path
+    /// (`WXYCAPIModels.AlbumMetadataResponse.discogsUnavailable`, combined in
+    /// `PlaycutMetadataService.fetchMetadata(for:inline:)` via
+    /// ``coalescing(over:)``, proxy preferred — #731). Backend emits the field on
+    /// both paths, including the flowsheet embed
+    /// (`FlowsheetV2TrackEntry.discogsUnavailable`, WXYC/Backend-Service#1908),
+    /// so either source can populate it.
     public let discogsUnavailable: Bool?
 
     /// Optional free-text reason for ``discogsUnavailable``, surfaced as
@@ -158,6 +160,16 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// column, so an album carrying nothing but a label is exactly the
     /// pre-enrichment snapshot rather than a partial success.
     ///
+    /// The two ``discogsUnavailable`` fields are tested by *value*, not by
+    /// presence, because presence carries no information here.
+    /// `library.discogs_unavailable` is `NOT NULL DEFAULT false` and Backend
+    /// assigns it to every response whose row resolved to a catalog album, so
+    /// `false` rides along on the pre-enrichment answer this predicate exists to
+    /// catch; keying on `!= nil` would classify every library-linked play as
+    /// non-sparse and make the whole gate inert. `true`, or a note, is the
+    /// opposite: an MD sat down and recorded that this release will never carry
+    /// Discogs enrichment, which is durable content and belongs on the long TTL.
+    ///
     /// Gates the short cache TTL in
     /// `PlaycutMetadataService.fetchAlbumAndStreaming` (#812), mirroring what
     /// ``PlaycutMetadataService/emptyStreamingLifespan`` does on the streaming
@@ -168,7 +180,8 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
             && discogsArtistId == nil
             && artworkURL == nil
             && fullReleaseDate == nil
-            && discogsUnavailable == nil
+            && !isDiscogsUnavailable
+            && discogsUnavailableNote == nil
             && (genres ?? []).isEmpty
             && (styles ?? []).isEmpty
             && (criticReviews ?? []).isEmpty
