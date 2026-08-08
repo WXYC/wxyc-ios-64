@@ -8,7 +8,7 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 |---------|---------|
 | **Analytics** | PostHog analytics wrapper |
 | **AnalyticsMacros** | `@AnalyticsEvent` macro (swift-syntax compiler plugin) that derives snake_case event names and `properties` from a type declaration |
-| **AppServices** | App-level services: `AppConfiguration` (backend `/config` bootstrap), Spotlight indexing/donation for concerts and playcuts, App Store review prompts, On Tour alert scheduling, widget state/relevance, `NowPlayingService` |
+| **AppServices** | App-level services: `AppConfiguration` (backend `/config` bootstrap), Spotlight indexing/donation for concerts and playcuts, App Store review prompts, On Tour alert scheduling, widget state/relevance, `NowPlayingService`, `MediaSuggestionService` (declares media-suggestion eligibility via `INMediaUserContext`/`INUpcomingMediaManager`, iOS-only) |
 | **Artwork** | Album artwork fetching from multiple sources |
 | **Caching** | Disk/memory caching with TTL support |
 | **ColorPalette** | Dominant-color extraction and palette generation from artwork images; also the home for both of the codebase's hue-based color models — `HSBColor` (degree-based hue, bridges to UIKit/AppKit, backs the wallpaper theming system) and `HSL` (CSS `hsl()` semantics, for design-system colors transcribed from a spec) |
