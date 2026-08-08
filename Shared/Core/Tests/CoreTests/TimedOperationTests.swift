@@ -49,9 +49,11 @@ struct TimedOperationTests {
     @Test("returns fallback on CancellationError without reporting")
     func returnsFallbackOnCancellationError() async {
         // `CancellationError` is structured concurrency's own signal — something in
-        // the task tree asked to stop. Always silent, regardless of `Task.isCancelled`
-        // (a cancelled child can raise it while this task is still alive). Only the
-        // URLSession-originated `URLError(.cancelled)` gets the #812 treatment.
+        // the task tree asked to stop. Never *reported*, regardless of
+        // `Task.isCancelled` (a cancelled child can raise it while this task is
+        // still alive). It takes the same `catch` arm as the URLSession-originated
+        // `URLError(.cancelled)`, so it gets the #812 `.warning` log too — what
+        // this test pins is the absence of an error event, not silence.
         let reporter = MockErrorReporter()
 
         let result = await timedOperation(

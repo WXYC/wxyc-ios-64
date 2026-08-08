@@ -158,6 +158,15 @@ public struct PlaycutMetadataResolver: Sendable {
     /// this card. Enforces ``shouldObserveEnrichment(for:)`` itself: a caller
     /// that skips the check gets an immediately-finished stream rather than a
     /// live subscription.
+    ///
+    /// Stopping at the *first* terminal state, rather than holding out for
+    /// `enrichedMatch`, is deliberate. A row that lands `enrichedNoMatch` can in
+    /// principle be corrected later by Backend's drift-repair cron, and this
+    /// stream will have finished by then. But that cron runs on an hours-scale
+    /// schedule, so collecting the correction would mean keeping a playlist
+    /// subscription open for the whole life of the cover against a window no
+    /// user session spans — a standing cost for a repaint nobody is present to
+    /// see. Reopening the card picks the correction up for free.
     public func repairs(
         for playcut: Playcut,
         playlists: AsyncStream<Playlist>

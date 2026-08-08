@@ -81,10 +81,20 @@ public func timedOperation<T: Sendable>(
         //
         // So: no origin classification, and no error report. A `.warning` log
         // carries the context and duration, which the app forwards to Sentry
-        // Logs — queryable and correlatable, without the quota and alerting
-        // weight of an issue. If cancellations ever need to be actioned rather
-        // than merely observed, that is a decision to make against this data,
-        // not a guess to bake into the classifier.
+        // Logs — queryable and correlatable, without the alerting weight and
+        // issue-grouping of an event. If cancellations ever need to be actioned
+        // rather than merely observed, that is a decision to make against this
+        // data, not a guess to bake into the classifier.
+        //
+        // Worth being precise about what that buys, since the trigger rate is
+        // identical to the error report's: this fires on routine teardown too —
+        // a card dismissed mid-fetch, a `.task` cancelled by a scroll, iOS
+        // tearing down in-flight requests on suspension. The distinction is the
+        // instrument, not the volume. It also costs nothing incremental against
+        // the Logs quota: the `.info` "starting" line above already emitted for
+        // this same call, and `SentryLogsDestination` forwards `.info` and up,
+        // so every operation that can reach this arm has already paid for a log
+        // line. What would have been new is an *issue* per teardown.
         Log(.warning, category: category, "\(context): cancelled after \(timer.duration())s")
         return fallback
     } catch {
