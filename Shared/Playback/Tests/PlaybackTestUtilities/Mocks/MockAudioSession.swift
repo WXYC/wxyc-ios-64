@@ -133,14 +133,16 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
     /// a spurious failure. The block happens outside the state lock, so the
     /// recorded call is observable while it is still "in flight".
     ///
-    /// `deactivationHoldCap` bounds the block: a regression that routes a
-    /// *blocking* caller through the gate — the main actor waiting out the
-    /// handback is the defect #773 fixed — is a deadlock backstop, not a
-    /// timing assertion (#807 review corrected this: the suite's own
-    /// elapsed-time assertions against this cap were restructured onto
-    /// ordering checks, so nothing here still fails a test's elapsed bound —
-    /// this cap exists only so a regressed caller's block eventually
-    /// releases the thread instead of hanging the suite forever).
+    /// ``deactivationHoldCap`` bounds the block. That cap is a deadlock
+    /// backstop, not a timing assertion: the #807 review restructured this
+    /// suite's elapsed-time assertions onto ordering checks, so nothing
+    /// measures a duration against it any more. It exists only so that a
+    /// regression routing a *blocking* caller through the gate — the main
+    /// actor waiting out the handback, which is the defect #773 fixed —
+    /// eventually releases its thread instead of hanging the suite forever.
+    ///
+    /// Suites that arm this gate must be `.serialized`. See the cap's own
+    /// documentation for why.
     public func holdDeactivations() {
         state.withLock { $0.deactivationHoldArmed = true }
     }
@@ -157,14 +159,25 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
     /// that a regression's block eventually releases the thread instead of
     /// hanging the suite forever.
     ///
-    /// 60s = 2x the suite's 30s `stallTolerantTimeout` wait bound, ~6x the
-    /// ~10.5s stall measured in CI run 31205214380 (#807). It was 5s — 6x
-    /// *below* that same stall — meaning the stall could lapse this cap
-    /// mid-hold and produce a misleading failure (e.g.
-    /// `playDoesNotBlockBehindDeactivation` reporting "the freeze moved from
-    /// the pause tap to the play tap" for what was really just scheduler
-    /// starvation) rather than the deadlock backstop this cap is meant to be.
-    public static let deactivationHoldCap: Duration = .seconds(60)
+    /// Derived, not chosen: 2x ``stallTolerantTimeout`` (so a hold outlives
+    /// every wait that could be watching it) and ~6x the ~10.5s stall
+    /// measured in CI run 31205214380 (#807). It was a flat 5s — 6x *below*
+    /// that stall — meaning the stall could lapse the cap mid-hold and
+    /// produce a misleading failure (e.g. `playDoesNotBlockBehindDeactivation`
+    /// reporting "the freeze moved from the pause tap to the play tap" for
+    /// what was really just scheduler starvation).
+    ///
+    /// **Serialize any suite that arms this gate.** The block is a
+    /// `Thread.sleep` poll, and the thread it blocks is the controller's
+    /// *detached* handback task — i.e. one of the Swift cooperative pool's
+    /// threads, and the pool does not spawn replacements for threads that
+    /// block. At the old 5s a regression cost a few red tests; at 60s,
+    /// several unserialized tests holding concurrently could drain the pool
+    /// on a 2-4 core runner and convert a handful of clean failures into a
+    /// wedged step with no per-test attribution. Serialization bounds the
+    /// simultaneously-blocked pool threads to one, which is what makes the
+    /// longer cap safe (#807 review).
+    public static let deactivationHoldCap: Duration = stallTolerantTimeout * 2
 
     /// When true, `setActive(false, …)` throws. Deactivation otherwise always
     /// succeeds — `shouldThrowOnSetActive` only models activation failures.
