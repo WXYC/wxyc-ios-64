@@ -178,19 +178,23 @@ public actor PlaycutMetadataService {
             return PlaycutMetadata(artist: artist, album: album, streaming: streaming)
         }
 
-        // Inline fallthrough: prefer the proxy result where present, else fall
-        // back to the inline values. This protects inline album fields (label,
-        // releaseYear) and the inline artist bio when the proxy returns only
-        // streaming URLs.
-        // Album: proxy preferred field-by-field, inline filling the gaps, so
-        // inline fields the proxy didn't refresh (label, releaseYear, artworkURL
-        // on the LML synth-shape) survive — and `discogsUnavailable` takes the
-        // proxy's answer when the BS read path resolved it (BS#1901), falling
-        // back to the inline V2 row when the response omits it (e.g. a cache
-        // hit predating the field). Same coalescer the detail card's enrichment
-        // repair uses (#812); see ``AlbumMetadata/coalescing(over:)``.
+        // Inline fallthrough. Both records coalesce field-by-field: proxy
+        // preferred, inline filling the gaps, so inline fields the proxy didn't
+        // refresh (label, releaseYear, artworkURL on the LML synth-shape,
+        // `artistBio`) survive a response that carried only streaming URLs — and
+        // `discogsUnavailable` takes the proxy's answer when the BS read path
+        // resolved it (BS#1901), falling back to the inline V2 row when the
+        // response omits it (e.g. a cache hit predating the field).
+        //
+        // The artist side used to be a whole-record `artist == .empty` test,
+        // which could never choose the inline side once the album lookup had
+        // resolved a `discogsArtistId`: `fetchArtistMetadata` writes that id into
+        // the record unconditionally, so a bio-less proxy answer is non-empty and
+        // silently replaced whatever bio the V2 row carried. Same coalescer the
+        // detail card's enrichment repair uses (#812); see
+        // ``AlbumMetadata/coalescing(over:)``.
         return PlaycutMetadata(
-            artist: artist == .empty ? inline.artist : artist,
+            artist: artist.coalescing(over: inline.artist),
             album: album.coalescing(over: inline.album),
             streaming: streaming
         )

@@ -691,6 +691,69 @@ struct PlaycutMetadataServiceV2FallbackTests {
         )
     }
 
+    // MARK: - Artist-side fallthrough
+
+    @Test("A bio-less proxy artist does not discard the inline V2 artist bio")
+    func proxyArtistWithoutBioKeepsInlineArtistFields() async throws {
+        // The album lookup resolving a `discogsArtistId` is enough to make the
+        // artist fetch produce a non-empty `ArtistMetadata` — that id is written
+        // into the record unconditionally (`apiResult.discogsArtistId ?? artistId`).
+        // So a whole-record "is it empty?" test can never choose the inline side
+        // once the album carried an artist id, and a proxy answer with no bio
+        // silently replaces the bio the V2 row already had. The album side next
+        // to it coalesces field-by-field; the artist side has to as well.
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = MetadataV2MockWebSession()
+        let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Call Your Name",
+            labelName: "self-released",
+            artistName: "Chuquimamani-Condori",
+            releaseTitle: "Edits",
+            metadataStatus: .enriching
+        )
+        let inline = PlaycutMetadata(
+            artist: ArtistMetadata(
+                bio: "Producer from Bolivia.",
+                wikipediaURL: URL(string: "https://en.wikipedia.org/wiki/Chuquimamani-Condori")
+            ),
+            album: AlbumMetadata(label: "self-released"),
+            streaming: .empty
+        )
+
+        mockSession.responses["proxy/metadata/album"] = """
+        {
+            "discogsArtistId": 4242,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": "https://open.spotify.com/track/edits",
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/artist"] = """
+        {
+            "discogsArtistId": 4242,
+            "bio": null,
+            "wikipediaUrl": null,
+            "imageUrl": null,
+            "bioTokens": null
+        }
+        """.data(using: .utf8)!
+
+        // When
+        let result = await service.fetchMetadata(for: playcut, inline: inline)
+
+        // Then
+        #expect(result.artistBio == "Producer from Bolivia.", "The proxy's silence must not erase the inline bio")
+        #expect(result.wikipediaURL?.absoluteString == "https://en.wikipedia.org/wiki/Chuquimamani-Condori")
+        #expect(result.artist.discogsArtistId == 4242, "The proxy still contributes what only it resolved")
+    }
+
     // MARK: - Short TTL on sparse-album cache entries (#812)
 
     @Test("A sparse album response is cached with the short TTL constant, not seven days")
