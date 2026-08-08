@@ -15,13 +15,13 @@ struct Header: View {
 
     var body: some View {
         HStack(alignment: .center) {
-            artworkOrLogo(entry.artwork) { artwork in
+            if let artwork = entry.artwork {
                 artwork
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .cornerRadius(10)
                     .frame(width: 100, height: 100)
-            } fallback: {
+            } else {
                 Image.logo
                     .frame(width: 100, height: 100, alignment: .leading)
             }
@@ -33,7 +33,8 @@ struct Header: View {
                     leadingFont: .headline,
                     trailingFont: .subheadline,
                     leadingLineLimit: 1,
-                    trailingLineLimit: 1
+                    trailingLineLimit: 1,
+                    spacing: nil
                 ) { EmptyView() }
 
                 PlayButton()

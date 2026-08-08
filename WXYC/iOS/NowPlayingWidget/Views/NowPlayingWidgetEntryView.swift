@@ -19,14 +19,15 @@ protocol NowPlayingWidgetEntryView: View {
 }
 
 extension NowPlayingWidgetEntryView {
+    @ViewBuilder
     var artwork: some View {
-        artworkOrLogo(entry.artwork) { artwork in
+        if let artwork = entry.artwork {
             artwork
                 .resizable()
                 .frame(maxWidth: 800, maxHeight: 800)
                 .aspectRatio(contentMode: .fit)
                 .cornerRadius(5)
-        } fallback: {
+        } else {
             Image.logo
         }
     }

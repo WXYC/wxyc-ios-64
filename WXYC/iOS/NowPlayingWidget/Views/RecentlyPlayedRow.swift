@@ -30,7 +30,8 @@ struct RecentlyPlayedRow: View {
                 leadingFont: .headline,
                 trailingFont: .subheadline,
                 leadingLineLimit: 1,
-                trailingLineLimit: 1
+                trailingLineLimit: 1,
+                spacing: nil
             ) { EmptyView() }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -39,27 +40,25 @@ struct RecentlyPlayedRow: View {
         .clipped()
     }
 
+    /// Both branches occupy the same box, so the frame and padding are applied
+    /// once to the `Group` rather than restated per branch.
     var artwork: some View {
-        artworkOrLogo(nowPlayingItem.artwork.map(Image.init(uiImage:))) { artwork in
-            artwork
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .cornerRadius(10)
-                .clipped()
-                .frame(
-                    width: imageDimension,
-                    height: imageDimension,
-                    alignment: .leading
-                )
-                .padding(5)
-        } fallback: {
-            Image.logo
-                .frame(
-                    width: imageDimension,
-                    height: imageDimension,
-                    alignment: .leading
-                )
-                .padding(5)
+        Group {
+            if let artwork = nowPlayingItem.artwork {
+                Image(uiImage: artwork)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .cornerRadius(10)
+                    .clipped()
+            } else {
+                Image.logo
+            }
         }
+        .frame(
+            width: imageDimension,
+            height: imageDimension,
+            alignment: .leading
+        )
+        .padding(5)
     }
 }
