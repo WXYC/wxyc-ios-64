@@ -20,7 +20,7 @@
 //  the Mac, where the suggestion surface does not exist.
 //
 //  `@MainActor`, not an actor: `INMediaUserContext.becomeCurrent()` and
-//  `INUpcomingMediaManager.sharedManager` are app-global system state, the
+//  `INUpcomingMediaManager.shared` are app-global system state, the
 //  same category of work `HandoffActivityManager` already models as
 //  main-actor-isolated. It holds no state of its own — registers once at
 //  launch and is never retained (see "Ownership" in the design doc) — so a
