@@ -23,6 +23,7 @@
 
 #if compiler(>=6.4)
 import AppIntents
+import Core
 
 @available(iOS 27.0, *)
 @AppEntity(schema: .audio.liveRadioStation)
@@ -35,7 +36,7 @@ struct LiveRadioStationEntity {
     var providerName: String?
 
     init() {
-        self.id = "org.wxyc.live"
+        self.id = RadioStation.WXYC.identifier
         self.title = "WXYC 89.3 FM"
         self.providerName = "WXYC Chapel Hill"
     }
