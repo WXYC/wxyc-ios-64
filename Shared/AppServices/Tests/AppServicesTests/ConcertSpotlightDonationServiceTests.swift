@@ -25,6 +25,7 @@ import AnalyticsTesting
 import Caching
 import Concerts
 import ConcertsTesting
+import Core
 import Foundation
 import Testing
 import WXYCIntents
@@ -48,7 +49,7 @@ struct ConcertSpotlightDonationServiceTests {
 
         // Built independently of the service's own station-zone constants so
         // the assertion can't pass by construction.
-        let eastern = try #require(TimeZone(identifier: "America/New_York"))
+        let eastern = TimeZone.wxycStation
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = eastern
         let expected = try #require(calendar.dateInterval(of: .day, for: Concert.defaultStartsOn)?.end)
@@ -316,7 +317,7 @@ struct ConcertSpotlightDonationServiceTests {
         let expectedID = try #require(ConcertID(concertID: 1))
         #expect(secondDonations.map(\.entity.id) == [expectedID]) // single-row re-donation, control untouched
 
-        let eastern = try #require(TimeZone(identifier: "America/New_York"))
+        let eastern = TimeZone.wxycStation
         var stationCalendar = Calendar(identifier: .gregorian)
         stationCalendar.timeZone = eastern
         let expectedExpiration = try #require(stationCalendar.dateInterval(of: .day, for: newDate)?.end)

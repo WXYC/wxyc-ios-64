@@ -13,6 +13,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Testing
 @testable import Concerts
@@ -27,7 +28,7 @@ struct ConcertMonthSectionTests {
     /// station zone, exactly as `Concert.dateParser` produces from a `yyyy-MM-dd`.
     private func stationDay(_ year: Int, _ month: Int, _ day: Int) -> Date {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+        calendar.timeZone = TimeZone.wxycStation
         return calendar.date(from: DateComponents(year: year, month: month, day: day))
             ?? Date(timeIntervalSince1970: 0)
     }

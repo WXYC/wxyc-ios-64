@@ -9,6 +9,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Testing
 @testable import Concerts
@@ -86,7 +87,7 @@ struct ConcertTests {
         let concert = try JSONDecoder().decode(Concert.self, from: Data(Self.fullJSON.utf8))
 
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+        calendar.timeZone = TimeZone.wxycStation
         let components = calendar.dateComponents([.year, .month, .day], from: concert.startsOn)
         #expect(components.year == 2026)
         #expect(components.month == 8)
@@ -98,7 +99,7 @@ struct ConcertTests {
         let concert = try JSONDecoder().decode(Concert.self, from: Data(Self.fullJSON.utf8))
 
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+        calendar.timeZone = TimeZone.wxycStation
 
         // 2026-08-02T00:00:00Z is 8 PM Eastern on 2026-08-01 (EDT, UTC-4).
         let showHour = calendar.component(.hour, from: try #require(concert.startsAt))

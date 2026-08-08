@@ -68,7 +68,7 @@ struct ConcertsFetcherTests {
         let fetcher = ConcertsFetcher(baseURL: Self.base, session: QueuedStubURLProtocol.makeSession())
 
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+        calendar.timeZone = TimeZone.wxycStation
         let from = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 1)))
         let to = try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 31)))
 

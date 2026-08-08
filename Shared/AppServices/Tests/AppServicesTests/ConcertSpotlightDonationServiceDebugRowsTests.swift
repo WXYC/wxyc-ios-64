@@ -20,6 +20,7 @@
 import Caching
 import Concerts
 import ConcertsTesting
+import Core
 import Foundation
 import Testing
 import WXYCIntents
@@ -82,7 +83,7 @@ struct ConcertSpotlightDonationServiceDebugRowsTests {
         let concert = Concert.stub(id: 1, startsOn: Concert.defaultStartsOn)
         await service.reconcile(window: [concert])
 
-        let eastern = try #require(TimeZone(identifier: "America/New_York"))
+        let eastern = TimeZone.wxycStation
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = eastern
         let expected = try #require(calendar.dateInterval(of: .day, for: Concert.defaultStartsOn)?.end)

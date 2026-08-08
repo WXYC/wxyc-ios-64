@@ -10,6 +10,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Synchronization
 import Testing
@@ -93,7 +94,7 @@ private final class GatedConcertsFetcher: ConcertsFetching {
 /// Builds a station-zone day (noon) so the injected `now` is deterministic.
 private func day(_ year: Int, _ month: Int, _ dayOfMonth: Int) -> Date {
     var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+    calendar.timeZone = TimeZone.wxycStation
     return calendar.date(from: DateComponents(year: year, month: month, day: dayOfMonth, hour: 12)) ?? .distantPast
 }
 

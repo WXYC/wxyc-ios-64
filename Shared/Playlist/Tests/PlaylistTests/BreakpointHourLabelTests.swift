@@ -6,6 +6,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Testing
 import Foundation
 @testable import Playlist
@@ -16,7 +17,7 @@ import PlaylistTesting
 // a listener elsewhere sees their local hour alongside the station's.
 @Suite("Breakpoint hour-label formatting")
 struct BreakpointHourLabelTests {
-    private let eastern = TimeZone(identifier: "America/New_York")!
+    private let eastern = TimeZone.wxycStation
     private let pacific = TimeZone(identifier: "America/Los_Angeles")!
     private let toronto = TimeZone(identifier: "America/Toronto")!
 
