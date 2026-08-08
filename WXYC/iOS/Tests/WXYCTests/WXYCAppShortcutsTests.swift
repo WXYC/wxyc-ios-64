@@ -24,6 +24,7 @@
 //
 
 import AppIntents
+import Core
 import Intents
 import Testing
 @testable import WXYC
@@ -91,6 +92,18 @@ struct WXYCAppSiriIntentInteractionTests {
     func buildsPlayMediaIntent() async {
         let interaction = WXYCApp.makeSiriIntentInteraction()
         #expect(interaction.intent is INPlayMediaIntent)
+    }
+
+    @Test("makeSiriIntentInteraction builds the canonical WXYC media identity (#828)")
+    func buildsCanonicalMediaIdentity() async {
+        let interaction = WXYCApp.makeSiriIntentInteraction()
+        let intent = interaction.intent as? INPlayMediaIntent
+        let mediaItem = intent?.mediaItems?.first
+
+        #expect(mediaItem?.identifier == RadioStation.WXYC.identifier)
+        #expect(mediaItem?.title == "WXYC 89.3 FM")
+        #expect(intent?.resumePlayback == false)
+        #expect(intent?.suggestedInvocationPhrase == "Play WXYC")
     }
 
     @Test("makeSiriIntentInteraction's media item carries the composited placeholder artwork")
