@@ -161,7 +161,6 @@ DEPS[LikedSongs]="Core Playlist Logger"
 DEPS[Playback]="Caching Core Analytics Logger"
 DEPS[Artwork]="Core Caching Playlist Logger"
 DEPS[ColorPalette]="Core"
-DEPS[SemanticIndex]="Core Caching Logger"
 DEPS[MusicShareKit]="WXUI Logger Core Analytics Caching"
 DEPS[Wallpaper]="Analytics Caching ColorPalette Core Logger WXUI"
 DEPS[Metadata]="Core Caching Playlist Logger WXYCAPIModels"
@@ -306,11 +305,17 @@ TEST_TARGETS[WXUI]="WXUITests"
 #                             description): 21 executed on host, 44 on the
 #                             simulator, a 23-test gap — it fails the check
 #                             as expected. Run via xcb in the iOS simulator
-#                             instead. The earlier 25/59/34 reading also
-#                             counted ColorPaletteServiceTests, deleted in
-#                             #754 along with the service itself; the gap
-#                             narrowed but did not close, because
-#                             DominantColorExtractor was always the larger
+#                             instead. The earlier 25/59/34 reading counted
+#                             two suites #754 deleted, and they moved
+#                             different halves of it: ColorPaletteCacheKey-
+#                             Tests (4 tests, ungated) is the whole host-side
+#                             drop, 25 → 21, and ColorPaletteServiceTests
+#                             (11 tests, entirely inside canImport(UIKit), so
+#                             0 on host) came off the simulator alone. Sim
+#                             59 → 44 is those 15 together. The gap narrowed
+#                             by exactly the 11 gated service tests but did
+#                             not close, because DominantColorExtractorTests
+#                             (21 tests, all gated) was always the larger
 #                             half of it.
 #       - Artwork           — ArtworkTests bundle hangs at 0% CPU on
 #                             macos-latest paravirt (root cause unclear;
