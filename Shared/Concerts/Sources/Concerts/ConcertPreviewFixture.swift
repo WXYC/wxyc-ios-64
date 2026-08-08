@@ -8,7 +8,9 @@
 //  Two things live here for two different reasons.
 //
 //  The primitives — ``Venue/catsCradle``, ``Concert/fixtureStartsOn``,
-//  ``Concert/fixtureInstant(hour:minute:)`` — are declared in the shipping
+//  ``Concert/fixtureInstant(hour:minute:)``, and the ``Concert/fixtureId`` /
+//  ``Concert/fixtureTicketURL`` / ``Concert/fixtureEventURL`` literals — are
+//  declared in the shipping
 //  `Concerts` module, ungated, and are the single definition of "the Cat's
 //  Cradle fixture venue" and "the fixed 2026-08-01 station-zone fixture date"
 //  for the whole repo. `ConcertsTesting`'s `Venue.stub()` / `Concert.stub()` /
@@ -26,7 +28,7 @@
 //  `BoxOfficeTicketView` preview extension. The cost is roughly twenty lines of
 //  constant data in the release binary, which is the cheaper side of the trade.
 //
-//  ``Concert/previewFixture(id:headliningArtistRaw:supportingArtistsRaw:doorsHour:showHour:ticketURL:eventURL:priceMin:priceMax:ageRestriction:status:artistBio:)``
+//  ``Concert/previewFixture(id:venue:headliningArtistRaw:supportingArtistsRaw:doorsHour:showHour:ticketURL:eventURL:priceMin:priceMax:ageRestriction:status:artistBio:)``
 //  is the part that stays `#if DEBUG`: it exists for the three app-target
 //  `#Preview`/mock call sites (`BoxOfficeTicketView`, `UpcomingShowProvider`,
 //  `ConcertDetailView`) that each used to hand-roll the same magic date and
@@ -54,40 +56,67 @@ extension Venue {
         state: "NC",
         address: "300 E Main St"
     )
+
+    /// ``catsCradle`` with no street address — the shape the backend returns
+    /// for a venue whose source carried none.
+    ///
+    /// Derived from ``catsCradle`` rather than restated, so there is still only
+    /// one Cat's Cradle literal. It exists because the address is not cosmetic:
+    /// `BoxOfficeTicketPresenter.venueLine` appends it when non-empty, and
+    /// `ConcertDetailView`'s address line prefers `"<address> · <city>"` over
+    /// city/state. The Box Office previews and the DEBUG mock ticket render
+    /// the no-address layout, and consolidating them onto a single fixture
+    /// venue would silently have changed what they show (#771 review).
+    public static let catsCradleWithoutAddress = Venue(
+        id: Venue.catsCradle.id,
+        slug: Venue.catsCradle.slug,
+        name: Venue.catsCradle.name,
+        city: Venue.catsCradle.city,
+        state: Venue.catsCradle.state,
+        address: nil
+    )
 }
 
 extension Concert {
-    /// The fixed fixture date: 2026-08-01 in the station zone. Every preview,
-    /// mock, and test stub pins `startsOn` here so date-dependent behavior is
-    /// deterministic regardless of when or where the code runs.
+    /// The fixed fixture date: 2026-08-01 00:00 in the station zone (EDT,
+    /// UTC-4). Every preview, mock, and test stub pins `startsOn` here so
+    /// date-dependent behavior is deterministic regardless of when or where the
+    /// code runs.
     ///
-    /// The `?? fixtureStartsOnFallback` branch is unreachable for these fixed
-    /// components but keeps the declaration force-unwrap-free.
-    public static let fixtureStartsOn: Date = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        let components = DateComponents(year: 2026, month: 8, day: 1)
-        return calendar.date(from: components) ?? fixtureStartsOnFallback
-    }()
+    /// Spelled as an epoch rather than assembled from `DateComponents` so the
+    /// declaration has no unreachable `??` branch to keep honest — the branch a
+    /// component-built version needs is unobservable, which is how the epoch it
+    /// fell back to went three days wrong (`1_785_898_800` is 2026-08-04 23:00
+    /// EDT) in every hand-rolled copy it was pasted into. Built this way, a
+    /// wrong epoch fails ``ConcertFixturePrimitiveTests`` immediately.
+    public static let fixtureStartsOn = Date(timeIntervalSince1970: 1_785_556_800)
 
-    /// The epoch spelling of ``fixtureStartsOn``, for its unreachable `??`
-    /// branch. Named rather than inlined so a test can assert the two agree:
-    /// an unreachable literal is unobservable, and this one was three days off
-    /// (`1_785_898_800` is 2026-08-04 23:00 EDT) in every hand-rolled copy of
-    /// this date it was pasted into.
-    static let fixtureStartsOnFallback = Date(timeIntervalSince1970: 1_785_556_800)
+    /// The fixture concert's backend id. Shared with `ConcertsTesting`'s
+    /// `Concert.stub()` so the literal is declared once.
+    public static let fixtureId = 4821
+
+    /// The fixture's direct ticket-seller link. Shared with `Concert.stub()`.
+    public static let fixtureTicketURL = URL(string: "https://www.etix.com/ticket/p/jessica-pratt")
+
+    /// The fixture's venue event-page link.
+    ///
+    /// Deliberately *not* shared with `Concert.stub()`, which defaults
+    /// `eventURL` to `nil`: `BoxOfficeTicketPresenter.hasVenuePage` keys off
+    /// this field, and the presenter suite depends on a default stub having no
+    /// venue page. Previews want the opposite default so the venue-page button
+    /// is exercised. `ConcertsTestingAgreementTests` pins the divergence rather
+    /// than letting it drift unobserved.
+    public static let fixtureEventURL = URL(string: "https://catscradle.com/event/jessica-pratt")
 
     /// An instant on ``fixtureStartsOn``'s day at a station-zone wall-clock
     /// `hour`/`minute`. Returns `nil` for a `nil` hour so a caller can express
     /// "no doors/show time" without a separate overload.
     public static func fixtureInstant(hour: Int?, minute: Int = 0) -> Date? {
         guard let hour else { return nil }
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        var components = calendar.dateComponents([.year, .month, .day], from: fixtureStartsOn)
+        var components = Calendar.wxycStation.dateComponents([.year, .month, .day], from: fixtureStartsOn)
         components.hour = hour
         components.minute = minute
-        return calendar.date(from: components)
+        return Calendar.wxycStation.date(from: components)
     }
 }
 
@@ -96,22 +125,29 @@ extension Concert {
     /// Builds a preview/mock concert at Cat's Cradle on the fixed fixture date.
     ///
     /// Defaults match `ConcertsTesting`'s `Concert.stub()` (Jessica Pratt, on
-    /// sale, $22–25, 7 PM doors / 8 PM show) so an app preview and a test
-    /// fixture read the same at a glance — both now resolve their venue and
-    /// dates through the same primitives above, so they cannot drift.
+    /// sale, $22–25, 7 PM doors / 8 PM show, same id and ticket link) so an app
+    /// preview and a test fixture read the same at a glance — both resolve
+    /// through the same primitives above, so they cannot drift.
+    /// ``Concert/fixtureEventURL`` is the one deliberate exception; see its
+    /// declaration.
     ///
     /// This is the app-target-facing factory. Test code should use
     /// `Concert.stub()` from `ConcertsTesting` instead, which exposes the full
     /// model surface (`headliningArtistId`, `genres`, `stationRecommended`, …)
     /// that previews have no use for.
+    ///
+    /// - Parameter venue: Pass ``Venue/catsCradleWithoutAddress`` to render the
+    ///   city/state-only layout; the street address changes both the Box Office
+    ///   ticket's venue line and the detail view's address line.
     public static func previewFixture(
-        id: Int = 4821,
+        id: Int = Concert.fixtureId,
+        venue: Venue = .catsCradle,
         headliningArtistRaw: String = "Jessica Pratt",
         supportingArtistsRaw: [String] = ["Julie Byrne"],
         doorsHour: Int? = 19,
         showHour: Int? = 20,
-        ticketURL: URL? = URL(string: "https://www.etix.com/ticket/p/jessica-pratt"),
-        eventURL: URL? = URL(string: "https://catscradle.com/event/jessica-pratt"),
+        ticketURL: URL? = Concert.fixtureTicketURL,
+        eventURL: URL? = Concert.fixtureEventURL,
         priceMin: Double? = 22,
         priceMax: Double? = 25,
         ageRestriction: String? = "All Ages",
@@ -120,7 +156,7 @@ extension Concert {
     ) -> Concert {
         Concert(
             id: id,
-            venue: .catsCradle,
+            venue: venue,
             startsOn: fixtureStartsOn,
             startsAt: fixtureInstant(hour: showHour),
             doorsAt: fixtureInstant(hour: doorsHour),

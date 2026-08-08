@@ -64,8 +64,12 @@ struct DebugUpcomingShowResolver: UpcomingShowResolving {
     /// Shared with the dev-only tour-notification wiring (`Singletonia`) so a test
     /// notification points at the same fabricated show the Box Office ticket shows.
     static func mockShow(for playcut: Playcut) -> Concert {
+        // `catsCradleWithoutAddress`: this mock built its venue with
+        // `address: nil`, and both the Box Office ticket's venue line and the
+        // detail view's address line render the street address when it's there.
         .previewFixture(
             id: 900_000 + Int(playcut.id % 100_000),
+            venue: .catsCradleWithoutAddress,
             headliningArtistRaw: playcut.artistName,
             supportingArtistsRaw: ["Tapir!"],
             ticketURL: URL(string: "https://www.etix.com/ticket/p/mock"),

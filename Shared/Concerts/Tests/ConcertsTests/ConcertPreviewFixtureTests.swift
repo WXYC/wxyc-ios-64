@@ -9,12 +9,14 @@
 //  venue literal across `BoxOfficeTicketView`, `UpcomingShowProvider`, and
 //  `ConcertDetailView` (issue #771).
 //
-//  `ConcertsTestingAgreementTests` at the bottom is the load-bearing one: it
+//  `ConcertsTestingAgreementTests` in the middle is the load-bearing one: it
 //  asserts the `ConcertsTesting` stub vocabulary and the `Concerts` fixture
-//  vocabulary resolve to identical values. The first version of this slice
-//  declared both independently, byte-for-byte, in sibling targets of one
-//  package — a dedup that took three copies to two. Delegation alone doesn't
-//  prevent that returning; this test does.
+//  vocabulary resolve to identical values, field by field — including the `id`
+//  and `ticketURL` literals the two used to spell separately, and the single
+//  field (`eventURL`) they deliberately disagree on. The first version of this
+//  slice declared both vocabularies independently, byte-for-byte, in sibling
+//  targets of one package — a dedup that took three copies to two. Delegation
+//  alone doesn't prevent that returning; this test does.
 //
 //  Created by Jake Bromberg on 08/06/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -24,6 +26,17 @@ import Foundation
 import Testing
 import ConcertsTesting
 @testable import Concerts
+
+/// Every readback below decomposes through this literal rather than
+/// `Calendar.wxycStation`. The fixture instants are *built* through that
+/// constant, so reading them back through it too would be a round trip that
+/// holds for any zone it names; the literal is what pins the fixture to a
+/// specific wall-clock day and hour (#771 review).
+private let eastern: Calendar = {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: "America/New_York") ?? .gmt
+    return calendar
+}()
 
 @Suite("Concert fixture primitives")
 struct ConcertFixturePrimitiveTests {
@@ -38,23 +51,36 @@ struct ConcertFixturePrimitiveTests {
         #expect(venue.address == "300 E Main St")
     }
 
+    /// The no-address variant is derived, so every field but `address` has to
+    /// track ``Venue/catsCradle`` — restating it as a second literal is exactly
+    /// the divergence this fixture exists to prevent.
     @Test
-    func fixtureStartsOnIsAugustFirst2026InTheStationZone() {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        let components = calendar.dateComponents([.year, .month, .day], from: Concert.fixtureStartsOn)
+    func catsCradleWithoutAddressDiffersOnlyInItsAddress() {
+        let full = Venue.catsCradle
+        let bare = Venue.catsCradleWithoutAddress
+        #expect(bare.address == nil)
+        #expect(bare.id == full.id)
+        #expect(bare.slug == full.slug)
+        #expect(bare.name == full.name)
+        #expect(bare.city == full.city)
+        #expect(bare.state == full.state)
+    }
+
+    /// `fixtureStartsOn` is a bare epoch, so this is the only thing standing
+    /// between it and a wrong instant — and it caught one: `1_785_898_800`
+    /// (2026-08-04 23:00 EDT) was pasted into every hand-rolled copy of this
+    /// date before the fixture was shared.
+    @Test
+    func fixtureStartsOnIsMidnightAugustFirst2026InTheStationZone() {
+        let components = eastern.dateComponents(
+            [.year, .month, .day, .hour, .minute],
+            from: Concert.fixtureStartsOn
+        )
         #expect(components.year == 2026)
         #expect(components.month == 8)
         #expect(components.day == 1)
-    }
-
-    /// The `??` branch in `fixtureStartsOn` is unreachable for fixed components,
-    /// so nothing else observes the epoch it falls back to — which is exactly how
-    /// it went three days wrong and got copied to every hand-rolled call site.
-    /// Naming the constant is what makes it assertable.
-    @Test
-    func theUnreachableEpochFallbackNamesTheSameInstantAsTheComponents() {
-        #expect(Concert.fixtureStartsOnFallback == Concert.fixtureStartsOn)
+        #expect(components.hour == 0)
+        #expect(components.minute == 0)
     }
 
     @Test
@@ -64,11 +90,10 @@ struct ConcertFixturePrimitiveTests {
 
     @Test
     func fixtureInstantBuildsTheGivenStationZoneHour() throws {
-        let instant = try #require(Concert.fixtureInstant(hour: 19))
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        #expect(calendar.component(.hour, from: instant) == 19)
-        #expect(calendar.component(.day, from: instant) == 1)
+        let instant = try #require(Concert.fixtureInstant(hour: 19, minute: 30))
+        #expect(eastern.component(.hour, from: instant) == 19)
+        #expect(eastern.component(.minute, from: instant) == 30)
+        #expect(eastern.component(.day, from: instant) == 1)
     }
 }
 
@@ -95,16 +120,32 @@ struct ConcertsTestingAgreementTests {
     func stubAndPreviewFixtureAgree() {
         let stub = Concert.stub()
         let preview = Concert.previewFixture(status: .onSale)
+        #expect(stub.id == preview.id)
         #expect(stub.venue == preview.venue)
         #expect(stub.startsOn == preview.startsOn)
         #expect(stub.startsAt == preview.startsAt)
         #expect(stub.doorsAt == preview.doorsAt)
         #expect(stub.headliningArtistRaw == preview.headliningArtistRaw)
         #expect(stub.supportingArtistsRaw == preview.supportingArtistsRaw)
+        #expect(stub.ticketURL == preview.ticketURL)
         #expect(stub.priceMin == preview.priceMin)
         #expect(stub.priceMax == preview.priceMax)
         #expect(stub.ageRestriction == preview.ageRestriction)
         #expect(stub.status == preview.status)
+    }
+
+    /// `eventURL` is the one field the two vocabularies deliberately disagree
+    /// on, and the reason is load-bearing: `BoxOfficeTicketPresenter`'s suite
+    /// depends on a default stub having no venue page, while previews want the
+    /// venue-page button exercised. Asserted rather than left implicit so the
+    /// divergence is a decision on the record instead of drift nobody sees —
+    /// the earlier version of this suite skipped `eventURL` entirely, and the
+    /// factory's doc comment claimed agreement it did not have.
+    @Test("eventURL is the one deliberate disagreement, and it is exactly that")
+    func stubHasNoVenuePageButThePreviewFixtureDoes() {
+        #expect(Concert.stub().eventURL == nil)
+        #expect(Concert.previewFixture(status: .onSale).eventURL == Concert.fixtureEventURL)
+        #expect(Concert.fixtureEventURL != nil)
     }
 }
 
@@ -122,10 +163,8 @@ struct ConcertPreviewFixtureTests {
         #expect(concert.ageRestriction == "All Ages")
         #expect(concert.status == .onSale)
         // 7 PM doors / 8 PM show, station zone.
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        #expect(concert.doorsAt.map { calendar.component(.hour, from: $0) } == 19)
-        #expect(concert.startsAt.map { calendar.component(.hour, from: $0) } == 20)
+        #expect(concert.doorsAt.map { eastern.component(.hour, from: $0) } == 19)
+        #expect(concert.startsAt.map { eastern.component(.hour, from: $0) } == 20)
     }
 
     @Test
@@ -146,5 +185,15 @@ struct ConcertPreviewFixtureTests {
         #expect(concert.startsAt == nil)
         #expect(concert.status == .soldOut)
         #expect(concert.artistBio == "Placeholder bio")
+    }
+
+    /// The Box Office previews and the DEBUG mock ticket pass this venue, and
+    /// the address is not cosmetic at either site — see
+    /// ``Venue/catsCradleWithoutAddress``.
+    @Test
+    func theVenueOverrideReachesTheBuiltConcert() {
+        let concert = Concert.previewFixture(venue: .catsCradleWithoutAddress, status: .onSale)
+        #expect(concert.venue.address == nil)
+        #expect(concert.venue.name == "Cat's Cradle")
     }
 }

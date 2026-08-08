@@ -627,10 +627,15 @@ private struct BoxOfficeTicketDetailContextPreview: View {
 }
 
 private extension Concert {
-    /// Thin wrapper over the shared ``Concert/previewFixture(id:headliningArtistRaw:supportingArtistsRaw:doorsHour:showHour:ticketURL:eventURL:priceMin:priceMax:ageRestriction:status:artistBio:)``
+    /// Thin wrapper over the shared ``Concert/previewFixture(id:venue:headliningArtistRaw:supportingArtistsRaw:doorsHour:showHour:ticketURL:eventURL:priceMin:priceMax:ageRestriction:status:artistBio:)``
     /// factory — this file's own `venueName`/`venueCity` overrides were never
     /// exercised by any of the `preview*` constants below, so they're dropped
     /// rather than threaded through to the now-shared Cat's Cradle venue.
+    ///
+    /// The venue is pinned to ``Venue/catsCradleWithoutAddress`` because these
+    /// previews built their venue with `address: nil`, and
+    /// `BoxOfficeTicketPresenter.venueLine` appends a non-empty address — so
+    /// the plain fixture venue would put a street address on all ten stages.
     static func preview(
         headliningArtistRaw: String = "Jessica Pratt",
         status: ShowStatus,
@@ -640,9 +645,10 @@ private extension Concert {
         showHour: Int? = 20,
         supportingArtistsRaw: [String] = ["Julie Byrne"],
         ageRestriction: String? = "All Ages",
-        eventURL: URL? = URL(string: "https://catscradle.com/event/jessica-pratt")
+        eventURL: URL? = Concert.fixtureEventURL
     ) -> Concert {
         .previewFixture(
+            venue: .catsCradleWithoutAddress,
             headliningArtistRaw: headliningArtistRaw,
             supportingArtistsRaw: supportingArtistsRaw,
             doorsHour: doorsHour,
