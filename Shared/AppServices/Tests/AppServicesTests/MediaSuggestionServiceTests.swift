@@ -110,7 +110,7 @@ private final class SpyMediaUserContextPublisher: MediaUserContextPublishing {
 /// Records every call `MediaSuggestionService.register()` makes against
 /// `INUpcomingMediaManager`'s two methods, so a test can assert on exactly
 /// what was seeded without touching the real, app-global
-/// `INUpcomingMediaManager.sharedManager` singleton.
+/// `INUpcomingMediaManager.shared` singleton.
 @MainActor
 private final class SpyUpcomingMediaSuggesting: UpcomingMediaSuggesting {
     private(set) var suggestedIntentSets: [NSOrderedSet] = []
