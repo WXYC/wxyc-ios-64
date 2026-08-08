@@ -61,14 +61,21 @@ extension Concert {
     /// mock, and test stub pins `startsOn` here so date-dependent behavior is
     /// deterministic regardless of when or where the code runs.
     ///
-    /// The `?? Date(timeIntervalSince1970:)` fallback is unreachable for these
-    /// fixed components but keeps the declaration force-unwrap-free.
+    /// The `?? fixtureStartsOnFallback` branch is unreachable for these fixed
+    /// components but keeps the declaration force-unwrap-free.
     public static let fixtureStartsOn: Date = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .wxycStation
         let components = DateComponents(year: 2026, month: 8, day: 1)
-        return calendar.date(from: components) ?? Date(timeIntervalSince1970: 1_785_898_800)
+        return calendar.date(from: components) ?? fixtureStartsOnFallback
     }()
+
+    /// The epoch spelling of ``fixtureStartsOn``, for its unreachable `??`
+    /// branch. Named rather than inlined so a test can assert the two agree:
+    /// an unreachable literal is unobservable, and this one was three days off
+    /// (`1_785_898_800` is 2026-08-04 23:00 EDT) in every hand-rolled copy of
+    /// this date it was pasted into.
+    static let fixtureStartsOnFallback = Date(timeIntervalSince1970: 1_785_556_800)
 
     /// An instant on ``fixtureStartsOn``'s day at a station-zone wall-clock
     /// `hour`/`minute`. Returns `nil` for a `nil` hour so a caller can express

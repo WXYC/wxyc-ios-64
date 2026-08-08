@@ -48,6 +48,15 @@ struct ConcertFixturePrimitiveTests {
         #expect(components.day == 1)
     }
 
+    /// The `??` branch in `fixtureStartsOn` is unreachable for fixed components,
+    /// so nothing else observes the epoch it falls back to — which is exactly how
+    /// it went three days wrong and got copied to every hand-rolled call site.
+    /// Naming the constant is what makes it assertable.
+    @Test
+    func theUnreachableEpochFallbackNamesTheSameInstantAsTheComponents() {
+        #expect(Concert.fixtureStartsOnFallback == Concert.fixtureStartsOn)
+    }
+
     @Test
     func fixtureInstantReturnsNilForANilHour() {
         #expect(Concert.fixtureInstant(hour: nil) == nil)
