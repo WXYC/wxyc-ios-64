@@ -334,7 +334,7 @@ public final class PlayerControllerTestHarness {
     /// Polls until condition is met or timeout expires. Delegates to the
     /// package-wide `pollUntil` so every suite shares one set of timeout
     /// mechanics.
-    public func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = .seconds(5)) async {
+    public func waitUntil(_ condition: @escaping @MainActor () -> Bool, timeout: Duration = stallTolerantTimeout) async {
         await pollUntil(condition, timeout: timeout)
     }
 

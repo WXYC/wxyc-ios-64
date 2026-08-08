@@ -81,7 +81,23 @@ public final class StartupWatchdogGate: @unchecked Sendable {
 
     private let state = Mutex(State())
 
-    public init() {}
+    /// Test seam used only by `StartupWatchdogGateTests`. Invoked after an arm
+    /// has been issued its id and before it reaches the critical section that
+    /// records its duration and decides its disposition, receiving the number
+    /// of durations recorded up to that instant.
+    ///
+    /// It exists because the atomicity of those two steps cannot be pinned by
+    /// racing them. The window between the two lock acquisitions is
+    /// sub-microsecond, so a polling observer samples it essentially never — a
+    /// test written that way passes just as readily against the *non*-atomic
+    /// version, which is precisely the vacuity #807 is about. Suspending an
+    /// arm inside the window converts an unwinnable race into a direct
+    /// observation.
+    private let onArmIssued: (@Sendable (_ recordedDurationCount: Int) -> Void)?
+
+    public init(onArmIssued: (@Sendable (_ recordedDurationCount: Int) -> Void)? = nil) {
+        self.onArmIssued = onArmIssued
+    }
 
     /// Suspends until the next ``release()``, or throws `CancellationError` if
     /// the arming task is cancelled.
@@ -94,6 +110,10 @@ public final class StartupWatchdogGate: @unchecked Sendable {
         let id = state.withLock { state -> UInt64 in
             state.nextArmID += 1
             return state.nextArmID
+        }
+
+        if let onArmIssued {
+            onArmIssued(state.withLock { $0.requestedDurations.count })
         }
 
         try await withTaskCancellationHandler {
@@ -183,7 +203,7 @@ public final class StartupWatchdogGate: @unchecked Sendable {
     /// re-arming fails the test instead of hanging the test target. Nothing is
     /// racing it: a watchdog cannot fire while its gate is closed.
     @MainActor
-    public func waitForArm(timeout: Duration = .seconds(5)) async throws {
+    public func waitForArm(timeout: Duration = stallTolerantTimeout) async throws {
         await pollUntil({ self.hasPendingArm }, timeout: timeout)
         guard hasPendingArm else { throw ArmTimeout(timeout: timeout) }
     }

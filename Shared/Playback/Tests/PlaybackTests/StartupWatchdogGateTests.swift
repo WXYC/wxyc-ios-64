@@ -136,4 +136,61 @@ struct StartupWatchdogGateTests {
 
         #expect(gate.requestedDurations == [.seconds(12), .milliseconds(300)])
     }
+
+    /// The invariant `PlaybackHeartbeatComponentTests` builds its quiescence
+    /// point on: when an observer sees `requestedDurations` reach N, all N
+    /// arms have already had their disposition decided — parked, fired, or
+    /// retired — rather than merely having entered `sleep(for:)`.
+    ///
+    /// This holds only because the gate appends the duration inside the same
+    /// critical section as that decision. Recording it in the *earlier*,
+    /// id-allocating lock (where it used to live, #807) would make the two
+    /// separate windows to a concurrent observer: an OS thread can be
+    /// preempted between releasing one lock and acquiring the next regardless
+    /// of Swift-level suspension points, so a reader could see the count
+    /// reach 2 while the second arm had not yet parked. That reader then
+    /// concludes "one live loop" from `pendingArmCount == 1` and passes on
+    /// the exact stacked-loop regression it was written to catch.
+    ///
+    /// `recordsRequestedDurations` above cannot detect that revert — it drives
+    /// its two arms strictly sequentially, so entry order and decision order
+    /// coincide and it passes either way.
+    ///
+    /// Nor can a test that simply races two arms and checks `pendingArmCount`
+    /// the moment the count reaches 2. That was tried first and passed against
+    /// the reverted gate on every attempt: the gap between the two lock
+    /// acquisitions is sub-microsecond and the finest available observer polls
+    /// at millisecond granularity, so it never lands inside the window. A test
+    /// that cannot fail on the regression it names is worth less than no test,
+    /// which is the #807 lesson this suite is downstream of — hence the seam
+    /// below, which observes the window instead of racing it.
+    @Test("An arm's duration is not recorded before its disposition is decided")
+    func requestedDurationIsRecordedWithTheParkingDecision() async throws {
+        let countAtArmIssue = Mutex<Int?>(nil)
+        let gate = StartupWatchdogGate(onArmIssued: { recordedSoFar in
+            countAtArmIssue.withLock { $0 = recordedSoFar }
+        })
+
+        let arm = Task { @MainActor in try await gate.sleep(for: .seconds(1)) }
+        try await gate.waitForArm()
+
+        // Zero, not one. The hook runs after this arm was issued its id and
+        // before the critical section that parks it, so a gate recording the
+        // duration in the *earlier* id-allocating lock would already have
+        // counted it here. That is the whole regression: a duration visible
+        // to an observer before the arm it belongs to has parked makes
+        // `requestedDurations.count` an unusable quiescence point for
+        // `PlaybackHeartbeatComponentTests.restartCollapsesToSingleTimer`,
+        // which reads `pendingArmCount` the instant the count is satisfied.
+        #expect(
+            countAtArmIssue.withLock { $0 } == 0,
+            "the duration was recorded before the arm's disposition was decided, so an observer can see the count advance while the arm has not yet parked"
+        )
+        // The recording still has to happen — just atomically with the park.
+        #expect(gate.requestedDurations == [.seconds(1)])
+        #expect(gate.pendingArmCount == 1)
+
+        gate.releaseAll()
+        try await arm.value
+    }
 }
