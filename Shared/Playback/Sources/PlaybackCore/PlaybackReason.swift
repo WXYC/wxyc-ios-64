@@ -67,6 +67,15 @@ extension PlaybackReason {
     public static let carPlay = PlaybackReason(rawValue: "CarPlay")
     public static let quickAction = PlaybackReason(rawValue: "quick action")
     public static let deepLink = PlaybackReason(rawValue: "deep link")
+    /// A replayed `INPlayMediaIntent` continuation — the launch-time SiriKit
+    /// donation (`WXYCApp.makeSiriIntentInteraction()`) coming back through
+    /// `NSUserActivity` continuation (`AppLifecycleModifier.swift`) and
+    /// foreground-launching the app. This is the tile/continuation series in
+    /// PostHog: it has exactly one production call site, so despite the
+    /// name it means only that, not "any Siri-originated play" — voice
+    /// requests land on `.playIntent` / `.playAudioSchemaIntent` instead.
+    /// See `docs/plans/media-suggestion-headphones.md`'s work breakdown for
+    /// why #828 documents this rather than adding a new reason.
     public static let siriIntent = PlaybackReason(rawValue: "Siri intent")
     /// A Handoff continuation from another device's WXYC app
     /// (`HandoffActivityManager`), distinct from `.quickAction` so a
