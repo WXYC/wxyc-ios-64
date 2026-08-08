@@ -20,6 +20,14 @@
 //  fill behind a 0.5 stroke, so it is the one place the rule would *remove*
 //  presence, and it is the ticket's primary CTA.
 //
+//  Ink is chosen for contrast, not for hue. Every chip clears WCAG AA (4.5:1)
+//  against its own fill, enforced by `StatusPillSurfacePaletteTests`. In
+//  practice that means white on the translucent fills, which is nearly all of
+//  them, and dark ink on the three solid light ones — the ticket's on-sale CTA
+//  and the stub's on-sale and free. Do not "unify" those three to white; it
+//  would put white on a light fill and is the one change this table's test
+//  exists to stop.
+//
 //  The canon table in ``StatusPill`` stays the default and stays tested; it is
 //  simply no longer what these three surfaces render. Anything adopting
 //  ``StatusPill`` from here on gets canon unless it opts into a surface below.
@@ -56,15 +64,15 @@ enum StatusPillSurfacePalette {
     ) -> (fill: Color, ink: Color) {
         switch style {
         case .prominent:
-            (Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
+            (Color.orange.opacity(0.5), .white)
         case .free:
-            (Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
+            (Color.teal.opacity(0.5), .white)
         case .muted:
-            (Color.white.opacity(0.3), Color.white.opacity(0.7))
+            (Color.white.opacity(0.3), .white)
         case .negative:
-            (Color.red.opacity(0.5), Color(red: 1.0, green: 0.7, blue: 0.7))
+            (Color.red.opacity(0.5), .white)
         case .caution, .neutral:
-            (Color.white.opacity(0.25), Color.white.opacity(0.8))
+            (Color.white.opacity(0.25), .white)
         }
     }
 
@@ -88,15 +96,15 @@ enum StatusPillSurfacePalette {
             // would be the one place this transformation *removes* presence.
             (Palette.ok, Palette.okInk)
         case .muted:
-            (Palette.soldout.opacity(0.5), Palette.soldoutInk)
+            (Palette.soldout.opacity(0.5), .white)
         case .negative:
-            (Palette.cancel.opacity(0.55), Palette.cancelInk)
+            (Palette.cancel.opacity(0.55), .white)
         case .caution:
-            (accent.opacity(0.5), accent)
+            (accent.opacity(0.5), .white)
         case .free:
-            (Palette.free.opacity(0.5), Palette.freeInk)
+            (Palette.free.opacity(0.5), .white)
         case .neutral:
-            (.white.opacity(0.3), .white.opacity(0.72))
+            (.white.opacity(0.3), .white)
         }
     }
 
@@ -119,11 +127,11 @@ enum StatusPillSurfacePalette {
         case .free:
             (Palette.free, Palette.freeText)
         case .muted:
-            (.white.opacity(0.25), .white.opacity(0.72))
+            (.white.opacity(0.25), .white)
         case .negative:
-            (Palette.cancel.opacity(0.5), Palette.cancelInk)
+            (Palette.cancel.opacity(0.5), .white)
         case .caution, .neutral:
-            (.white.opacity(0.2), .white.opacity(0.7))
+            (.white.opacity(0.2), .white)
         }
     }
 
@@ -132,13 +140,12 @@ enum StatusPillSurfacePalette {
     /// prototype value.
     private enum Palette {
         static let ok = Color(HSL(hue: 0.3753, saturation: 0.5857, lightness: 0.4922)) // #34C759
-        static let okInk = Color(HSL(hue: 0.3851, saturation: 0.7115, lightness: 0.7961)) // #A6F0BD
+        /// Dark, like ``freeText`` and for the same reason: `ok` is the one solid,
+        /// bright fill on the ticket, so its ink has to go down to be legible, not up.
+        static let okInk = Color(HSL(hue: 0.3753, saturation: 0.85, lightness: 0.09))
         static let soldout = Color(HSL(hue: 0.0405, saturation: 1, lightness: 0.7098)) // #FF8F6B
-        static let soldoutInk = Color(HSL(hue: 0.0422, saturation: 1, lightness: 0.8529)) // #FFC7B4
         static let cancel = Color(HSL(hue: 0, saturation: 1, lightness: 0.7098)) // #FF6B6B
-        static let cancelInk = Color(HSL(hue: 0, saturation: 1, lightness: 0.851)) // #FFB3B3
         static let free = Color(HSL(hue: 0.4827, saturation: 0.6221, lightness: 0.5745)) // #4FD6C8
-        static let freeInk = Color(HSL(hue: 0.4762, saturation: 0.6512, lightness: 0.8314)) // #B8F0E8
         static let freeText = Color(HSL(hue: 0.4811, saturation: 0.8462, lightness: 0.102)) // #04302B
     }
 }
