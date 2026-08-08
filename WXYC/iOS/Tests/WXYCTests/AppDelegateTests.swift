@@ -48,6 +48,20 @@ struct AppDelegateTests {
 
         #expect(!delegate.responds(to: selector))
     }
+
+    /// Guards against Info.plist/code drift: without `INIntentsSupported`
+    /// declaring `INPlayMediaIntent`, iOS has nothing to dispatch the tile
+    /// to even though `AppDelegate` and `PlayMediaIntentHandler` both exist.
+    @Test("Info.plist declares INPlayMediaIntent as a supported intent")
+    func infoPlistDeclaresPlayMediaIntentSupported() throws {
+        // WXYCTests is host-app-tested (TEST_HOST = WXYC.app), so Bundle.main
+        // here resolves to the running WXYC app's bundle, not the test bundle.
+        let supportedIntents = try #require(
+            Bundle.main.object(forInfoDictionaryKey: "INIntentsSupported") as? [String]
+        )
+
+        #expect(supportedIntents.contains("INPlayMediaIntent"))
+    }
 }
 
 private func makeIntent() -> INPlayMediaIntent {
