@@ -11,6 +11,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 import Testing
 @testable import Concerts

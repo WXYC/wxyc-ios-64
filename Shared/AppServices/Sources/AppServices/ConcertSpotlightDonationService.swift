@@ -326,14 +326,8 @@ public actor ConcertSpotlightDonationService: Sendable {
     /// can't resolve an interval (unreachable for a Gregorian calendar, but
     /// keeps this force-unwrap-free).
     static func endOfShowDay(_ startsOn: Date) -> Date {
-        stationCalendar.dateInterval(of: .day, for: startsOn)?.end ?? startsOn
+        Calendar.wxycStation.dateInterval(of: .day, for: startsOn)?.end ?? startsOn
     }
-
-    private static let stationCalendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        return calendar
-    }()
 
     // MARK: - Persisted id -> status snapshot
 

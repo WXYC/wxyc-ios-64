@@ -22,9 +22,7 @@ import Testing
 /// given calendar day, mirroring `ConcertFilterStateTests`' helper so "today"
 /// is unambiguous regardless of the host machine's zone.
 private func stationDay(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12) -> Date {
-    var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = TimeZone.wxycStation
-    return calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour)) ?? .distantPast
+    Calendar.wxycStation.date(from: DateComponents(year: year, month: month, day: day, hour: hour)) ?? .distantPast
 }
 
 @Suite("TouringDateWindow")

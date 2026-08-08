@@ -19,9 +19,7 @@ import ConcertsTesting
 /// Builds a station-zone (`America/New_York`) instant at the given hour on the
 /// given calendar day, so "today" is unambiguous regardless of the host zone.
 private func stationDay(_ year: Int, _ month: Int, _ day: Int, hour: Int = 12) -> Date {
-    var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = TimeZone.wxycStation
-    return calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour)) ?? .distantPast
+    Calendar.wxycStation.date(from: DateComponents(year: year, month: month, day: day, hour: hour)) ?? .distantPast
 }
 
 /// A concert whose `starts_on` is the given station calendar day.

@@ -12,6 +12,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import Foundation
 
 /// The visual treatment for the compact feed-row tag, one per ``ShowStatus``.

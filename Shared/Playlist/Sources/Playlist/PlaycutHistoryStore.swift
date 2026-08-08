@@ -334,20 +334,13 @@ public actor PlaycutHistoryStore {
         return dayKeyPrefix + day
     }
 
-    /// Calendar in the station's time zone, for day arithmetic that respects DST.
-    private static let stationCalendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .wxycStation
-        return calendar
-    }()
-
     /// The day keys immediately before and after the given broadcast moment.
     ///
     /// ±1 day is sufficient for adjacent-bucket eviction: breakpoint moves shift
     /// `hour` by a single hour, so a moved play can only cross one midnight.
     private static func adjacentDayKeys(to date: Date) -> [String] {
         [-1, 1].compactMap { offset in
-            stationCalendar.date(byAdding: .day, value: offset, to: date).map(dayKey(forDate:))
+            Calendar.wxycStation.date(byAdding: .day, value: offset, to: date).map(dayKey(forDate:))
         }
     }
 
