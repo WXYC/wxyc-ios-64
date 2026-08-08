@@ -36,21 +36,18 @@ public struct PlaycutMetadataResolution: Sendable, Equatable {
     /// What the enrichment repair produced, once it has. Outranks ``initial``.
     public private(set) var repaired: PlaycutMetadata?
 
-    public init() {}
-
     /// The value to render: the two slots coalesced, repair preferred.
-    public var metadata: PlaycutMetadata {
-        switch (repaired, initial) {
-        case let (repaired?, initial?):
-            repaired.coalescing(over: initial)
-        case let (repaired?, nil):
-            repaired
-        case let (nil, initial?):
-            initial
-        case (nil, nil):
-            .empty
-        }
-    }
+    ///
+    /// Stored rather than computed because the card reads it many times per
+    /// render pass — once each for the metadata section's content gate and its
+    /// argument, the reviews gate and its argument, the streaming gate and its
+    /// argument, the external-links gate, and again from the artwork loader.
+    /// It only changes on ``recordInitial(_:)``/``recordRepair(_:)``, so
+    /// recomputing the three-record coalesce on every read buys nothing. Kept
+    /// consistent by ``recompute()``, the single writer both mutators call.
+    public private(set) var metadata: PlaycutMetadata = .empty
+
+    public init() {}
 
     /// Whether neither source has reported yet — the card's loading state.
     public var isLoading: Bool {
@@ -61,10 +58,25 @@ public struct PlaycutMetadataResolution: Sendable, Equatable {
     /// it fills gaps rather than overwriting.
     public mutating func recordInitial(_ metadata: PlaycutMetadata) {
         initial = metadata
+        recompute()
     }
 
     /// Records an enrichment repair.
     public mutating func recordRepair(_ metadata: PlaycutMetadata) {
         repaired = metadata
+        recompute()
+    }
+
+    private mutating func recompute() {
+        metadata = switch (repaired, initial) {
+        case let (repaired?, initial?):
+            repaired.coalescing(over: initial)
+        case let (repaired?, nil):
+            repaired
+        case let (nil, initial?):
+            initial
+        case (nil, nil):
+            .empty
+        }
     }
 }
