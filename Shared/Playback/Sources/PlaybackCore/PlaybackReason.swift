@@ -102,6 +102,12 @@ extension PlaybackReason {
     /// The iOS 27 audio-schema intent (`PlayWXYCAudio`). Distinct from `.playIntent`
     /// so PostHog can tell media-domain-routed plays from legacy `PlayWXYC` plays.
     public static let playAudioSchemaIntent = PlaybackReason(rawValue: "PlayWXYCAudio intent")
+    /// A media-suggestion tile — the one iOS offers after headphones connect,
+    /// dispatched as a background `INPlayMediaIntent` and serviced in-app by
+    /// `PlayMediaIntentHandler` (no foreground launch). Distinct from
+    /// `.siriIntent`, which is specifically the `NSUserActivity` continuation
+    /// of a replayed donation and *requires* a foreground launch. See #829.
+    public static let mediaSuggestion = PlaybackReason(rawValue: "media suggestion")
     /// WXYC's own widget-style UI — the Home Screen widget's Play/Pause
     /// button or the Control Center "Control Widget" toggle WXYC ships —
     /// routed through the dedicated `WidgetToggleWXYC` intent, distinct from
