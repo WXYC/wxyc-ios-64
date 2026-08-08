@@ -46,10 +46,12 @@
 //    lock is synchronized with that decision rather than merely close to
 //    it in program order.
 //
-//  `waitForArm` and `pollUntil` both default to a 5s timeout — half the
-//  measured 10.5s stall (#807) — so every call below passes an explicit
-//  `stallTolerantTimeout` instead. Without it, the suite would trade one
-//  wall-clock vulnerability for a smaller one.
+//  Every wait below is bounded by the package-wide `stallTolerantTimeout`
+//  (see `PollUntil.swift`), which is also what `waitForArm` and `pollUntil`
+//  now default to. Those defaults were 5s — half the measured 10.5s stall
+//  (#807) — which would have traded one wall-clock vulnerability for a
+//  smaller one. The calls below still pass it explicitly, so the bound is
+//  legible at the call site rather than inherited silently.
 //
 //  Created by Jake Bromberg on 08/05/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -69,15 +71,6 @@ struct PlaybackHeartbeatComponentTests {
     /// on `StartupWatchdogGate.requestedDurations`.
     private static let testInterval: Duration = .milliseconds(30)
 
-    /// Bound for every `waitForArm`/`pollUntil` call in this suite. Raised
-    /// from the gate's and `pollUntil`'s shared 5s default — half the
-    /// ~10.5s stall measured in CI run 31205214380 (#807) — to 30s, the
-    /// same bound and derivation `PauseResponsivenessTests` uses. A suite
-    /// that removed the wall clock from ticking but still bounded its own
-    /// synchronization on a sub-stall wall-clock timeout would have merely
-    /// moved the vulnerability, not closed it.
-    private static let stallTolerantTimeout: Duration = .seconds(30)
-
     @Test("start() ticks repeatedly at the configured interval")
     func startTicksRepeatedly() async throws {
         let gate = StartupWatchdogGate()
@@ -88,16 +81,29 @@ struct PlaybackHeartbeatComponentTests {
 
         heartbeat.start()
         for _ in 0..<3 {
-            try await gate.waitForArm(timeout: Self.stallTolerantTimeout)
+            try await gate.waitForArm(timeout: stallTolerantTimeout)
             gate.release()
         }
         // The third release's tick has fired by the time the loop re-arms —
         // waiting for one more arm proves it happened rather than assuming it.
-        try await gate.waitForArm(timeout: Self.stallTolerantTimeout)
+        try await gate.waitForArm(timeout: stallTolerantTimeout)
 
-        #expect(tickCount >= 3)
+        // Exactly 3, not `>= 3`. The lower bound was a concession to
+        // wall-clock nondeterminism that the gate removed: three releases
+        // plus a proving fourth arm means a healthy loop has ticked three
+        // times and no more. Left at `>=`, a regression delivering extra
+        // ticks — a stacked loop, or a `release()` resuming more than one
+        // arm — would pass silently.
+        #expect(tickCount == 3)
 
         heartbeat.stop()
+
+        // Drains the arm the loop is parked on. Every other gate-driven test
+        // here does this; without it a regressed `stop()` (one that drops the
+        // task reference without cancelling) strands a `CheckedContinuation`
+        // past the test's lifetime, and "SWIFT TASK CONTINUATION MISUSE" can
+        // abort the whole process instead of failing one sibling test.
+        gate.releaseAll()
     }
 
     @Test("stop() cancels the loop — no further ticks")
@@ -109,12 +115,12 @@ struct PlaybackHeartbeatComponentTests {
         }
 
         heartbeat.start()
-        try await gate.waitForArm(timeout: Self.stallTolerantTimeout)
+        try await gate.waitForArm(timeout: stallTolerantTimeout)
         gate.release()
         // Waiting for the second arm proves the first tick already fired and
         // the loop looped back into a fresh sleep — the arm this stop() is
         // about to cancel.
-        try await gate.waitForArm(timeout: Self.stallTolerantTimeout)
+        try await gate.waitForArm(timeout: stallTolerantTimeout)
         try #require(tickCount == 1)
 
         heartbeat.stop()
@@ -187,12 +193,18 @@ struct PlaybackHeartbeatComponentTests {
         // decision is "park" or, for a properly-cancelled first loop,
         // "retire without parking at all") — not merely close to them in
         // program order.
-        await pollUntil({ gate.requestedDurations.count == 2 }, timeout: Self.stallTolerantTimeout)
+        await pollUntil({ gate.requestedDurations.count == 2 }, timeout: stallTolerantTimeout)
         try #require(gate.requestedDurations.count == 2, "not both start() loops reached sleep(for:) — pendingArmCount below would be meaningless")
-        #expect(gate.pendingArmCount == 1, "start() called twice left \(gate.pendingArmCount) arms parked — a stacked loop, not a single collapsed one")
+        // Read once. `#expect`'s message is an `@autoclosure` evaluated only
+        // after the condition fails, so interpolating `gate.pendingArmCount`
+        // directly would take a second lock and could report a different
+        // number than the one that failed — the same two-acquisitions hazard
+        // this suite's quiescence point exists to avoid.
+        let parkedArms = gate.pendingArmCount
+        #expect(parkedArms == 1, "start() called twice left \(parkedArms) arms parked — a stacked loop, not a single collapsed one")
 
         gate.release()
-        try await gate.waitForArm(timeout: Self.stallTolerantTimeout)
+        try await gate.waitForArm(timeout: stallTolerantTimeout)
         #expect(tickCount == 1, "The surviving loop should still be ticking")
 
         heartbeat.stop()
@@ -227,11 +239,11 @@ struct PlaybackHeartbeatComponentTests {
             defer { withExtendedLifetime(heartbeat) {} }
 
             heartbeat.start()
-            try await gate.waitForArm(timeout: Self.stallTolerantTimeout)
+            try await gate.waitForArm(timeout: stallTolerantTimeout)
             gate.release()
             // Proves the tick already fired: the loop only re-arms after
             // `onTick()` runs.
-            try await gate.waitForArm(timeout: Self.stallTolerantTimeout)
+            try await gate.waitForArm(timeout: stallTolerantTimeout)
             try #require(tickCount == 1)
             // Deliberately no `stop()` — the instance is released here, which
             // is the whole point. The loop captures `interval` and `onTick`
@@ -244,12 +256,24 @@ struct PlaybackHeartbeatComponentTests {
         // with no suspension point before the assertion, that enqueued job
         // would not have run `onTick()` yet regardless of whether `deinit`
         // cancelled the task or not, so the read would pass unchanged either
-        // way. `pendingArmCount` needs no suspension point: ARC releases
-        // `heartbeat` synchronously at the end of the `do` block above (the
-        // `withExtendedLifetime` defer guarantees no earlier), `deinit`
-        // calls `task?.cancel()` synchronously, and `Task.cancel()` invokes
-        // the gate's `onCancel` handler synchronously too — so the arm is
-        // already retired, or not, before this line ever runs.
+        // way. `pendingArmCount` is the right thing to observe: `deinit`
+        // calls `task?.cancel()`, and `Task.cancel()` invokes the gate's
+        // `onCancel` handler synchronously, so a retired arm is visible
+        // without waiting on any actor hop.
+        //
+        // Polled rather than read once, though. `PlaybackHeartbeat.deinit` is
+        // isolated (`@MainActor deinit`), and an isolated deinit goes through
+        // `swift_task_deinitOnExecutor`, which runs the body inline only when
+        // the runtime's executor check says the current executor already
+        // matches — otherwise it *enqueues* the deinit. Asserting on a single
+        // read would bake "the release always lands on a path where that
+        // check passes" into the test, which is a scheduling assumption, and
+        // scheduling assumptions are the entire subject of #807. Polling
+        // costs nothing in the healthy case (the arm is almost always already
+        // retired on the first check) and keeps the leak detection intact: a
+        // genuinely leaked arm stays parked forever, so the poll runs out its
+        // bound and the `#expect` below still fails red.
+        await pollUntil({ gate.pendingArmCount == 0 }, timeout: stallTolerantTimeout)
         #expect(gate.pendingArmCount == 0, "A released heartbeat must retire its pending sleep, not leave it parked forever")
 
         // Drains the arm if the check above just failed (a leaked arm would
