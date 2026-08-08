@@ -29,9 +29,11 @@ struct ConcertDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    /// The active theme, source of the ticket's wallpaper-derived colors. Set at
-    /// the app root; propagates into this `.fullScreenCover` presentation.
-    @Environment(Singletonia.self) private var appState
+    /// The interpolated theme snapshot, source of the ticket's wallpaper-derived
+    /// colors. Published by the theme picker's container and propagated into this
+    /// `.fullScreenCover` presentation, so the ticket ink crossfades with the header
+    /// during a swipe instead of holding the old hue and snapping.
+    @Environment(\.themeAppearance) private var appearance
 
     /// Non-nil while the share sheet is presented; the chrome share button sets it.
     @State private var shareTarget: Concert?
@@ -86,7 +88,7 @@ struct ConcertDetailView: View {
                 VStack(spacing: 0) {
                     posterHero
                     VStack(spacing: 20) {
-                        BoxOfficeTicketView(show: concert, colors: appState.themeConfiguration.effectiveTicketColors, isPast: isPast)
+                        BoxOfficeTicketView(show: concert, colors: appearance.ticketColors, isPast: isPast)
                         bioSection
                         whereSection
                     }

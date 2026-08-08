@@ -120,7 +120,7 @@ struct PlaylistView: View {
                     if showingTicketCTA {
                         TicketFeatureCTAView(
                             isVisible: $showingTicketCTA,
-                            colors: appState.themeConfiguration.effectiveTicketColors
+                            colors: appearance.ticketColors
                         ) {
                             appState.ticketFeatureCTAPersistence.recordDismissed()
                         }
