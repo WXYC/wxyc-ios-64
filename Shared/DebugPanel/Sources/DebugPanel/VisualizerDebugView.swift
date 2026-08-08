@@ -293,9 +293,13 @@ public struct VisualizerDebugView: View {
                             in: 0.1...10.0,
                             format: { String(format: "%.2fx", $0) },
                             resetLabel: "Reset to 1.0x",
-                            onReset: { visualizer.resetSignalBoost() }
+                            onReset: { visualizer.resetSignalBoost() },
+                            // Not `.disabled(...)` on the control: this section
+                            // rests with Amplification off, and a modifier on
+                            // the flattened `Group` would grey the "Signal
+                            // Boost" label and its live readout too.
+                            controlsDisabled: !visualizer.signalBoostEnabled
                         )
-                        .disabled(!visualizer.signalBoostEnabled)
                     }
 
                     // Stream Gain (audio output boost)
@@ -316,9 +320,9 @@ public struct VisualizerDebugView: View {
                             format: { String(format: "%+.1f dB", $0) },
                             monospacedDigitReadout: true,
                             resetLabel: "Reset to 0 dB",
-                            onReset: { audioController.gainDecibels = 0 }
+                            onReset: { audioController.gainDecibels = 0 },
+                            controlsDisabled: !audioController.supportsGainBoost
                         )
-                        .disabled(!audioController.supportsGainBoost)
                     }
 
                     // Actions

@@ -69,6 +69,11 @@ struct LikeEffectTuningView: View {
     /// every intermediate value. The value label still tracks the drag live.
     /// The Particles sliders are visual-only, so they pass `playsHaptic: false`
     /// and their touch-up is a no-op.
+    ///
+    /// `layout: .grouped` keeps readout and slider in one `Form` row. The
+    /// flattened default would give each of the seven parameters two rows,
+    /// doubling both sections and pushing Particles off the `.medium` detent
+    /// this sheet opens at.
     private func tuner(
         _ title: String,
         value: Binding<Double>,
@@ -87,7 +92,8 @@ struct LikeEffectTuningView: View {
             monospacedDigitReadout: true,
             onEditingChanged: { editing in
                 if playsHaptic, !editing { play() }
-            }
+            },
+            layout: .grouped
         )
     }
 
