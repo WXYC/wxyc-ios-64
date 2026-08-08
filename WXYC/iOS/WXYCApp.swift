@@ -22,6 +22,7 @@ import Logger
 import MusicShareKit
 import Observation
 import Playback
+import PlaybackCore
 import PlayerHeaderView
 import Playlist
 import Sentry
@@ -89,6 +90,22 @@ struct WXYCApp: App {
         // Fetch backend configuration (upgrades artwork service with Discogs fallback)
         let appState = self.appState
         Task { await appState.fetchConfiguration() }
+
+        // Declare media-suggestion eligibility (#828): publishes an
+        // INMediaUserContext and seeds INUpcomingMediaManager with the
+        // canonical WXYC play intent. Own Task, on the main actor — this is
+        // app-global system state, the same category HandoffActivityManager
+        // already models as main-actor work — deliberately *not* routed
+        // through donateSiriIntent()'s Task below, which is off the main
+        // actor on purpose (#740). Gated to match MediaSuggestionService's
+        // own gate: the WXYC target builds for Mac Catalyst, which inherits
+        // iOS availability, so a bare os(iOS) check would compile and run
+        // this where the suggestion surface doesn't exist.
+        #if os(iOS) && !targetEnvironment(macCatalyst)
+        Task {
+            MediaSuggestionService().register()
+        }
+        #endif
 
         // Siri intent donation. Schedules a Task and returns immediately — see
         // donateSiriIntent()'s doc comment for why this can never block init().
@@ -374,21 +391,8 @@ struct WXYCApp: App {
     /// finding 5).
     nonisolated static func makeSiriIntentInteraction() -> INInteraction {
         let placeholder = UIImage.placeholder
-        let mediaItem = INMediaItem(
-            identifier: "Play \(RadioStation.WXYC.name)",
-            title: "Play \(RadioStation.WXYC.name)",
-            type: .radioStation,
-            artwork: INImage(imageData: placeholder.pngData()!)
-        )
-        let intent = INPlayMediaIntent(
-            mediaItems: [mediaItem],
-            mediaContainer: nil,
-            playShuffled: nil,
-            resumePlayback: false,
-            playbackQueueLocation: .now,
-            playbackSpeed: nil
-        )
-        intent.suggestedInvocationPhrase = "Play \(RadioStation.WXYC.name)"
+        let artwork = INImage(imageData: placeholder.pngData()!)
+        let intent = MediaIntentBuilder.makePlayMediaIntent(artwork: artwork)
         return INInteraction(intent: intent, response: nil)
     }
 }

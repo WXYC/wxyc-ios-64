@@ -1601,24 +1601,14 @@ public final class AudioPlayerController {
 
     /// Donates an INPlayMediaIntent to Siri so WXYC appears in Lock Screen suggestions.
     /// iOS learns from these donations to surface the app based on user listening patterns.
+    /// Routes through `MediaIntentBuilder` (#828) so this donation shares the
+    /// same identity — identifier, title, `resumePlayback` — as the
+    /// launch-time donation in `WXYCApp.makeSiriIntentInteraction()`; nil
+    /// artwork here is a deliberate choice, not the builder's default (see
+    /// its doc comment).
     private func donatePlayIntent() {
         #if canImport(Intents) && !os(macOS)
-        let mediaItem = INMediaItem(
-            identifier: RadioStation.WXYC.name,
-            title: "WXYC 89.3 FM",
-            type: .radioStation,
-            artwork: nil
-        )
-
-        let intent = INPlayMediaIntent(
-            mediaItems: [mediaItem],
-            mediaContainer: nil,
-            playShuffled: nil,
-            resumePlayback: true,
-            playbackQueueLocation: .now,
-            playbackSpeed: nil
-        )
-
+        let intent = MediaIntentBuilder.makePlayMediaIntent(artwork: nil)
         let interaction = INInteraction(intent: intent, response: nil)
         Task { try? await interaction.donate() }
         #endif
