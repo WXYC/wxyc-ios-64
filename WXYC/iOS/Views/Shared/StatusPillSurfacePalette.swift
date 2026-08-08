@@ -14,14 +14,14 @@
 //  the canon green. These tables hand each surface its own hues back, and apply
 //  the fill/stroke transformation on top.
 //
-//  Four chips keep a solid fill instead. Three had no stroke to adopt at all
-//  (the poster hero's on-sale, and the stub's on-sale and free) — already solid
-//  "go" chips. The fourth, the Box Office ticket's on-sale, is a deliberate
-//  exemption: it was a solid 1.0 fill behind a 0.5 stroke, so it is the one
-//  place the rule would *remove* presence, and it is the ticket's primary CTA.
+//  Three chips keep a solid fill instead. Two had no stroke to adopt at all
+//  (the stub's on-sale and free) — already solid "go" chips. The third, the
+//  Box Office ticket's on-sale, is a deliberate exemption: it was a solid 1.0
+//  fill behind a 0.5 stroke, so it is the one place the rule would *remove*
+//  presence, and it is the ticket's primary CTA.
 //
 //  The canon table in ``StatusPill`` stays the default and stays tested; it is
-//  simply no longer what these four surfaces render. Anything adopting
+//  simply no longer what these three surfaces render. Anything adopting
 //  ``StatusPill`` from here on gets canon unless it opts into a surface below.
 //
 //  Created by Jake Bromberg on 08/07/26.
@@ -32,12 +32,12 @@ import ColorPalette
 import SwiftUI
 import WXUI
 
-/// The `(fill, ink)` pairs for the four surfaces that render status chips, each
+/// The `(fill, ink)` pairs for the three surfaces that render status chips, each
 /// filled with its former stroke color. Chips have no outline — ``StatusPill``
 /// has no border to draw, so that is structural rather than per-surface.
 ///
-/// The four differ from each other on purpose: the feed row and the poster hero
-/// were tuned against different backgrounds, and two entries track the
+/// The three differ from each other on purpose: the feed row and the ticket were
+/// tuned against different backgrounds, and two entries track the
 /// wallpaper theme, which a static table cannot express. Keying every function
 /// on `StatusPill.Style` (rather than each surface's own enum) means the call
 /// sites can convert once through `StatusPillStyleMapping` and pass the result
@@ -45,7 +45,7 @@ import WXUI
 enum StatusPillSurfacePalette {
     /// `ConcertRow`'s feed tag, over the wallpaper-backed list. On-sale is amber
     /// here, not the canon green: the feed's job is to distinguish rows from
-    /// each other, and the poster hero's green already means "on sale" one
+    /// each other, and the Box Office ticket's green already means "on sale" one
     /// screen deeper. Fills were 0.1–0.18 washes behind 0.25–0.5 strokes; each
     /// now carries its own stroke's opacity.
     ///
@@ -65,28 +65,6 @@ enum StatusPillSurfacePalette {
             (Color.red.opacity(0.5), Color(red: 1.0, green: 0.7, blue: 0.7))
         case .caution, .neutral:
             (Color.white.opacity(0.25), Color.white.opacity(0.8))
-        }
-    }
-
-    /// `ConcertDetailView`'s hero pill, over the poster. Heavier than the feed's
-    /// because it sits on artwork rather than on the list's darkened wallpaper.
-    /// `.prominent` was already a solid unstroked chip and is unchanged.
-    static func concertPosterHero(
-        _ style: StatusPill.Style
-    ) -> (fill: Color, ink: Color) {
-        switch style {
-        case .prominent:
-            (Color(red: 0.20, green: 0.78, blue: 0.35).opacity(0.92), Color(red: 0.03, green: 0.19, blue: 0.10))
-        case .free:
-            (Color.teal.opacity(0.5), Color(red: 0.72, green: 0.94, blue: 0.91))
-        case .muted:
-            (Color(red: 1.0, green: 0.56, blue: 0.42).opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.71))
-        case .negative:
-            (Color.red.opacity(0.55), Color(red: 1.0, green: 0.7, blue: 0.7))
-        case .caution:
-            (Color.orange.opacity(0.5), Color(red: 1.0, green: 0.78, blue: 0.6))
-        case .neutral:
-            (.white.opacity(0.3), .white.opacity(0.8))
         }
     }
 

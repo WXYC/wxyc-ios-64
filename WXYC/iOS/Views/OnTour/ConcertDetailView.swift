@@ -182,9 +182,6 @@ struct ConcertDetailView: View {
 
     private var heroContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let pill = presenter.statusPillText {
-                statusPill(pill)
-            }
             Text(concert.headlineName)
                 .font(.system(size: 38, weight: .heavy))
                 .foregroundStyle(.white)
@@ -338,18 +335,6 @@ struct ConcertDetailView: View {
     /// glyph the playcut detail's close button uses (see ``DetailPresentation``).
     private func chromeGlyph(_ systemName: String) -> some View {
         DetailPresentation.chromeGlyph(systemName)
-    }
-
-    /// The hero pill keeps the poster-tuned palette rather than ``StatusPill``'s
-    /// canon table — see ``StatusPillSurfacePalette/concertPosterHero(_:)``.
-    /// Mechanics stay canon.
-    private func statusPill(_ text: String) -> some View {
-        let style = presenter.statusPillStyle.wxuiStyle
-        return StatusPill(
-            text: text,
-            style: style,
-            paletteOverride: StatusPillSurfacePalette.concertPosterHero(style)
-        )
     }
 
     // MARK: - Palette
