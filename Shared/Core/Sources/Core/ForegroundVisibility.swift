@@ -4,8 +4,11 @@
 //
 //  Answers one question about a SwiftUI `ScenePhase`: does it tell you the app
 //  is on screen, off screen, or nothing at all? Lives in Core because every
-//  layer with a scene-phase consumer needs the same answer — the app target,
-//  AppServices, and Wallpaper's Metal renderer among them.
+//  layer with a scene-phase consumer needs the same answer. The app target is
+//  the consumer today; Wallpaper's `MetalWallpaperView` has the identical
+//  misreading (`scenePhase != .active` pauses the renderer during a Control
+//  Center pull) and is the intended next adopter, in its own change — it cannot
+//  import AppServices, which is why this lives here rather than there.
 //
 //  Created by Jake Bromberg on 08/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -53,10 +56,16 @@ public extension ForegroundVisibility {
             self = .onScreen
         case .background:
             self = .offScreen
-        default:
-            // `.inactive`, and any phase added in a future SDK. Neither is
-            // evidence the app left, and guessing `.offScreen` is exactly the
-            // bug this type exists to prevent.
+        case .inactive:
+            // Not evidence the app left — see the type doc. Named rather than
+            // folded into a bare `default:` so a phase added in a future SDK
+            // still trips the `@unknown default` warning below instead of
+            // being classified silently.
+            self = .noChange
+        @unknown default:
+            // A phase this SDK has never heard of carries no evidence in
+            // either direction, and guessing `.offScreen` is exactly the bug
+            // this type exists to prevent.
             self = .noChange
         }
     }
