@@ -2,19 +2,18 @@
 //  SingletoniaForegroundRoutingTests.swift
 //  WXYC
 //
-//  Pins the one thing about scene-phase routing that is easy to get wrong: the
-//  two consumers disagree about `.inactive`, and collapsing them back into a
-//  single `Bool` is a regression in whichever direction it collapses.
+//  Drives `Singletonia.ForegroundRouter` — the real code path between a scene
+//  phase and its two consumers — with recorder sinks. The two consumers
+//  deliberately disagree about `.inactive`: widget reloads are budgeted and
+//  only pay off while the app is frontmost, so they stop, while the live-fs
+//  subscription must survive it (see `ForegroundVisibility` for that story).
+//  Collapsing the two back into a single `Bool` is a regression in whichever
+//  direction it collapses, and delivering to the playlist sink with a bare
+//  `Task {}` per phase instead of the coalescing relay is the ordering
+//  regression #835 fixed — both fail here.
 //
-//  Reading `.inactive` as "off screen" tears down the `live-fs-topic` SSE
-//  subscription while the app is still visible behind Control Center, and
-//  nothing restores it. Reading it as "on screen" holds the widget-reload guard
-//  open, and an unfocused iPad Split View pane or non-frontmost Catalyst window
-//  can sit `.inactive` for hours, spending a budgeted timeline reload on every
-//  live-fs event that arrives. `setScenePhase(_:)` itself isn't reachable
-//  without standing up the whole object graph, so the decision is factored into
-//  a pure helper and tested directly — the same approach
-//  `SingletoniaLikedStorageTests` takes.
+//  What stays outside this pin is the one-line delegation in
+//  `setScenePhase(_:)` and the `init` wiring of the real sinks.
 //
 //  Created by Jake Bromberg on 08/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -25,38 +24,171 @@ import SwiftUI
 import Testing
 @testable import WXYC
 
+/// Extracted to a top-level constant so the tuple array doesn't lean on the
+/// type-checker inside the macro expansion. `nonisolated` because the `@Test`
+/// macro reads the arguments outside the suite's main-actor isolation.
+private nonisolated let routingRows: [(ScenePhase, [Bool], [Bool])] = [
+    (.active, [true], [true]),
+    (.background, [false], [false]),
+    // The row the two consumers disagree on: widgets stop, and nothing at all
+    // reaches the subscription.
+    (.inactive, [false], []),
+]
+
 @MainActor
 @Suite("Singletonia foreground routing")
 struct SingletoniaForegroundRoutingTests {
 
     @Test(
         "Each phase routes to both consumers under their own rule",
-        arguments: [
-            (ScenePhase.active, true, ForegroundVisibility.onScreen),
-            (ScenePhase.background, false, ForegroundVisibility.offScreen),
-            // The case the two consumers disagree on, and the only row that
-            // can regress quietly: widgets stop, the subscription stays.
-            (ScenePhase.inactive, false, ForegroundVisibility.noChange),
-        ]
+        .timeLimit(.minutes(1)),
+        arguments: routingRows
     )
     func phaseRoutesToBothConsumers(
         phase: ScenePhase,
-        expectedWidgets: Bool,
-        expectedPlaylist: ForegroundVisibility
-    ) {
-        let routing = Singletonia.foregroundRouting(for: phase)
+        expectedWidgets: [Bool],
+        expectedPlaylist: [Bool]
+    ) async {
+        let widgets = WidgetRecorder()
+        let playlist = PlaylistRecorder()
+        let router = Singletonia.ForegroundRouter(
+            setWidgetsForegrounded: { widgets.record($0) },
+            setPlaylistForegrounded: { await playlist.record($0) }
+        )
 
-        #expect(routing.widgetsForegrounded == expectedWidgets)
-        #expect(routing.playlistVisibility == expectedPlaylist)
+        router.route(entering: phase)
+
+        // The widget sink is called synchronously, so a wrong value is visible
+        // immediately; the playlist sink is async, so give anything wrongly
+        // dispatched a generous chance to land before asserting it didn't.
+        #expect(widgets.values == expectedWidgets)
+
+        await playlist.wait(untilCount: expectedPlaylist.count)
+        await settle()
+        #expect(await playlist.values == expectedPlaylist)
     }
 
-    @Test("A transient interruption stops widget reloads without dropping the subscription")
-    func inactiveSplitsTheTwoConsumers() {
-        let routing = Singletonia.foregroundRouting(for: .inactive)
+    @Test(
+        "A transient interruption passes through without touching the subscription",
+        .timeLimit(.minutes(1))
+    )
+    func inactiveSendsNothingWithinASequence() async {
+        let widgets = WidgetRecorder()
+        let playlist = PlaylistRecorder()
+        let router = Singletonia.ForegroundRouter(
+            setWidgetsForegrounded: { widgets.record($0) },
+            setPlaylistForegrounded: { await playlist.record($0) }
+        )
 
-        // Stated as an inequality because the failure this guards against is
-        // precisely the two collapsing back into one value.
-        #expect(routing.widgetsForegrounded == false)
-        #expect(routing.playlistVisibility != .offScreen)
+        // Waiting out each delivery before routing the next phase keeps the
+        // relay's coalescing from absorbing a wrong `.inactive` send — anything
+        // sent here has to show up in the final array.
+        router.route(entering: .active)
+        await playlist.wait(untilCount: 1)
+
+        router.route(entering: .inactive)
+        await settle()
+
+        router.route(entering: .background)
+        await playlist.wait(untilCount: 2)
+        await settle()
+
+        #expect(widgets.values == [true, false, false])
+        #expect(await playlist.values == [true, false])
+    }
+
+    @Test(
+        "A phase burst reaches the subscription coalesced, not one task per phase",
+        .timeLimit(.minutes(1))
+    )
+    func burstReachesSubscriptionThroughTheRelay() async {
+        let playlist = PlaylistRecorder()
+        let gate = Gate()
+
+        let router = Singletonia.ForegroundRouter(
+            setWidgetsForegrounded: { _ in },
+            setPlaylistForegrounded: { value in
+                await playlist.record(value)
+                if await playlist.values.count == 1 {
+                    await gate.waitUntilOpen()
+                }
+            }
+        )
+
+        // Park the handler on the first delivery, then pile up a burst the way
+        // a rapid `.background`/`.active` pair arrives.
+        router.route(entering: .background)
+        await playlist.wait(untilCount: 1)
+
+        router.route(entering: .active)
+        router.route(entering: .background)
+        router.route(entering: .active)
+
+        await gate.open()
+        await playlist.wait(untilCount: 2)
+        await settle()
+
+        // Exactly two deliveries: the parked first and the coalesced newest. A
+        // bare `Task {}` per phase — the regression this wiring exists to
+        // prevent — delivers all four.
+        #expect(await playlist.values == [false, true])
+    }
+}
+
+// MARK: - Test helpers
+
+/// Records what the router pushed at the widget sink. The router calls the
+/// sink synchronously on the main actor, so no waiting is involved.
+@MainActor
+private final class WidgetRecorder {
+    private(set) var values: [Bool] = []
+
+    func record(_ value: Bool) {
+        values.append(value)
+    }
+}
+
+/// Records what reached the playlist sink, and lets a test wait for a given
+/// number of deliveries. Mirrors `LatestValueRelayTests`' recorder: polls
+/// instead of parking on a continuation so a regression fails inside the time
+/// limit rather than wedging the run.
+private actor PlaylistRecorder {
+    private(set) var values: [Bool] = []
+
+    func record(_ value: Bool) {
+        values.append(value)
+    }
+
+    /// Returns once at least `count` values have been recorded.
+    func wait(untilCount count: Int) async {
+        while values.count < count, !Task.isCancelled {
+            await Task.yield()
+        }
+    }
+}
+
+/// Holds the playlist handler open until the test releases it. Polls for the
+/// same reason `PlaylistRecorder.wait(untilCount:)` does.
+private actor Gate {
+    private var isOpen = false
+
+    func open() {
+        isOpen = true
+    }
+
+    func waitUntilOpen() async {
+        while !isOpen, !Task.isCancelled {
+            await Task.yield()
+        }
+    }
+}
+
+/// Gives any task that is already runnable a generous chance to run before the
+/// caller asserts that it didn't — the negative assertions here are claims
+/// about work that must *not* have happened, which no amount of awaiting can
+/// establish outright.
+private func settle() async {
+    for _ in 0..<20 {
+        await Task.yield()
     }
 }
