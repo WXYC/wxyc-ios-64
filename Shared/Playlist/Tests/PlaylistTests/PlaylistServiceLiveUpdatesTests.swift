@@ -230,6 +230,38 @@ struct PlaylistServiceLiveUpdatesTests {
         #expect(await waitUntil { source.connectCount == 2 })
     }
 
+    @Test("A superseded consume loop does not retire the loop that replaced it", .timeLimit(.minutes(1)))
+    func supersededLoopLeavesTheLiveOneRegistered() async throws {
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [.stub(id: 1, chronOrderID: 1)])
+        let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, chronOrderID: 2))])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        #expect(await iterator.next()?.playcuts.map(\.id) == [1])
+        await service.setForegrounded(true)
+        _ = await iterator.next()
+
+        // Background then foreground: the first loop is cancelled and a second
+        // registers itself. The first loop's teardown runs afterwards, and must
+        // recognise that `liveUpdatesTask` no longer refers to it — clearing it
+        // there would orphan the live loop and let a third start alongside it.
+        await service.setForegrounded(false)
+        await service.setForegrounded(true)
+        #expect(await waitUntil { source.connectCount == 2 })
+
+        // Give the superseded loop every opportunity to run its teardown.
+        for _ in 0..<50 { await Task.yield() }
+
+        let snapshot = await service.wiringSnapshot()
+        #expect(snapshot.hasLiveUpdatesTask)
+        #expect(snapshot.liveUpdatesActive)
+    }
+
     @Test("setForegrounded is a no-op when live updates aren't enabled", .timeLimit(.minutes(1)))
     func noOpWhenLiveUpdatesDisabled() async throws {
         let fetcher = MockPlaylistFetcher()

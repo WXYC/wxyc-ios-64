@@ -608,22 +608,75 @@ final class Singletonia {
         }
     }
 
-    /// Update the foreground state (called when scene phase changes, and from
-    /// each window's `.onAppear`).
+    /// Route a scene phase to the services that care about it.
+    ///
+    /// Called on every scene-phase change and from each window's `.onAppear`,
+    /// which passes the phase it is appearing into rather than assuming
+    /// `.active` — a window can appear into an already-backgrounded scene
+    /// (multi-window, CarPlay scene connection, background launch), and no
+    /// further phase *change* would follow to correct a wrong guess.
+    ///
+    /// The two consumers deliberately read the phase differently, because they
+    /// are answering different questions:
+    ///
+    /// - **Widget reloads** are budgeted (roughly 40-70 timeline reloads a day)
+    ///   and only pay off while the app is actually frontmost, so they stop at
+    ///   `.inactive`. An unfocused iPad Split View pane or a non-frontmost
+    ///   Catalyst window can sit `.inactive` for hours, and every live-fs event
+    ///   arriving in that window would otherwise spend budget on a widget
+    ///   nobody is looking at.
+    /// - **The live-fs SSE subscription** must survive `.inactive`, which fires
+    ///   for Control Center, notification banners and the app switcher with the
+    ///   app still on screen. Tearing it down there left it down, because no
+    ///   further phase change was coming to bring it back.
     ///
     /// The handoff to `playlistService` is serialized rather than dispatched
-    /// through a fresh `Task` per call. Those two callers are independent
-    /// producers, so a rapid pair — a `.background` immediately followed by an
-    /// `.active`, or an `.onAppear` racing a phase change — has no guaranteed
-    /// arrival order between unstructured tasks. Arriving inverted latches
+    /// through a fresh `Task` per call. The scene-phase handler and `.onAppear`
+    /// are independent producers, so a rapid pair has no guaranteed arrival
+    /// order between unstructured tasks. Arriving inverted latches
     /// `isForegrounded = false` on a service whose app is on screen, and since
     /// nothing re-checks the flag afterwards the SSE subscription stays down
     /// for the rest of the session.
-    func setForegrounded(_ foregrounded: Bool) {
-        widgetStateService.setForegrounded(foregrounded)
-        // Open the live-fs SSE subscription while foregrounded, close it on
-        // background (#269). The service ignores this when live updates aren't
-        // enabled, so it's a no-op on any non-iOS PlaylistService instance.
+    func setScenePhase(_ phase: ScenePhase) {
+        let routing = Self.foregroundRouting(for: phase)
+        widgetStateService.setForegrounded(routing.widgetsForegrounded)
+
+        // The service ignores this when live updates aren't enabled, so it's a
+        // no-op on any non-iOS PlaylistService instance (#269).
+        switch routing.playlistVisibility {
+        case .onScreen:
+            enqueueForegroundState(true)
+        case .offScreen:
+            enqueueForegroundState(false)
+        case .noChange:
+            break
+        }
+    }
+
+    /// How one scene phase routes to the two consumers that disagree about it.
+    ///
+    /// Factored out as a pure function because `setScenePhase(_:)` itself is not
+    /// reachable from a test without standing up the whole graph — the same
+    /// approach `likedStorage(isMarketing:)` takes. The disagreement is the part
+    /// worth pinning: collapsing these two back into one `Bool` is what spent
+    /// widget budget on an app nobody was looking at.
+    struct ForegroundRouting: Equatable {
+        /// Widget timeline reloads are budgeted, so they run only while the app
+        /// is genuinely frontmost.
+        let widgetsForegrounded: Bool
+        /// The live-fs subscription closes only on a phase that proves the app
+        /// left the screen.
+        let playlistVisibility: ForegroundVisibility
+    }
+
+    static func foregroundRouting(for phase: ScenePhase) -> ForegroundRouting {
+        ForegroundRouting(
+            widgetsForegrounded: phase == .active,
+            playlistVisibility: ForegroundVisibility(entering: phase)
+        )
+    }
+
+    private func enqueueForegroundState(_ foregrounded: Bool) {
         foregroundHandoff.enqueue { [playlistService] in
             await playlistService.setForegrounded(foregrounded)
         }
