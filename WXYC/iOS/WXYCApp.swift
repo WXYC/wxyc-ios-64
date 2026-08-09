@@ -182,15 +182,10 @@ struct WXYCApp: App {
             ))
             AudioPlayerController.shared.handleAppDidEnterBackground()
             AdaptiveQualityController.shared.handleBackgrounded()
-            appState.setForegrounded(false)
-
-        case .inactive:
-            appState.setForegrounded(false)
 
         case .active:
             AudioPlayerController.shared.handleAppWillEnterForeground()
             AdaptiveQualityController.shared.handleForegrounded()
-            appState.setForegrounded(true)
             BackgroundRefreshController.scheduleNext()
             // Cancel previous tasks to avoid duplicated work from rapid phase changes
             foregroundRefreshTask?.cancel()
@@ -201,7 +196,27 @@ struct WXYCApp: App {
             // Honour the "Clear Artwork Cache" toggle from the Settings app.
             cacheCleanupTask = handleSettingsBundleCacheClear()
 
+        case .inactive:
+            // Deliberately no phase-specific work: see the foreground handoff
+            // below for why `.inactive` must not be treated as leaving.
+            break
+
         @unknown default:
+            break
+        }
+
+        // Foreground-only subscriptions (the live-fs SSE stream, widget state
+        // sync) key off what the phase means for on-screen state, not off the
+        // phase itself — `.inactive` fires for Control Center, notification
+        // banners and the app switcher with the app still visible, and tearing
+        // the subscription down there left it down, because no further phase
+        // change was coming to bring it back.
+        switch ForegroundTransition(enteringPhase: newPhase) {
+        case .enterForeground:
+            appState.setForegrounded(true)
+        case .leaveForeground:
+            appState.setForegrounded(false)
+        case .unchanged:
             break
         }
     }
