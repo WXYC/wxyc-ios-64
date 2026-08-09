@@ -40,14 +40,21 @@ public final class RadioPlayerController: PlaybackController {
         self.radioPlayer.isPlaying
     }
 
-    /// Whether a play request is still standing. See `PlaybackController`.
+    /// Whether a play request is still standing and still cancellable.
+    /// See `PlaybackController`.
     ///
     /// Distinct from `isPlaying` here too: this controller reads its live
     /// player, which is not yet playing while a start is in flight. Both
     /// controllers must answer a tap the same way for the shared UI to be
     /// correct on either.
+    ///
+    /// The error carve-out matters most on watchOS, where a ramp that
+    /// exhausts settles on `.error(.maxReconnectAttemptsExceeded)` and stops
+    /// retrying with intent still set. Without it the control would sit on
+    /// pause forever and a tap would stop a stream that is already dead,
+    /// leaving no way to try again.
     public var isPlaybackRequested: Bool {
-        playbackIntended
+        playbackIntended && !state.isError
     }
 
     // Note: the wrapped `RadioPlayer` is always constructed with its own

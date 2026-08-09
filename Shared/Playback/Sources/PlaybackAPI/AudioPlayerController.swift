@@ -110,13 +110,22 @@ public final class AudioPlayerController {
         playbackIntended && (!isPlaying || playerState == .loading) && !playerState.isError
     }
 
-    /// Whether a play request is still standing. See `PlaybackController`.
+    /// Whether a play request is still standing and still cancellable.
+    /// See `PlaybackController`.
     ///
     /// Reads `playbackIntended` — the flag `play(reason:)` sets and
     /// `PlaybackStopTeardown` clears — so it is `true` from the tap onward,
     /// including the stretch before `playerState` reaches `.playing`.
+    ///
+    /// The error carve-out is not incidental. `playbackIntended` deliberately
+    /// survives a failed start: the analytics/CPU session follows intent
+    /// rather than individual errors (#512), and the holding pattern
+    /// reconnects underneath a request that is still standing (#517). Raw
+    /// intent is therefore the wrong thing for a control to render — it would
+    /// promise a pause with nothing left to cancel. `isLoading` carried this
+    /// same `!playerState.isError` clause for the same reason.
     public var isPlaybackRequested: Bool {
-        playbackIntended
+        playbackIntended && !playerState.isError
     }
 
     /// Single-line snapshot of internal state, intended for diagnostics (e.g.
