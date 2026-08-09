@@ -35,8 +35,9 @@ public protocol PlaybackController: AnyObject, Observable {
     /// Whether audio is currently playing
     var isPlaying: Bool { get }
 
-    /// Whether the listener has asked for audio and that request is still
-    /// standing — set by `play(reason:)`, cleared by `stop(reason:)`.
+    /// Whether the listener has asked for audio, that request is still
+    /// standing, and there is still something to cancel — set by
+    /// `play(reason:)`, cleared by `stop(reason:)` or by the stream failing.
     ///
     /// This, not `isPlaying`, is what a play/pause control must render and act
     /// on. `isPlaying` answers whether audio is coming out, which is a
@@ -49,6 +50,11 @@ public protocol PlaybackController: AnyObject, Observable {
     /// the point: a start that is still connecting is a *requested* playback
     /// the listener can cancel, which is what the pause icon has always
     /// promised.
+    ///
+    /// An error state reads `false` even though the controller's internal
+    /// intent flag stays set (it has to — the reconnect ramp and the analytics
+    /// session both live under a standing request). A failed start has nothing
+    /// left to cancel, so the control must offer a retry instead of a stop.
     var isPlaybackRequested: Bool { get }
 
     /// Starts playback with the given reason for analytics

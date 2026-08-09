@@ -154,7 +154,13 @@ final class MockWidgetRelevanceUpdater: WidgetRelevanceUpdating {
 final class MockPlaybackController: PlaybackController {
     var state: PlaybackState = .idle
     var isPlaying: Bool { state.isPlaying }
-    var isPlaybackRequested: Bool { state.isPlaying || state.isLoading }
+    /// This mock has no intent flag of its own, so it answers from the only
+    /// thing it has. `isActive` is the honest stand-in: it covers the states a
+    /// real controller reaches while a request is standing (`.playing`,
+    /// `.loading`, `.stalled`) and excludes the two where there is nothing left
+    /// to cancel (`.idle`, `.error`) — matching the error carve-out both
+    /// production conformers make.
+    var isPlaybackRequested: Bool { state.isActive }
 
     func play(reason: PlaybackReason) throws {}
     func toggle(reason: PlaybackReason) throws {}

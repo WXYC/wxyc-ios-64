@@ -60,6 +60,45 @@ struct ToggleIntentTests {
         )
     }
 
+    // MARK: - Errors hand the control back
+
+    @Test(
+        "A failed start offers a retry, not a stop",
+        arguments: PlayerControllerTestCase.allCases
+    )
+    func errorOffersRetryNotStop(testCase: PlayerControllerTestCase) async throws {
+        let harness = PlayerControllerTestHarness.make(for: testCase)
+
+        // No auto-transition: the start is driven entirely by what this test
+        // feeds the player, so the error below is the only state it reaches.
+        harness.mockPlayer.shouldAutoUpdateState = false
+        try harness.controller.play(reason: .test)
+        await harness.waitForAsync()
+        #expect(harness.controller.isPlaybackRequested, "precondition: a start was requested")
+
+        harness.mockPlayer.simulateStateChange(to: .error(.connectionFailed("stream unreachable")))
+        await harness.waitUntil { harness.controller.state.isError }
+
+        // Intent deliberately survives the error — the analytics/CPU session
+        // follows intent rather than individual failures (#512), and the
+        // holding pattern reconnects underneath a request that is still
+        // standing (#517). So the predicate the *control* renders cannot be
+        // raw intent: a failed start has nothing left to cancel, and the only
+        // useful thing a tap can do is try again.
+        #expect(
+            !harness.controller.isPlaybackRequested,
+            "an error hands the control back to play so the listener can retry"
+        )
+
+        let playsBeforeTap = harness.mockPlayer.playCallCount
+        try harness.controller.toggle(reason: .test)
+
+        #expect(
+            harness.mockPlayer.playCallCount == playsBeforeTap + 1,
+            "the tap must retry the stream, not tear the session down"
+        )
+    }
+
     // MARK: - The predicate the button renders
 
     @Test(
