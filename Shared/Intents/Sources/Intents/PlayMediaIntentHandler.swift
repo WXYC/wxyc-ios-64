@@ -15,6 +15,7 @@
 //
 
 #if os(iOS)
+import Core
 import Foundation
 import Intents
 import PlaybackCore
@@ -54,6 +55,22 @@ public final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
     }
 
     public func handle(intent: INPlayMediaIntent) async -> INPlayMediaIntentResponse {
+        // The suggestion tile is expected to dispatch with no explicit media
+        // item (or one carrying WXYC's own identifier) — accept both. Only
+        // reject an *explicit* foreign identifier: with INIntentsSupported
+        // declared, the app is a media-domain claimant for arbitrary "play X"
+        // dispatches (the #450 Siri-routing surface), and starting the live
+        // stream for a request that named something else would be wrong.
+        if let mediaItems = intent.mediaItems, !mediaItems.isEmpty {
+            let carriesForeignIdentifier = mediaItems.contains { item in
+                guard let identifier = item.identifier else { return false }
+                return identifier != RadioStation.WXYC.identifier
+            }
+            if carriesForeignIdentifier {
+                return INPlayMediaIntentResponse(code: .failureUnknownMediaType, userActivity: nil)
+            }
+        }
+
         let started = await start(.mediaSuggestion)
         return INPlayMediaIntentResponse(code: started ? .success : .failure, userActivity: nil)
     }
