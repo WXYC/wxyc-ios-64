@@ -24,8 +24,12 @@ import PlaybackTestUtilities
 @testable import Playback
 @testable import PlaybackCore
 
-// `RadioPlayerController.isPlaying` reads its live player rather than a mirror,
-// so it has no staleness to guard against and nothing here applies to it.
+// Scoped to `AudioPlayerController`: `RadioPlayerController.isPlaying` reads
+// its live player, so the divergence these tests construct can't arise there.
+// Its `state` *is* a stored mirror with the same async writer and no tiebreak,
+// so the same staleness is reachable through that property — untested here, and
+// the reason `isPlaybackRequested` on that controller reads `state` rather than
+// trusting it blindly.
 #if os(iOS) || os(tvOS)
 @Suite("Player State Mirror Tests")
 @MainActor
@@ -80,9 +84,20 @@ struct PlayerStateMirrorTests {
     func liveplayingIsKept() async throws {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
+        // The stream must be the *only* way `.playing` can reach the mirror, or
+        // this proves nothing. Left on, the mock's auto-transition sets its own
+        // state to `.playing` inside `play()`, and `startPlayerAfterActivation`
+        // copies that across synchronously — the mirror would already say
+        // `.playing` before the delivery under test, and a guard that rejected
+        // every `.playing` (silencing playback in production) would still pass
+        // here.
+        harness.mockPlayer.shouldAutoUpdateState = false
+
         // The ordinary path: intent is standing, so the mirror must follow the
         // player. A guard that rejected this would silence playback entirely.
         try harness.controller.play(reason: .test)
+        #expect(!harness.controller.isPlaying, "precondition: only the stream can set the mirror")
+
         harness.mockPlayer.simulateLateStateDelivery(.playing)
 
         await harness.waitUntil { harness.controller.isPlaying }
