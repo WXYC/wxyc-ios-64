@@ -466,8 +466,8 @@ public final actor PlaylistService: Sendable {
     /// `ensureLiveUpdatesRunning()` is reachable only from here and from
     /// `switchAPIVersion(to:)`, a wrong value is never re-checked and live
     /// updates stay down for the session. The iOS callers therefore share one
-    /// serialized handoff (`Core.SerialHandoff`); a new caller that reaches
-    /// this method directly is unprotected.
+    /// ordered relay (`Core.LatestValueRelay`); a new caller that reaches this
+    /// method directly is unprotected.
     ///
     /// Tracks `isForegrounded` unconditionally —
     /// even when live updates aren't wired in for this instance right now

@@ -211,8 +211,9 @@ final class Singletonia {
 
     /// Carries foreground transitions to `playlistService` in arrival order.
     /// Not a cancellable task like its neighbours above — see
-    /// ``setForegrounded(_:)`` for why the ordering matters.
-    private let foregroundHandoff = SerialHandoff()
+    /// ``setScenePhase(_:)`` for why the ordering matters. Assigned in `init`
+    /// rather than here because it captures `playlistService`.
+    private let foregroundRelay: LatestValueRelay<Bool>
 
     #if DEBUG
     /// Dev-only: posts a lock-screen alert when the on-air artist has an upcoming
@@ -281,6 +282,12 @@ final class Singletonia {
             playlistService: playlistService
         )
         self.artworkLoader = ArtworkLoader(service: artworkService)
+
+        // Draining starts here, before any scene phase can arrive, so there is
+        // no window in which foreground state is accepted and then dropped.
+        self.foregroundRelay = LatestValueRelay { [playlistService] isForegrounded in
+            await playlistService.setForegrounded(isForegrounded)
+        }
 
         let screenWidth = UIScreen.main.bounds.size.width
         nowPlayingInfoCenterManager = NowPlayingInfoCenterManager(
@@ -630,13 +637,16 @@ final class Singletonia {
     ///   app still on screen. Tearing it down there left it down, because no
     ///   further phase change was coming to bring it back.
     ///
-    /// The handoff to `playlistService` is serialized rather than dispatched
-    /// through a fresh `Task` per call. The scene-phase handler and `.onAppear`
-    /// are independent producers, so a rapid pair has no guaranteed arrival
-    /// order between unstructured tasks. Arriving inverted latches
+    /// Foreground state reaches `playlistService` through a relay rather than a
+    /// fresh `Task` per call. The scene-phase handler and `.onAppear` are
+    /// independent producers, so a rapid pair has no guaranteed arrival order
+    /// between unstructured tasks. Arriving inverted latches
     /// `isForegrounded = false` on a service whose app is on screen, and since
     /// nothing re-checks the flag afterwards the SSE subscription stays down
-    /// for the rest of the session.
+    /// for the rest of the session. The relay fixes the order synchronously, on
+    /// the MainActor, before any suspension can shuffle it — and, because only
+    /// the newest push describes the world, drops any it overtakes, so a burst
+    /// costs one subscription decision instead of one per phase.
     func setScenePhase(_ phase: ScenePhase) {
         let routing = Self.foregroundRouting(for: phase)
         widgetStateService.setForegrounded(routing.widgetsForegrounded)
@@ -645,9 +655,9 @@ final class Singletonia {
         // no-op on any non-iOS PlaylistService instance (#269).
         switch routing.playlistVisibility {
         case .onScreen:
-            enqueueForegroundState(true)
+            foregroundRelay.send(true)
         case .offScreen:
-            enqueueForegroundState(false)
+            foregroundRelay.send(false)
         case .noChange:
             break
         }
@@ -674,12 +684,6 @@ final class Singletonia {
             widgetsForegrounded: phase == .active,
             playlistVisibility: ForegroundVisibility(entering: phase)
         )
-    }
-
-    private func enqueueForegroundState(_ foregrounded: Bool) {
-        foregroundHandoff.enqueue { [playlistService] in
-            await playlistService.setForegrounded(foregrounded)
-        }
     }
 
     /// Start the widget state service to observe playback and playlist updates
