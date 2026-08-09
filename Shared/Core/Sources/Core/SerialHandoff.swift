@@ -1,10 +1,11 @@
 //
 //  SerialHandoff.swift
-//  AppServices
+//  Core
 //
 //  Delivers async work from a synchronous MainActor caller to its destination
-//  actor in the order it was enqueued. Extracted so the ordering guarantee has
-//  one tested home rather than being open-coded at each call site.
+//  actor in the order it was enqueued. Lives in Core, alongside the other
+//  dependency-free concurrency utilities, so any package can reach it — the
+//  same chain is currently open-coded in Playlist's `PlaycutHistoryStore`.
 //
 //  Created by Jake Bromberg on 08/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -64,8 +65,11 @@ public final class SerialHandoff {
     /// Waits for all work enqueued so far to finish.
     ///
     /// Work enqueued *after* this call is not awaited — the chain's tail is
-    /// captured when `drain()` is entered. Intended for tests and teardown;
-    /// production callers enqueue and move on.
+    /// captured when `drain()` is entered.
+    ///
+    /// A testing seam, and currently only that: every production caller
+    /// enqueues and moves on, which is the point of the type. It does not
+    /// clear `tail`, so the last task stays retained after draining.
     public func drain() async {
         await tail?.value
     }
