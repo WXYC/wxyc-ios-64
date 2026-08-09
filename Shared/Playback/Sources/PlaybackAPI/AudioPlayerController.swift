@@ -420,6 +420,10 @@ public final class AudioPlayerController {
     /// main actor is the sole writer and may read it unlocked. `sessionLock`
     /// exists for the deactivation, which reads it from off the actor, and whose
     /// acquire pairs with the release on the writer's unlock.
+    ///
+    /// Same bump-capture-compare idiom as `PlaylistService`'s
+    /// `liveUpdatesGeneration`; a third site should hoist a shared helper into
+    /// Core rather than fork the pattern again.
     @ObservationIgnored private nonisolated(unsafe) var sessionActivationGeneration = 0
     #endif
 

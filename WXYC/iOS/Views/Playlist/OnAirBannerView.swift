@@ -318,6 +318,12 @@ struct OnAirBannerView: View {
 
     /// Whether a wave can be seen right now: the app is foregrounded and the handle
     /// is on-screen. When false, a requested wave is deferred rather than spent.
+    ///
+    /// Reads the raw phase rather than `Core.ForegroundVisibility` deliberately:
+    /// this asks "is now a good moment to spend a one-shot animation", not "did
+    /// the app leave the screen". `.inactive` (Control Center over the app, an
+    /// unfocused pane) is a fine moment not to spend it — nothing is lost,
+    /// because ``pendingWave`` replays the wave when the handle is next visible.
     private var canPlayWave: Bool {
         scenePhase == .active && isHandleVisible
     }

@@ -86,7 +86,10 @@ public final actor PlaylistService: Sendable {
 
     /// Identifies the current consume loop, so a loop that exits after being
     /// superseded can tell whether `liveUpdatesTask` still refers to it before
-    /// clearing it. See the `defer` in `consumeLiveEvents(generation:)`.
+    /// clearing it. See the `defer` in `consumeLiveEvents(generation:)`. Same
+    /// bump-capture-compare idiom as `AudioPlayerController`'s
+    /// `sessionActivationGeneration`; a third site should hoist a shared
+    /// helper into Core rather than fork the pattern again.
     private var liveUpdatesGeneration = 0
 
     /// True while `switchAPIVersion(to:)` is between tearing down the old
