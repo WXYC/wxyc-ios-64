@@ -22,11 +22,12 @@ struct IntentPlaybackTests {
         let clock = ContinuousClock()
         let start = clock.now
 
-        await IntentPlayback.awaitPlaybackStart(
+        let started = await IntentPlayback.awaitPlaybackStart(
             timeout: .seconds(10),
             context: "test"
         ) { true }
 
+        #expect(started)
         #expect(clock.now - start < .seconds(1))
     }
 
@@ -50,12 +51,13 @@ struct IntentPlaybackTests {
         let clock = ContinuousClock()
         let start = clock.now
 
-        await IntentPlayback.awaitPlaybackStart(
+        let started = await IntentPlayback.awaitPlaybackStart(
             timeout: .milliseconds(300),
             context: "test"
         ) { false }
 
         let elapsed = clock.now - start
+        #expect(!started, "A timed-out wait must report that playback never started")
         #expect(elapsed >= .milliseconds(250))
         #expect(elapsed < .seconds(2))
     }

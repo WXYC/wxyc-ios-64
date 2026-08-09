@@ -20,8 +20,16 @@ import PlaybackCore
 enum IntentPlayback {
     /// Prepares the audio session, starts playback for `reason`, then waits for the
     /// stream to begin (or `timeout` to elapse) — keeping the calling intent alive.
+    ///
+    /// - Returns: Whether playback actually started before `timeout` elapsed.
+    ///   `PlayWXYC` and `PlayWXYCAudio` report a friendly dialog either way and
+    ///   don't need this, but `PlayMediaIntentHandler` (#829) does: without it,
+    ///   a dead network or exhausted backoff still answered `.success`, giving
+    ///   the user no audio and no system error affordance. Marked
+    ///   `@discardableResult` so those two callers don't need updating.
     @MainActor
-    static func startAndAwait(reason: PlaybackReason, timeout: Duration = .seconds(10)) async {
+    @discardableResult
+    static func startAndAwait(reason: PlaybackReason, timeout: Duration = .seconds(10)) async -> Bool {
         Log(.info, "\(reason)")
 
         // Prepare audio session early to signal to iOS that audio playback is imminent
@@ -31,7 +39,7 @@ enum IntentPlayback {
 
         // Wait for playback to start before returning, keeping the intent alive
         // so iOS doesn't suspend the app before the stream connects
-        await awaitPlaybackStart(timeout: timeout, context: reason.description)
+        return await awaitPlaybackStart(timeout: timeout, context: reason.description)
     }
 
     /// Polls `isPlaying` until it becomes true or `timeout` elapses.
@@ -40,22 +48,25 @@ enum IntentPlayback {
     ///   - timeout: How long to wait before giving up.
     ///   - context: Log prefix identifying the calling intent (e.g. `"ToggleWXYC intent"`).
     ///   - isPlaying: Playback-state probe; defaults to the shared controller. Injectable for tests.
+    /// - Returns: `true` if `isPlaying` became true before `timeout` elapsed, `false` otherwise.
     @MainActor
+    @discardableResult
     static func awaitPlaybackStart(
         timeout: Duration,
         context: String,
         isPlaying: @MainActor () -> Bool = { AudioPlayerController.shared.isPlaying }
-    ) async {
+    ) async -> Bool {
         let deadline = ContinuousClock.now.advanced(by: timeout)
 
         while !isPlaying() {
             if ContinuousClock.now >= deadline {
                 Log(.warning, "\(context): timeout waiting for playback to start")
-                return
+                return false
             }
             try? await Task.sleep(for: .milliseconds(100))
         }
 
         Log(.info, "\(context): playback started")
+        return true
     }
 }
