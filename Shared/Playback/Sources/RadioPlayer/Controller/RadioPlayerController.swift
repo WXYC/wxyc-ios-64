@@ -702,13 +702,17 @@ private extension RadioPlayerController {
         return .success
     }
 
+    /// Delegates to `toggle(reason:)` rather than repeating its branch, for the
+    /// same reason `remotePauseOrStopCommand` routes through
+    /// `stopWithAnalytics`: this path is gated behind a real
+    /// `MPRemoteCommandEvent` a unit test can't construct, so any logic that
+    /// lives here is logic nothing can check. It previously branched on
+    /// `radioPlayer.isPlaying`, which meant the lock screen and the on-screen
+    /// button disagreed about what a tap does while a start is in flight —
+    /// exactly the split this predicate exists to close.
     func remoteTogglePlayPauseCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
         do {
-            if self.radioPlayer.isPlaying {
-                stopWithAnalytics(reason: .remoteToggleCommand)
-            } else {
-                try self.play(reason: .remoteToggleCommand)
-            }
+            try self.toggle(reason: .remoteToggleCommand)
 
             return .success
         } catch {
