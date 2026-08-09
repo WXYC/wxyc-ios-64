@@ -26,11 +26,12 @@ import PlaybackCore
 // races" check even though nothing here actually races.
 @Suite("PlayMediaIntentHandler")
 struct PlayMediaIntentHandlerTests {
-    @Test("handle(intent:) starts playback with .mediaSuggestion and returns success")
-    func handleStartsPlaybackAndReturnsSuccess() async {
+    @Test("No explicit media item starts playback with .mediaSuggestion and returns success")
+    func handleWithNoMediaItemsStartsPlaybackAndReturnsSuccess() async {
         var capturedReasons: [PlaybackReason] = []
         let handler = PlayMediaIntentHandler { reason in
             capturedReasons.append(reason)
+            return true
         }
 
         let response = await handler.handle(intent: makeIntent())
@@ -40,14 +41,14 @@ struct PlayMediaIntentHandlerTests {
         #expect(response.userActivity == nil)
     }
 
-    @Test("public init() forwards to the real IntentPlayback start path")
-    func defaultInitializerUsesRealStartPath() {
-        // Constructing with the public initializer must not require access to
-        // anything beyond WXYCIntents' public surface — this is the whole
-        // point of the internal-init/public-init split (#829): PlayMediaIntentHandler
-        // is public (the app-target delegate returns it), but IntentPlayback is
-        // internal, so the real start closure can't be a public default argument.
-        _ = PlayMediaIntentHandler()
+    @Test("A start that never actually plays reports failure, not success")
+    func handleReportsFailureWhenPlaybackNeverStarts() async {
+        let handler = PlayMediaIntentHandler { _ in false }
+
+        let response = await handler.handle(intent: makeIntent())
+
+        #expect(response.code == .failure)
+        #expect(response.userActivity == nil)
     }
 }
 
