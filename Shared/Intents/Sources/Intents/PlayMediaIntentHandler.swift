@@ -29,7 +29,13 @@ import PlaybackCore
 /// `start` closure still reaches `AudioPlayerController.shared` by hopping onto
 /// `@MainActor` itself, inside `IntentPlayback.startAndAwait`.
 public final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
-    private let start: (PlaybackReason) async -> Void
+    /// Starts playback for the given reason and reports whether it actually
+    /// started. `IntentPlayback.startAndAwait` swallows its 10s timeout
+    /// internally (a warning log, then a bare return) — this seam surfaces
+    /// that outcome so `handle(intent:)` can answer `.failure` instead of an
+    /// unconditional `.success` when a dead network or exhausted backoff
+    /// means the user gets no audio.
+    private let start: (PlaybackReason) async -> Bool
 
     /// Internal seam initializer. `PlayMediaIntentHandler` must be `public`
     /// (the app-target `AppDelegate` returns it), but `IntentPlayback` is
@@ -39,7 +45,7 @@ public final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
     /// substitute a spy without touching the real `AudioPlayerController`;
     /// `init()` below forwards to it with the real implementation as an
     /// ordinary delegating call, not a default argument.
-    init(start: @escaping (PlaybackReason) async -> Void) {
+    init(start: @escaping (PlaybackReason) async -> Bool) {
         self.start = start
     }
 
@@ -48,8 +54,8 @@ public final class PlayMediaIntentHandler: NSObject, INPlayMediaIntentHandling {
     }
 
     public func handle(intent: INPlayMediaIntent) async -> INPlayMediaIntentResponse {
-        await start(.mediaSuggestion)
-        return INPlayMediaIntentResponse(code: .success, userActivity: nil)
+        let started = await start(.mediaSuggestion)
+        return INPlayMediaIntentResponse(code: started ? .success : .failure, userActivity: nil)
     }
 }
 #endif
