@@ -450,8 +450,19 @@ public final actor PlaylistService: Sendable {
     /// Opens or closes the `live-fs-topic` SSE subscription in response to the
     /// app's foreground state.
     ///
-    /// Called from the iOS scene-phase handler: `true` on `.active`, `false` on
-    /// `.inactive`/`.background`. Tracks `isForegrounded` unconditionally —
+    /// Called from the iOS app for `.active` (`true`) and `.background`
+    /// (`false`) only — never for `.inactive`, which fires for Control Center
+    /// and the app switcher with the app still on screen.
+    ///
+    /// Call order carries meaning and this method does not defend itself:
+    /// inverted arrival latches `isForegrounded` against reality, and since
+    /// `ensureLiveUpdatesRunning()` is reachable only from here and from
+    /// `switchAPIVersion(to:)`, a wrong value is never re-checked and live
+    /// updates stay down for the session. The iOS callers therefore share one
+    /// serialized handoff (`Core.SerialHandoff`); a new caller that reaches
+    /// this method directly is unprotected.
+    ///
+    /// Tracks `isForegrounded` unconditionally —
     /// even when live updates aren't wired in for this instance right now
     /// (v1, or the caller never opted in) — so a later `switchAPIVersion(to:)`
     /// that DOES wire one in knows whether to start it immediately.

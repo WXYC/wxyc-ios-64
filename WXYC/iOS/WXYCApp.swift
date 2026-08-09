@@ -174,16 +174,27 @@ struct WXYCApp: App {
 
     // MARK: - Scene phase
 
+    /// Drives every lifecycle consumer off what the phase *means* for on-screen
+    /// state rather than off the phase itself.
+    ///
+    /// The distinction is load-bearing rather than stylistic: `.inactive` fires
+    /// for Control Center, notification banners and the app switcher with the
+    /// app still visible, so treating it as leaving tore down the live-fs SSE
+    /// subscription mid-session, and nothing was coming to bring it back. Every
+    /// consumer here has that same hazard, so they share one classification —
+    /// a second `switch` on the raw phase is how a future consumer would
+    /// reintroduce the bug with the tests still green.
     private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
-        switch newPhase {
-        case .background:
+        switch ForegroundTransition(enteringPhase: newPhase) {
+        case .leaveForeground:
             StructuredPostHogAnalytics.shared.capture(AppEnteredBackground(
                 isPlaying: AudioPlayerController.shared.isPlaying
             ))
             AudioPlayerController.shared.handleAppDidEnterBackground()
             AdaptiveQualityController.shared.handleBackgrounded()
+            appState.setForegrounded(false)
 
-        case .active:
+        case .enterForeground:
             AudioPlayerController.shared.handleAppWillEnterForeground()
             AdaptiveQualityController.shared.handleForegrounded()
             BackgroundRefreshController.scheduleNext()
@@ -195,27 +206,8 @@ struct WXYCApp: App {
             foregroundRefreshTask = refreshPlaylistIfCacheExpired()
             // Honour the "Clear Artwork Cache" toggle from the Settings app.
             cacheCleanupTask = handleSettingsBundleCacheClear()
-
-        case .inactive:
-            // Deliberately no phase-specific work: see the foreground handoff
-            // below for why `.inactive` must not be treated as leaving.
-            break
-
-        @unknown default:
-            break
-        }
-
-        // Foreground-only subscriptions (the live-fs SSE stream, widget state
-        // sync) key off what the phase means for on-screen state, not off the
-        // phase itself — `.inactive` fires for Control Center, notification
-        // banners and the app switcher with the app still visible, and tearing
-        // the subscription down there left it down, because no further phase
-        // change was coming to bring it back.
-        switch ForegroundTransition(enteringPhase: newPhase) {
-        case .enterForeground:
             appState.setForegrounded(true)
-        case .leaveForeground:
-            appState.setForegrounded(false)
+
         case .unchanged:
             break
         }
