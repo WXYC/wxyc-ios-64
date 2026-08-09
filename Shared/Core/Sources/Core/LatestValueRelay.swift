@@ -19,13 +19,13 @@
 /// ordering guarantee: two created back to back may reach the destination in
 /// either order, so the *last* push does not reliably produce the *final* state.
 ///
-/// That is not theoretical here. Scene-phase changes and the per-window
-/// `.onAppear` both push foreground state at `PlaylistService`, and an inverted
-/// `.background`/`.active` pair latched `isForegrounded = false` while the app
-/// was on screen. Nothing re-checks that flag once set, so the `live-fs-topic`
-/// SSE subscription stayed down for the remainder of the session and the
-/// playlist fell back to its 300 s reconciliation poll — the app visibly
-/// trailing the flowsheet.
+/// That is not theoretical here. Successive scene-phase edges push foreground
+/// state at `PlaylistService`, and a rapid `.background`/`.active` pair
+/// delivered through per-push tasks arrived inverted, latching
+/// `isForegrounded = false` while the app was on screen. Nothing re-checks
+/// that flag once set, so the `live-fs-topic` SSE subscription stayed down for
+/// the remainder of the session and the playlist fell back to its 300 s
+/// reconciliation poll — the app visibly trailing the flowsheet.
 ///
 /// ``send(_:)`` hands the value to a one-slot `AsyncStream` buffer
 /// synchronously, so order is fixed at the call site, in the caller's isolation

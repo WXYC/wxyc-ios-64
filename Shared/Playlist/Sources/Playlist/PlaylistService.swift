@@ -456,18 +456,18 @@ public final actor PlaylistService: Sendable {
     /// app's foreground state.
     ///
     /// Called from the iOS app for `.active` (`true`) and `.background`
-    /// (`false`) only — never for `.inactive`, which fires for Control Center
-    /// and the app switcher with the app still on screen. Both producers (the
-    /// scene-phase handler and each window's `.onAppear`) route through
+    /// (`false`) only — never for `.inactive`, which fires with the app still
+    /// on screen (see `Core.ForegroundVisibility` for that story). The app's
+    /// single scene-phase producer routes through
     /// `Singletonia.setScenePhase(_:)`, which classifies the phase once.
     ///
     /// Call order carries meaning and this method does not defend itself:
     /// inverted arrival latches `isForegrounded` against reality, and since
     /// `ensureLiveUpdatesRunning()` is reachable only from here and from
     /// `switchAPIVersion(to:)`, a wrong value is never re-checked and live
-    /// updates stay down for the session. The iOS callers therefore share one
-    /// ordered relay (`Core.LatestValueRelay`); a new caller that reaches this
-    /// method directly is unprotected.
+    /// updates stay down for the session. The iOS caller therefore delivers
+    /// through an ordered relay (`Core.LatestValueRelay`); a new caller that
+    /// reaches this method directly is unprotected.
     ///
     /// Tracks `isForegrounded` unconditionally —
     /// even when live updates aren't wired in for this instance right now

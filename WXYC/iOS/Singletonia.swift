@@ -624,11 +624,16 @@ final class Singletonia {
 
     /// Route a scene phase to the services that care about it.
     ///
-    /// Called on every scene-phase change and from each window's `.onAppear`,
-    /// which passes the phase it is appearing into rather than assuming
-    /// `.active` — a window can appear into an already-backgrounded scene
-    /// (multi-window, CarPlay scene connection, background launch), and no
-    /// further phase *change* would follow to correct a wrong guess.
+    /// The sole caller is `WXYCApp`'s scene-level phase handler, which also
+    /// delivers the phase the window first appears into (`initial: true`) —
+    /// no phase *change* follows an appearance to report it otherwise.
+    ///
+    /// The CarPlay scene casts no vote here: `CarPlaySceneDelegate` never
+    /// calls this, so locking the phone while CarPlay is connected reads as
+    /// `.background` and closes the live-fs subscription even though the
+    /// CarPlay "Recently Played" list is still on screen — it falls back to
+    /// the 300 s reconciliation poll until the next `.active` edge. Wiring
+    /// CarPlay connection in as a visibility source is its own change.
     ///
     /// The routing itself — which consumer reads the phase which way, and why
     /// the playlist side goes through an ordered relay — lives on
