@@ -34,11 +34,23 @@ public protocol PlaybackController: AnyObject, Observable {
 
     /// Whether audio is currently playing
     var isPlaying: Bool { get }
-    
-    /// Whether playback is loading (play initiated but not yet playing)
-    /// Controllers without loading state should return `false`
-    var isLoading: Bool { get }
-    
+
+    /// Whether the listener has asked for audio and that request is still
+    /// standing — set by `play(reason:)`, cleared by `stop(reason:)`.
+    ///
+    /// This, not `isPlaying`, is what a play/pause control must render and act
+    /// on. `isPlaying` answers whether audio is coming out, which is a
+    /// different question: it is `false` for the whole duration of a start
+    /// that has not yet produced sound. A control driven by it shows play
+    /// while a start is in flight, so a tap meant to cancel that start
+    /// re-issues it instead (Sentry IOS-4K/4M/4N).
+    ///
+    /// Rendering the icon and choosing the action from this one predicate is
+    /// the point: a start that is still connecting is a *requested* playback
+    /// the listener can cancel, which is what the pause icon has always
+    /// promised.
+    var isPlaybackRequested: Bool { get }
+
     /// Starts playback with the given reason for analytics
     /// - Parameter reason: Why playback was started (for analytics)
     /// - Throws: If playback cannot be started

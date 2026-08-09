@@ -80,7 +80,10 @@ struct PlayerPage: View {
                     Button(action: {
                         Task { try playbackController.toggle(reason: .watchPlayPause) }
                     }) {
-                        Image(systemName: playbackController.isPlaying ? "pause.fill" : "play.fill")
+                        // Same predicate `toggle(reason:)` branches on, so the
+                        // icon can't promise one thing and the tap do another.
+                        // See `PlaybackController.isPlaybackRequested`.
+                        Image(systemName: playbackController.isPlaybackRequested ? "pause.fill" : "play.fill")
                             .font(.system(size: 12))
                             .foregroundColor(.white)
                             .padding(20)

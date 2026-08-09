@@ -75,7 +75,7 @@ struct PauseResponsivenessTests {
         // Everything a view binds to must already read as paused at the moment
         // control returns — SwiftUI cannot render until it does.
         #expect(harness.controller.isPlaying == false)
-        #expect(harness.controller.isLoading == false)
+        #expect(harness.controller.isPlaybackRequested == false)
         // The primary check is an ordering one, not an elapsed-time bound. A
         // ~10.5s process stall (CI run 31205214380, #807) can inflate any
         // wall-clock measurement taken around `stop()`, so no *tight*

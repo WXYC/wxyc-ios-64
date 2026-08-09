@@ -53,8 +53,9 @@ public struct WidgetToggleWXYC: SetValueIntent, AudioPlaybackIntent {
         // Prepare audio session early to signal to iOS that audio playback is imminent
         await AudioPlayerController.shared.prepareForPlayback()
 
-        let wasPlaying = await MainActor.run {
-            AudioPlayerController.shared.isPlaying
+        // Same predicate `toggle(reason:)` branches on — see ToggleWXYC.
+        let wasRequested = await MainActor.run {
+            AudioPlayerController.shared.isPlaybackRequested
         }
 
         await MainActor.run {
@@ -63,7 +64,7 @@ public struct WidgetToggleWXYC: SetValueIntent, AudioPlaybackIntent {
 
         // If we toggled to play, wait for playback to start before returning
         // so iOS doesn't suspend the app before the stream connects
-        if !wasPlaying {
+        if !wasRequested {
             await IntentPlayback.awaitPlaybackStart(timeout: .seconds(10), context: "WidgetToggleWXYC intent")
         }
 
