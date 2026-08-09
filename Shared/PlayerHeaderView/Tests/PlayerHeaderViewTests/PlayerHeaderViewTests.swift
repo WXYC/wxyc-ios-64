@@ -24,13 +24,42 @@ struct PlaybackControlsViewTests {
     @Test("The icon shows pause exactly when a play request is standing")
     func iconTracksTheRequestedPredicate() {
         #expect(
-            PlaybackControlsView(isPlaybackRequested: true, onPlayTapped: {}).image
+            PlaybackControlsView(isPlaybackRequested: true, isPlaying: false, onPlayTapped: {}).image
                 == Image(systemName: "pause.circle.fill")
         )
         #expect(
-            PlaybackControlsView(isPlaybackRequested: false, onPlayTapped: {}).image
+            PlaybackControlsView(isPlaybackRequested: false, isPlaying: false, onPlayTapped: {}).image
                 == Image(systemName: "play.circle.fill")
         )
+    }
+
+    /// Label and value answer different questions on purpose. The label names
+    /// what the tap will do, so it must track the same predicate as the icon —
+    /// a VoiceOver user has to be told "Pause" while a start is in flight, or
+    /// they get the exact bug this control was fixed for. The value reports
+    /// whether audio is actually coming out, which is the only signal either a
+    /// listener or a UI test has that a start *succeeded*; driving it from
+    /// intent turns `waitUntilValue(playButton, equals: "playing")` in
+    /// `PlayWXYCIntentUITests` into an assertion that a tap was recorded.
+    @Test(
+        "The label tracks the tap's effect; the value tracks actual audio",
+        arguments: [
+            (requested: true, playing: true, label: "Pause", value: "playing"),
+            (requested: true, playing: false, label: "Pause", value: "paused"),
+            (requested: false, playing: false, label: "Play", value: "paused")
+        ]
+    )
+    func labelTracksIntentAndValueTracksAudio(
+        testCase: (requested: Bool, playing: Bool, label: String, value: String)
+    ) {
+        let view = PlaybackControlsView(
+            isPlaybackRequested: testCase.requested,
+            isPlaying: testCase.playing,
+            onPlayTapped: {}
+        )
+
+        #expect(view.accessibilityLabelText == testCase.label)
+        #expect(view.accessibilityValueText == testCase.value)
     }
 }
 

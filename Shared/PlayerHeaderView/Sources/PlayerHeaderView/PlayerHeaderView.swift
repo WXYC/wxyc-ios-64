@@ -57,7 +57,8 @@ public struct PlayerHeaderView: View {
         VStack(spacing: 8) {
             HStack(alignment: .center) {
                 PlaybackControlsView(
-                    isPlaybackRequested: Self.controller.isPlaybackRequested
+                    isPlaybackRequested: Self.controller.isPlaybackRequested,
+                    isPlaying: Self.controller.isPlaying
                 ) {
                     Self.controller.toggle(reason: .headerViewToggle)
                 }
