@@ -185,16 +185,20 @@ struct WXYCApp: App {
     /// a second `switch` on the raw phase is how a future consumer would
     /// reintroduce the bug with the tests still green.
     private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
-        switch ForegroundTransition(enteringPhase: newPhase) {
-        case .leaveForeground:
+        // Services that key off the phase own their own reading of it — widget
+        // reloads and the live-fs subscription disagree about `.inactive`, for
+        // reasons documented on `setScenePhase(_:)`.
+        appState.setScenePhase(newPhase)
+
+        switch ForegroundVisibility(entering: newPhase) {
+        case .offScreen:
             StructuredPostHogAnalytics.shared.capture(AppEnteredBackground(
                 isPlaying: AudioPlayerController.shared.isPlaying
             ))
             AudioPlayerController.shared.handleAppDidEnterBackground()
             AdaptiveQualityController.shared.handleBackgrounded()
-            appState.setForegrounded(false)
 
-        case .enterForeground:
+        case .onScreen:
             AudioPlayerController.shared.handleAppWillEnterForeground()
             AdaptiveQualityController.shared.handleForegrounded()
             BackgroundRefreshController.scheduleNext()
@@ -206,9 +210,8 @@ struct WXYCApp: App {
             foregroundRefreshTask = refreshPlaylistIfCacheExpired()
             // Honour the "Clear Artwork Cache" toggle from the Settings app.
             cacheCleanupTask = handleSettingsBundleCacheClear()
-            appState.setForegrounded(true)
 
-        case .unchanged:
+        case .noChange:
             break
         }
     }

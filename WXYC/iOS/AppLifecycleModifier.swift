@@ -27,6 +27,13 @@ import WXYCIntents
 struct AppLifecycleModifier: ViewModifier {
     let appState: Singletonia
 
+    /// Read so `.onAppear` can report the phase the window is actually
+    /// appearing into. A window can appear into an already-backgrounded scene
+    /// (multi-window, CarPlay scene connection, background launch), and since
+    /// no phase *change* follows, an unconditional `.active` would leave the
+    /// live-fs subscription running in the background until the next edge.
+    @Environment(\.scenePhase) private var scenePhase
+
     func body(content: Content) -> some View {
         content
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
@@ -50,7 +57,7 @@ struct AppLifecycleModifier: ViewModifier {
 
     private func handleAppear() {
         setUpQuickActions()
-        appState.setForegrounded(true)
+        appState.setScenePhase(scenePhase)
         appState.startWidgetStateService()
         appState.startReviewRequestTracking()
         // Register the shared-show-link observer here, synchronously and before

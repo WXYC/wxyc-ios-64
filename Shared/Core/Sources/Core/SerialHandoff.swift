@@ -11,8 +11,6 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Foundation
-
 /// Serializes async work handed off from a synchronous `@MainActor` context.
 ///
 /// A bare `Task { await destination.apply(x) }` per call is the obvious way to
@@ -68,9 +66,22 @@ public final class SerialHandoff {
     /// captured when `drain()` is entered.
     ///
     /// A testing seam, and currently only that: every production caller
-    /// enqueues and moves on, which is the point of the type. It does not
-    /// clear `tail`, so the last task stays retained after draining.
-    public func drain() async {
+    /// enqueues and moves on, which is the point of the type. Deliberately not
+    /// `public` — it is not part of the contract this type offers other
+    /// packages. It does not clear `tail`, so the last task stays retained
+    /// after draining.
+    func drain() async {
         await tail?.value
+    }
+
+    /// Cancels pending work and drops the chain.
+    ///
+    /// An owner that is going away needs this: without it, enqueued closures
+    /// keep running — and keep their captures alive — after the object that
+    /// scheduled them is gone. `Singletonia` is a singleton and never calls it,
+    /// but the next adopter will not be.
+    public func cancel() {
+        tail?.cancel()
+        tail = nil
     }
 }

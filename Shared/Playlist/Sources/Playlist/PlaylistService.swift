@@ -84,6 +84,11 @@ public final actor PlaylistService: Sendable {
     /// The running SSE consume loop, or `nil` when backgrounded / not enabled.
     private var liveUpdatesTask: Task<Void, Never>?
 
+    /// Identifies the current consume loop, so a loop that exits after being
+    /// superseded can tell whether `liveUpdatesTask` still refers to it before
+    /// clearing it. See the `defer` in `consumeLiveEvents(generation:)`.
+    private var liveUpdatesGeneration = 0
+
     /// True while `switchAPIVersion(to:)` is between tearing down the old
     /// wiring and installing the new one. `ensureLiveUpdatesRunning()` refuses
     /// to start a loop while set, because any loop started in that window
@@ -452,7 +457,9 @@ public final actor PlaylistService: Sendable {
     ///
     /// Called from the iOS app for `.active` (`true`) and `.background`
     /// (`false`) only — never for `.inactive`, which fires for Control Center
-    /// and the app switcher with the app still on screen.
+    /// and the app switcher with the app still on screen. Both producers (the
+    /// scene-phase handler and each window's `.onAppear`) route through
+    /// `Singletonia.setScenePhase(_:)`, which classifies the phase once.
     ///
     /// Call order carries meaning and this method does not defend itself:
     /// inverted arrival latches `isForegrounded` against reality, and since
@@ -637,7 +644,9 @@ public final actor PlaylistService: Sendable {
     private func ensureLiveUpdatesRunning() {
         guard !isSwitchingAPIVersion else { return }
         guard activeLiveEventSource != nil, isForegrounded, liveUpdatesTask == nil else { return }
-        liveUpdatesTask = Task { await self.consumeLiveEvents() }
+        liveUpdatesGeneration &+= 1
+        let generation = liveUpdatesGeneration
+        liveUpdatesTask = Task { await self.consumeLiveEvents(generation: generation) }
     }
 
     /// Consumes the SSE stream while foregrounded, reconnecting with exponential
@@ -648,7 +657,24 @@ public final actor PlaylistService: Sendable {
     /// resets to ``minReconnectBackoff`` as soon as a connection delivers an
     /// event, and grows only when an attempt produced nothing (a hard failure,
     /// distinct from a healthy connection that simply closed).
-    private func consumeLiveEvents() async {
+    private func consumeLiveEvents(generation: Int) async {
+        // Retire the field this loop occupies on *every* exit, not just the two
+        // that cancel it from outside. `ensureLiveUpdatesRunning()` gates on
+        // `liveUpdatesTask == nil`, so a loop that returns on its own — the
+        // `guard` below, or the `while` terminating — would otherwise leave a
+        // finished task parked in the field and the gate would refuse to start
+        // another for the rest of the session.
+        //
+        // The generation check is what makes that safe: a cancelled loop can
+        // run its `defer` *after* a newer one has already registered itself,
+        // and clearing the field then would orphan the live loop and let a
+        // third start alongside it.
+        defer {
+            if liveUpdatesGeneration == generation {
+                liveUpdatesTask = nil
+            }
+        }
+
         guard let source = activeLiveEventSource else { return }
 
         // Splice events into the cache-loaded baseline, not the `.empty`
