@@ -1661,6 +1661,17 @@ extension AudioPlayerController {
             guard let self else { return }
             for await newState in player.stateStream {
                 guard !Task.isCancelled else { break }
+                // `play()`/`stop()` write the mirror synchronously because this
+                // stream lags them; without a tiebreak the lagging writer wins,
+                // and a `.playing` emitted before a stop lands after it. With no
+                // play request standing the player is not playing, so such a
+                // value is stale by construction — drop it.
+                //
+                // The whole iteration is dropped, not just the mirror write: a
+                // stale `.playing` must not credit startup success (#518), tear
+                // down the holding pattern (#517), or restart the heartbeat
+                // (#666) for playback nobody asked for.
+                guard self.playbackIntended || newState != .playing else { continue }
                 self.playerState = newState
                 // Reaching `.playing` is the universal startup-success signal —
                 // it disarms the startup watchdog for every player type,

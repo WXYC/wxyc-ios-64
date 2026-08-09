@@ -113,6 +113,18 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
         stateContinuation?.yield(newState)
     }
 
+    /// Yields a state onto `stateStream` **without** touching the mock's own
+    /// `state`/`isPlaying`, so the observer's mirror and the player diverge.
+    ///
+    /// Models the real lag the controller's state observer has to survive: the
+    /// mirror is fed by an async stream, so a `.playing` emitted before a stop
+    /// can be delivered after it. `simulateStateChange(to:)` cannot express
+    /// this — it moves the mock in lockstep with the stream, which is exactly
+    /// the convergence a staleness test needs to break.
+    public func simulateLateStateDelivery(_ state: PlayerState) {
+        stateContinuation?.yield(state)
+    }
+
     /// Simulate a playback stall
     /// Sets isPlaying to false to simulate real stall behavior where playback stops
     public func simulateStall() {
