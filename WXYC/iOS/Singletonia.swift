@@ -209,6 +209,11 @@ final class Singletonia {
     private var concertSpotlightDonationTask: Task<Void, Never>?
     private var likedSongsHealingTask: Task<Void, Never>?
 
+    /// Carries foreground transitions to `playlistService` in arrival order.
+    /// Not a cancellable task like its neighbours above — see
+    /// ``setForegrounded(_:)`` for why the ordering matters.
+    private let foregroundHandoff = SerialHandoff()
+
     #if DEBUG
     /// Dev-only: posts a lock-screen alert when the on-air artist has an upcoming
     /// show. Retained as a stored property (not a task-local) because the
@@ -603,13 +608,25 @@ final class Singletonia {
         }
     }
 
-    /// Update the foreground state (called when scene phase changes)
+    /// Update the foreground state (called when scene phase changes, and from
+    /// each window's `.onAppear`).
+    ///
+    /// The handoff to `playlistService` is serialized rather than dispatched
+    /// through a fresh `Task` per call. Those two callers are independent
+    /// producers, so a rapid pair — a `.background` immediately followed by an
+    /// `.active`, or an `.onAppear` racing a phase change — has no guaranteed
+    /// arrival order between unstructured tasks. Arriving inverted latches
+    /// `isForegrounded = false` on a service whose app is on screen, and since
+    /// nothing re-checks the flag afterwards the SSE subscription stays down
+    /// for the rest of the session.
     func setForegrounded(_ foregrounded: Bool) {
         widgetStateService.setForegrounded(foregrounded)
         // Open the live-fs SSE subscription while foregrounded, close it on
         // background (#269). The service ignores this when live updates aren't
         // enabled, so it's a no-op on any non-iOS PlaylistService instance.
-        Task { await playlistService.setForegrounded(foregrounded) }
+        foregroundHandoff.enqueue { [playlistService] in
+            await playlistService.setForegrounded(foregrounded)
+        }
     }
 
     /// Start the widget state service to observe playback and playlist updates
