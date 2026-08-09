@@ -110,6 +110,15 @@ public final class AudioPlayerController {
         playbackIntended && (!isPlaying || playerState == .loading) && !playerState.isError
     }
 
+    /// Whether a play request is still standing. See `PlaybackController`.
+    ///
+    /// Reads `playbackIntended` — the flag `play(reason:)` sets and
+    /// `PlaybackStopTeardown` clears — so it is `true` from the tap onward,
+    /// including the stretch before `playerState` reaches `.playing`.
+    public var isPlaybackRequested: Bool {
+        playbackIntended
+    }
+
     /// Single-line snapshot of internal state, intended for diagnostics (e.g.
     /// `Issue.record` on a test timeout). Captures the otherwise-private fields
     /// that distinguish "audio session activation failed" from "stream took
@@ -553,9 +562,18 @@ public final class AudioPlayerController {
     // MARK: - Public Methods
 
     /// Toggle playback state
+    ///
+    /// Branches on `isPlaybackRequested` (intent), not on `isPlaying` (whether
+    /// audio is actually coming out). The two differ for as long as a start
+    /// takes to produce sound — a buffering connect, or one parked on a dead
+    /// network. Through that window the button shows pause, so a tap has to
+    /// cancel the start; branching on `isPlaying` re-issued `play()` instead,
+    /// and a listener trying to stop a stuck start restarted it
+    /// (Sentry IOS-4K/4M/4N).
+    ///
     /// - Parameter reason: Why playback was toggled (for analytics)
     public func toggle(reason: PlaybackReason) {
-        if isPlaying {
+        if isPlaybackRequested {
             stopWithAnalytics(reason: reason)
         } else {
             play(reason: reason)

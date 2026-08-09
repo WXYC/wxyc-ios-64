@@ -40,9 +40,14 @@ public final class RadioPlayerController: PlaybackController {
         self.radioPlayer.isPlaying
     }
 
-    public var isLoading: Bool {
-        // RadioPlayerController doesn't track loading state separately
-        false
+    /// Whether a play request is still standing. See `PlaybackController`.
+    ///
+    /// Distinct from `isPlaying` here too: this controller reads its live
+    /// player, which is not yet playing while a start is in flight. Both
+    /// controllers must answer a tap the same way for the shared UI to be
+    /// correct on either.
+    public var isPlaybackRequested: Bool {
+        playbackIntended
     }
 
     // Note: the wrapped `RadioPlayer` is always constructed with its own
@@ -186,8 +191,11 @@ public final class RadioPlayerController: PlaybackController {
     
     // MARK: Public methods
     
+    /// Branches on `isPlaybackRequested` (intent) rather than `isPlaying`, so
+    /// both controllers answer a tap identically — see the note on
+    /// `AudioPlayerController.toggle(reason:)`.
     public func toggle(reason: PlaybackReason) throws {
-        if self.isPlaying {
+        if self.isPlaybackRequested {
             stopWithAnalytics(reason: reason)
         } else {
             try self.play(reason: reason)

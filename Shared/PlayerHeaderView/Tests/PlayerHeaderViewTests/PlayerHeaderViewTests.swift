@@ -8,8 +8,31 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import SwiftUI
 import Testing
 @testable import PlayerHeaderView
+
+@Suite("Playback Controls View Tests")
+@MainActor
+struct PlaybackControlsViewTests {
+    /// The icon must be a function of the same predicate the tap acts on
+    /// (`PlaybackController.isPlaybackRequested`). It used to be drawn from
+    /// `isPlaying || isLoading` while `toggle(reason:)` branched on `isPlaying`
+    /// alone, so during a start that had not yet produced audio the button
+    /// promised pause and delivered play — the listener's attempt to cancel a
+    /// stuck start silently re-issued it. Sentry IOS-4K/4M/4N.
+    @Test("The icon shows pause exactly when a play request is standing")
+    func iconTracksTheRequestedPredicate() {
+        #expect(
+            PlaybackControlsView(isPlaybackRequested: true, onPlayTapped: {}).image
+                == Image(systemName: "pause.circle.fill")
+        )
+        #expect(
+            PlaybackControlsView(isPlaybackRequested: false, onPlayTapped: {}).image
+                == Image(systemName: "play.circle.fill")
+        )
+    }
+}
 
 @Suite("PlayerHeaderView Tests")
 struct PlayerHeaderViewTests {

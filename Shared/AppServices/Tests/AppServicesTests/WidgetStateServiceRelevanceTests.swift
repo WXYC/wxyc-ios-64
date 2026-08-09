@@ -154,7 +154,7 @@ final class MockWidgetRelevanceUpdater: WidgetRelevanceUpdating {
 final class MockPlaybackController: PlaybackController {
     var state: PlaybackState = .idle
     var isPlaying: Bool { state.isPlaying }
-    var isLoading: Bool { state.isLoading }
+    var isPlaybackRequested: Bool { state.isPlaying || state.isLoading }
 
     func play(reason: PlaybackReason) throws {}
     func toggle(reason: PlaybackReason) throws {}
