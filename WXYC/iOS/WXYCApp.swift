@@ -144,8 +144,10 @@ struct WXYCApp: App {
         }
         // Scene-level lifecycle observation (kept here rather than inside
         // AppLifecycleModifier so multi-window Catalyst doesn't fire them per
-        // window).
-        .onChange(of: scenePhase) { oldPhase, newPhase in
+        // window). `initial: true` delivers the phase the app launches into —
+        // this is the app's only producer of foreground state, and no phase
+        // *change* follows a launch to report it otherwise.
+        .onChange(of: scenePhase, initial: true) { oldPhase, newPhase in
             handleScenePhaseChange(from: oldPhase, to: newPhase)
         }
         .onChange(of: appState.reviewRequestService.shouldRequestReview) { _, shouldRequest in
@@ -175,45 +177,57 @@ struct WXYCApp: App {
     // MARK: - Scene phase
 
     /// Drives every lifecycle consumer off what the phase *means* for on-screen
-    /// state rather than off the phase itself.
+    /// state rather than off the phase itself — `.inactive` is deliberately
+    /// inert (see `ForegroundVisibility` for the story), and every consumer
+    /// here shares that one classification because a second `switch` on the
+    /// raw phase is how a future consumer would reintroduce the bug with the
+    /// tests still green.
     ///
-    /// The distinction is load-bearing rather than stylistic: `.inactive` fires
-    /// for Control Center, notification banners and the app switcher with the
-    /// app still visible, so treating it as leaving tore down the live-fs SSE
-    /// subscription mid-session, and nothing was coming to bring it back. Every
-    /// consumer here has that same hazard, so they share one classification —
-    /// a second `switch` on the raw phase is how a future consumer would
-    /// reintroduce the bug with the tests still green.
-    private func handleScenePhaseChange(from _: ScenePhase, to newPhase: ScenePhase) {
-        // Services that key off the phase own their own reading of it — widget
-        // reloads and the live-fs subscription disagree about `.inactive`, for
-        // reasons documented on `setScenePhase(_:)`.
-        appState.setScenePhase(newPhase)
+    /// The app's sole producer of foreground state: called for every phase
+    /// change and, via `initial: true`, once with `oldPhase == newPhase` for
+    /// the phase the window appeared into. Per-window `.onAppear` deliberately
+    /// sends nothing — a second window appearing into an `.inactive` scene
+    /// while another stays `.active` would latch app-wide state false with no
+    /// phase change coming to correct it (multi-window Catalyst), whereas this
+    /// Scene-level aggregate can't read a wrong per-window value.
+    private func handleScenePhaseChange(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
+        // The initial delivery (`oldPhase == newPhase`) is not a foreground
+        // *return*: the arms below are change-edge work (analytics, player
+        // reconciliation, refresh), so it routes the phase to the services and
+        // does nothing else.
+        if oldPhase != newPhase {
+            switch ForegroundVisibility(entering: newPhase) {
+            case .offScreen:
+                StructuredPostHogAnalytics.shared.capture(AppEnteredBackground(
+                    isPlaying: AudioPlayerController.shared.isPlaying
+                ))
+                AudioPlayerController.shared.handleAppDidEnterBackground()
+                AdaptiveQualityController.shared.handleBackgrounded()
 
-        switch ForegroundVisibility(entering: newPhase) {
-        case .offScreen:
-            StructuredPostHogAnalytics.shared.capture(AppEnteredBackground(
-                isPlaying: AudioPlayerController.shared.isPlaying
-            ))
-            AudioPlayerController.shared.handleAppDidEnterBackground()
-            AdaptiveQualityController.shared.handleBackgrounded()
+            case .onScreen:
+                AudioPlayerController.shared.handleAppWillEnterForeground()
+                AdaptiveQualityController.shared.handleForegrounded()
+                BackgroundRefreshController.scheduleNext()
+                // Cancel previous tasks to avoid duplicated work from rapid phase changes
+                foregroundRefreshTask?.cancel()
+                cacheCleanupTask?.cancel()
+                // Returning users see fresh data immediately rather than waiting
+                // for the next periodic fetch cycle.
+                foregroundRefreshTask = refreshPlaylistIfCacheExpired()
+                // Honour the "Clear Artwork Cache" toggle from the Settings app.
+                cacheCleanupTask = handleSettingsBundleCacheClear()
 
-        case .onScreen:
-            AudioPlayerController.shared.handleAppWillEnterForeground()
-            AdaptiveQualityController.shared.handleForegrounded()
-            BackgroundRefreshController.scheduleNext()
-            // Cancel previous tasks to avoid duplicated work from rapid phase changes
-            foregroundRefreshTask?.cancel()
-            cacheCleanupTask?.cancel()
-            // Returning users see fresh data immediately rather than waiting
-            // for the next periodic fetch cycle.
-            foregroundRefreshTask = refreshPlaylistIfCacheExpired()
-            // Honour the "Clear Artwork Cache" toggle from the Settings app.
-            cacheCleanupTask = handleSettingsBundleCacheClear()
-
-        case .noChange:
-            break
+            case .noChange:
+                break
+            }
         }
+
+        // After the player hooks above, deliberately: WidgetStateService's
+        // false → true edge snapshots playback state and spends a budgeted
+        // timeline reload, so it must see the session
+        // `handleAppWillEnterForeground()` has already reconciled, not the one
+        // it is about to replace.
+        appState.setScenePhase(newPhase)
     }
 
     private func refreshPlaylistIfCacheExpired() -> Task<Void, Never> {
