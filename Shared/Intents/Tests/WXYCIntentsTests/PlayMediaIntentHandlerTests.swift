@@ -14,6 +14,7 @@
 //
 
 #if os(iOS)
+import Core
 import Intents
 import Testing
 import PlaybackCore
@@ -34,10 +35,40 @@ struct PlayMediaIntentHandlerTests {
             return true
         }
 
-        let response = await handler.handle(intent: makeIntent())
+        let response = await handler.handle(intent: makeIntent(mediaItems: nil))
 
         #expect(capturedReasons == [.mediaSuggestion])
         #expect(response.code == .success)
+        #expect(response.userActivity == nil)
+    }
+
+    @Test("A media item carrying WXYC's own identifier starts playback and returns success")
+    func handleWithOurIdentifierStartsPlaybackAndReturnsSuccess() async {
+        var capturedReasons: [PlaybackReason] = []
+        let handler = PlayMediaIntentHandler { reason in
+            capturedReasons.append(reason)
+            return true
+        }
+
+        let response = await handler.handle(intent: makeIntent(mediaItems: [makeMediaItem(identifier: RadioStation.WXYC.identifier)]))
+
+        #expect(capturedReasons == [.mediaSuggestion])
+        #expect(response.code == .success)
+        #expect(response.userActivity == nil)
+    }
+
+    @Test("A media item carrying a foreign identifier is rejected without starting playback")
+    func handleWithForeignIdentifierRejectsWithoutStartingPlayback() async {
+        var capturedReasons: [PlaybackReason] = []
+        let handler = PlayMediaIntentHandler { reason in
+            capturedReasons.append(reason)
+            return true
+        }
+
+        let response = await handler.handle(intent: makeIntent(mediaItems: [makeMediaItem(identifier: "com.apple.music.some-other-song")]))
+
+        #expect(capturedReasons.isEmpty, "A foreign media item must not start WXYC playback")
+        #expect(response.code == .failureUnknownMediaType)
         #expect(response.userActivity == nil)
     }
 
@@ -45,21 +76,46 @@ struct PlayMediaIntentHandlerTests {
     func handleReportsFailureWhenPlaybackNeverStarts() async {
         let handler = PlayMediaIntentHandler { _ in false }
 
-        let response = await handler.handle(intent: makeIntent())
+        let response = await handler.handle(intent: makeIntent(mediaItems: nil))
 
         #expect(response.code == .failure)
         #expect(response.userActivity == nil)
     }
+
+    @Test("public init() constructs and rejects a foreign media item without touching the real start path")
+    func defaultInitializerRejectsForeignMediaWithoutStartingPlayback() async {
+        // Constructing with the public initializer must not require access to
+        // anything beyond WXYCIntents' public surface — this is the whole
+        // point of the internal-init/public-init split (#829): PlayMediaIntentHandler
+        // is public (the app-target delegate returns it), but IntentPlayback is
+        // internal, so the real start closure can't be a public default argument.
+        //
+        // This exercises that real, un-substituted start closure end to end,
+        // without touching AudioPlayerController.shared or requiring RUN_E2E:
+        // the foreign-identifier guard in handle(intent:) rejects and returns
+        // before the closure is ever invoked, so there's nothing to await or
+        // time out on.
+        let handler = PlayMediaIntentHandler()
+
+        let response = await handler.handle(intent: makeIntent(mediaItems: [makeMediaItem(identifier: "com.apple.music.some-other-song")]))
+
+        #expect(response.code == .failureUnknownMediaType)
+        #expect(response.userActivity == nil)
+    }
 }
 
-private func makeIntent() -> INPlayMediaIntent {
+private func makeIntent(mediaItems: [INMediaItem]?) -> INPlayMediaIntent {
     INPlayMediaIntent(
-        mediaItems: nil,
+        mediaItems: mediaItems,
         mediaContainer: nil,
         playShuffled: nil,
         resumePlayback: nil,
         playbackQueueLocation: .unknown,
         playbackSpeed: nil
     )
+}
+
+private func makeMediaItem(identifier: String) -> INMediaItem {
+    INMediaItem(identifier: identifier, title: "Some Other Media", type: .song, artwork: nil)
 }
 #endif
