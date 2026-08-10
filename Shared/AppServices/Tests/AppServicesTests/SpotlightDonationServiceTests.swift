@@ -331,44 +331,62 @@ struct SpotlightDonationServiceTests {
         #expect(calls.last?.entityIDs == [PlaycutID(5_306_220)])
     }
 
-    // MARK: - Legacy watermark migration (#839)
+    // MARK: - The pre-#839 watermark key is not migrated (#839)
 
-    @Test("The pre-#839 watermark key seeds the id waterline, so an upgrade neither re-donates nor strands")
-    func legacyWatermarkKeySeedsTheIDWaterline() async {
-        // On every shipped build the old key held a `chronOrderID` that WAS
-        // the row id, so it carries over unchanged: rows at or below it stay
-        // donated, rows above it still go out.
+    @Test("A tubafrenzy-scale legacy watermark does not strand donation")
+    func legacyWatermarkDoesNotStrandDonation() async {
+        // The value the RC cohort actually has on disk. The app's v1 URL is
+        // `wxyc.info/playlists/recentEntries`, which Backend-Service's
+        // playlist proxy serves; until BS commit dc192d84 (2026-07-28) that
+        // proxy forwarded tubafrenzy's `chronOrderID` verbatim, and tubafrenzy
+        // computes it as `1000 * radioShowID + sequenceWithinShow`
+        // (FlowsheetEntry.java:184) — 172_520_042 against a row id of
+        // 2_636_727 on 2026-07-20, still visible on the archive endpoint.
+        //
+        // SpotlightDonationService landed 2026-07-09 and shipped in v3.2-RC1
+        // (07-19), RC2 (07-21), and RC3 (07-24), all inside that window. So
+        // seeding the id waterline from the old key puts it ~33x past every
+        // real id and donation never fires again. That is why there is no
+        // migration: an absent waterline costs one re-donation of at most
+        // `batchLimit` rows, which is what a fresh install does anyway, and
+        // Spotlight indexing is an idempotent upsert on a stable identifier.
         let defaults = InMemoryDefaults()
-        defaults.set("5306219", forKey: SpotlightDonationService.watermarkKey)
-        let indexer = MockSpotlightIndexer()
-        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
-
-        await service.donateRecentPlaycuts([
-            .stub(id: 5_306_219, chronOrderID: (UInt64(1_951_079) << 32) | UInt64(11)),
-            .stub(id: 5_306_220, chronOrderID: (UInt64(1_951_079) << 32) | UInt64(12)),
-        ])
-
-        let calls = await indexer.calls
-        #expect(calls.first?.entityIDs == [PlaycutID(5_306_220)], "the row at the legacy waterline stays donated")
-        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "5306220")
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "5306219", "the legacy key is read, never written")
-    }
-
-    @Test("A legacy value too large to be an id is ignored rather than seeded")
-    func implausibleLegacyWatermarkIsIgnored() async {
-        // Belt and braces for a pre-release build that persisted a packed
-        // composite key under the old name: seeding from it would put the
-        // waterline ~1.6 billion rows into the future and strand donation
-        // permanently — the exact failure the id waterline exists to avoid.
-        let defaults = InMemoryDefaults()
-        defaults.set(String((UInt64(1_951_079) << 32) | UInt64(12)), forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("172520042", forKey: SpotlightDonationService.watermarkKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
         await service.donateRecentPlaycuts([.stub(id: 5_306_220, chronOrderID: 5_306_220)])
 
         let calls = await indexer.calls
-        #expect(calls.count == 1)
+        #expect(calls.count == 1, "a stale chronOrderID-scale watermark must not gate an id-keyed waterline")
+        #expect(calls.last?.entityIDs == [PlaycutID(5_306_220)])
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "5306220")
+        #expect(
+            defaults.string(forKey: SpotlightDonationService.watermarkKey) == "172520042",
+            "the legacy key is left untouched, not read and not rewritten"
+        )
+    }
+
+    @Test("An id-scale legacy watermark is equally ignored, at the cost of one re-donation")
+    func legacyWatermarkIsNeverConsultedEvenWhenItLooksLikeAnID() async {
+        // The other half of the RC cohort — a device that last ran after
+        // 2026-07-28, when the proxy started emitting `chronOrderID: row.id`.
+        // Its legacy value *is* a plausible id, and it is still not consulted:
+        // distinguishing the two cohorts by magnitude is the same heuristic
+        // that produced the stranding bug. The row is re-sent once and the
+        // waterline resumes from there.
+        let defaults = InMemoryDefaults()
+        defaults.set("5306219", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        await service.donateRecentPlaycuts([
+            .stub(id: 5_306_219, chronOrderID: 5_306_219),
+            .stub(id: 5_306_220, chronOrderID: 5_306_220),
+        ])
+
+        let calls = await indexer.calls
+        #expect(calls.first?.entityIDs == [PlaycutID(5_306_219), PlaycutID(5_306_220)])
         #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "5306220")
     }
 
