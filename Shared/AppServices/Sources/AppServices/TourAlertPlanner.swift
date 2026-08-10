@@ -32,7 +32,7 @@ public enum TourAlertPlanner {
     /// already been alerted this session.
     /// - Parameters:
     ///   - isPlaying: Whether the live stream is currently playing.
-    ///   - playcut: The on-air playcut (`playlist.playcuts.first`), or `nil`.
+    ///   - playcut: The on-air playcut (`playlist.currentPlaycut`), or `nil`.
     ///   - upcomingShow: The resolved upcoming show for `playcut`, or `nil`.
     ///     Resolved by the caller (``TourAlertCoordinator``) so a DEBUG mock can
     ///     stand in for the embedded ``Playlist/Playcut/upcomingShow`` — see its

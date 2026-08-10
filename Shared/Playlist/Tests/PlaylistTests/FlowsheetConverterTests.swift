@@ -195,7 +195,7 @@ struct FlowsheetConverterTests {
     func convertsTalksetEntry() {
         let entry = FlowsheetEntry(
             id: 124,
-            show_id: nil,
+            show_id: 456,
             album_id: nil,
             artist_name: nil,
             album_title: nil,
@@ -218,15 +218,15 @@ struct FlowsheetConverterTests {
 
         let talkset = playlist.talksets.first!
         #expect(talkset.id == 124)
-        // show_id is nil here: falls back to the id-based sentinel (#839).
-        #expect(talkset.chronOrderID == UInt64(124) << 32)
+        // Every entry type takes the same packed key, not just playcuts (#839).
+        #expect(talkset.chronOrderID == (UInt64(456) << 32) | 2)
     }
 
     @Test("Converts breakpoint entry correctly when message contains 'Breakpoint'")
     func convertsBreakpointEntry() {
         let entry = FlowsheetEntry(
             id: 125,
-            show_id: nil,
+            show_id: 456,
             album_id: nil,
             artist_name: nil,
             album_title: nil,
@@ -249,15 +249,14 @@ struct FlowsheetConverterTests {
 
         let breakpoint = playlist.breakpoints.first!
         #expect(breakpoint.id == 125)
-        // show_id is nil here: falls back to the id-based sentinel (#839).
-        #expect(breakpoint.chronOrderID == UInt64(125) << 32)
+        #expect(breakpoint.chronOrderID == (UInt64(456) << 32) | 3)
     }
 
     @Test("Converts show start marker correctly")
     func convertsShowStartMarker() {
         let entry = FlowsheetEntry(
             id: 126,
-            show_id: nil,
+            show_id: 456,
             album_id: nil,
             artist_name: nil,
             album_title: nil,
@@ -282,15 +281,14 @@ struct FlowsheetConverterTests {
         #expect(marker.id == 126)
         #expect(marker.isStart == true)
         #expect(marker.djName == "DJ Cool")
-        // show_id is nil here: falls back to the id-based sentinel (#839).
-        #expect(marker.chronOrderID == UInt64(126) << 32)
+        #expect(marker.chronOrderID == (UInt64(456) << 32) | 4)
     }
 
     @Test("Converts show end marker correctly")
     func convertsShowEndMarker() {
         let entry = FlowsheetEntry(
             id: 127,
-            show_id: nil,
+            show_id: 456,
             album_id: nil,
             artist_name: nil,
             album_title: nil,
@@ -312,6 +310,7 @@ struct FlowsheetConverterTests {
         #expect(marker.id == 127)
         #expect(marker.isStart == false)
         #expect(marker.djName == "DJ Cool")
+        #expect(marker.chronOrderID == (UInt64(456) << 32) | 5)
     }
 
     @Test("Handles missing artist and track title gracefully")
@@ -905,18 +904,21 @@ struct FlowsheetConverterTests {
         #expect(expected != UInt64(1000 * 1_950_704 + 12))
     }
 
-    // MARK: - Nil show_id sentinel (#839)
+    // MARK: - Unpackable rows fall back to the legacy id key (#839)
 
-    @Test("A nil show_id packs id into the composite's high bits rather than sinking to the bottom of the feed")
-    func nilShowIDDoesNotSinkToBottom() {
+    @Test("A nil show_id never outranks a real packed key")
+    func nilShowIDNeverOutranksARealPackedKey() {
         // Decoder tolerance for a malformed/legacy row: Backend-Service
         // itself 500s on a nil show_id in `changeOrder`, and every row in a
         // live 200-row sample carried one post-#693, so this is not a
-        // real-traffic path. A bare `UInt64(id)` (~5e6) would be dwarfed by a
-        // real packed key (~8e15) and sink to the very bottom of the feed —
-        // the exact collapse this ticket exists to fix — so `id` is shifted
-        // the same way real keys are instead, mirroring `parseHour`'s
-        // "float to now, don't sink to the epoch" fallback bias.
+        // real-traffic path. There is no *correct* key for a row that names
+        // no show, so the fallback is chosen for how it fails: a bare
+        // `UInt64(id)` (~5e6) ranks below every real packed key (~8e15), so
+        // the row lands at the bottom of the feed. The alternative — shifting
+        // `id` into the high bits the way real keys are shifted — ranks it
+        // ABOVE every real row indefinitely (`id` runs ~2.7x `show_id`), which
+        // hands it the on-air banner, the now-playing surfaces, and the
+        // Spotlight watermark. Bottom is recoverable; top is not.
         let nilShowEntry = FlowsheetEntry(
             id: 5_304_200, show_id: nil, album_id: nil,
             artist_name: "Hermanos Gutiérrez", album_title: "El Bueno y el Malo",
@@ -936,12 +938,38 @@ struct FlowsheetConverterTests {
 
         let playlist = FlowsheetConverter.convert([realShowEntry, nilShowEntry])
 
-        #expect(playlist.entries.first?.id == 5_304_200, "the nil-show row must not sink below a real packed key")
-        #expect(playlist.playcuts.first { $0.id == 5_304_200 }?.chronOrderID == UInt64(5_304_200) << 32)
+        #expect(playlist.entries.first?.id == 5_304_199, "a real packed key must outrank the unpackable row")
+        #expect(playlist.playcuts.first { $0.id == 5_304_200 }?.chronOrderID == UInt64(5_304_200))
     }
 
-    @Test("The nil-show_id sentinel is identical on the REST and single-entry SSE paths")
-    func nilShowIDSentinelMatchesAcrossRESTAndSSE() throws {
+    @Test("A feed that carries no show_id at all degrades to the pre-#839 id ordering")
+    func everyRowMissingShowIDDegradesToLegacyIDOrdering() {
+        // The fallback's real design point. If Backend ever stops emitting
+        // `show_id` — a field regression, not a malformed single row — every
+        // row takes the fallback, and because the fallback IS the old key the
+        // whole feed silently reverts to #839's predecessor ordering instead
+        // of scrambling. Any fallback that shifts `id` would order these
+        // identically too; what distinguishes this one is that it stays in
+        // the same numeric band as the legacy watermark and never outranks a
+        // real row when the field comes back mid-window.
+        let entries = (0..<4).map { n in
+            FlowsheetEntry(
+                id: 5_304_300 + n, show_id: nil, album_id: nil,
+                artist_name: "Juana Molina", album_title: "DOGA",
+                track_title: "la paradoja \(n)", record_label: "Sonamos",
+                rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+                message: nil, play_order: n + 1, add_time: "2026-07-31T18:0\(n):00Z",
+                entry_type: "track"
+            )
+        }
+
+        let playlist = FlowsheetConverter.convert(entries)
+
+        #expect(playlist.entries.map(\.id) == [5_304_303, 5_304_302, 5_304_301, 5_304_300])
+    }
+
+    @Test("The nil-show_id fallback is identical on the REST and single-entry SSE paths")
+    func nilShowIDFallbackMatchesAcrossRESTAndSSE() throws {
         let entry = FlowsheetEntry(
             id: 5_304_201, show_id: nil, album_id: nil,
             artist_name: "Nilüfer Yanya", album_title: nil,
@@ -955,7 +983,36 @@ struct FlowsheetConverterTests {
         let ssePlaycut = try Self.decodeAsSingleEntrySSEInsert(entry)
 
         #expect(restPlaycut.chronOrderID == ssePlaycut.chronOrderID)
-        #expect(restPlaycut.chronOrderID == UInt64(5_304_201) << 32)
+        #expect(restPlaycut.chronOrderID == UInt64(5_304_201))
+    }
+
+    @Test(
+        "An out-of-range show_id or play_order falls back to the id key instead of trapping or corrupting the packing",
+        arguments: [
+            (-1, 4, "a negative show_id traps `UInt64.init`"),
+            (1_950_704, -1, "a negative play_order traps `UInt64.init`"),
+            (Int(UInt32.max) + 1, 4, "a show_id past 32 bits loses its high bits to the shift"),
+            (1_950_704, Int(UInt32.max) + 1, "a play_order past 32 bits carries into the show bits"),
+        ]
+    )
+    func outOfRangeComponentsFallBackToTheIDKey(showID: Int, playOrder: Int, why: String) {
+        // `UInt64(_:)` traps on a negative `Int`, so a single malformed row
+        // would crash every poll and every SSE frame — the same hazard
+        // `milliseconds(since1970:)` rejects rather than crashing on. The
+        // 32-bit breaches are the silent half: they'd produce a plausible
+        // key that sorts wrong forever with nothing to notice.
+        let entry = FlowsheetEntry(
+            id: 5_304_400, show_id: showID, album_id: nil,
+            artist_name: "Cat Power", album_title: "Moon Pix",
+            track_title: "Cross Bones Style", record_label: "Matador",
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: playOrder, add_time: "2026-07-31T18:00:00Z",
+            entry_type: "track"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(playlist.playcuts.first?.chronOrderID == UInt64(5_304_400), Comment(rawValue: why))
     }
 
     // MARK: - REST/SSE key parity (#839)

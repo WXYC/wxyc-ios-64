@@ -34,9 +34,18 @@ public enum TimelineItem: Identifiable, Sendable {
 /// or both. A run of several such markers with no song between them coalesces
 /// into one seam, so the feed shows at most one between any two songs.
 public struct Seam: Identifiable, Sendable, Equatable {
-    /// Stable identity — the id of the run's newest entry. A completed gap
-    /// between two songs never gains members (new logs land at the top of the
-    /// feed, not inside an older gap), so this is stable across refreshes.
+    /// Stable identity — the id of the run's newest entry. New logs land at the
+    /// top of the feed, not inside an older gap, so an untouched gap keeps its
+    /// id across refreshes.
+    ///
+    /// A dj-site reorder is the one thing that can change a settled gap's
+    /// membership: ordering now follows `(show_id, play_order)` rather than the
+    /// row id (#839), so a DJ dragging a talkset can move it into or out of an
+    /// older run. When that lands on the run's *newest* member the seam's id
+    /// changes, which SwiftUI reads as a delete plus an insert rather than a
+    /// move — the reordered seam cross-fades instead of sliding. That is the
+    /// accepted cost of showing the reorder at all; the alternative (an id
+    /// derived from the run's contents) churns on every enrichment instead.
     public let id: UInt64
 
     /// Whether the run contained a talkset (the DJ spoke). Drives the mic glyph

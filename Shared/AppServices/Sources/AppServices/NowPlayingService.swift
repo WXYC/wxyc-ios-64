@@ -76,7 +76,7 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
                     return nil
                 }
 
-                guard let playcut = playlist.playcuts.first else {
+                guard let playcut = playlist.currentPlaycut else {
                     Log(.info, "No playcut found in playlist, waiting for next update")
                     continue
                 }

@@ -160,22 +160,32 @@ struct PlaylistTimelineItemsTests {
             }
         }
 
-        // Before a dj-site reorder: playcut A, talkset, playcut B, playcut C
+        // Built from wire rows, not from hand-written `chronOrderID`s: a
+        // dj-site reorder IS a `play_order` change, so a stub carrying a
+        // pre-computed key would pass on either side of #839 and prove
+        // nothing about the reorder surfacing.
+        //
+        // Before the reorder: playcut A, talkset, playcut B, playcut C
         // (newest first) — the talkset sits between A and B.
-        let playcutA = Playcut.stub(id: 1, chronOrderID: 40)
-        let playcutB = Playcut.stub(id: 2, chronOrderID: 20)
-        let playcutC = Playcut.stub(id: 3, chronOrderID: 10)
-        let talksetBefore = Talkset.stub(id: 4, chronOrderID: 30)
-
-        let before = Playlist.stub(playcuts: [playcutA, playcutB, playcutC], talksets: [talksetBefore])
+        let before = FlowsheetConverter.convert([
+            .reorderFixture(id: 1, playOrder: 40, entryType: "track"),
+            .reorderFixture(id: 4, playOrder: 30, entryType: "talkset"),
+            .reorderFixture(id: 2, playOrder: 20, entryType: "track"),
+            .reorderFixture(id: 3, playOrder: 10, entryType: "track"),
+        ])
         let beforeItems = before.timelineItems
         #expect(beforeItems.map(kind) == ["playcut", "seam", "playcut", "playcut"])
 
-        // The DJ drags the talkset down past B on dj-site: its play_order
-        // (and therefore its packed chronOrderID) drops below B's, so it now
-        // sits between B and C instead.
-        let talksetAfter = Talkset.stub(id: 4, chronOrderID: 15)
-        let after = Playlist.stub(playcuts: [playcutA, playcutB, playcutC], talksets: [talksetAfter])
+        // The DJ drags the talkset down past B on dj-site (`changeOrder`),
+        // which lowers its play_order below B's and touches nothing else —
+        // the id it was logged under is unchanged, which is exactly why the
+        // old id-only key could never show this.
+        let after = FlowsheetConverter.convert([
+            .reorderFixture(id: 1, playOrder: 40, entryType: "track"),
+            .reorderFixture(id: 2, playOrder: 20, entryType: "track"),
+            .reorderFixture(id: 4, playOrder: 15, entryType: "talkset"),
+            .reorderFixture(id: 3, playOrder: 10, entryType: "track"),
+        ])
         let afterItems = after.timelineItems
         #expect(afterItems.map(kind) == ["playcut", "playcut", "seam", "playcut"])
 
@@ -202,6 +212,47 @@ struct PlaylistTimelineItemsTests {
         #expect(Set(ids).count == ids.count)   // no collisions
     }
 
+    // MARK: - Current playcut (#839)
+
+    @Test("currentPlaycut reads the newest by composite key, not the head of the playcuts array")
+    func currentPlaycutIgnoresArrayOrder() {
+        // `playcuts` carries wire order plus SSE appends
+        // (`PlaylistService.upsertPlaycut`), so its head stops being the
+        // newest row the moment a dj-site reorder lands — which is exactly
+        // what #839 made reachable. Every now-playing surface reads this
+        // accessor rather than `.first` so it agrees with the timeline.
+        let playlist = Playlist.stub(
+            playcuts: [
+                .stub(id: 500, chronOrderID: UInt64(42) << 32 | 5),
+                .stub(id: 501, chronOrderID: UInt64(42) << 32 | 9),
+                .stub(id: 502, chronOrderID: UInt64(42) << 32 | 7),
+            ]
+        )
+
+        #expect(playlist.currentPlaycut?.id == 501)
+        #expect(playlist.currentPlaycut?.id == playlist.entries.first?.id)
+    }
+
+    @Test("currentPlaycut breaks a tied composite key by id, matching the timeline head")
+    func currentPlaycutBreaksTiesLikeTheTimeline() {
+        let playlist = Playlist.stub(
+            playcuts: [
+                .stub(id: 601, chronOrderID: UInt64(42) << 32 | 5),
+                .stub(id: 600, chronOrderID: UInt64(42) << 32 | 5),
+            ]
+        )
+
+        #expect(playlist.currentPlaycut?.id == 601)
+        #expect(playlist.currentPlaycut?.id == playlist.entries.first?.id)
+    }
+
+    @Test("currentPlaycut is nil when the playlist carries no playcuts")
+    func currentPlaycutIsNilWithoutPlaycuts() {
+        let playlist = Playlist.stub(talksets: [.stub(id: 4, chronOrderID: 4)])
+
+        #expect(playlist.currentPlaycut == nil)
+    }
+
     // MARK: - Plain label (watchOS / CarPlay / VoiceOver)
 
     @Test("plainLabel for a lone mic break is 'Mic break'")
@@ -222,6 +273,31 @@ struct PlaylistTimelineItemsTests {
         let seam = Seam(id: 1, hasMicBreak: false, breakpoint: breakpoint)
         #expect(seam.plainLabel == breakpoint.formattedDate)
         #expect(!seam.plainLabel.isEmpty)
+    }
+}
+
+private extension FlowsheetEntry {
+    /// A minimal wire row for reorder tests: only `id`, `play_order`, and
+    /// `entry_type` vary, since a `changeOrder` moves a row by rewriting
+    /// `play_order` alone. All rows share one show, so the packed key's
+    /// high bits are constant and `play_order` decides the order.
+    static func reorderFixture(id: Int, playOrder: Int, entryType: String) -> FlowsheetEntry {
+        FlowsheetEntry(
+            id: id,
+            show_id: 42,
+            album_id: nil,
+            artist_name: entryType == "track" ? "Stereolab" : nil,
+            album_title: entryType == "track" ? "Aluminum Tunes" : nil,
+            track_title: entryType == "track" ? "Pack Yr Romantic Mind" : nil,
+            record_label: entryType == "track" ? "Duophonic" : nil,
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: nil,
+            message: nil,
+            play_order: playOrder,
+            add_time: "2026-07-31T18:00:00Z",
+            entry_type: entryType
+        )
     }
 }
 

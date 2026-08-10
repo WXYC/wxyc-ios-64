@@ -413,7 +413,7 @@ final class Singletonia {
         spotlightDonationTask = Task { [spotlightDonationService, playlistService] in
             for await playlist in playlistService.updates() {
                 guard !Task.isCancelled else { break }
-                if let currentPlaycut = playlist.playcuts.first {
+                if let currentPlaycut = playlist.currentPlaycut {
                     await spotlightDonationService.donateCurrentPlaycut(currentPlaycut)
                 }
                 await spotlightDonationService.donateBatch(from: playlist.playcuts)
@@ -438,7 +438,7 @@ final class Singletonia {
             for await playlist in playlistService.updates() {
                 guard !Task.isCancelled else { break }
                 await tourAlertCoordinator.ingest(
-                    playcut: playlist.playcuts.first,
+                    playcut: playlist.currentPlaycut,
                     isPlaying: AudioPlayerController.shared.isPlaying
                 )
             }
