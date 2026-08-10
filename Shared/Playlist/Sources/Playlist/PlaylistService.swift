@@ -29,8 +29,16 @@ public final actor PlaylistService: Sendable {
     private var currentPlaylist: Playlist = .empty
     private var fetchTask: Task<Void, Never>?
     private let cacheCoordinator: CacheCoordinator
-    private static let cacheKey = PlaylistCacheKey.playlist
     private static let cacheLifespan: TimeInterval = 15 * 60 // 15 minutes
+
+    /// The cache key for the currently-resolved API version. An instance
+    /// property, not a static: the two versions persist `chronOrderID` at
+    /// incompatible scales and must never share an entry (see
+    /// `PlaylistCacheKey.playlist(for:)`). Reading through `apiVersion` also
+    /// keeps `switchAPIVersion(to:)` honest — its post-switch fetch writes
+    /// under the new version's key, and the old version's entry is left to
+    /// its 15-minute TTL rather than being overwritten with the wrong scheme.
+    private var cacheKey: String { PlaylistCacheKey.playlist(for: apiVersion) }
 
     /// The resolved playlist API version this instance is currently wired
     /// for. Set once at `init` (from the `apiVersion` argument, or
@@ -227,7 +235,7 @@ public final actor PlaylistService: Sendable {
         defer { cacheLoaded = true }
         
         do {
-            let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: Self.cacheKey)
+            let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: cacheKey)
             currentPlaylist = cachedPlaylist
             // Broadcast cached data to any existing observers
             broadcast(cachedPlaylist)
@@ -242,7 +250,7 @@ public final actor PlaylistService: Sendable {
     public func isCacheExpired() async -> Bool {
         do {
             // Attempt to read from cache - this will throw if expired or missing
-            let _: Playlist = try await cacheCoordinator.value(for: Self.cacheKey)
+            let _: Playlist = try await cacheCoordinator.value(for: cacheKey)
             return false
         } catch {
             return true
@@ -300,7 +308,7 @@ public final actor PlaylistService: Sendable {
     public func fetchPlaylist() async -> Playlist {
         // Try to get cached playlist first
         do {
-            let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: Self.cacheKey)
+            let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: cacheKey)
             Log(.info, category: .network, "Returning cached playlist with \(cachedPlaylist.entries.count) entries")
             return cachedPlaylist
         } catch {
@@ -309,7 +317,7 @@ public final actor PlaylistService: Sendable {
             let playlist = await fetcher.fetchPlaylist()
 
             // Cache the result for future use
-            await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
+            await cacheCoordinator.set(value: playlist, for: cacheKey, lifespan: Self.cacheLifespan)
 
             Log(.info, category: .network, "Fetched and cached new playlist with \(playlist.entries.count) entries")
             return playlist
@@ -777,7 +785,7 @@ public final actor PlaylistService: Sendable {
         )
 
         currentPlaylist = updated
-        await cacheCoordinator.set(value: updated, for: Self.cacheKey, lifespan: Self.cacheLifespan)
+        await cacheCoordinator.set(value: updated, for: cacheKey, lifespan: Self.cacheLifespan)
         broadcast(updated)
     }
 
@@ -818,7 +826,7 @@ public final actor PlaylistService: Sendable {
         // visible feed. See `Playlist.isContentEmpty`.
         guard !playlist.isContentEmpty || currentPlaylist.isContentEmpty else { return false }
 
-        await cacheCoordinator.set(value: playlist, for: Self.cacheKey, lifespan: Self.cacheLifespan)
+        await cacheCoordinator.set(value: playlist, for: cacheKey, lifespan: Self.cacheLifespan)
 
         // Surface cancellation that occurred during the cache write so the surrounding
         // loop can exit before broadcasting stale work.

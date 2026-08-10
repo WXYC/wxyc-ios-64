@@ -14,22 +14,34 @@
 /// The playlist cache stores the full playlist response with a 15-minute TTL.
 public enum PlaylistCacheKey {
 
-    /// Cache key for the current playlist.
+    /// Cache key for the current playlist as fetched by `version`.
     ///
-    /// Only one playlist is cached at a time. The key is static because
-    /// the playlist represents the station's current state.
+    /// One entry per API version, deliberately: `chronOrderID` is persisted
+    /// with every entry, and the two versions write it at scales nine orders
+    /// of magnitude apart — v1 decodes the row id off the wire (~5.3e6),
+    /// while v2 derives the packed `(show_id, play_order)` composite
+    /// (~8.4e15). Sessions resolving different versions share this storage
+    /// (a flag miss, an offline launch, a DebugPanel switch, and the widget
+    /// process — which resolves independently of the app — are all real v1
+    /// writers), so a shared key would let a v1 session seed the baseline a
+    /// v2 session loads before consuming SSE frames. One live-fs update
+    /// frame later, `PlaylistService.upsertPlaycut` hands a single stale row
+    /// a packed key and with it the head of the timeline and
+    /// `currentPlaycut` — a song from an hour ago on the lock screen.
     ///
-    /// The `.v2` suffix is a one-time invalidation for #839, not a versioning
-    /// scheme. `chronOrderID` is persisted with each entry, and a playlist
-    /// cached by a pre-#839 build holds the old scheme (the key *was* the row
-    /// id, ~5.3e6) while this build derives the packed composite (~8.4e15).
-    /// The two can coexist in one array: `PlaylistService.upsertPlaycut`
-    /// rewrites a single row from an SSE frame, so an enrichment arriving
-    /// before the first poll completes would give one old row a packed key and
-    /// send it straight to the head of the timeline — and to
-    /// `currentPlaycut`, so the lock screen would name a song from an hour
-    /// ago. A 15-minute cache of a public feed that refetches on launch is
-    /// cheap to drop once; a wrong now-playing on every upgrading device is
-    /// not.
-    public static let playlist = "com.wxyc.playlist.cache.v2"
+    /// Both keys are also fresh relative to the pre-#839
+    /// `com.wxyc.playlist.cache`, whose entries hold the old id-scale scheme
+    /// under either version; that orphaned entry ages out on its 15-minute
+    /// TTL. This is narrower than bumping
+    /// `CacheMigrationManager.cacheSchemaVersion`, which is the right lever
+    /// when a cached *Codable shape* changes — a bump purges every cache in
+    /// scope, including re-fetchable artwork and metadata. Here the shape is
+    /// unchanged and only this entry's *value scheme* is version-dependent,
+    /// so the isolation lives in the key.
+    public static func playlist(for version: PlaylistAPIVersion) -> String {
+        switch version {
+        case .v1: "com.wxyc.playlist.cache.v1"
+        case .v2: "com.wxyc.playlist.cache.v2"
+        }
+    }
 }
