@@ -253,6 +253,62 @@ struct PlaylistTimelineItemsTests {
         #expect(playlist.currentPlaycut == nil)
     }
 
+    // MARK: - Current playcut across key scales (#839 review)
+
+    @Test("currentPlaycut names the newest bare-id row when it postdates every packed row")
+    func currentPlaycutFollowsANewerBareIDRow() {
+        // A run of NULL-show_id rows — the tubafrenzy webhook writes
+        // `show?.id ?? null` exactly when nobody is signed on — keys at the
+        // bare id (~5.3e6), below every packed key (~8.4e15). A plain
+        // `max()` would keep naming the previous show's last packed track
+        // for the whole stretch. The bare rows' ids are global insertion
+        // serials, so a bare row newer than every packed row IS the current
+        // song.
+        let playlist = Playlist.stub(
+            playcuts: [
+                .stub(id: 500, chronOrderID: UInt64(42) << 32 | 5),
+                .stub(id: 501, chronOrderID: UInt64(42) << 32 | 9),
+                .stub(id: 510, chronOrderID: 510),
+                .stub(id: 511, chronOrderID: 511),
+            ]
+        )
+
+        #expect(playlist.currentPlaycut?.id == 511)
+    }
+
+    @Test("currentPlaycut keeps the play-order head when the bare-id row is older than the packed show")
+    func currentPlaycutIgnoresAnOlderBareIDRow() {
+        // A stale bare-id row (a leftover pre-#839 cache row, or an old
+        // NULL-show_id row) must not displace the live show's play-order
+        // head — even when the packed head's own id is not the newest packed
+        // id (a dj-site reorder moved an earlier-logged row to the top).
+        let playlist = Playlist.stub(
+            playcuts: [
+                .stub(id: 500, chronOrderID: UInt64(42) << 32 | 9),
+                .stub(id: 502, chronOrderID: UInt64(42) << 32 | 7),
+                .stub(id: 501, chronOrderID: 501),
+            ]
+        )
+
+        #expect(playlist.currentPlaycut?.id == 500)
+    }
+
+    @Test("currentPlaycut over an all-bare playlist is the newest id — the pre-#839 rule")
+    func currentPlaycutOverAllBareRowsUsesIDOrder() {
+        // v1 payloads (chronOrderID IS the row id) and a feed that stopped
+        // carrying show_id entirely both land here: every row is bare, and
+        // the newest insertion is the current song.
+        let playlist = Playlist.stub(
+            playcuts: [
+                .stub(id: 5_304_300, chronOrderID: 5_304_300),
+                .stub(id: 5_304_302, chronOrderID: 5_304_302),
+                .stub(id: 5_304_301, chronOrderID: 5_304_301),
+            ]
+        )
+
+        #expect(playlist.currentPlaycut?.id == 5_304_302)
+    }
+
     // MARK: - Plain label (watchOS / CarPlay / VoiceOver)
 
     @Test("plainLabel for a lone mic break is 'Mic break'")

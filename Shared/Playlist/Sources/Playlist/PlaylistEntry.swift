@@ -641,8 +641,9 @@ public extension Playlist {
         return playlist.sorted(by: isOrderedNewestFirst)
     }
 
-    /// The playcut at the head of the timeline — the newest by the same
-    /// `(chronOrderID, id)` order ``entries`` uses.
+    /// The playcut at the head of the timeline — the newest packed row by the
+    /// same `(chronOrderID, id)` order ``entries`` uses, unless a bare-keyed
+    /// row postdates the entire packed partition.
     ///
     /// Every now-playing surface reads this rather than `playcuts.first`: the
     /// `playcuts` array carries wire order plus live-insert appends
@@ -653,17 +654,32 @@ public extension Playlist {
     /// the array's, and the lock screen, the watch, and the timeline would
     /// then name different songs.
     ///
-    /// The tradeoff `playcuts.first` didn't have: a row with a NULL `show_id`
-    /// takes the bare-`id` fallback key and sorts below every packed row, so
-    /// if the newest row is that one this names the previous track instead —
-    /// on the lock screen, Control Center, the watch, CarPlay, and the
-    /// per-tick Spotlight donation. Backend pages the window by
-    /// `flowsheet.id DESC`, so the head of the array was always the newest
-    /// row regardless. See
-    /// `FlowsheetConverter.chronOrderID(showID:playOrder:id:)` for how rare
-    /// that shape is and why ranking it last still beats ranking it first.
+    /// A plain `max()` has a failure the feed's sink-to-bottom fallback
+    /// deliberately accepts but this reader must not: a row whose key fell
+    /// back to the bare `id` (see
+    /// `FlowsheetConverter.chronOrderID(showID:playOrder:id:)`) ranks below
+    /// every packed row, so during a stretch of NULL-`show_id` rows `max()`
+    /// would keep naming the previous show's last packed track. Row ids are
+    /// global insertion serials, so the two partitions are compared by
+    /// recency instead: when the newest bare row postdates every packed row,
+    /// the feed has moved past the packed show and that row is the current
+    /// song; otherwise the packed partition is live and its play-order head
+    /// wins. An all-bare playlist (v1 payloads, a feed that dropped
+    /// `show_id` wholesale, a pre-#839 cache) reduces to the pre-#839
+    /// newest-id rule.
     var currentPlaycut: Playcut? {
-        playcuts.max()
+        // The fallback key IS the row id, and a packed key can't collide with
+        // one until ids reach 2^32, so `chronOrderID == id` identifies every
+        // bare-keyed row (v2 fallback, v1 payloads, pre-#839 cache rows).
+        let bare = playcuts.filter { $0.chronOrderID == $0.id }
+        let packed = playcuts.filter { $0.chronOrderID != $0.id }
+        guard let packedHead = packed.max() else { return bare.max() }
+        // Bare keys equal ids, so `max()` over the bare partition is max-id.
+        guard let bareHead = bare.max(),
+              let newestPackedID = packed.map(\.id).max(),
+              bareHead.id > newestPackedID
+        else { return packedHead }
+        return bareHead
     }
 
     /// True when the playlist carries no timeline content, ignoring `onAir`.
@@ -679,29 +695,24 @@ public extension Playlist {
 
     /// The show marker for the DJ currently on the air, if any.
     ///
-    /// Returns the most recent show marker — highest `(chronOrderID, id)`, the
-    /// same order the timeline uses — but only when it is a sign-on. The key is
-    /// derived on-device from `(show_id, play_order)` and moves when a DJ
-    /// reorders (#839); it is not a server-assigned chronological sequence.
-    /// When the latest
-    /// marker is a sign-off (nobody is on the air) or there are no markers, returns nil.
+    /// Returns the last *logged* show marker — highest `id`, the insertion
+    /// serial — but only when it is a sign-on. When the last marker is a
+    /// sign-off (nobody is on the air) or there are no markers, returns nil.
     /// This is the marker promoted to the dedicated "on air" banner.
     ///
-    /// One known gap, shared with ``currentPlaycut``: a marker whose
-    /// `show_id` is NULL takes the bare-`id` fallback key (~5e6) and so ranks
-    /// below every packed one (~8.4e15), dropping out of this comparison
-    /// rather than winning it. A missing sign-off leaves a departed DJ on the
-    /// banner; a missing sign-on hides the DJ who is actually on the air.
-    /// Nothing observed produces that shape — see
-    /// `FlowsheetConverter.chronOrderID(showID:playOrder:id:)` for how
-    /// reachable it is and why the alternative key is worse — and it retires
-    /// with the tubafrenzy webhook (WXYC/wiki#88 Phase 6a).
+    /// Deliberately NOT the `(chronOrderID, id)` display order ``entries``
+    /// uses: who is on the air is a question about the marker log's event
+    /// order, which the display key does not carry. Two shapes invert it —
+    /// a sign-off whose `play_order` is 0 (the webhook writes
+    /// `sequenceWithinShow ?? 0`) packs *below* its own show's sign-on, which
+    /// would strand the departed DJ on the banner; and a marker whose
+    /// `show_id` is NULL takes the bare-`id` fallback key and ranks below
+    /// every packed one, which would hide the DJ actually on the air behind
+    /// the previous show's sign-off. Insertion order is immune to both, and
+    /// to dj-site reorders, which move display position without changing who
+    /// signed on last.
     var onAirSignOn: ShowMarker? {
-        // `showMarkers` is a single concrete type, so this is `ShowMarker`'s
-        // own `Comparable` — the same `sortKey` rule `entries` applies
-        // through `isOrderedNewestFirst`, which exists only because an
-        // existential array can't reach the `Self`-constrained conformance.
-        guard let latest = showMarkers.max(), latest.isStart else { return nil }
+        guard let latest = showMarkers.max(by: { $0.id < $1.id }), latest.isStart else { return nil }
         return latest
     }
 

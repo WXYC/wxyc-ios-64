@@ -59,6 +59,41 @@ struct PlaylistOnAirTests {
         #expect(playlist.onAirSignOn == nil)
     }
 
+    @Test("onAirSignOn clears on a sign-off whose play_order is 0, even though it keys below its own sign-on")
+    func onAirSignOnClearsOnPlayOrderZeroSignOff() {
+        // The webhook path writes `sequenceWithinShow ?? 0`, so a sign-off can
+        // carry play_order 0 and pack to `(show << 32) | 0` — BELOW its own
+        // show's sign-on at `| 1`. Who is on the air is a question about the
+        // marker log's event order, which is the insertion serial `id`, not
+        // the display key: ranked by the composite, the departed DJ would
+        // stay promoted on the banner indefinitely.
+        let playlist = Playlist.stub(
+            showMarkers: [
+                .stub(id: 20, chronOrderID: UInt64(42) << 32 | 1, isStart: true, djName: "HOUNDSTOOTH"),
+                .stub(id: 21, chronOrderID: UInt64(42) << 32 | 0, isStart: false, djName: "HOUNDSTOOTH"),
+            ]
+        )
+
+        #expect(playlist.onAirSignOn == nil)
+    }
+
+    @Test("onAirSignOn promotes a NULL-show_id sign-on that postdates a packed sign-off")
+    func onAirSignOnPromotesBareKeyedSignOn() {
+        // A sign-on with no show_id takes the bare-id fallback key (~5e6),
+        // below every packed marker (~8.4e15) — under the display key the DJ
+        // actually on the air would lose `max()` to the previous show's
+        // sign-off and vanish from the banner. Event order is id order.
+        let playlist = Playlist.stub(
+            showMarkers: [
+                .stub(id: 8, chronOrderID: UInt64(41) << 32 | 1, isStart: true, djName: "PREVIOUS"),
+                .stub(id: 9, chronOrderID: UInt64(41) << 32 | 2, isStart: false, djName: "PREVIOUS"),
+                .stub(id: 12, chronOrderID: 12, isStart: true, djName: "CURRENT"),
+            ]
+        )
+
+        #expect(playlist.onAirSignOn?.djName == "CURRENT")
+    }
+
     @Test("timelineEntries excludes exactly the on-air sign-on marker")
     func timelineEntriesExcludesOnAirSignOn() {
         let onAir = ShowMarker.stub(id: 99, chronOrderID: 99, isStart: true, djName: "HOUNDSTOOTH")
