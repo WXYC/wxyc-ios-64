@@ -758,8 +758,9 @@ public final actor PlaylistService: Sendable {
     private func upsertPlaycut(_ playcut: Playcut) async {
         var playcuts = currentPlaylist.playcuts
         if let index = playcuts.firstIndex(where: { $0.id == playcut.id }) {
-            guard playcuts[index] != playcut else { return }
-            playcuts[index] = playcut
+            let incoming = playcut.retainingOrderingKey(of: playcuts[index])
+            guard playcuts[index] != incoming else { return }
+            playcuts[index] = incoming
         } else {
             playcuts.append(playcut)
         }
@@ -829,5 +830,53 @@ public final actor PlaylistService: Sendable {
         }
 
         return true
+    }
+}
+
+private extension Playcut {
+    /// This row as `upsertPlaycut` should store it: every field incoming, but
+    /// keeping `stored`'s packed ordering key when this row's own derivation
+    /// fell back to the bare id.
+    ///
+    /// `FlowsheetEntry.show_id` is optional, so an SSE `update` payload that
+    /// omits it — a Backend projection regression, a partial deploy — decodes
+    /// cleanly and re-derives the key as the bare-id fallback
+    /// (`chronOrderID == id`; see
+    /// `FlowsheetConverter.chronOrderID(showID:playOrder:id:)`). Replacing the
+    /// stored row wholesale would sink the on-air song to the bottom of the
+    /// feed mid-play. The stored key came from a payload that DID carry the
+    /// composite, so it stays authoritative; the reverse direction (stored
+    /// bare, incoming packed) is an upgrade and is taken as-is.
+    func retainingOrderingKey(of stored: Playcut) -> Playcut {
+        guard chronOrderID == id, stored.chronOrderID != stored.id else { return self }
+        return Playcut(
+            id: id,
+            hour: hour,
+            chronOrderID: stored.chronOrderID,
+            timeCreated: timeCreated,
+            songTitle: songTitle,
+            labelName: labelName,
+            artistName: artistName,
+            releaseTitle: releaseTitle,
+            rotation: rotation,
+            artworkURL: artworkURL,
+            discogsURL: discogsURL,
+            releaseYear: releaseYear,
+            spotifyURL: spotifyURL,
+            appleMusicURL: appleMusicURL,
+            youtubeMusicURL: youtubeMusicURL,
+            bandcampURL: bandcampURL,
+            soundcloudURL: soundcloudURL,
+            artistBio: artistBio,
+            artistWikipediaURL: artistWikipediaURL,
+            genres: genres,
+            styles: styles,
+            artistId: artistId,
+            upcomingShow: upcomingShow,
+            criticReviews: criticReviews,
+            metadataStatus: metadataStatus,
+            discogsUnavailable: discogsUnavailable,
+            discogsUnavailableNote: discogsUnavailableNote
+        )
     }
 }
