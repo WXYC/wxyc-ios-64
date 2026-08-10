@@ -160,18 +160,18 @@ struct PlaylistTimelineItemsTests {
             }
         }
 
-        // Built from wire rows, not from hand-written `chronOrderID`s: a
-        // dj-site reorder IS a `play_order` change, so a stub carrying a
-        // pre-computed key would pass on either side of #839 and prove
-        // nothing about the reorder surfacing.
+        // Built from wire rows (`FlowsheetEntry.fixture`), not from
+        // hand-written `chronOrderID`s: a dj-site reorder IS a `play_order`
+        // change, so a stub carrying a pre-computed key would pass on either
+        // side of #839 and prove nothing about the reorder surfacing.
         //
         // Before the reorder: playcut A, talkset, playcut B, playcut C
         // (newest first) — the talkset sits between A and B.
         let before = FlowsheetConverter.convert([
-            .reorderFixture(id: 1, playOrder: 40, entryType: "track"),
-            .reorderFixture(id: 4, playOrder: 30, entryType: "talkset"),
-            .reorderFixture(id: 2, playOrder: 20, entryType: "track"),
-            .reorderFixture(id: 3, playOrder: 10, entryType: "track"),
+            .fixture(id: 1, playOrder: 40),
+            .fixture(id: 4, playOrder: 30, entryType: "talkset"),
+            .fixture(id: 2, playOrder: 20),
+            .fixture(id: 3, playOrder: 10),
         ])
         let beforeItems = before.timelineItems
         #expect(beforeItems.map(kind) == ["playcut", "seam", "playcut", "playcut"])
@@ -181,10 +181,10 @@ struct PlaylistTimelineItemsTests {
         // the id it was logged under is unchanged, which is exactly why the
         // old id-only key could never show this.
         let after = FlowsheetConverter.convert([
-            .reorderFixture(id: 1, playOrder: 40, entryType: "track"),
-            .reorderFixture(id: 2, playOrder: 20, entryType: "track"),
-            .reorderFixture(id: 4, playOrder: 15, entryType: "talkset"),
-            .reorderFixture(id: 3, playOrder: 10, entryType: "track"),
+            .fixture(id: 1, playOrder: 40),
+            .fixture(id: 2, playOrder: 20),
+            .fixture(id: 4, playOrder: 15, entryType: "talkset"),
+            .fixture(id: 3, playOrder: 10),
         ])
         let afterItems = after.timelineItems
         #expect(afterItems.map(kind) == ["playcut", "playcut", "seam", "playcut"])
@@ -329,31 +329,6 @@ struct PlaylistTimelineItemsTests {
         let seam = Seam(id: 1, hasMicBreak: false, breakpoint: breakpoint)
         #expect(seam.plainLabel == breakpoint.formattedDate)
         #expect(!seam.plainLabel.isEmpty)
-    }
-}
-
-private extension FlowsheetEntry {
-    /// A minimal wire row for reorder tests: only `id`, `play_order`, and
-    /// `entry_type` vary, since a `changeOrder` moves a row by rewriting
-    /// `play_order` alone. All rows share one show, so the packed key's
-    /// high bits are constant and `play_order` decides the order.
-    static func reorderFixture(id: Int, playOrder: Int, entryType: String) -> FlowsheetEntry {
-        FlowsheetEntry(
-            id: id,
-            show_id: 42,
-            album_id: nil,
-            artist_name: entryType == "track" ? "Stereolab" : nil,
-            album_title: entryType == "track" ? "Aluminum Tunes" : nil,
-            track_title: entryType == "track" ? "Pack Yr Romantic Mind" : nil,
-            record_label: entryType == "track" ? "Duophonic" : nil,
-            rotation_id: nil,
-            rotation_play_freq: nil,
-            request_flag: nil,
-            message: nil,
-            play_order: playOrder,
-            add_time: "2026-07-31T18:00:00Z",
-            entry_type: entryType
-        )
     }
 }
 

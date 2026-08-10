@@ -869,25 +869,19 @@ struct FlowsheetConverterTests {
         // the #265 regression. The show_id component of the packed key must
         // dominate regardless of how many more entries the previous show has.
         let previousShowEntries = (1...5).map { n in
-            FlowsheetEntry(
-                id: 5210349 + n, show_id: 1947063, album_id: nil,
-                artist_name: "Luomo", album_title: "Vocalcity",
-                track_title: "Track \(n)", record_label: "Force Tracks",
-                rotation_id: nil, rotation_play_freq: nil,
-                request_flag: false, message: nil,
-                play_order: 30 + n, add_time: "2026-05-14T1\(n):00:00.000Z",
-                entry_type: "track"
+            FlowsheetEntry.fixture(
+                id: 5210349 + n, showID: 1947063, playOrder: 30 + n,
+                artistName: "Luomo", albumTitle: "Vocalcity",
+                trackTitle: "Track \(n)", recordLabel: "Force Tracks",
+                addTime: "2026-05-14T1\(n):00:00.000Z"
             )
         }
         let currentShowEntries = (1...2).map { n in
-            FlowsheetEntry(
-                id: 5210394 + n, show_id: 1947064, album_id: nil,
-                artist_name: "Tortoise", album_title: "Standards",
-                track_title: "Current Track \(n)", record_label: "Thrill Jockey Records",
-                rotation_id: nil, rotation_play_freq: nil,
-                request_flag: false, message: nil,
-                play_order: n, add_time: "2026-05-15T01:4\(n):00.000Z",
-                entry_type: "track"
+            FlowsheetEntry.fixture(
+                id: 5210394 + n, showID: 1947064, playOrder: n,
+                artistName: "Tortoise", albumTitle: "Standards",
+                trackTitle: "Current Track \(n)", recordLabel: "Thrill Jockey Records",
+                addTime: "2026-05-15T01:4\(n):00.000Z"
             )
         }
 
@@ -909,20 +903,14 @@ struct FlowsheetConverterTests {
         // id-only key it renders above the track it actually preceded. The
         // DJ drags the talkset below the track on dj-site (`changeOrder`),
         // which lowers its play_order without changing its id.
-        let track = FlowsheetEntry(
-            id: 500, show_id: 42, album_id: nil,
-            artist_name: "Jessica Pratt", album_title: "On Your Own Love Again",
-            track_title: "Back, Baby", record_label: "Drag City",
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 5, add_time: "2026-07-31T18:00:00Z",
-            entry_type: "track"
+        let track = FlowsheetEntry.fixture(
+            id: 500, playOrder: 5,
+            artistName: "Jessica Pratt", albumTitle: "On Your Own Love Again",
+            trackTitle: "Back, Baby", recordLabel: "Drag City"
         )
-        let reorderedTalkset = FlowsheetEntry(
-            id: 501, show_id: 42, album_id: nil, artist_name: nil,
-            album_title: nil, track_title: nil, record_label: nil,
-            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
-            message: nil, play_order: 4, add_time: "2026-07-31T18:00:05Z",
-            entry_type: "talkset"
+        let reorderedTalkset = FlowsheetEntry.fixture(
+            id: 501, playOrder: 4, entryType: "talkset",
+            addTime: "2026-07-31T18:00:05Z"
         )
 
         let playlist = FlowsheetConverter.convert([track, reorderedTalkset])
@@ -935,12 +923,8 @@ struct FlowsheetConverterTests {
 
     @Test("Packs (show_id, play_order) via a left shift, not a decimal multiplier")
     func packsShowIDAndPlayOrderViaShift() {
-        let entry = FlowsheetEntry(
-            id: 999, show_id: 1_950_704, album_id: nil, artist_name: nil,
-            album_title: nil, track_title: nil, record_label: nil,
-            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
-            message: nil, play_order: 12, add_time: "2026-07-31T18:00:00Z",
-            entry_type: "talkset"
+        let entry = FlowsheetEntry.fixture(
+            id: 999, showID: 1_950_704, playOrder: 12, entryType: "talkset"
         )
 
         let playlist = FlowsheetConverter.convert([entry])
@@ -970,21 +954,16 @@ struct FlowsheetConverterTests {
         // rank it ABOVE every real row indefinitely. Bottom is recoverable;
         // top is not. Reachability, magnitudes, and the full failure
         // taxonomy live in `FlowsheetConverter.chronOrderID`'s doc comment.
-        let nilShowEntry = FlowsheetEntry(
-            id: 5_304_200, show_id: nil, album_id: nil,
-            artist_name: "Hermanos Gutiérrez", album_title: "El Bueno y el Malo",
-            track_title: "Los Gemelos", record_label: nil,
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 4, add_time: "2026-07-31T18:00:00Z",
-            entry_type: "track"
+        let nilShowEntry = FlowsheetEntry.fixture(
+            id: 5_304_200, showID: nil, playOrder: 4,
+            artistName: "Hermanos Gutiérrez", albumTitle: "El Bueno y el Malo",
+            trackTitle: "Los Gemelos", recordLabel: nil
         )
-        let realShowEntry = FlowsheetEntry(
-            id: 5_304_199, show_id: 1_950_704, album_id: nil,
-            artist_name: "Csillagrablók", album_title: "Idővonat",
-            track_title: "Nyugalom", record_label: nil,
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 5, add_time: "2026-07-31T17:59:00.000Z",
-            entry_type: "track"
+        let realShowEntry = FlowsheetEntry.fixture(
+            id: 5_304_199, showID: 1_950_704, playOrder: 5,
+            artistName: "Csillagrablók", albumTitle: "Idővonat",
+            trackTitle: "Nyugalom", recordLabel: nil,
+            addTime: "2026-07-31T17:59:00.000Z"
         )
 
         let playlist = FlowsheetConverter.convert([realShowEntry, nilShowEntry])
@@ -1004,13 +983,11 @@ struct FlowsheetConverterTests {
         // the same numeric band as the legacy watermark and never outranks a
         // real row when the field comes back mid-window.
         let entries = (0..<4).map { n in
-            FlowsheetEntry(
-                id: 5_304_300 + n, show_id: nil, album_id: nil,
-                artist_name: "Juana Molina", album_title: "DOGA",
-                track_title: "la paradoja \(n)", record_label: "Sonamos",
-                rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-                message: nil, play_order: n + 1, add_time: "2026-07-31T18:0\(n):00Z",
-                entry_type: "track"
+            FlowsheetEntry.fixture(
+                id: 5_304_300 + n, showID: nil, playOrder: n + 1,
+                artistName: "Juana Molina", albumTitle: "DOGA",
+                trackTitle: "la paradoja \(n)", recordLabel: "Sonamos",
+                addTime: "2026-07-31T18:0\(n):00Z"
             )
         }
 
@@ -1035,13 +1012,10 @@ struct FlowsheetConverterTests {
         // `milliseconds(since1970:)` rejects rather than crashing on. The
         // 32-bit breaches are the silent half: they'd produce a plausible
         // key that sorts wrong forever with nothing to notice.
-        let entry = FlowsheetEntry(
-            id: 5_304_400, show_id: showID, album_id: nil,
-            artist_name: "Cat Power", album_title: "Moon Pix",
-            track_title: "Cross Bones Style", record_label: "Matador",
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: playOrder, add_time: "2026-07-31T18:00:00Z",
-            entry_type: "track"
+        let entry = FlowsheetEntry.fixture(
+            id: 5_304_400, showID: showID, playOrder: playOrder,
+            artistName: "Cat Power", albumTitle: "Moon Pix",
+            trackTitle: "Cross Bones Style", recordLabel: "Matador"
         )
 
         let playlist = FlowsheetConverter.convert([entry])
@@ -1061,23 +1035,16 @@ struct FlowsheetConverterTests {
         // struct rather than a captured frame; `LiveFsEventDecodingTests`
         // covers that half, asserting the derived key off a JSON frame shaped
         // like the real one.
-        let entry = FlowsheetEntry(
-            id: 5_304_111, show_id: 1_950_704, album_id: nil,
-            artist_name: "Chuquimamani-Condori", album_title: "Edits",
-            track_title: "Call Your Name", record_label: nil,
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 12, add_time: "2026-07-31T18:00:00Z",
-            entry_type: "track"
+        let entry = FlowsheetEntry.fixture(
+            id: 5_304_111, showID: 1_950_704, playOrder: 12,
+            artistName: "Chuquimamani-Condori", albumTitle: "Edits",
+            trackTitle: "Call Your Name", recordLabel: nil
         )
         // A second row in the same REST batch proves the per-row key doesn't
         // depend on batch context/array position.
-        let otherEntryInBatch = FlowsheetEntry(
-            id: 5_304_100, show_id: 1_950_704, album_id: nil,
-            artist_name: "Stereolab", album_title: "Aluminum Tunes",
-            track_title: "Pack Yr Romantic Mind", record_label: "Duophonic",
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 11, add_time: "2026-07-31T17:59:00.000Z",
-            entry_type: "track"
+        let otherEntryInBatch = FlowsheetEntry.fixture(
+            id: 5_304_100, showID: 1_950_704, playOrder: 11,
+            addTime: "2026-07-31T17:59:00.000Z"
         )
 
         let restPlaycut = try #require(
@@ -1094,21 +1061,14 @@ struct FlowsheetConverterTests {
         // ordering key — an unguarded trap there takes down the poll and the
         // SSE frame just as surely as one in the packing, and no other row in
         // the batch survives it.
-        let malformed = FlowsheetEntry(
-            id: -1, show_id: 1_950_704, album_id: nil,
-            artist_name: "Chuquimamani-Condori", album_title: "Edits",
-            track_title: "Call Your Name", record_label: nil,
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 4, add_time: "2026-07-31T18:00:00Z",
-            entry_type: "track"
+        let malformed = FlowsheetEntry.fixture(
+            id: -1, showID: 1_950_704, playOrder: 4,
+            artistName: "Chuquimamani-Condori", albumTitle: "Edits",
+            trackTitle: "Call Your Name", recordLabel: nil
         )
-        let intact = FlowsheetEntry(
-            id: 5_304_500, show_id: 1_950_704, album_id: nil,
-            artist_name: "Stereolab", album_title: "Aluminum Tunes",
-            track_title: "Pack Yr Romantic Mind", record_label: "Duophonic",
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 5, add_time: "2026-07-31T18:01:00Z",
-            entry_type: "track"
+        let intact = FlowsheetEntry.fixture(
+            id: 5_304_500, showID: 1_950_704, playOrder: 5,
+            addTime: "2026-07-31T18:01:00Z"
         )
 
         let playlist = FlowsheetConverter.convert([malformed, intact])
@@ -1127,21 +1087,14 @@ struct FlowsheetConverterTests {
         // (show_id, play_order). Swift's `sorted` is not stable, so an
         // unbroken tie would present a different relative order on every
         // render; the comparator must resolve it via id.
-        let staleCopy = FlowsheetEntry(
-            id: 5_304_100, show_id: 1_950_704, album_id: nil,
-            artist_name: "Stereolab", album_title: "Aluminum Tunes",
-            track_title: "Pack Yr Romantic Mind", record_label: "Duophonic",
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 12, add_time: "2026-07-31T18:00:00Z",
-            entry_type: "track"
+        let staleCopy = FlowsheetEntry.fixture(
+            id: 5_304_100, showID: 1_950_704, playOrder: 12
         )
-        let freshCopy = FlowsheetEntry(
-            id: 5_304_111, show_id: 1_950_704, album_id: nil,
-            artist_name: "Cat Power", album_title: "Moon Pix",
-            track_title: "Moonshiner", record_label: "Matador Records",
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 12, add_time: "2026-07-31T18:00:05Z",
-            entry_type: "track"
+        let freshCopy = FlowsheetEntry.fixture(
+            id: 5_304_111, showID: 1_950_704, playOrder: 12,
+            artistName: "Cat Power", albumTitle: "Moon Pix",
+            trackTitle: "Moonshiner", recordLabel: "Matador Records",
+            addTime: "2026-07-31T18:00:05Z"
         )
 
         let forward = FlowsheetConverter.convert([staleCopy, freshCopy]).entries.map(\.id)
@@ -1159,14 +1112,8 @@ struct FlowsheetConverterTests {
     /// returns the resulting `Playcut`. Used to prove the SSE path derives
     /// the identical `chronOrderID` the REST path does for the same row.
     private static func decodeAsSingleEntrySSEInsert(_ entry: FlowsheetEntry) throws -> Playcut {
-        let payloadData = try JSONEncoder().encode(entry)
-        let payloadObject = try JSONSerialization.jsonObject(with: payloadData)
-        let frameObject: [String: Any] = [
-            "type": "insert",
-            "timestamp": "2026-07-31T18:00:00Z",
-            "payload": payloadObject
-        ]
-        let frameData = try JSONSerialization.data(withJSONObject: frameObject)
+        let payloadJSON = String(decoding: try JSONEncoder().encode(entry), as: UTF8.self)
+        let frameData = Data(SSEFrame.json(type: "insert", payloadJSON: payloadJSON).utf8)
 
         guard case let .insert(playcut) = try #require(LiveFsEvent(frameData: frameData)) else {
             Issue.record("expected .insert")
