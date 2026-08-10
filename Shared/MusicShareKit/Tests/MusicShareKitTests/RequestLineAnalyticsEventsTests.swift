@@ -51,8 +51,29 @@ private let featureFlagSourceCases: [(FeatureFlagSource, String)] = [
     (.override, "override"),
 ]
 
+/// Every `Bool` property is exercised at both polarities. Asserting only the
+/// `true` case would pass even if the macro emitted a literal instead of
+/// reading the stored property, or if an init dropped the assignment.
+private let bothPolarities: [Bool] = [true, false]
+
 @Suite("RequestLineAnalytics event parity")
 struct RequestLineAnalyticsEventsTests {
+
+    // MARK: - Fixture exhaustiveness
+
+    /// The fixture arrays above are hand-enumerated, so without this guard a
+    /// newly added enum case ships an unpinned wire value to PostHog while
+    /// every existing assertion still passes. Pinning each array against
+    /// `allCases` makes them self-maintaining: adding a case fails here until
+    /// its expected raw value is written down.
+    @Test("Every enum case appears in its parity fixture array")
+    func fixtureArraysCoverEveryCase() {
+        #expect(Set(authTokenSourceCases.map(\.0)) == Set(AuthTokenSource.allCases))
+        #expect(Set(authFailurePhaseCases.map(\.0)) == Set(AuthFailurePhase.allCases))
+        #expect(Set(tokenRefreshReasonCases.map(\.0)) == Set(TokenRefreshReason.allCases))
+        #expect(Set(keychainOperationCases.map(\.0)) == Set(KeychainOperation.allCases))
+        #expect(Set(featureFlagSourceCases.map(\.0)) == Set(FeatureFlagSource.allCases))
+    }
 
     // MARK: - RequestLineAuthStartedEvent
 
@@ -73,15 +94,15 @@ struct RequestLineAnalyticsEventsTests {
 
     @Test(
         "RequestLineAuthCompletedEvent carries source, duration, and success",
-        arguments: authTokenSourceCases
+        arguments: authTokenSourceCases, bothPolarities
     )
-    func authCompletedEventProperties(_ fixture: (AuthTokenSource, String)) throws {
-        let event = RequestLineAuthCompletedEvent(source: fixture.0, durationMs: 42.5, success: true)
+    func authCompletedEventProperties(_ fixture: (AuthTokenSource, String), _ success: Bool) throws {
+        let event = RequestLineAuthCompletedEvent(source: fixture.0, durationMs: 42.5, success: success)
         let props = try #require(event.properties)
 
         #expect(props["source"] as? String == fixture.1)
         #expect(props["duration_ms"] as? Double == 42.5)
-        #expect(props["success"] as? Bool == true)
+        #expect(props["success"] as? Bool == success)
         #expect(props.count == 3)
         #expect(RequestLineAuthCompletedEvent.name == "request_line_auth_completed_event")
     }
@@ -104,12 +125,12 @@ struct RequestLineAnalyticsEventsTests {
 
     // MARK: - RequestLineJWTExchangeEvent
 
-    @Test("RequestLineJWTExchangeEvent carries success and duration")
-    func jwtExchangeEventProperties() throws {
-        let event = RequestLineJWTExchangeEvent(success: true, durationMs: 123.0)
+    @Test("RequestLineJWTExchangeEvent carries success and duration", arguments: bothPolarities)
+    func jwtExchangeEventProperties(_ success: Bool) throws {
+        let event = RequestLineJWTExchangeEvent(success: success, durationMs: 123.0)
         let props = try #require(event.properties)
 
-        #expect(props["success"] as? Bool == true)
+        #expect(props["success"] as? Bool == success)
         #expect(props["duration_ms"] as? Double == 123.0)
         #expect(props.count == 2)
         #expect(RequestLineJWTExchangeEvent.name == "request_line_jwt_exchange_event")
@@ -117,12 +138,15 @@ struct RequestLineAnalyticsEventsTests {
 
     // MARK: - RequestLineRequestCompletedEvent
 
-    @Test("RequestLineRequestCompletedEvent carries authenticated, status code, and duration")
-    func requestCompletedEventProperties() throws {
-        let event = RequestLineRequestCompletedEvent(authenticated: true, statusCode: 200, durationMs: 88.0)
+    @Test(
+        "RequestLineRequestCompletedEvent carries authenticated, status code, and duration",
+        arguments: bothPolarities
+    )
+    func requestCompletedEventProperties(_ authenticated: Bool) throws {
+        let event = RequestLineRequestCompletedEvent(authenticated: authenticated, statusCode: 200, durationMs: 88.0)
         let props = try #require(event.properties)
 
-        #expect(props["authenticated"] as? Bool == true)
+        #expect(props["authenticated"] as? Bool == authenticated)
         #expect(props["status_code"] as? Int == 200)
         #expect(props["duration_ms"] as? Double == 88.0)
         #expect(props.count == 3)
@@ -133,14 +157,14 @@ struct RequestLineAnalyticsEventsTests {
 
     @Test(
         "RequestLineTokenRefreshedEvent carries the refresh reason's raw value and success",
-        arguments: tokenRefreshReasonCases
+        arguments: tokenRefreshReasonCases, bothPolarities
     )
-    func tokenRefreshedEventProperties(_ fixture: (TokenRefreshReason, String)) throws {
-        let event = RequestLineTokenRefreshedEvent(reason: fixture.0, success: false)
+    func tokenRefreshedEventProperties(_ fixture: (TokenRefreshReason, String), _ success: Bool) throws {
+        let event = RequestLineTokenRefreshedEvent(reason: fixture.0, success: success)
         let props = try #require(event.properties)
 
         #expect(props["reason"] as? String == fixture.1)
-        #expect(props["success"] as? Bool == false)
+        #expect(props["success"] as? Bool == success)
         #expect(props.count == 2)
         #expect(RequestLineTokenRefreshedEvent.name == "request_line_token_refreshed_event")
     }
@@ -189,13 +213,13 @@ struct RequestLineAnalyticsEventsTests {
 
     @Test(
         "RequestLineFeatureFlagEvaluatedEvent carries enabled and the source's raw value",
-        arguments: featureFlagSourceCases
+        arguments: featureFlagSourceCases, bothPolarities
     )
-    func featureFlagEvaluatedEventProperties(_ fixture: (FeatureFlagSource, String)) throws {
-        let event = RequestLineFeatureFlagEvaluatedEvent(enabled: true, source: fixture.0)
+    func featureFlagEvaluatedEventProperties(_ fixture: (FeatureFlagSource, String), _ enabled: Bool) throws {
+        let event = RequestLineFeatureFlagEvaluatedEvent(enabled: enabled, source: fixture.0)
         let props = try #require(event.properties)
 
-        #expect(props["enabled"] as? Bool == true)
+        #expect(props["enabled"] as? Bool == enabled)
         #expect(props["source"] as? String == fixture.1)
         #expect(props.count == 2)
         #expect(RequestLineFeatureFlagEvaluatedEvent.name == "request_line_feature_flag_evaluated_event")
