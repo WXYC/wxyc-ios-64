@@ -29,8 +29,18 @@ public protocol PlaylistEntry: Codable, Identifiable, Sendable, Equatable, Hasha
 }
 
 public extension PlaylistEntry {
+    /// Orders by `chronOrderID`, then `id` as an explicit, deterministic
+    /// tiebreak.
+    ///
+    /// Duplicate `chronOrderID`s are reachable (see the composite-key doc
+    /// comment on `FlowsheetConverter.chronOrderID(showID:playOrder:id:)`),
+    /// and a bare `chronOrderID` comparison would leave same-type collections
+    /// — e.g. `PlaycutHistoryStore`'s `[Playcut].sorted(by: >)` — in an
+    /// unspecified relative order for tied elements across calls. `id` is
+    /// row identity and therefore always unique, so it fully resolves the
+    /// tie.
     static func <(lhs: Self, rhs: Self) -> Bool {
-        lhs.chronOrderID < rhs.chronOrderID
+        (lhs.chronOrderID, lhs.id) < (rhs.chronOrderID, rhs.id)
     }
 
     /// The moment of broadcast: `hour` (milliseconds since the Unix epoch) as a `Date`.
@@ -595,7 +605,19 @@ public struct Playlist: Codable, Sendable {
 public extension Playlist {
     var entries: [any PlaylistEntry] {
         let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets + showMarkers)
-        return playlist.sorted { $0.chronOrderID > $1.chronOrderID }
+        // `any PlaylistEntry` is heterogeneous (a Playcut alongside a Talkset,
+        // say), so this can't lean on `PlaylistEntry`'s own `Comparable`
+        // conformance (a `Self` requirement, not expressible across mixed
+        // concrete types in one existential array) — the tiebreak has to be
+        // written out by hand here, mirroring the same-type default in the
+        // `PlaylistEntry` extension above. See that default's doc comment
+        // for why a duplicate `chronOrderID` is reachable and why `id` (row
+        // identity, always unique) is what resolves it deterministically.
+        return playlist.sorted { lhs, rhs in
+            lhs.chronOrderID != rhs.chronOrderID
+                ? lhs.chronOrderID > rhs.chronOrderID
+                : lhs.id > rhs.id
+        }
     }
 
     /// True when the playlist carries no timeline content, ignoring `onAir`.
@@ -616,7 +638,11 @@ public extension Playlist {
     /// marker is a sign-off (nobody is on the air) or there are no markers, returns nil.
     /// This is the marker promoted to the dedicated "on air" banner.
     var onAirSignOn: ShowMarker? {
-        guard let latest = showMarkers.max(by: { $0.chronOrderID < $1.chronOrderID }),
+        // `showMarkers` is a single concrete type, so this could lean on
+        // `ShowMarker`'s own `Comparable` (`max()`, no closure) — spelled out
+        // explicitly instead, matching `Playlist.entries`'s tiebreak above,
+        // since a duplicate `chronOrderID` is exactly as reachable here.
+        guard let latest = showMarkers.max(by: { ($0.chronOrderID, $0.id) < ($1.chronOrderID, $1.id) }),
               latest.isStart else { return nil }
         return latest
     }

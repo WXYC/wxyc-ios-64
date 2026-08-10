@@ -35,7 +35,10 @@ public struct NowPlayingItem: Sendable, Equatable, Comparable {
     }
 
     public static func < (lhs: NowPlayingItem, rhs: NowPlayingItem) -> Bool {
-        lhs.playcut.chronOrderID < rhs.playcut.chronOrderID
+        // Delegates to `Playcut`'s own `Comparable` (chronOrderID, then id as
+        // an explicit tiebreak — see `PlaylistEntry`'s default `<`) rather
+        // than re-deriving the comparison here, so the two can't drift.
+        lhs.playcut < rhs.playcut
     }
 }
 

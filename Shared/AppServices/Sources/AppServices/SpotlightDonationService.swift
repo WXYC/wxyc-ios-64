@@ -170,7 +170,12 @@ public actor SpotlightDonationService: Sendable {
         let watermark = currentWatermark
         let batch = playcuts
             .filter { $0.chronOrderID > watermark }
-            .sorted { $0.chronOrderID < $1.chronOrderID }
+            // `<` here is `Playcut`'s own `Comparable` (chronOrderID, then id
+            // as an explicit tiebreak) — a duplicate `chronOrderID` is
+            // reachable (see FlowsheetConverter.chronOrderID's doc comment),
+            // and without the tiebreak two such rows would swap places
+            // between ticks, changing which one lands on the watermark edge.
+            .sorted(by: <)
             .prefix(Self.batchLimit)
 
         guard let highestID = batch.last?.chronOrderID else { return }
@@ -258,8 +263,11 @@ public actor SpotlightDonationService: Sendable {
         // that produced this artist batch — the `.id` of the input playcut
         // with the highest chronOrderID, matching donateRecentPlaycuts's
         // newest-row-in-the-batch convention even though this path shares no
-        // watermark of its own.
-        let representativeID = playcuts.max { $0.chronOrderID < $1.chronOrderID }?.id ?? 0
+        // watermark of its own. `max(by:)` uses `Playcut`'s own `Comparable`
+        // (chronOrderID, then id as an explicit tiebreak) so a duplicate
+        // chronOrderID resolves deterministically instead of leaving the
+        // reported id to an unspecified tie order.
+        let representativeID = playcuts.max(by: <)?.id ?? 0
 
         do {
             try await artistIndexer.indexArtists(Array(entities), priority: Self.batchPriority)
