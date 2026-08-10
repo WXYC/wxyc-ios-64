@@ -101,9 +101,9 @@ struct OnTourTabView: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
-            .fullScreenCover(item: $selectedConcert) { concert in
+            .detailCover(item: $selectedConcert) { concert in
                 ConcertDetailView(concert: concert)
-                    .navigationTransition(.zoom(sourceID: concert.id, in: zoomNamespace))
+                    .zoomTransition(sourceID: concert.id, in: zoomNamespace)
             }
             // The DEBUG/Release argument lists differ (see `forYouDebugSheet`'s two
             // overloads below): DEBUG passes the OT-Q2 (#632) Concert Spotlight

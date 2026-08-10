@@ -158,7 +158,7 @@ struct WXYCApp: App {
             // Picker exited (was active, now inactive): re-extract palette for
             // the newly selected theme so the home screen reflects it.
             if wasActive && !isActive {
-                AppLifecycleModifier.extractWallpaperPalette(into: appState.themeConfiguration)
+                WallpaperPaletteExtraction.extract(into: appState.themeConfiguration)
             }
         }
         .backgroundTask(.appRefresh(BackgroundRefreshController.taskIdentifier)) {

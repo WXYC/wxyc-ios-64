@@ -148,7 +148,7 @@ struct PlaycutRowView: View {
         }
         // Source for the detail cover's zoom transition — the whole row (plain or
         // ticket) is what animates into `PlaycutDetailView`.
-        .matchedTransitionSource(id: playcut.id, in: namespace)
+        .zoomTransitionSource(id: playcut.id, in: namespace)
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         .animation(.easeInOut(duration: 0.25), value: upcomingShow)
