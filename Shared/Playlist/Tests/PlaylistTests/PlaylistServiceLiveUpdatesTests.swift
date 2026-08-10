@@ -98,6 +98,46 @@ struct PlaylistServiceLiveUpdatesTests {
         #expect(row?.artworkURL == URL(string: "https://example.com/art.jpg"))
     }
 
+    @Test("An update whose key derivation fell back to the bare id keeps the stored packed key", .timeLimit(.minutes(1)))
+    func updateKeepsStoredPackedKeyOnBareIDFallback() async throws {
+        // `FlowsheetEntry.show_id` is optional, so an SSE update payload that
+        // omitted it (a Backend projection regression, a partial deploy)
+        // decodes cleanly and re-derives the row's key as the bare-id
+        // fallback. A wholesale replace would sink the on-air song to the
+        // bottom of the feed mid-play; the stored key was derived from a
+        // payload that DID carry the composite, so it stays authoritative
+        // while the enrichment lands.
+        let packedKey = UInt64(42) << 32 | 9
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [
+            .stub(id: 5_304_111, chronOrderID: packedKey, metadataStatus: .pending)
+        ])
+        let source = MockLiveFsEventSource(events: [
+            .update(.stub(
+                id: 5_304_111, chronOrderID: 5_304_111,
+                artworkURL: URL(string: "https://example.com/art.jpg"),
+                metadataStatus: .enrichedMatch
+            ))
+        ])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            apiVersion: .v2
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        #expect(await iterator.next()?.playcuts.map(\.id) == [5_304_111])
+        await service.setForegrounded(true)
+
+        let afterUpdate = await iterator.next()
+        let row = afterUpdate?.playcuts.first
+        // The enrichment lands...
+        #expect(row?.metadataStatus == .enrichedMatch)
+        #expect(row?.artworkURL == URL(string: "https://example.com/art.jpg"))
+        // ...but the ordering key is not downgraded to the bare id.
+        #expect(row?.chronOrderID == packedKey)
+    }
+
     @Test("An update for an id not yet present appends (out-of-order delivery)", .timeLimit(.minutes(1)))
     func outOfOrderUpdateAppends() async throws {
         let fetcher = MockPlaylistFetcher()
