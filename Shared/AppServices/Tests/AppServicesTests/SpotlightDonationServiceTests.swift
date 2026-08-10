@@ -279,10 +279,11 @@ struct SpotlightDonationServiceTests {
         // falls back to it whenever the PostHog `playlist_api_version` flag
         // can't be evaluated — an offline launch, a flag miss, a debug
         // override. v1 decodes `chronOrderID` straight out of tubafrenzy's
-        // JSON, where it is the row id (~5.3e6 today); v2 derives the packed
-        // composite (~8.4e15). One persisted watermark serves both and only
-        // ever moves up, so keying it on the ordering key means a single v2
-        // tick puts it permanently out of reach of every v1 row.
+        // JSON, where it is the row id; v2 derives the packed composite, nine
+        // orders of magnitude up (see `donatedThroughIDKey`'s doc). One
+        // persisted watermark serves both and only ever moves up, so keying
+        // it on the ordering key means a single v2 tick puts it permanently
+        // out of reach of every v1 row.
         //
         // `id` is the same flowsheet serial on both paths (verified against
         // both live feeds), immutable, and monotone in insertion order — the
@@ -335,21 +336,14 @@ struct SpotlightDonationServiceTests {
 
     @Test("A tubafrenzy-scale legacy watermark does not strand donation")
     func legacyWatermarkDoesNotStrandDonation() async {
-        // The value the RC cohort actually has on disk. The app's v1 URL is
-        // `wxyc.info/playlists/recentEntries`, which Backend-Service's
-        // playlist proxy serves; until BS commit dc192d84 (2026-07-28) that
-        // proxy forwarded tubafrenzy's `chronOrderID` verbatim, and tubafrenzy
-        // computes it as `1000 * radioShowID + sequenceWithinShow`
-        // (FlowsheetEntry.java:184) — 172_520_042 against a row id of
-        // 2_636_727 on 2026-07-20, still visible on the archive endpoint.
-        //
-        // SpotlightDonationService landed 2026-07-09 and shipped in v3.2-RC1
-        // (07-19), RC2 (07-21), and RC3 (07-24), all inside that window. So
-        // seeding the id waterline from the old key puts it ~33x past every
-        // real id and donation never fires again. That is why there is no
-        // migration: an absent waterline costs one re-donation of at most
-        // `batchLimit` rows, which is what a fresh install does anyway, and
-        // Spotlight indexing is an idempotent upsert on a stable identifier.
+        // 172520042 is the value the RC cohort actually has on disk — a
+        // tubafrenzy-scale `1000 * radioShowID + sequenceWithinShow` key, far
+        // past any real flowsheet id, captured from the archive endpoint on
+        // 2026-07-20. The dated forensics (which proxy commit, which RC
+        // builds, why no magnitude heuristic can split the cohorts) live in
+        // `SpotlightDonationService.watermarkKey`'s doc comment; what this
+        // test pins is the consequence — seeding the id waterline from that
+        // value would strand donation forever, so the key is never read.
         let defaults = InMemoryDefaults()
         defaults.set("172520042", forKey: SpotlightDonationService.watermarkKey)
         let indexer = MockSpotlightIndexer()

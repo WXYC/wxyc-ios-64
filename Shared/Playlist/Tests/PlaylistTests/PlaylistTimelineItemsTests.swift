@@ -259,11 +259,11 @@ struct PlaylistTimelineItemsTests {
     func currentPlaycutFollowsANewerBareIDRow() {
         // A run of NULL-show_id rows — the tubafrenzy webhook writes
         // `show?.id ?? null` exactly when nobody is signed on — keys at the
-        // bare id (~5.3e6), below every packed key (~8.4e15). A plain
-        // `max()` would keep naming the previous show's last packed track
-        // for the whole stretch. The bare rows' ids are global insertion
-        // serials, so a bare row newer than every packed row IS the current
-        // song.
+        // bare id, below every packed key (magnitudes in
+        // `FlowsheetConverter.chronOrderID`'s doc). A plain `max()` would
+        // keep naming the previous show's last packed track for the whole
+        // stretch. The bare rows' ids are global insertion serials, so a
+        // bare row newer than every packed row IS the current song.
         let playlist = Playlist.stub(
             playcuts: [
                 .stub(id: 500, chronOrderID: UInt64(42) << 32 | 5),

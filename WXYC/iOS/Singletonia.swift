@@ -404,7 +404,8 @@ final class Singletonia {
     /// never lets iOS run `BGAppRefresh`) still rebuilds the recent-50-row
     /// window and the derived artist rows. The playcut batch is
     /// watermark-idempotent so post-first-fetch ticks short-circuit at the
-    /// `chronOrderID > watermark` filter.
+    /// `id > watermark` filter (the watermark rides the flowsheet `id`, not
+    /// the ordering key — see `SpotlightDonationService.donatedThroughIDKey`).
     ///
     /// The service references are captured strongly here on purpose: the
     /// task's lifetime is bound to `Singletonia.shared` (a static let), so

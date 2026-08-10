@@ -88,14 +88,15 @@ struct LiveFsEventDecodingTests {
         #expect(playcut.releaseYear == 2024)
         #expect(playcut.metadataStatus == .enrichedMatch)
         // `show_id` belongs on this payload and the fixture has to carry it:
-        // `PlaylistService.upsertPlaycut` replaces the stored row wholesale,
-        // so an update frame that arrived without it would rewrite a packed
-        // key (~8.4e15) down to the bare-id fallback and drop the on-air song
-        // to the bottom of the feed mid-play. Backend does send it — both
-        // `show_id` and `play_order` are on `CLIENT_FACING_FLOWSHEET_COLUMNS`
-        // (`flowsheet-projection.ts`), the allow-list the CDC row is projected
-        // through before it reaches `live-fs-topic`. Asserting the derived key
-        // here is what would notice if that allow-list ever changed under us.
+        // an update frame that arrived without it would re-derive the row's
+        // key as the bare-id fallback (`PlaylistService.upsertPlaycut` then
+        // keeps the stored packed key rather than downgrading — see
+        // `updateKeepsStoredPackedKeyOnBareIDFallback`). Backend does send it
+        // — both `show_id` and `play_order` are on
+        // `CLIENT_FACING_FLOWSHEET_COLUMNS` (`flowsheet-projection.ts`), the
+        // allow-list the CDC row is projected through before it reaches
+        // `live-fs-topic`. Asserting the derived key here is what would
+        // notice if that allow-list ever changed under us.
         #expect(playcut.chronOrderID == (UInt64(5) << 32) | 3)
     }
 

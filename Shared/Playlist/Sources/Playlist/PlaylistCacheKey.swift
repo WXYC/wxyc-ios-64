@@ -18,9 +18,10 @@ public enum PlaylistCacheKey {
     ///
     /// One entry per API version, deliberately: `chronOrderID` is persisted
     /// with every entry, and the two versions write it at scales nine orders
-    /// of magnitude apart — v1 decodes the row id off the wire (~5.3e6),
-    /// while v2 derives the packed `(show_id, play_order)` composite
-    /// (~8.4e15). Sessions resolving different versions share this storage
+    /// of magnitude apart — v1 decodes the row id off the wire, while v2
+    /// derives the packed `(show_id, play_order)` composite (magnitudes in
+    /// `FlowsheetConverter.chronOrderID(showID:playOrder:id:)`'s doc).
+    /// Sessions resolving different versions share this storage
     /// (a flag miss, an offline launch, a DebugPanel switch, and the widget
     /// process — which resolves independently of the app — are all real v1
     /// writers), so a shared key would let a v1 session seed the baseline a

@@ -29,6 +29,15 @@ public struct NowPlayingItem: Sendable, Equatable, Comparable {
         self.artwork = artwork
     }
 
+    // A deliberate asymmetry with `<` below: equality includes `artwork` so
+    // an enrichment that only changes the image still reads as a new value
+    // (and re-renders), while ordering ignores it — artwork carries no
+    // position. Strictly this bends the Comparable contract (two items with
+    // the same playcut but different artwork are unequal yet mutually
+    // non-ordered); it is harmless today because playcuts are deduped by id
+    // upstream of every sort, making such pairs unreachable, and `sort`
+    // treats non-ordered pairs as tie-equivalent. Don't "fix" `==` to match
+    // `<` without an artwork-refresh story.
     public static func ==(lhs: NowPlayingItem, rhs: NowPlayingItem) -> Bool {
         lhs.playcut == rhs.playcut
         && lhs.artwork == rhs.artwork
