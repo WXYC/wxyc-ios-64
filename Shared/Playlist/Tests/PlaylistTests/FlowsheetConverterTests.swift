@@ -12,6 +12,21 @@ import Concerts
 import ConcertsTesting
 @testable import Playlist
 
+/// The non-track entry types, with the `message` text each is recognized by.
+///
+/// Backend's `schema.ts` names talkset and message rows among the shapes that
+/// carry a NULL `show_id`, and the show markers bound
+/// ``Playlist/onAirSignOn``'s comparison — so these four, not just `track`,
+/// are the ones whose fallback key has to be pinned. Hoisted to file scope
+/// because a tuple array inline in `@Test(arguments:)` blows up the
+/// type-checker.
+private let nonTrackEntryShapes: [(id: Int, playOrder: Int, message: String, label: String)] = [
+    (124, 2, "Talkset", "talkset"),
+    (125, 3, "01:00 PM Breakpoint", "breakpoint"),
+    (126, 4, "Start of Show: DJ Cool joined the set at 10/14/2025 2:00 PM", "show start"),
+    (127, 5, "End of Show: DJ Cool left the set at 10/14/2025 4:00 PM", "show end"),
+]
+
 // MARK: - FlowsheetConverter Tests
 
 @Suite("FlowsheetConverter Tests")
@@ -311,6 +326,41 @@ struct FlowsheetConverterTests {
         #expect(marker.isStart == false)
         #expect(marker.djName == "DJ Cool")
         #expect(marker.chronOrderID == (UInt64(456) << 32) | 5)
+    }
+
+    @Test(
+        "A non-track row with no show_id falls back to the id key, whatever its entry type",
+        arguments: nonTrackEntryShapes
+    )
+    func nonTrackRowsWithoutAShowFallBackToTheIDKey(shape: (id: Int, playOrder: Int, message: String, label: String)) {
+        // The four tests above each moved to `show_id: 456` to pin the packed
+        // key, which left the nil path covered only for `track` rows. These
+        // are the types that most need it: `schema.ts` lists talkset and
+        // message rows as NULL-`show_id` shapes, and a show marker that took
+        // the wrong branch would drop out of `onAirSignOn`'s `max` and either
+        // strand a signed-off DJ on the banner or hide a signed-on one.
+        let entry = FlowsheetEntry(
+            id: shape.id,
+            show_id: nil,
+            album_id: nil,
+            artist_name: nil,
+            album_title: nil,
+            track_title: nil,
+            record_label: nil,
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: nil,
+            message: shape.message,
+            play_order: shape.playOrder,
+            add_time: "2024-01-15T14:35:00.000Z"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+
+        #expect(
+            playlist.entries.first?.chronOrderID == UInt64(shape.id),
+            Comment(rawValue: "\(shape.label) fell off the id fallback")
+        )
     }
 
     @Test("Handles missing artist and track title gracefully")
@@ -896,22 +946,25 @@ struct FlowsheetConverterTests {
         let playlist = FlowsheetConverter.convert([entry])
         let expected = (UInt64(1_950_704) << 32) | UInt64(12)
 
+        // The rejected alternative is a decimal K=1000 multiplier — which is
+        // exactly what tubafrenzy does (`FlowsheetEntry.java:184`,
+        // `globalOrderID = 1000 * radioShowID + sequenceWithinShow`). It has
+        // ~20x headroom over the observed max play_order of 50 and collides
+        // silently once breached; the shift has ~2000x at today's show_id
+        // magnitude. Asserted on the derived key, not on the two constants:
+        // comparing `expected` to `1000 * 1_950_704 + 12` would hold with
+        // this function deleted.
         #expect(playlist.talksets.first?.chronOrderID == expected)
-        // A decimal K=1000 multiplier has only ~20x headroom over the
-        // observed max play_order (50 in a 3-hour show) and would silently
-        // collide once breached; the shift has ~2000x headroom at today's
-        // show_id magnitude and needs no boundary test.
-        #expect(expected != UInt64(1000 * 1_950_704 + 12))
     }
 
     // MARK: - Unpackable rows fall back to the legacy id key (#839)
 
     @Test("A nil show_id never outranks a real packed key")
     func nilShowIDNeverOutranksARealPackedKey() {
-        // Decoder tolerance for a malformed/legacy row: Backend-Service
-        // itself 500s on a nil show_id in `changeOrder`, and every row in a
-        // live 200-row sample carried one post-#693, so this is not a
-        // real-traffic path. There is no *correct* key for a row that names
+        // A shape Backend's `schema.ts` lists outright and the still-live
+        // tubafrenzy webhook can write (`show?.id ?? null`), though two live
+        // samples totalling 230 rows carried a `show_id` on every one. There
+        // is no *correct* key for a row that names
         // no show, so the fallback is chosen for how it fails: a bare
         // `UInt64(id)` (~5e6) ranks below every real packed key (~8e15), so
         // the row lands at the bottom of the feed. The alternative — shifting
@@ -975,6 +1028,7 @@ struct FlowsheetConverterTests {
             (1_950_704, -1, "a negative play_order traps `UInt64.init`"),
             (Int(UInt32.max) + 1, 4, "a show_id past 32 bits loses its high bits to the shift"),
             (1_950_704, Int(UInt32.max) + 1, "a play_order past 32 bits carries into the show bits"),
+            (0, 12, "a zero show_id packs to play_order alone, below every other row in the feed"),
         ]
     )
     func outOfRangeComponentsFallBackToTheIDKey(showID: Int, playOrder: Int, why: String) {
@@ -1006,8 +1060,9 @@ struct FlowsheetConverterTests {
         // fail if someone forks the SSE path onto its own derivation. It
         // cannot catch Backend omitting `show_id`/`play_order` from the
         // `live-fs-topic` payload, since the fixture is a re-encoded Swift
-        // struct rather than a captured frame — that would need a recorded
-        // wire fixture.
+        // struct rather than a captured frame; `LiveFsEventDecodingTests`
+        // covers that half, asserting the derived key off a JSON frame shaped
+        // like the real one.
         let entry = FlowsheetEntry(
             id: 5_304_111, show_id: 1_950_704, album_id: nil,
             artist_name: "Chuquimamani-Condori", album_title: "Edits",

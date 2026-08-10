@@ -18,5 +18,18 @@ public enum PlaylistCacheKey {
     ///
     /// Only one playlist is cached at a time. The key is static because
     /// the playlist represents the station's current state.
-    public static let playlist = "com.wxyc.playlist.cache"
+    ///
+    /// The `.v2` suffix is a one-time invalidation for #839, not a versioning
+    /// scheme. `chronOrderID` is persisted with each entry, and a playlist
+    /// cached by a pre-#839 build holds the old scheme (the key *was* the row
+    /// id, ~5.3e6) while this build derives the packed composite (~8.4e15).
+    /// The two can coexist in one array: `PlaylistService.upsertPlaycut`
+    /// rewrites a single row from an SSE frame, so an enrichment arriving
+    /// before the first poll completes would give one old row a packed key and
+    /// send it straight to the head of the timeline — and to
+    /// `currentPlaycut`, so the lock screen would name a song from an hour
+    /// ago. A 15-minute cache of a public feed that refetches on launch is
+    /// cheap to drop once; a wrong now-playing on every upgrading device is
+    /// not.
+    public static let playlist = "com.wxyc.playlist.cache.v2"
 }

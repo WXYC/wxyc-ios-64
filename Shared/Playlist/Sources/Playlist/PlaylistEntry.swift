@@ -48,7 +48,18 @@ public extension PlaylistEntry {
     /// song's flowsheet identity), but callers that need a stable order over
     /// mixed or synthesized entries must sort on something else.
     static func <(lhs: Self, rhs: Self) -> Bool {
-        (lhs.chronOrderID, lhs.id) < (rhs.chronOrderID, rhs.id)
+        lhs.sortKey < rhs.sortKey
+    }
+
+    /// The ordering rule itself, in one place.
+    ///
+    /// `<` above can't serve the heterogeneous timeline — `Comparable` carries
+    /// a `Self` requirement, so a `[any PlaylistEntry]` of mixed concrete types
+    /// can't call it — and `isOrderedNewestFirst` exists for that case. Both
+    /// read this, so the two can't drift apart the way two hand-written
+    /// `(chronOrderID, id)` comparisons would.
+    var sortKey: (chronOrderID: UInt64, id: UInt64) {
+        (chronOrderID, id)
     }
 
     /// The moment of broadcast: `hour` (milliseconds since the Unix epoch) as a `Date`.
@@ -610,16 +621,18 @@ public struct Playlist: Codable, Sendable {
     }
 }
 
-/// Newest-first order over a heterogeneous timeline: `chronOrderID`, then `id`.
+/// Newest-first order over a heterogeneous timeline, reversing
+/// ``PlaylistEntry/sortKey``.
 ///
 /// `any PlaylistEntry` is heterogeneous (a Playcut alongside a Talkset, say),
 /// so it can't lean on `PlaylistEntry`'s own `Comparable` conformance — a
 /// `Self` requirement, not expressible across mixed concrete types in one
-/// existential array. This is the one place that rule is spelled out beyond
-/// the same-type default; see that default's doc comment for why a duplicate
-/// `chronOrderID` is reachable, and for the one case `id` doesn't resolve.
-func isOrderedNewestFirst(_ lhs: any PlaylistEntry, _ rhs: any PlaylistEntry) -> Bool {
-    (lhs.chronOrderID, lhs.id) > (rhs.chronOrderID, rhs.id)
+/// existential array. It reads the same `sortKey` that conformance does, so
+/// there is still only one statement of the rule; see `<`'s doc comment for
+/// why a duplicate `chronOrderID` is reachable, and for the one case `id`
+/// doesn't resolve.
+private func isOrderedNewestFirst(_ lhs: any PlaylistEntry, _ rhs: any PlaylistEntry) -> Bool {
+    lhs.sortKey > rhs.sortKey
 }
 
 public extension Playlist {
@@ -639,6 +652,16 @@ public extension Playlist {
     /// means a dj-site reorder can move the timeline's head without touching
     /// the array's, and the lock screen, the watch, and the timeline would
     /// then name different songs.
+    ///
+    /// The tradeoff `playcuts.first` didn't have: a row with a NULL `show_id`
+    /// takes the bare-`id` fallback key and sorts below every packed row, so
+    /// if the newest row is that one this names the previous track instead —
+    /// on the lock screen, Control Center, the watch, CarPlay, and the
+    /// per-tick Spotlight donation. Backend pages the window by
+    /// `flowsheet.id DESC`, so the head of the array was always the newest
+    /// row regardless. See
+    /// `FlowsheetConverter.chronOrderID(showID:playOrder:id:)` for how rare
+    /// that shape is and why ranking it last still beats ranking it first.
     var currentPlaycut: Playcut? {
         playcuts.max()
     }
@@ -663,11 +686,21 @@ public extension Playlist {
     /// When the latest
     /// marker is a sign-off (nobody is on the air) or there are no markers, returns nil.
     /// This is the marker promoted to the dedicated "on air" banner.
+    ///
+    /// One known gap, shared with ``currentPlaycut``: a marker whose
+    /// `show_id` is NULL takes the bare-`id` fallback key (~5e6) and so ranks
+    /// below every packed one (~8.4e15), dropping out of this comparison
+    /// rather than winning it. A missing sign-off leaves a departed DJ on the
+    /// banner; a missing sign-on hides the DJ who is actually on the air.
+    /// Nothing observed produces that shape — see
+    /// `FlowsheetConverter.chronOrderID(showID:playOrder:id:)` for how
+    /// reachable it is and why the alternative key is worse — and it retires
+    /// with the tubafrenzy webhook (WXYC/wiki#88 Phase 6a).
     var onAirSignOn: ShowMarker? {
         // `showMarkers` is a single concrete type, so this is `ShowMarker`'s
-        // own `Comparable` — the same `(chronOrderID, id)` rule `entries`
-        // spells out by hand, which it only has to because an existential
-        // array can't reach the `Self`-constrained conformance.
+        // own `Comparable` — the same `sortKey` rule `entries` applies
+        // through `isOrderedNewestFirst`, which exists only because an
+        // existential array can't reach the `Self`-constrained conformance.
         guard let latest = showMarkers.max(), latest.isStart else { return nil }
         return latest
     }

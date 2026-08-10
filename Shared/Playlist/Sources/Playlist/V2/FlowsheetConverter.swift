@@ -150,10 +150,11 @@ enum FlowsheetConverter {
     /// when sorting — see `Playlist.entries` and `PlaylistEntry`'s
     /// `Comparable` conformance — since this key alone is not always unique.
     ///
-    /// A row whose components don't fit the packing — no `show_id`, a negative
-    /// value, or either component past 32 bits — falls back to the bare `id`,
-    /// which is exactly the pre-#839 key. There is no *correct* key for such a
-    /// row, so the fallback is chosen for how it fails, in two directions:
+    /// A row whose components don't fit the packing — no `show_id`, a zero or
+    /// negative value, or either component past 32 bits — falls back to the
+    /// bare `id`, which is exactly the pre-#839 key. There is no *correct* key
+    /// for such a row, so the fallback is chosen for how it fails, in two
+    /// directions:
     ///
     /// - **One bad row.** `UInt64(id)` (~5e6) ranks below every real packed key
     ///   (~8.4e15), so the row lands at the bottom of the feed. The tempting
@@ -184,9 +185,25 @@ enum FlowsheetConverter {
     ///     no `radioShowId`. Two live samples — 200 rows at the time of #839
     ///     and 30 rows since — carried a `show_id` on every row, so the shape
     ///     is at most a trickle today, and it disappears entirely with the
-    ///     webhook (WXYC/wiki#88 Phase 6a). Until then such a row renders at
-    ///     the bottom of the feed rather than in place; see the fallback
-    ///     rationale above for why that beats the alternative. This rule is a
+    ///     webhook (WXYC/wiki#88 Phase 6a).
+    ///
+    ///     Until then the cost is more than a display position. Because the
+    ///     fallback key sorts *below* every packed row, such a row is also
+    ///     invisible to the two `max`-based readers: if the newest row is the
+    ///     unpackable one, ``Playlist/currentPlaycut`` names the previous
+    ///     track on the lock screen, Control Center, the watch, and CarPlay,
+    ///     and an unpackable show marker drops out of
+    ///     ``Playlist/onAirSignOn``'s comparison, which can hold a stale
+    ///     sign-on or miss a new one. That is still the better failure — the
+    ///     high-bit alternative above inflicts the same wrong answers on
+    ///     *every* row rather than on the rare one — but it is a wrong answer,
+    ///     not just a misplacement.
+    ///
+    ///     A zero `show_id` takes the same branch. Postgres serials start at
+    ///     1 so nothing observed produces it, but without the `show > 0`
+    ///     clause it would pack to `play_order` alone — below the fallback
+    ///     too, and so pinned beneath every other row in the feed. This rule
+    ///     is a
     ///     pure function of the one row, so it produces an identical key
     ///     whether the row arrives via the REST `/flowsheet` batch or a
     ///     single-entry `live-fs-topic` SSE frame (`LiveFsEvent` ->
@@ -203,7 +220,7 @@ enum FlowsheetConverter {
     ///     row identity everywhere else, and the fallback key here.
     static func chronOrderID(showID: Int?, playOrder: Int, id: UInt64) -> UInt64 {
         guard let showID,
-              let show = UInt64(exactly: showID), show <= UInt64(UInt32.max),
+              let show = UInt64(exactly: showID), show > 0, show <= UInt64(UInt32.max),
               let order = UInt64(exactly: playOrder), order <= UInt64(UInt32.max)
         else {
             return id
