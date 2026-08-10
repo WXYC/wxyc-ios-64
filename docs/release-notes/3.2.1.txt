@@ -1,0 +1,59 @@
+WXYC iOS — Release Notes
+Version 3.2.1
+Range: v3.2-AppStoreSubmission4 (2026-08-02, the shipping 3.2 build) → v3.2.1 (2026-08-10)
+
+Distilled from the 217 commits since the 3.2 submission, filtered to what a listener actually experiences. Internal refactors, test work, CI, and documentation are excluded.
+
+3.2.1 is mostly a repair release. The headline is that the live playlist 3.2 advertised never actually worked: the push channel returned HTTP 200, streamed bytes forever, raised no error, and delivered zero events, so the playlist could trail the flowsheet by up to five minutes. That is fixed, along with the ordering, pause-latency, and play/pause-state defects found alongside it. Three small features come with it — a Listening row on the Station tab, a real confirmation for the Request Line, and eligibility for iOS's media suggestions.
+
+
+========================================================================
+WHAT'S NEW IN 3.2.1 (scannable)
+========================================================================
+
+The live playlist, actually live — The real-time playlist introduced in 3.2 was silently falling back to a five-minute refresh. It now updates as tracks are logged, and it keeps updating when you pull down Control Center or switch apps.
+
+Faster, steadier playback — Pause responds immediately instead of freezing for about a second. The play/pause button now shows what you asked for rather than what the stream is doing, so tapping it during a slow start cancels the start instead of re-issuing it, and a failed stream hands you back a working Play button. Cold launch is quicker, too.
+
+Where you're listening — The Station tab now names your current audio destination — AirPods, CarPlay, a HomePod, the iPhone speaker — and tapping it opens the AirPlay picker, so moving the stream no longer means a trip to Control Center.
+
+Request Line confirmation — Sending a request now confirms it. If it fails, the sheet stays up with your text intact so you can try again, instead of disappearing without a word.
+
+Plus WXYC can now be suggested when you plug in headphones or get in the car, more reliable track details and album artwork, and a long list of playlist, widget, Siri, and accessibility fixes.
+
+
+========================================================================
+EVERYTHING IN 3.2.1
+========================================================================
+
+NEW
+- Listening section on the Station tab — names the current audio route and opens the system output picker on tap. AirPlay 2 has worked since the app adopted long-form audio, but only through Control Center; this makes it discoverable. Multi-room output collapses to a device count.
+- Request Line confirmation — a system-style HUD confirms a sent request, presented by the playlist and station screens so it outlives the sheet. A failure is reported inline in the sheet instead, so the typed text survives for a retry. Both outcomes are announced to VoiceOver.
+- Media suggestions — WXYC now declares itself a media app to iOS and seeds the live stream as a suggested play intent, making it eligible for the headphone-connect and driving suggestion tiles on the Lock Screen and Siri Suggestions row. A background-capable handler means a tile can start the stream without opening the app.
+- Tap the DJ's name on the on-air banner to replay the sign-on wave.
+
+IMPROVED
+- The on-air sign-on wave now waits until it can be seen. A DJ change that lands while the app is backgrounded, or while the playlist is scrolled past the banner, replays once the banner is on screen again rather than firing unwatched. Only the most recent missed wave replays, so the handle catches up to the current DJ instead of stuttering through every change.
+- Cold launch is faster. Building the Siri donation on the launch path — including first-touch Metal compositing of the station artwork — was hanging startup for over two seconds before the first frame; it now runs off the main thread.
+- On Tour status chips are filled with their own accent color and no longer outlined, restoring the hues that had drifted. The Box Office ticket's colors follow your theme accent.
+- Cards, pills, sheets, and chips across the playlist, track detail, On Tour, and Station tabs are drawn from one shared set of components, so the same element looks the same wherever it appears.
+- Track detail now repairs itself: a card opened in the couple of seconds before the backend finishes enriching a row used to latch that incomplete snapshot permanently — the record label and nothing else — even after the full details arrived. It now re-resolves the moment enrichment lands.
+- Better battery behavior: a released playback heartbeat no longer keeps waking the app for the life of the process.
+
+FIXED
+- The live playlist delivered no events at all. Frames are now assembled at the byte level, so pushed updates arrive as tracks are logged instead of waiting on the five-minute reconciliation poll — which also affected the on-air banner, mic breaks, and show markers.
+- Live updates were torn down by Control Center, Notification Center, the app switcher, a call banner, or any system alert, and stayed down for the rest of the session. Only a genuine trip to the background ends the subscription now.
+- Archival rows from the station's back catalog no longer appear at the bottom of the playlist. The backend's catalog-wide backfill shares the live channel; those rows are now dropped instead of accumulating between refreshes.
+- "MIC BREAK" could sit above the track it actually followed, permanently, after a DJ reordered the flowsheet on the web. The playlist now orders by the show and play position rather than by insertion order, so reorders are reflected.
+- Tapping pause froze the button and the visualizer for about a second. The audio-session teardown that caused it no longer blocks the tap, and an immediate pause-then-play can't have the in-flight teardown cancel the new stream.
+- The play/pause button showed "pause" during a start that hadn't produced sound yet, so a listener trying to cancel a stuck start silently re-issued it. The button now renders and acts on the same thing: whether you've asked for audio.
+- After a stream error the button could stay on "pause" with no way to restart — worst on Apple Watch, where an exhausted reconnect ramp left stop as the only affordance on an already-dead stream.
+- The Apple Watch play/pause control now routes through the same path as the phone's.
+- Asking Siri to play something else no longer starts WXYC. The app claimed the media domain and started the live stream for any "play X" request; a request naming other media is now declined.
+- Siri reports a failure when playback doesn't actually start, instead of claiming success.
+- The widget could pin itself to the wrong playlist API version on every refresh, showing stale or mismatched rows, and derived its now-playing track by a different rule than the app. Both are corrected.
+- Recently played tracks could stop appearing in Spotlight after a flowsheet reorder. Indexing is keyed on the track's own identifier again, which a reorder doesn't change.
+- Malformed playlist rows — a missing show, a zero or negative identifier — are dropped and logged rather than trapping or sinking to the bottom of the feed.
+- Opening a track's detail no longer starts two downloads of the same album art.
+- Album and artist details are more reliable: an incomplete lookup is retried in minutes rather than cached for a week, artist names from the metadata service take precedence over the flowsheet's, and a "not on Discogs" result is read correctly instead of being inferred from its presence.
+- VoiceOver now reports the real playback state on the player header.
