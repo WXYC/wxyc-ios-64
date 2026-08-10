@@ -610,22 +610,22 @@ public struct Playlist: Codable, Sendable {
     }
 }
 
+/// Newest-first order over a heterogeneous timeline: `chronOrderID`, then `id`.
+///
+/// `any PlaylistEntry` is heterogeneous (a Playcut alongside a Talkset, say),
+/// so it can't lean on `PlaylistEntry`'s own `Comparable` conformance — a
+/// `Self` requirement, not expressible across mixed concrete types in one
+/// existential array. This is the one place that rule is spelled out beyond
+/// the same-type default; see that default's doc comment for why a duplicate
+/// `chronOrderID` is reachable, and for the one case `id` doesn't resolve.
+func isOrderedNewestFirst(_ lhs: any PlaylistEntry, _ rhs: any PlaylistEntry) -> Bool {
+    (lhs.chronOrderID, lhs.id) > (rhs.chronOrderID, rhs.id)
+}
+
 public extension Playlist {
     var entries: [any PlaylistEntry] {
         let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets + showMarkers)
-        // `any PlaylistEntry` is heterogeneous (a Playcut alongside a Talkset,
-        // say), so this can't lean on `PlaylistEntry`'s own `Comparable`
-        // conformance (a `Self` requirement, not expressible across mixed
-        // concrete types in one existential array) — the tiebreak has to be
-        // written out by hand here, mirroring the same-type default in the
-        // `PlaylistEntry` extension above. See that default's doc comment
-        // for why a duplicate `chronOrderID` is reachable, and for the one
-        // case `id` doesn't resolve.
-        return playlist.sorted { lhs, rhs in
-            lhs.chronOrderID != rhs.chronOrderID
-                ? lhs.chronOrderID > rhs.chronOrderID
-                : lhs.id > rhs.id
-        }
+        return playlist.sorted(by: isOrderedNewestFirst)
     }
 
     /// The playcut at the head of the timeline — the newest by the same
@@ -656,8 +656,11 @@ public extension Playlist {
 
     /// The show marker for the DJ currently on the air, if any.
     ///
-    /// Returns the most recent show marker — highest `chronOrderID`, which the API
-    /// assigns in chronological order — but only when it is a sign-on. When the latest
+    /// Returns the most recent show marker — highest `(chronOrderID, id)`, the
+    /// same order the timeline uses — but only when it is a sign-on. The key is
+    /// derived on-device from `(show_id, play_order)` and moves when a DJ
+    /// reorders (#839); it is not a server-assigned chronological sequence.
+    /// When the latest
     /// marker is a sign-off (nobody is on the air) or there are no markers, returns nil.
     /// This is the marker promoted to the dedicated "on air" banner.
     var onAirSignOn: ShowMarker? {

@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Logger
 
 /// Converts v2 API responses to canonical Playlist model.
 enum FlowsheetConverter {
@@ -34,8 +35,15 @@ enum FlowsheetConverter {
             // artwork lookup or Spotlight donation (both are driven off the
             // `playcuts` array built below).
             guard let entryType = FlowsheetEntryType.from(entry) else { continue }
+            // A negative id is neither identity nor order, and `UInt64(_:)`
+            // traps on it — which would take down every poll and every SSE
+            // frame over one malformed row, the same failure the ordering
+            // components below are guarded against. Drop the row instead.
+            guard let id = UInt64(exactly: entry.id) else {
+                Log(.error, category: .network, "Dropping flowsheet row with a negative id: \(entry.id)")
+                continue
+            }
             let hour = parseHour(from: entry.add_time)
-            let id = UInt64(entry.id)
             let chronOrderID = Self.chronOrderID(showID: entry.show_id, playOrder: entry.play_order, id: id)
 
             switch entryType {
@@ -168,16 +176,29 @@ enum FlowsheetConverter {
     /// below rejects the same hazard for the same reason.
     ///
     /// - Parameters:
-    ///   - showID: The row's `show_id`. `nil` only on decoder tolerance for a
-    ///     malformed/legacy row: Backend-Service itself 500s on a nil
-    ///     `show_id` in `changeOrder`, and every row in a live 200-row sample
-    ///     carried one post-#693, so this is not a real-traffic path. This
-    ///     rule is a pure function of the one row, so it produces an identical
-    ///     key whether the row arrives via the REST `/flowsheet` batch or a
+    ///   - showID: The row's `show_id`. Rare but not impossible: Backend's
+    ///     `schema.ts` lists a NULL `show_id` among the shapes the flowsheet
+    ///     table carries ("entries that pre-date a show, talkset / message
+    ///     rows, or never-linked tracks"), and the still-live tubafrenzy
+    ///     webhook writes `show?.id ?? null` whenever it delivers a row with
+    ///     no `radioShowId`. Two live samples — 200 rows at the time of #839
+    ///     and 30 rows since — carried a `show_id` on every row, so the shape
+    ///     is at most a trickle today, and it disappears entirely with the
+    ///     webhook (WXYC/wiki#88 Phase 6a). Until then such a row renders at
+    ///     the bottom of the feed rather than in place; see the fallback
+    ///     rationale above for why that beats the alternative. This rule is a
+    ///     pure function of the one row, so it produces an identical key
+    ///     whether the row arrives via the REST `/flowsheet` batch or a
     ///     single-entry `live-fs-topic` SSE frame (`LiveFsEvent` ->
     ///     `convert([entry])`), which has no neighbouring rows to borrow a
     ///     show from.
-    ///   - playOrder: The row's `play_order` within its show.
+    ///   - playOrder: The row's `play_order` within its show. `0` is packable
+    ///     and ordinary — the webhook writes `sequenceWithinShow ?? 0`, and
+    ///     `startShow` opens a show at 1 — so such a row sorts to the start of
+    ///     its show's block rather than where it was logged. That's contained
+    ///     to one show, unlike the whole-feed fallback below, so it's left
+    ///     alone deliberately: treating 0 as "unset" would sink the row past
+    ///     every other show instead.
     ///   - id: The row's Postgres serial id, already widened by the caller —
     ///     row identity everywhere else, and the fallback key here.
     static func chronOrderID(showID: Int?, playOrder: Int, id: UInt64) -> UInt64 {
