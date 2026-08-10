@@ -79,10 +79,10 @@ struct PlaylistOnAirTests {
 
     @Test("onAirSignOn promotes a NULL-show_id sign-on that postdates a packed sign-off")
     func onAirSignOnPromotesBareKeyedSignOn() {
-        // A sign-on with no show_id takes the bare-id fallback key (~5e6),
-        // below every packed marker (~8.4e15) — under the display key the DJ
-        // actually on the air would lose `max()` to the previous show's
-        // sign-off and vanish from the banner. Event order is id order.
+        // A sign-on with no show_id takes the bare-id fallback key, below
+        // every packed marker — under the display key the DJ actually on the
+        // air would lose `max()` to the previous show's sign-off and vanish
+        // from the banner. Event order is id order.
         let playlist = Playlist.stub(
             showMarkers: [
                 .stub(id: 8, chronOrderID: UInt64(41) << 32 | 1, isStart: true, djName: "PREVIOUS"),

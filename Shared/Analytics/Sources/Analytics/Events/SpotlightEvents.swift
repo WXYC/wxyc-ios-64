@@ -17,8 +17,10 @@ import Foundation
 
 /// Event fired when a Spotlight donation call (recent-batch or artist-batch)
 /// successfully indexes its entities. `playcutID` is the batch's
-/// representative playcut id — the `.id` of the input playcut with the
-/// highest `chronOrderID` — so a donation can be correlated back to a
+/// representative playcut id — the highest input `id`, the batch's newest
+/// row by insertion (see `SpotlightDonationService.donateRecentPlaycuts`;
+/// post-#839 the highest-`chronOrderID` row can be a different row) — so a
+/// donation can be correlated back to a
 /// flowsheet tick; `batchSize` is the number of entities sent; `priorityTier`
 /// is the Spotlight priority the batch was indexed at (see
 /// `SpotlightDonationService.currentPlaycutPriority` /

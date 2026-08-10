@@ -17,10 +17,10 @@ struct PlaylistCacheKeyTests {
     @Test("The two API versions never share a cache entry")
     func versionsGetDistinctKeys() {
         // The two versions write chronOrderIDs nine orders of magnitude apart
-        // (v1: the row id, ~5.3e6; v2: the packed composite, ~8.4e15). A
-        // shared entry written by a v1 session and loaded as a v2 session's
-        // SSE baseline reproduces the exact stale-head bug the #839
-        // invalidation was meant to kill.
+        // (v1: the row id; v2: the packed composite). A shared entry written
+        // by a v1 session and loaded as a v2 session's SSE baseline
+        // reproduces the exact stale-head bug the #839 invalidation was
+        // meant to kill.
         #expect(PlaylistCacheKey.playlist(for: .v1) != PlaylistCacheKey.playlist(for: .v2))
     }
 

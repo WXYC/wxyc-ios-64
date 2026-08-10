@@ -29,20 +29,23 @@ enum FlowsheetConverter {
         var showMarkers: [ShowMarker] = []
 
         for entry in entries {
+            // A negative id is neither identity nor order, and `UInt64(_:)`
+            // traps on it — which would take down every poll and every SSE
+            // frame over one malformed row, the same failure the ordering
+            // components below are guarded against. Drop the row instead.
+            // Checked before the entry-type guard so the diagnostic counts
+            // every malformed row during a bad-feed incident, including rows
+            // whose `entry_type` is also unrecognized.
+            guard let id = UInt64(exactly: entry.id) else {
+                Log(.error, category: .network, "Dropping flowsheet row with a negative id: \(entry.id)")
+                continue
+            }
             // `nil` means the row carries no renderable content — a dj_join/
             // dj_leave marker or an unrecognized future `entry_type` (#693) —
             // so it's dropped entirely: no playcut, no marker, no downstream
             // artwork lookup or Spotlight donation (both are driven off the
             // `playcuts` array built below).
             guard let entryType = FlowsheetEntryType.from(entry) else { continue }
-            // A negative id is neither identity nor order, and `UInt64(_:)`
-            // traps on it — which would take down every poll and every SSE
-            // frame over one malformed row, the same failure the ordering
-            // components below are guarded against. Drop the row instead.
-            guard let id = UInt64(exactly: entry.id) else {
-                Log(.error, category: .network, "Dropping flowsheet row with a negative id: \(entry.id)")
-                continue
-            }
             let hour = parseHour(from: entry.add_time)
             let chronOrderID = Self.chronOrderID(showID: entry.show_id, playOrder: entry.play_order, id: id)
 
@@ -160,12 +163,15 @@ enum FlowsheetConverter {
     ///   (~8.4e15), so the row lands at the bottom of the feed. The tempting
     ///   alternative — shifting `id` into the high bits the way real keys are
     ///   shifted — ranks it *above* every real row instead, because `id` runs
-    ///   ~2.7x `show_id`. That hands one malformed row the on-air banner
-    ///   (``Playlist/onAirSignOn`` takes a `max`), the now-playing surfaces
-    ///   (``Playlist/currentPlaycut``), and the Spotlight watermark, which
-    ///   persists the batch maximum and would then filter out every real
-    ///   playcut until `show_id` caught up — climbing ~930/month, roughly
-    ///   thirteen years. Sorting last is recoverable; sorting first is not.
+    ///   ~2.7x `show_id`, handing one malformed row the head of the timeline
+    ///   until `show_id` caught up — climbing ~930/month, roughly thirteen
+    ///   years. Sorting last is recoverable; sorting first is not. The
+    ///   readers that must not inherit either failure are insulated
+    ///   separately: ``Playlist/currentPlaycut`` compares the bare-keyed
+    ///   partition against the packed one by insertion recency,
+    ///   ``Playlist/onAirSignOn`` orders markers by `id`, and the Spotlight
+    ///   watermark rides `id` outright
+    ///   (`SpotlightDonationService.donatedThroughIDKey`).
     /// - **Every row.** If Backend stops emitting `show_id` altogether, every
     ///   row takes this branch and the whole feed reverts to the pre-#839 `id`
     ///   ordering rather than scrambling — and stays in the same numeric band
@@ -187,17 +193,17 @@ enum FlowsheetConverter {
     ///     is at most a trickle today, and it disappears entirely with the
     ///     webhook (WXYC/wiki#88 Phase 6a).
     ///
-    ///     Until then the cost is more than a display position. Because the
-    ///     fallback key sorts *below* every packed row, such a row is also
-    ///     invisible to the two `max`-based readers: if the newest row is the
-    ///     unpackable one, ``Playlist/currentPlaycut`` names the previous
-    ///     track on the lock screen, Control Center, the watch, and CarPlay,
-    ///     and an unpackable show marker drops out of
-    ///     ``Playlist/onAirSignOn``'s comparison, which can hold a stale
-    ///     sign-on or miss a new one. That is still the better failure — the
-    ///     high-bit alternative above inflicts the same wrong answers on
-    ///     *every* row rather than on the rare one — but it is a wrong answer,
-    ///     not just a misplacement.
+    ///     Until then the cost is display position: the fallback key sorts
+    ///     *below* every packed row, so the row lands at the bottom of the
+    ///     feed rather than where it was logged — even when the NULL shape
+    ///     arrives in a run (the webhook writes it for every row logged while
+    ///     nobody is signed on, not just the odd one). The `max`-based
+    ///     readers do not inherit that misplacement:
+    ///     ``Playlist/currentPlaycut`` compares the bare-keyed partition
+    ///     against the packed one by insertion recency, and
+    ///     ``Playlist/onAirSignOn`` orders markers by `id`, so the
+    ///     now-playing surfaces and the banner stay correct through a
+    ///     NULL-`show_id` stretch.
     ///
     ///     A zero `show_id` takes the same branch. Postgres serials start at
     ///     1 so nothing observed produces it, but without the `show > 0`

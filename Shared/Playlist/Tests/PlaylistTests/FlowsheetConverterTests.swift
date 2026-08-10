@@ -962,16 +962,14 @@ struct FlowsheetConverterTests {
     @Test("A nil show_id never outranks a real packed key")
     func nilShowIDNeverOutranksARealPackedKey() {
         // A shape Backend's `schema.ts` lists outright and the still-live
-        // tubafrenzy webhook can write (`show?.id ?? null`), though two live
-        // samples totalling 230 rows carried a `show_id` on every one. There
-        // is no *correct* key for a row that names
-        // no show, so the fallback is chosen for how it fails: a bare
-        // `UInt64(id)` (~5e6) ranks below every real packed key (~8e15), so
-        // the row lands at the bottom of the feed. The alternative — shifting
-        // `id` into the high bits the way real keys are shifted — ranks it
-        // ABOVE every real row indefinitely (`id` runs ~2.7x `show_id`), which
-        // hands it the on-air banner, the now-playing surfaces, and the
-        // Spotlight watermark. Bottom is recoverable; top is not.
+        // tubafrenzy webhook can write (`show?.id ?? null`). There is no
+        // *correct* key for a row that names no show, so the fallback is
+        // chosen for how it fails: the bare id ranks below every real packed
+        // key and the row lands at the bottom of the feed, whereas the
+        // rejected alternative — shifting `id` into the high bits — would
+        // rank it ABOVE every real row indefinitely. Bottom is recoverable;
+        // top is not. Reachability, magnitudes, and the full failure
+        // taxonomy live in `FlowsheetConverter.chronOrderID`'s doc comment.
         let nilShowEntry = FlowsheetEntry(
             id: 5_304_200, show_id: nil, album_id: nil,
             artist_name: "Hermanos Gutiérrez", album_title: "El Bueno y el Malo",

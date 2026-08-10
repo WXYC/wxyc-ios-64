@@ -43,10 +43,12 @@ public extension PlaylistEntry {
     /// It does *not* make this a total order in general: entries synthesized
     /// outside the feed carry placeholder identity — `LikedSongSnapshot`'s
     /// `toPlaycut()` hands every bridged row `id: 0, chronOrderID: 0` — so a
-    /// collection of those stays fully tied and keeps whatever order the
-    /// caller had. That is deliberate on their side (nothing keys on a liked
-    /// song's flowsheet identity), but callers that need a stable order over
-    /// mixed or synthesized entries must sort on something else.
+    /// collection of those stays fully tied, with *no guaranteed relative
+    /// order*: Swift's `sorted` makes no stability promise, so tied elements
+    /// may present differently across calls. That is tolerable on their side
+    /// (nothing keys on a liked song's flowsheet identity or its position),
+    /// but callers that need a stable order over mixed or synthesized
+    /// entries must sort on something else.
     static func <(lhs: Self, rhs: Self) -> Bool {
         lhs.sortKey < rhs.sortKey
     }

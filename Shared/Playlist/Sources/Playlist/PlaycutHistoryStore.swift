@@ -47,12 +47,21 @@ import Logger
 ///
 /// ## Reads
 ///
-/// Reads are brute-force scans of the day buckets (newest-first) plus the rotation set —
-/// no sidecar id-to-bucket index. The v1 backend mutates `hour` in place across
+/// Reads are brute-force scans of the day buckets (newest-day-first) plus the rotation
+/// set — no sidecar id-to-bucket index. The v1 backend mutates `hour` in place across
 /// hourly-breakpoint moves, so ingest evicts each id from the adjacent day buckets;
 /// when duplicates persist anyway (pre-existing data, non-adjacent moves), the snapshot
 /// with the greater `timeCreated` wins at read. Reindex is a rare, system-initiated
 /// event and the worst case (~90 buckets of small JSON) decodes in tens of milliseconds.
+///
+/// A caveat on cross-entry ordering: ingest is API-version-blind and this store never
+/// re-keys, so rows keyed under up to three `chronOrderID` scales accrete together —
+/// tubafrenzy-era decimal keys, v1 row ids, and v2 packed composites (see
+/// `FlowsheetConverter.chronOrderID(showID:playOrder:id:)` and
+/// `SpotlightDonationService.watermarkKey` for the scales). Sorts on the
+/// `(chronOrderID, id)` key are therefore NOT chronological across a scale boundary;
+/// consumers that need true recency must rank on `timeCreated`/`hour` instead. Today's
+/// consumers (Spotlight reindex resolution, id-filtered lookups) are order-insensitive.
 ///
 /// The store performs no network I/O and never clears storage wholesale; pruning is
 /// TTL- and age-driven only.
@@ -350,8 +359,10 @@ public actor PlaycutHistoryStore {
     /// `timeCreated` — a stale out-of-order replay (e.g. the subscription
     /// re-broadcasting the cached playlist after a fresher direct ingest) must
     /// not overwrite the corrected copy. Ties overwrite: enrichments carry an
-    /// unchanged `timeCreated` and must keep landing. The result is ordered
-    /// newest-first by `chronOrderID`.
+    /// unchanged `timeCreated` and must keep landing. The result is sorted
+    /// descending on the `(chronOrderID, id)` key — which is NOT chronological
+    /// across API-version scale boundaries; see the cross-entry ordering
+    /// caveat in the type's doc comment.
     private static func merge(_ incoming: [Playcut], into existing: [Playcut]) -> [Playcut] {
         var byID = Dictionary(existing.map { ($0.id, $0) }, uniquingKeysWith: { _, new in new })
         for playcut in incoming {
