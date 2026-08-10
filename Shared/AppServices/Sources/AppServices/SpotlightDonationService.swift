@@ -136,7 +136,7 @@ public actor SpotlightDonationService: Sendable {
     /// Called from a `PlaylistService.updates()` subscription on every tick.
     /// This path deliberately does NOT advance the batch watermark: on a
     /// cold launch the tick fires with the newest playcut
-    /// (`playlist.playcuts.first`) before the background-refresh path has a
+    /// (`playlist.currentPlaycut`) before the background-refresh path has a
     /// chance to run, and advancing the watermark here would filter every
     /// unseen historical entry — the entire initial 50-row window on a
     /// fresh install — out of the next batch donation. Spotlight upserts
@@ -146,7 +146,7 @@ public actor SpotlightDonationService: Sendable {
     /// A short-circuit dedup skips the XPC round-trip when the incoming
     /// playcut is byte-identical to the last successfully indexed one — the
     /// common case when `PlaylistService` re-broadcasts a downstream
-    /// enrichment that didn't touch `playcuts.first`.
+    /// enrichment that didn't touch the current playcut.
     public func donateCurrentPlaycut(_ playcut: Playcut) async {
         guard playcut != lastDonatedCurrentPlaycut else { return }
         let entity = PlaycutEntity(playcut: playcut)
@@ -170,12 +170,12 @@ public actor SpotlightDonationService: Sendable {
         let watermark = currentWatermark
         let batch = playcuts
             .filter { $0.chronOrderID > watermark }
-            // `<` here is `Playcut`'s own `Comparable` (chronOrderID, then id
+            // `sorted()` is `Playcut`'s own `Comparable` (chronOrderID, then id
             // as an explicit tiebreak) — a duplicate `chronOrderID` is
             // reachable (see FlowsheetConverter.chronOrderID's doc comment),
             // and without the tiebreak two such rows would swap places
             // between ticks, changing which one lands on the watermark edge.
-            .sorted(by: <)
+            .sorted()
             .prefix(Self.batchLimit)
 
         guard let highestID = batch.last?.chronOrderID else { return }
@@ -263,11 +263,11 @@ public actor SpotlightDonationService: Sendable {
         // that produced this artist batch — the `.id` of the input playcut
         // with the highest chronOrderID, matching donateRecentPlaycuts's
         // newest-row-in-the-batch convention even though this path shares no
-        // watermark of its own. `max(by:)` uses `Playcut`'s own `Comparable`
+        // watermark of its own. `max()` uses `Playcut`'s own `Comparable`
         // (chronOrderID, then id as an explicit tiebreak) so a duplicate
         // chronOrderID resolves deterministically instead of leaving the
         // reported id to an unspecified tie order.
-        let representativeID = playcuts.max(by: <)?.id ?? 0
+        let representativeID = playcuts.max()?.id ?? 0
 
         do {
             try await artistIndexer.indexArtists(Array(entities), priority: Self.batchPriority)

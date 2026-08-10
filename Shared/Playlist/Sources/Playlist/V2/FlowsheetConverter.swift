@@ -36,7 +36,7 @@ enum FlowsheetConverter {
             guard let entryType = FlowsheetEntryType.from(entry) else { continue }
             let hour = parseHour(from: entry.add_time)
             let id = UInt64(entry.id)
-            let chronOrderID = Self.chronOrderID(showID: entry.show_id, playOrder: entry.play_order, id: entry.id)
+            let chronOrderID = Self.chronOrderID(showID: entry.show_id, playOrder: entry.play_order, id: id)
 
             switch entryType {
             case .playcut:
@@ -142,33 +142,52 @@ enum FlowsheetConverter {
     /// when sorting — see `Playlist.entries` and `PlaylistEntry`'s
     /// `Comparable` conformance — since this key alone is not always unique.
     ///
+    /// A row whose components don't fit the packing — no `show_id`, a negative
+    /// value, or either component past 32 bits — falls back to the bare `id`,
+    /// which is exactly the pre-#839 key. There is no *correct* key for such a
+    /// row, so the fallback is chosen for how it fails, in two directions:
+    ///
+    /// - **One bad row.** `UInt64(id)` (~5e6) ranks below every real packed key
+    ///   (~8.4e15), so the row lands at the bottom of the feed. The tempting
+    ///   alternative — shifting `id` into the high bits the way real keys are
+    ///   shifted — ranks it *above* every real row instead, because `id` runs
+    ///   ~2.7x `show_id`. That hands one malformed row the on-air banner
+    ///   (``Playlist/onAirSignOn`` takes a `max`), the now-playing surfaces
+    ///   (``Playlist/currentPlaycut``), and the Spotlight watermark, which
+    ///   persists the batch maximum and would then filter out every real
+    ///   playcut until `show_id` caught up — climbing ~930/month, roughly
+    ///   thirteen years. Sorting last is recoverable; sorting first is not.
+    /// - **Every row.** If Backend stops emitting `show_id` altogether, every
+    ///   row takes this branch and the whole feed reverts to the pre-#839 `id`
+    ///   ordering rather than scrambling — and stays in the same numeric band
+    ///   as a watermark written before this change.
+    ///
+    /// The trapping cases are not hypothetical bookkeeping: `UInt64(_:)` traps
+    /// on a negative `Int`, so a single negative `show_id` or `play_order`
+    /// would crash every poll *and* every SSE frame. `milliseconds(since1970:)`
+    /// below rejects the same hazard for the same reason.
+    ///
     /// - Parameters:
     ///   - showID: The row's `show_id`. `nil` only on decoder tolerance for a
     ///     malformed/legacy row: Backend-Service itself 500s on a nil
     ///     `show_id` in `changeOrder`, and every row in a live 200-row sample
-    ///     carried one post-#693, so this is not a real-traffic path. Falls
-    ///     back to `UInt64(id) << 32` rather than the raw `id`: a bare
-    ///     `UInt64(id)` (~5e6) would be dwarfed by a real packed key (~8e15)
-    ///     and sink to the very bottom of the feed — the exact collapse this
-    ///     ticket exists to fix — whereas shifting `id` the same way real
-    ///     keys are shifted keeps the row visible near its true
-    ///     chronological position. `id` grows faster than `show_id` (many
-    ///     rows per show), so this sentinel lands slightly *above* the row's
-    ///     true position rather than below it — the same "float to now,
-    ///     don't sink to the epoch" bias `parseHour`'s own fallback already
-    ///     uses for an unparseable `add_time`. This rule is a pure function
-    ///     of the one row, so it produces an identical key whether the row
-    ///     arrives via the REST `/flowsheet` batch or a single-entry
-    ///     `live-fs-topic` SSE frame (`LiveFsEvent` -> `convert([entry])`),
-    ///     which has no neighbouring rows to borrow a show from.
+    ///     carried one post-#693, so this is not a real-traffic path. This
+    ///     rule is a pure function of the one row, so it produces an identical
+    ///     key whether the row arrives via the REST `/flowsheet` batch or a
+    ///     single-entry `live-fs-topic` SSE frame (`LiveFsEvent` ->
+    ///     `convert([entry])`), which has no neighbouring rows to borrow a
+    ///     show from.
     ///   - playOrder: The row's `play_order` within its show.
-    ///   - id: The row's Postgres serial id — used verbatim as identity
-    ///     elsewhere, and as the nil-`show_id` sentinel's high bits here.
-    static func chronOrderID(showID: Int?, playOrder: Int, id: Int) -> UInt64 {
-        guard let showID else {
-            return UInt64(id) << 32
+    ///   - id: The row's Postgres serial id, already widened by the caller —
+    ///     row identity everywhere else, and the fallback key here.
+    static func chronOrderID(showID: Int?, playOrder: Int, id: UInt64) -> UInt64 {
+        guard let showID,
+              let show = UInt64(exactly: showID), show <= UInt64(UInt32.max),
+              let order = UInt64(exactly: playOrder), order <= UInt64(UInt32.max)
+        else {
+            return id
         }
-        return (UInt64(showID) << 32) | UInt64(playOrder)
+        return (show << 32) | order
     }
 
     /// Parses an ISO 8601 timestamp string to milliseconds since 1970.

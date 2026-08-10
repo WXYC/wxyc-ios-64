@@ -749,9 +749,12 @@ public final actor PlaylistService: Sendable {
 
     /// Inserts or replaces a playcut by `id`, then caches and broadcasts.
     ///
-    /// The `playcuts` array order is irrelevant — `Playlist.entries` re-sorts by
-    /// `chronOrderID` — so an insert simply appends. An identical replay is a
-    /// no-op so it doesn't churn observers or the cache.
+    /// An insert simply appends: nothing reads this array positionally.
+    /// `Playlist.entries` re-sorts by `(chronOrderID, id)` for the timeline, and
+    /// the now-playing surfaces read `Playlist.currentPlaycut`, which applies
+    /// the same order rather than taking the head — see that property for why
+    /// the two stopped coinciding once the key became composite (#839). An
+    /// identical replay is a no-op so it doesn't churn observers or the cache.
     private func upsertPlaycut(_ playcut: Playcut) async {
         var playcuts = currentPlaylist.playcuts
         if let index = playcuts.firstIndex(where: { $0.id == playcut.id }) {

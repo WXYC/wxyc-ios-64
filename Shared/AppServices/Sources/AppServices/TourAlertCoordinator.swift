@@ -46,7 +46,7 @@ public final class TourAlertCoordinator {
     /// Evaluates the current on-air play and posts a tour alert if one is
     /// warranted and not already sent this session.
     /// - Parameters:
-    ///   - playcut: The on-air playcut (`playlist.playcuts.first`), or `nil`.
+    ///   - playcut: The on-air playcut (`playlist.currentPlaycut`), or `nil`.
     ///   - isPlaying: Whether the live stream is currently playing.
     public func ingest(playcut: Playcut?, isPlaying: Bool) async {
         // Call the resolver directly (not via `Optional.map`/`flatMap`): it is

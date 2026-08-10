@@ -111,6 +111,35 @@ struct NowPlayingServiceTests {
         #expect(artworkCallCount == 1)
     }
 
+    @Test("AsyncSequence names the timeline's newest playcut, not the head of the playcuts array")
+    func asyncSequenceFollowsCompositeOrderNotArrayOrder() async throws {
+        // The lock screen and Control Center read this sequence. `playcuts`
+        // carries wire order plus live-insert appends, so once ordering keys
+        // on the composite `(show_id, play_order)` (#839) a dj-site reorder
+        // can move the timeline's head without moving the array's — and the
+        // lock screen would name a different song than the feed shows.
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = Playlist.stub(playcuts: [
+            .stub(id: 500, chronOrderID: UInt64(42) << 32 | 5, songTitle: "Back, Baby", artistName: "Jessica Pratt"),
+            .stub(id: 501, chronOrderID: UInt64(42) << 32 | 9, songTitle: "la paradoja", artistName: "Juana Molina"),
+        ])
+
+        let playlistService = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 0.1,
+            cacheCoordinator: makeNowPlayingTestCacheCoordinator()
+        )
+        let nowPlayingService = NowPlayingService(
+            playlistService: playlistService,
+            artworkService: MockArtworkService()
+        )
+
+        var iterator = nowPlayingService.makeAsyncIterator()
+        let nowPlayingItem = try await iterator.next()
+
+        #expect(nowPlayingItem?.playcut.id == 501)
+    }
+
     @Test("AsyncSequence skips empty playlists")
     func asyncSequenceSkipsEmptyPlaylists() async throws {
         // Given

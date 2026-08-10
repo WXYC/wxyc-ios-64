@@ -293,6 +293,44 @@ struct SpotlightDonationServiceTests {
         #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == String(packedChronOrderID))
     }
 
+    @Test("A row that couldn't be packed cannot push the watermark past the packed key space")
+    func unpackableRowDoesNotPoisonTheWatermark() async {
+        // The watermark takes the largest chronOrderID in the batch, so
+        // whatever key `FlowsheetConverter` hands an unpackable row (nil
+        // `show_id`, an out-of-range component) is persisted verbatim if it
+        // ranks highest. A fallback that shifted `id` into the high bits the
+        // way real keys are shifted would put ~2.3e16 here — above every real
+        // packed key (~8.4e15) — and `show_id` climbs ~930/month, so donation
+        // would stay stranded for roughly thirteen years with nothing to
+        // notice. The fallback is the bare id precisely so it can never win
+        // this comparison.
+        // These keys are literals because `FlowsheetConverter` is internal to
+        // `Playlist`; what they encode is its contract, pinned on that side by
+        // `FlowsheetConverterTests.nilShowIDNeverOutranksARealPackedKey`. This
+        // test owns the other half — that a batch containing such a row leaves
+        // the waterline where the real rows put it.
+        let defaults = InMemoryDefaults()
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        let packedChronOrderID = (UInt64(1_950_704) << 32) | UInt64(12)
+        await service.donateRecentPlaycuts([
+            .stub(id: 5_304_199, chronOrderID: packedChronOrderID),
+            .stub(id: 5_304_200, chronOrderID: UInt64(5_304_200)),   // unpackable: falls back to id
+        ])
+
+        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == String(packedChronOrderID))
+
+        // The consequence that matters: the next real row still donates.
+        await service.donateRecentPlaycuts([
+            .stub(id: 5_304_201, chronOrderID: (UInt64(1_950_704) << 32) | UInt64(13)),
+        ])
+
+        let calls = await indexer.calls
+        #expect(calls.count == 2, "a later real row must not be filtered out by a poisoned watermark")
+        #expect(calls.last?.entityIDs == [PlaycutID(5_304_201)])
+    }
+
     // MARK: - Artist donation (C6)
 
     @Test("donateArtists indexes one deduped entity per normalized artist name")

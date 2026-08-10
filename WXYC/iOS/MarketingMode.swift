@@ -208,7 +208,7 @@ final class MarketingModeController {
             var playcutToLike: Playcut?
             while ContinuousClock.now - likeWaitStart < playlistWaitTimeout {
                 let playlist = await appState.playlistService.currentPlaylistSnapshot()
-                if let playcut = playlist.playcuts.first {
+                if let playcut = playlist.currentPlaycut {
                     playcutToLike = playcut
                     break
                 }

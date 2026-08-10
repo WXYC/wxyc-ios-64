@@ -35,7 +35,7 @@ struct PlayerPage: View {
     }
     
     var content: NowPlayingEntry {
-        if let playcut = playlist.playcuts.first {
+        if let playcut = playlist.currentPlaycut {
             return NowPlayingEntry(playcut: playcut)
         } else {
             return NowPlayingEntry(
@@ -51,7 +51,7 @@ struct PlayerPage: View {
             VStack {
                 VStack {
                     Group {
-                        if let playcut = playlist.playcuts.first {
+                        if let playcut = playlist.currentPlaycut {
                             RemoteImage(playcut: playcut)
                         } else {
                             Image.logo

@@ -37,8 +37,16 @@ public extension PlaylistEntry {
     /// and a bare `chronOrderID` comparison would leave same-type collections
     /// — e.g. `PlaycutHistoryStore`'s `[Playcut].sorted(by: >)` — in an
     /// unspecified relative order for tied elements across calls. `id` is
-    /// row identity and therefore always unique, so it fully resolves the
-    /// tie.
+    /// row identity for anything that came off the flowsheet, so it resolves
+    /// the tie there.
+    ///
+    /// It does *not* make this a total order in general: entries synthesized
+    /// outside the feed carry placeholder identity — `LikedSongSnapshot`'s
+    /// `toPlaycut()` hands every bridged row `id: 0, chronOrderID: 0` — so a
+    /// collection of those stays fully tied and keeps whatever order the
+    /// caller had. That is deliberate on their side (nothing keys on a liked
+    /// song's flowsheet identity), but callers that need a stable order over
+    /// mixed or synthesized entries must sort on something else.
     static func <(lhs: Self, rhs: Self) -> Bool {
         (lhs.chronOrderID, lhs.id) < (rhs.chronOrderID, rhs.id)
     }
@@ -611,13 +619,28 @@ public extension Playlist {
         // concrete types in one existential array) — the tiebreak has to be
         // written out by hand here, mirroring the same-type default in the
         // `PlaylistEntry` extension above. See that default's doc comment
-        // for why a duplicate `chronOrderID` is reachable and why `id` (row
-        // identity, always unique) is what resolves it deterministically.
+        // for why a duplicate `chronOrderID` is reachable, and for the one
+        // case `id` doesn't resolve.
         return playlist.sorted { lhs, rhs in
             lhs.chronOrderID != rhs.chronOrderID
                 ? lhs.chronOrderID > rhs.chronOrderID
                 : lhs.id > rhs.id
         }
+    }
+
+    /// The playcut at the head of the timeline — the newest by the same
+    /// `(chronOrderID, id)` order ``entries`` uses.
+    ///
+    /// Every now-playing surface reads this rather than `playcuts.first`: the
+    /// `playcuts` array carries wire order plus live-insert appends
+    /// (`PlaylistService.upsertPlaycut`), so its head is not the newest row.
+    /// While `chronOrderID` was the flowsheet `id` the two happened to
+    /// coincide; keying order on the composite `(show_id, play_order)` (#839)
+    /// means a dj-site reorder can move the timeline's head without touching
+    /// the array's, and the lock screen, the watch, and the timeline would
+    /// then name different songs.
+    var currentPlaycut: Playcut? {
+        playcuts.max()
     }
 
     /// True when the playlist carries no timeline content, ignoring `onAir`.
@@ -638,12 +661,11 @@ public extension Playlist {
     /// marker is a sign-off (nobody is on the air) or there are no markers, returns nil.
     /// This is the marker promoted to the dedicated "on air" banner.
     var onAirSignOn: ShowMarker? {
-        // `showMarkers` is a single concrete type, so this could lean on
-        // `ShowMarker`'s own `Comparable` (`max()`, no closure) — spelled out
-        // explicitly instead, matching `Playlist.entries`'s tiebreak above,
-        // since a duplicate `chronOrderID` is exactly as reachable here.
-        guard let latest = showMarkers.max(by: { ($0.chronOrderID, $0.id) < ($1.chronOrderID, $1.id) }),
-              latest.isStart else { return nil }
+        // `showMarkers` is a single concrete type, so this is `ShowMarker`'s
+        // own `Comparable` — the same `(chronOrderID, id)` rule `entries`
+        // spells out by hand, which it only has to because an existential
+        // array can't reach the `Self`-constrained conformance.
+        guard let latest = showMarkers.max(), latest.isStart else { return nil }
         return latest
     }
 
