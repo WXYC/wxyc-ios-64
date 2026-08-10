@@ -19,7 +19,7 @@ public protocol RequestLineAnalyticsEvent: AnalyticsEvent {}
 // MARK: - Auth Token Source
 
 /// The source from which an auth token was retrieved.
-public enum AuthTokenSource: String, Sendable {
+public enum AuthTokenSource: String, CaseIterable, Sendable {
     case cache
     case keychain
     case network
@@ -61,7 +61,7 @@ public struct RequestLineAuthCompletedEvent: RequestLineAnalyticsEvent {
 }
 
 /// Phase of authentication where a failure occurred.
-public enum AuthFailurePhase: String, Sendable {
+public enum AuthFailurePhase: String, CaseIterable, Sendable {
     case keychain
     case network
     case parse
@@ -114,7 +114,7 @@ public struct RequestLineRequestCompletedEvent: RequestLineAnalyticsEvent {
 // MARK: - Token Events
 
 /// Reason why a token was refreshed.
-public enum TokenRefreshReason: String, Sendable {
+public enum TokenRefreshReason: String, CaseIterable, Sendable {
     case unauthorized = "401"
     case expired
 }
@@ -137,7 +137,7 @@ public struct RequestLineTokenRefreshedEvent: RequestLineAnalyticsEvent {
 // MARK: - Keychain Events
 
 /// Keychain operation type.
-public enum KeychainOperation: String, Sendable {
+public enum KeychainOperation: String, CaseIterable, Sendable {
     case read
     case write
     case delete
@@ -192,7 +192,7 @@ public struct DeviceFingerprintInitFailedEvent: RequestLineAnalyticsEvent {
 // MARK: - Feature Flag Events
 
 /// Source of a feature flag evaluation.
-public enum FeatureFlagSource: String, Sendable {
+public enum FeatureFlagSource: String, CaseIterable, Sendable {
     case flag
     case override
 }
