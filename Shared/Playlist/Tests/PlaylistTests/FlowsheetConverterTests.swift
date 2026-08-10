@@ -187,7 +187,8 @@ struct FlowsheetConverterTests {
         #expect(playcut.songTitle == "Test Song")
         #expect(playcut.releaseTitle == "Test Album")
         #expect(playcut.labelName == "Test Label")
-        #expect(playcut.chronOrderID == 123)
+        // Composite key: (show_id << 32) | play_order, not the bare id (#839).
+        #expect(playcut.chronOrderID == (UInt64(456) << 32) | 1)
     }
 
     @Test("Converts talkset entry correctly when message is 'Talkset'")
@@ -217,7 +218,8 @@ struct FlowsheetConverterTests {
 
         let talkset = playlist.talksets.first!
         #expect(talkset.id == 124)
-        #expect(talkset.chronOrderID == 124)
+        // show_id is nil here: falls back to the id-based sentinel (#839).
+        #expect(talkset.chronOrderID == UInt64(124) << 32)
     }
 
     @Test("Converts breakpoint entry correctly when message contains 'Breakpoint'")
@@ -247,7 +249,8 @@ struct FlowsheetConverterTests {
 
         let breakpoint = playlist.breakpoints.first!
         #expect(breakpoint.id == 125)
-        #expect(breakpoint.chronOrderID == 125)
+        // show_id is nil here: falls back to the id-based sentinel (#839).
+        #expect(breakpoint.chronOrderID == UInt64(125) << 32)
     }
 
     @Test("Converts show start marker correctly")
@@ -279,7 +282,8 @@ struct FlowsheetConverterTests {
         #expect(marker.id == 126)
         #expect(marker.isStart == true)
         #expect(marker.djName == "DJ Cool")
-        #expect(marker.chronOrderID == 126)
+        // show_id is nil here: falls back to the id-based sentinel (#839).
+        #expect(marker.chronOrderID == UInt64(126) << 32)
     }
 
     @Test("Converts show end marker correctly")
@@ -805,6 +809,247 @@ struct FlowsheetConverterTests {
         #expect(sorted.count == 2)
         #expect(sorted[0].id == 5210394, "current show's fresh entry must rank first")
         #expect(sorted[1].id == 5210353, "previous show's older entry must rank second")
+    }
+
+    @Test("#265 regression, expanded: a previous show with MORE logged entries than the current show still surfaces the current show's entries newest-first, in exact order")
+    func previousShowWithMoreEntriesStillRanksBehindCurrentShow() {
+        // The previous show (show_id 1947063) ran a full set and logged five
+        // entries; the current show (show_id 1947064) has only logged two so
+        // far. Ranking on play_order alone would float the previous show's
+        // high-play_order tail above the current show's freshly-reset head —
+        // the #265 regression. The show_id component of the packed key must
+        // dominate regardless of how many more entries the previous show has.
+        let previousShowEntries = (1...5).map { n in
+            FlowsheetEntry(
+                id: 5210349 + n, show_id: 1947063, album_id: nil,
+                artist_name: "Luomo", album_title: "Vocalcity",
+                track_title: "Track \(n)", record_label: "Force Tracks",
+                rotation_id: nil, rotation_play_freq: nil,
+                request_flag: false, message: nil,
+                play_order: 30 + n, add_time: "2026-05-14T2\(n):00:00.000Z",
+                entry_type: "track"
+            )
+        }
+        let currentShowEntries = (1...2).map { n in
+            FlowsheetEntry(
+                id: 5210394 + n, show_id: 1947064, album_id: nil,
+                artist_name: "Tortoise", album_title: "Standards",
+                track_title: "Current Track \(n)", record_label: "Thrill Jockey Records",
+                rotation_id: nil, rotation_play_freq: nil,
+                request_flag: false, message: nil,
+                play_order: n, add_time: "2026-05-15T01:4\(n):00.000Z",
+                entry_type: "track"
+            )
+        }
+
+        let playlist = FlowsheetConverter.convert(previousShowEntries + currentShowEntries)
+        let sortedIDs = playlist.entries.map(\.id)
+
+        // Current show's two entries (newest play_order first), then the
+        // entire previous show's five entries (newest play_order first) —
+        // even though the previous show logged more rows overall.
+        #expect(sortedIDs == [5210396, 5210395, 5210354, 5210353, 5210352, 5210351, 5210350])
+    }
+
+    // MARK: - Composite (show_id, play_order) ordering (#839)
+
+    @Test("A dj-site reorder that lowers play_order sorts the row into its new position, not its id position")
+    func sortsByPlayOrderNotID() {
+        // The headline #839 scenario: a DJ logs a track, then hits TALKSET —
+        // the talkset's id is higher (logged later), so under the old
+        // id-only key it renders above the track it actually preceded. The
+        // DJ drags the talkset below the track on dj-site (`changeOrder`),
+        // which lowers its play_order without changing its id.
+        let track = FlowsheetEntry(
+            id: 500, show_id: 42, album_id: nil,
+            artist_name: "Jessica Pratt", album_title: "On Your Own Love Again",
+            track_title: "Back, Baby", record_label: "Drag City",
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 5, add_time: "2026-07-31T18:00:00Z",
+            entry_type: "track"
+        )
+        let reorderedTalkset = FlowsheetEntry(
+            id: 501, show_id: 42, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 4, add_time: "2026-07-31T18:00:05Z",
+            entry_type: "talkset"
+        )
+
+        let playlist = FlowsheetConverter.convert([track, reorderedTalkset])
+        let sorted = playlist.entries
+
+        #expect(sorted.count == 2)
+        #expect(sorted[0].id == 500, "the track must rank first even though the talkset has a higher id")
+        #expect(sorted[1].id == 501)
+    }
+
+    @Test("Packs (show_id, play_order) via a left shift, not a decimal multiplier")
+    func packsShowIDAndPlayOrderViaShift() {
+        let entry = FlowsheetEntry(
+            id: 999, show_id: 1_950_704, album_id: nil, artist_name: nil,
+            album_title: nil, track_title: nil, record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: nil,
+            message: nil, play_order: 12, add_time: "2026-07-31T18:00:00Z",
+            entry_type: "talkset"
+        )
+
+        let playlist = FlowsheetConverter.convert([entry])
+        let expected = (UInt64(1_950_704) << 32) | UInt64(12)
+
+        #expect(playlist.talksets.first?.chronOrderID == expected)
+        // A decimal K=1000 multiplier has only ~20x headroom over the
+        // observed max play_order (50 in a 3-hour show) and would silently
+        // collide once breached; the shift has ~2000x headroom at today's
+        // show_id magnitude and needs no boundary test.
+        #expect(expected != UInt64(1000 * 1_950_704 + 12))
+    }
+
+    // MARK: - Nil show_id sentinel (#839)
+
+    @Test("A nil show_id packs id into the composite's high bits rather than sinking to the bottom of the feed")
+    func nilShowIDDoesNotSinkToBottom() {
+        // Decoder tolerance for a malformed/legacy row: Backend-Service
+        // itself 500s on a nil show_id in `changeOrder`, and every row in a
+        // live 200-row sample carried one post-#693, so this is not a
+        // real-traffic path. A bare `UInt64(id)` (~5e6) would be dwarfed by a
+        // real packed key (~8e15) and sink to the very bottom of the feed —
+        // the exact collapse this ticket exists to fix — so `id` is shifted
+        // the same way real keys are instead, mirroring `parseHour`'s
+        // "float to now, don't sink to the epoch" fallback bias.
+        let nilShowEntry = FlowsheetEntry(
+            id: 5_304_200, show_id: nil, album_id: nil,
+            artist_name: "Hermanos Gutiérrez", album_title: "El Bueno y el Malo",
+            track_title: "Los Gemelos", record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 4, add_time: "2026-07-31T18:00:00Z",
+            entry_type: "track"
+        )
+        let realShowEntry = FlowsheetEntry(
+            id: 5_304_199, show_id: 1_950_704, album_id: nil,
+            artist_name: "Csillagrablók", album_title: "Idővonat",
+            track_title: "Nyugalom", record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 5, add_time: "2026-07-31T17:59:00.000Z",
+            entry_type: "track"
+        )
+
+        let playlist = FlowsheetConverter.convert([realShowEntry, nilShowEntry])
+
+        #expect(playlist.entries.first?.id == 5_304_200, "the nil-show row must not sink below a real packed key")
+        #expect(playlist.playcuts.first { $0.id == 5_304_200 }?.chronOrderID == UInt64(5_304_200) << 32)
+    }
+
+    @Test("The nil-show_id sentinel is identical on the REST and single-entry SSE paths")
+    func nilShowIDSentinelMatchesAcrossRESTAndSSE() throws {
+        let entry = FlowsheetEntry(
+            id: 5_304_201, show_id: nil, album_id: nil,
+            artist_name: "Nilüfer Yanya", album_title: nil,
+            track_title: "Midnight Sun", record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 7, add_time: "2026-07-31T18:00:00Z",
+            entry_type: "track"
+        )
+
+        let restPlaycut = try #require(FlowsheetConverter.convert([entry]).playcuts.first)
+        let ssePlaycut = try Self.decodeAsSingleEntrySSEInsert(entry)
+
+        #expect(restPlaycut.chronOrderID == ssePlaycut.chronOrderID)
+        #expect(restPlaycut.chronOrderID == UInt64(5_304_201) << 32)
+    }
+
+    // MARK: - REST/SSE key parity (#839)
+
+    @Test("REST and single-entry SSE paths derive identical chronOrderID for the same FlowsheetEntry")
+    func restAndSSEProduceIdenticalChronOrderID() throws {
+        let entry = FlowsheetEntry(
+            id: 5_304_111, show_id: 1_950_704, album_id: nil,
+            artist_name: "Chuquimamani-Condori", album_title: "Edits",
+            track_title: "Call Your Name", record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 12, add_time: "2026-07-31T18:00:00Z",
+            entry_type: "track"
+        )
+        // A second row in the same REST batch proves the per-row key doesn't
+        // depend on batch context/array position.
+        let otherEntryInBatch = FlowsheetEntry(
+            id: 5_304_100, show_id: 1_950_704, album_id: nil,
+            artist_name: "Stereolab", album_title: "Aluminum Tunes",
+            track_title: "Pack Yr Romantic Mind", record_label: "Duophonic",
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 11, add_time: "2026-07-31T17:59:00.000Z",
+            entry_type: "track"
+        )
+
+        let restPlaycut = try #require(
+            FlowsheetConverter.convert([otherEntryInBatch, entry]).playcuts.first { $0.id == 5_304_111 }
+        )
+        let ssePlaycut = try Self.decodeAsSingleEntrySSEInsert(entry)
+
+        #expect(restPlaycut.chronOrderID == ssePlaycut.chronOrderID)
+    }
+
+    // MARK: - Duplicate composite keys (#839)
+
+    @Test("Duplicate (show_id, play_order) pairs sort deterministically by id, regardless of input order")
+    func duplicateCompositeKeysBreakTieByID() {
+        // A dj-site reorder shifts a contiguous play_order range in one
+        // transaction, but only the enriched subset of that range broadcasts
+        // over live-fs-topic — so between polls the app can hold a
+        // pre-reorder AND a post-reorder row that both claim the same
+        // (show_id, play_order). Swift's `sorted` is not stable, so an
+        // unbroken tie would present a different relative order on every
+        // render; the comparator must resolve it via id.
+        let staleCopy = FlowsheetEntry(
+            id: 5_304_100, show_id: 1_950_704, album_id: nil,
+            artist_name: "Stereolab", album_title: "Aluminum Tunes",
+            track_title: "Pack Yr Romantic Mind", record_label: "Duophonic",
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 12, add_time: "2026-07-31T18:00:00Z",
+            entry_type: "track"
+        )
+        let freshCopy = FlowsheetEntry(
+            id: 5_304_111, show_id: 1_950_704, album_id: nil,
+            artist_name: "Cat Power", album_title: "Moon Pix",
+            track_title: "Moonshiner", record_label: "Matador Records",
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 12, add_time: "2026-07-31T18:00:05Z",
+            entry_type: "track"
+        )
+
+        let forward = FlowsheetConverter.convert([staleCopy, freshCopy]).entries.map(\.id)
+        let reversed = FlowsheetConverter.convert([freshCopy, staleCopy]).entries.map(\.id)
+
+        #expect(forward == [5_304_111, 5_304_100])
+        #expect(reversed == [5_304_111, 5_304_100])
+        #expect(forward == reversed)
+    }
+
+    // MARK: - Test helpers
+
+    /// Decodes `entry` as a single-entry `live-fs-topic` insert frame — the
+    /// same shape `LiveFsEvent(frameData:)` parses in production — and
+    /// returns the resulting `Playcut`. Used to prove the SSE path derives
+    /// the identical `chronOrderID` the REST path does for the same row.
+    private static func decodeAsSingleEntrySSEInsert(_ entry: FlowsheetEntry) throws -> Playcut {
+        let payloadData = try JSONEncoder().encode(entry)
+        let payloadObject = try JSONSerialization.jsonObject(with: payloadData)
+        let frameObject: [String: Any] = [
+            "type": "insert",
+            "timestamp": "2026-07-31T18:00:00Z",
+            "payload": payloadObject
+        ]
+        let frameData = try JSONSerialization.data(withJSONObject: frameObject)
+
+        guard case let .insert(playcut) = try #require(LiveFsEvent(frameData: frameData)) else {
+            Issue.record("expected .insert")
+            throw TestHelperError.unexpectedEventType
+        }
+        return playcut
+    }
+
+    private enum TestHelperError: Error {
+        case unexpectedEventType
     }
 }
 

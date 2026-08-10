@@ -35,11 +35,8 @@ enum FlowsheetConverter {
             // `playcuts` array built below).
             guard let entryType = FlowsheetEntryType.from(entry) else { continue }
             let hour = parseHour(from: entry.add_time)
-            // `play_order` resets to 1 per show, so it can't act as a global
-            // chronological key — see #265. `flowsheet.id` is a Postgres serial,
-            // strictly monotonic across all shows.
             let id = UInt64(entry.id)
-            let chronOrderID = id
+            let chronOrderID = Self.chronOrderID(showID: entry.show_id, playOrder: entry.play_order, id: entry.id)
 
             switch entryType {
             case .playcut:
@@ -116,6 +113,62 @@ enum FlowsheetConverter {
             showMarkers: showMarkers,
             onAir: onAir
         )
+    }
+
+    /// Derives the timeline's sort key from the composite `(show_id, play_order)`,
+    /// packed into a single `UInt64` as `show_id << 32 | play_order` — a
+    /// bijection at today's magnitudes (`show_id` ~1.95e6 packs to ~8.4e15,
+    /// roughly 2000x inside `UInt64`, so no boundary test is needed; contrast a
+    /// decimal `K = 1000` multiplier, which has only ~20x headroom over the
+    /// observed max `play_order` of 50 in a 3-hour show and would fail
+    /// *silently* on breach).
+    ///
+    /// `show_id` is a Backend-Service serial — confirmed strictly monotone
+    /// against `id` and `add_time` in a live sample — so it orders shows
+    /// against each other and dominates the packed key; `play_order` orders
+    /// entries within a show *and reflects dj-site reorders*
+    /// (`changeOrder`), unlike the old `id`-only key, which could never see
+    /// one (WXYC/wxyc-ios-64#839). #265's cross-show ordering fix survives
+    /// unchanged: a higher `show_id` always outranks a lower one regardless
+    /// of either show's `play_order` values.
+    ///
+    /// `id` remains row *identity* everywhere else (`Playcut.id`, `ForEach`
+    /// keys) — this key is ordering-only, and duplicate composite keys are
+    /// reachable: a `changeOrder` reorder shifts a contiguous `play_order`
+    /// range in one transaction, but only the enriched subset of that range
+    /// broadcasts over `live-fs-topic`, so the app can transiently hold a
+    /// pre-reorder and a post-reorder row that both claim the same
+    /// `(show_id, play_order)`. Callers must add `id` as an explicit tiebreak
+    /// when sorting — see `Playlist.entries` and `PlaylistEntry`'s
+    /// `Comparable` conformance — since this key alone is not always unique.
+    ///
+    /// - Parameters:
+    ///   - showID: The row's `show_id`. `nil` only on decoder tolerance for a
+    ///     malformed/legacy row: Backend-Service itself 500s on a nil
+    ///     `show_id` in `changeOrder`, and every row in a live 200-row sample
+    ///     carried one post-#693, so this is not a real-traffic path. Falls
+    ///     back to `UInt64(id) << 32` rather than the raw `id`: a bare
+    ///     `UInt64(id)` (~5e6) would be dwarfed by a real packed key (~8e15)
+    ///     and sink to the very bottom of the feed — the exact collapse this
+    ///     ticket exists to fix — whereas shifting `id` the same way real
+    ///     keys are shifted keeps the row visible near its true
+    ///     chronological position. `id` grows faster than `show_id` (many
+    ///     rows per show), so this sentinel lands slightly *above* the row's
+    ///     true position rather than below it — the same "float to now,
+    ///     don't sink to the epoch" bias `parseHour`'s own fallback already
+    ///     uses for an unparseable `add_time`. This rule is a pure function
+    ///     of the one row, so it produces an identical key whether the row
+    ///     arrives via the REST `/flowsheet` batch or a single-entry
+    ///     `live-fs-topic` SSE frame (`LiveFsEvent` -> `convert([entry])`),
+    ///     which has no neighbouring rows to borrow a show from.
+    ///   - playOrder: The row's `play_order` within its show.
+    ///   - id: The row's Postgres serial id — used verbatim as identity
+    ///     elsewhere, and as the nil-`show_id` sentinel's high bits here.
+    static func chronOrderID(showID: Int?, playOrder: Int, id: Int) -> UInt64 {
+        guard let showID else {
+            return UInt64(id) << 32
+        }
+        return (UInt64(showID) << 32) | UInt64(playOrder)
     }
 
     /// Parses an ISO 8601 timestamp string to milliseconds since 1970.
