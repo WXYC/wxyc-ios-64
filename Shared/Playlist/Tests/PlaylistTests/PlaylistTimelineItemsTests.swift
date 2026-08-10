@@ -148,6 +148,45 @@ struct PlaylistTimelineItemsTests {
         #expect(seams.count == 2)
     }
 
+    // MARK: - Reorder across a seam boundary (#839)
+
+    @Test("A talkset that moves across a playcut boundary re-coalesces into the new seam, not the old one")
+    func talksetReorderMovesAcrossPlaycutBoundary() {
+        func kind(_ item: TimelineItem) -> String {
+            switch item {
+            case .playcut: "playcut"
+            case .seam: "seam"
+            case .showMarker: "marker"
+            }
+        }
+
+        // Before a dj-site reorder: playcut A, talkset, playcut B, playcut C
+        // (newest first) — the talkset sits between A and B.
+        let playcutA = Playcut.stub(id: 1, chronOrderID: 40)
+        let playcutB = Playcut.stub(id: 2, chronOrderID: 20)
+        let playcutC = Playcut.stub(id: 3, chronOrderID: 10)
+        let talksetBefore = Talkset.stub(id: 4, chronOrderID: 30)
+
+        let before = Playlist.stub(playcuts: [playcutA, playcutB, playcutC], talksets: [talksetBefore])
+        let beforeItems = before.timelineItems
+        #expect(beforeItems.map(kind) == ["playcut", "seam", "playcut", "playcut"])
+
+        // The DJ drags the talkset down past B on dj-site: its play_order
+        // (and therefore its packed chronOrderID) drops below B's, so it now
+        // sits between B and C instead.
+        let talksetAfter = Talkset.stub(id: 4, chronOrderID: 15)
+        let after = Playlist.stub(playcuts: [playcutA, playcutB, playcutC], talksets: [talksetAfter])
+        let afterItems = after.timelineItems
+        #expect(afterItems.map(kind) == ["playcut", "playcut", "seam", "playcut"])
+
+        // The seam is anchored to the talkset's own id, so the reorder
+        // relabels which two playcuts it sits between without needing new
+        // coalescing logic.
+        let afterSeam = afterItems.compactMap(\.asSeam).first
+        #expect(afterSeam?.id == 4)
+        #expect(afterSeam?.hasMicBreak == true)
+    }
+
     // MARK: - Identity
 
     @Test("Each timeline item exposes a stable identity")
