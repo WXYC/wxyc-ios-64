@@ -269,6 +269,30 @@ struct SpotlightDonationServiceTests {
         #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == nil)
     }
 
+    // MARK: - Composite chronOrderID watermark migration (#839)
+
+    @Test("An old id-scale persisted watermark does not strand donation once entries carry composite packed keys")
+    func oldScaleWatermarkDoesNotStrandCompositeKeyedDonation() async {
+        // The watermark predates the #839 composite-key change: it was
+        // written back when chronOrderID was the bare flowsheet id (~5.3e6
+        // at the time of the issue's live sample).
+        let defaults = InMemoryDefaults()
+        defaults.set("5300000", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        // A post-upgrade playlist carries packed (show_id << 32 | play_order)
+        // keys — several orders of magnitude above the stale watermark, but
+        // that's luck (advanceWatermarkIfNewer only ever moves up), not a
+        // guarantee this test pins down.
+        let packedChronOrderID = (UInt64(1_950_704) << 32) | UInt64(12)
+        await service.donateRecentPlaycuts([.stub(id: 1, chronOrderID: packedChronOrderID)])
+
+        let calls = await indexer.calls
+        #expect(calls.count == 1, "the stale, old-scale watermark must not silently swallow every post-upgrade row")
+        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == String(packedChronOrderID))
+    }
+
     // MARK: - Artist donation (C6)
 
     @Test("donateArtists indexes one deduped entity per normalized artist name")

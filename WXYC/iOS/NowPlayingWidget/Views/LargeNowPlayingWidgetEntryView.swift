@@ -34,7 +34,9 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     .foregroundStyle(.white)
                     .frame(maxHeight: .infinity, alignment: .top)
                 
-                ForEach(entry.recentItems, id: \.playcut.chronOrderID) { nowPlayingItem in
+                // `id` (row identity), not `chronOrderID` (ordering only, and
+                // no longer guaranteed unique post-#839 composite key).
+                ForEach(entry.recentItems, id: \.playcut.id) { nowPlayingItem in
                     RecentlyPlayedRow(nowPlayingItem: nowPlayingItem)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
