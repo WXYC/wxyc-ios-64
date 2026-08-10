@@ -87,7 +87,7 @@ struct PlaylistServiceMetadataTransitionsTests {
             .stub(id: 1, chronOrderID: 1, artworkURL: URL(string: "https://example.com/1.jpg"), metadataStatus: .enrichedMatch),
             .stub(id: 2, chronOrderID: 2, artworkURL: URL(string: "https://example.com/2.jpg"), metadataStatus: .enrichedNoMatch),
         ])
-        await coordinator.set(value: cachedEnriched, for: PlaylistCacheKey.playlist, lifespan: 15 * 60)
+        await coordinator.set(value: cachedEnriched, for: PlaylistCacheKey.playlist(for: .v1), lifespan: 15 * 60)
 
         let mockFetcher = MockPlaylistFetcher()
         // First fetch: same enriched window plus a brand-new pending row.

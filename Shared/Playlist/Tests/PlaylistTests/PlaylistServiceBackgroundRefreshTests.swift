@@ -30,7 +30,7 @@ struct PlaylistServiceBackgroundRefreshTests {
 
         await cacheCoordinator.set(
             value: oldPlaylist,
-            for: PlaylistCacheKey.playlist,
+            for: PlaylistCacheKey.playlist(for: .v1),
             lifespan: 15 * 60
         )
 
@@ -50,7 +50,7 @@ struct PlaylistServiceBackgroundRefreshTests {
         let fetched = await service.fetchAndCachePlaylist()
         
         // Then - Cache should be updated with new data
-        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist(for: .v1))
         #expect(cached.playcuts.first?.songTitle == "New Song")
         #expect(cached.playcuts.first?.songTitle != "Old Song")
         #expect(fetched.playcuts.first?.songTitle == "New Song")
@@ -67,7 +67,7 @@ struct PlaylistServiceBackgroundRefreshTests {
 
         await cacheCoordinator.set(
             value: cachedPlaylist,
-            for: PlaylistCacheKey.playlist,
+            for: PlaylistCacheKey.playlist(for: .v1),
             lifespan: 15 * 60
         )
 

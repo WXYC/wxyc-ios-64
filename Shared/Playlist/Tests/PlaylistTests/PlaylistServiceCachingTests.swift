@@ -35,7 +35,7 @@ struct PlaylistServiceCachingTests {
         // Cache the playlist
         await cacheCoordinator.set(
             value: cachedPlaylist,
-            for: PlaylistCacheKey.playlist,
+            for: PlaylistCacheKey.playlist(for: .v1),
             lifespan: 15 * 60
         )
 
@@ -44,7 +44,8 @@ struct PlaylistServiceCachingTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
         )
 
         // Wait a bit for async cache loading
@@ -72,7 +73,7 @@ struct PlaylistServiceCachingTests {
             timestamp: Date.timeIntervalSinceReferenceDate - (16 * 60), // 16 minutes ago
             lifespan: 15 * 60 // 15 minute lifespan
         )
-        mockCache.set(encoded, metadata: expiredMetadata, for: PlaylistCacheKey.playlist)
+        mockCache.set(encoded, metadata: expiredMetadata, for: PlaylistCacheKey.playlist(for: .v1))
 
         // When - Create service
         let mockFetcher = MockPlaylistFetcher()
@@ -83,7 +84,8 @@ struct PlaylistServiceCachingTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 0.1,
-            cacheCoordinator: cacheCoordinator
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
         )
 
         // Wait for initial load attempt
@@ -108,7 +110,7 @@ struct PlaylistServiceCachingTests {
 
         await cacheCoordinator.set(
             value: cachedPlaylist,
-            for: PlaylistCacheKey.playlist,
+            for: PlaylistCacheKey.playlist(for: .v1),
             lifespan: 15 * 60
         )
 
@@ -120,7 +122,8 @@ struct PlaylistServiceCachingTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
         )
 
         // When - Call fetchAndCachePlaylist (should ignore cache)
@@ -131,7 +134,7 @@ struct PlaylistServiceCachingTests {
         #expect(mockFetcher.callCount == 1)
     
         // And - Cache should be updated with fresh data
-        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist(for: .v1))
         #expect(cached.playcuts.first?.songTitle == "Fresh Song")
     }
 
@@ -146,14 +149,15 @@ struct PlaylistServiceCachingTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
         )
 
         // When - Fetch and cache
         _ = await service.fetchAndCachePlaylist()
 
         // Then - Cache should be updated (timestamp refreshed)
-        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist(for: .v1))
         #expect(cached.playcuts.first?.songTitle == "Same Song")
     }
 
@@ -170,7 +174,8 @@ struct PlaylistServiceCachingTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 0.1,
-            cacheCoordinator: cacheCoordinator
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
         )
 
         // When - Start observing (triggers fetch)
@@ -181,10 +186,54 @@ struct PlaylistServiceCachingTests {
         try await Task.sleep(for: .milliseconds(150))
 
         // Then - Cache should contain the fetched playlist
-        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist(for: .v1))
         #expect(cached.playcuts.first?.songTitle == "Fetched Song")
     }
         
+    // MARK: - Per-version cache isolation (#839 review)
+
+    @Test("A cache written by a v1 session is never served to a v2 session", .timeLimit(.minutes(1)))
+    func versionsDoNotShareCacheEntries() async throws {
+        // The two versions write chronOrderIDs nine orders of magnitude apart.
+        // A v1 session (flag miss, offline launch, DebugPanel switch, the
+        // widget process) that seeded a shared entry would hand the next v2
+        // launch id-scale rows as its SSE baseline; the first live-fs update
+        // frame would then give one stale row a packed key and the head of
+        // every now-playing surface.
+        let mockCache = InMemoryCache()
+        let cacheCoordinator = CacheCoordinator(cache: mockCache)
+
+        let v1Fetcher = MockPlaylistFetcher()
+        v1Fetcher.playlistToReturn = .stub(playcuts: [
+            .stub(id: 5_306_408, chronOrderID: 5_306_408, songTitle: "v1 Song")
+        ])
+        let v1Service = PlaylistService(
+            fetcher: v1Fetcher,
+            interval: 30,
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
+        )
+        _ = await v1Service.fetchAndCachePlaylist()
+
+        // fetchPlaylist prefers a live cache entry over the network, so a
+        // shared key would return the v1 rows here without touching the
+        // fetcher.
+        let v2Fetcher = MockPlaylistFetcher()
+        v2Fetcher.playlistToReturn = .stub(playcuts: [
+            .stub(id: 5_306_409, chronOrderID: UInt64(42) << 32 | 1, songTitle: "v2 Song")
+        ])
+        let v2Service = PlaylistService(
+            fetcher: v2Fetcher,
+            interval: 30,
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v2
+        )
+        let playlist = await v2Service.fetchPlaylist()
+
+        #expect(playlist.playcuts.first?.songTitle == "v2 Song")
+        #expect(v2Fetcher.callCount == 1)
+    }
+
     // MARK: - Cache Expiration Tests
 
     @Test("Cache expires after 15 minutes")
@@ -201,12 +250,12 @@ struct PlaylistServiceCachingTests {
             timestamp: Date.timeIntervalSinceReferenceDate - (16 * 60), // 16 minutes ago
             lifespan: 15 * 60 // 15 minute lifespan
         )
-        mockCache.set(encoded, metadata: expiredMetadata, for: PlaylistCacheKey.playlist)
+        mockCache.set(encoded, metadata: expiredMetadata, for: PlaylistCacheKey.playlist(for: .v1))
     
         // When - Try to retrieve
         // Then - Should throw noCachedResult error
         await #expect(throws: CacheCoordinator.Error.noCachedResult) {
-            let _: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
+            let _: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist(for: .v1))
         }
     }
 
@@ -224,10 +273,10 @@ struct PlaylistServiceCachingTests {
             timestamp: Date.timeIntervalSinceReferenceDate - (10 * 60), // 10 minutes ago
             lifespan: 15 * 60
         )
-        mockCache.set(encoded, metadata: recentMetadata, for: PlaylistCacheKey.playlist)
+        mockCache.set(encoded, metadata: recentMetadata, for: PlaylistCacheKey.playlist(for: .v1))
         
         // When - Try to retrieve
-        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist(for: .v1))
 
         // Then - Should succeed
         #expect(cached.playcuts.first?.songTitle == "Recent Song")
