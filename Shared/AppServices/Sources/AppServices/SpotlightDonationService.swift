@@ -93,22 +93,39 @@ public actor SpotlightDonationService: Sendable {
     ///   UNIQUE on `play_order` outright — tubafrenzy's webhook and dj-site
     ///   both assign it and can overlap (the 2026-05-01 incident memo) — so a
     ///   `>` filter can drop a row that merely ties the edge.
-    /// - **Not one scale.** The v1 data source decodes `chronOrderID` straight
-    ///   from tubafrenzy (~5.3e6); v2 derives the packed key (~8.4e15). One
-    ///   watermark serves both and only moves up, so a single v2 tick would
-    ///   put it permanently out of reach of every v1 row — and
-    ///   `PlaylistAPIVersion.defaultVersion` is `.v1`.
+    /// - **Not one scale.** The v1 data source decodes `chronOrderID` off the
+    ///   wire, where Backend-Service's playlist proxy sets it to the row id
+    ///   (~5.3e6); v2 derives the packed key (~8.4e15). One watermark serves
+    ///   both and only moves up, so a single v2 tick would put it permanently
+    ///   out of reach of every v1 row — and `PlaylistAPIVersion.defaultVersion`
+    ///   is `.v1`, which `loadActive()` also falls back to on a flag miss.
+    ///   ``watermarkKey`` records what that scale mismatch already cost once.
     ///
     /// The flowsheet `id` is the same serial on both API paths and survives a
     /// reorder untouched, which is exactly what "have I sent this row yet?"
     /// wants to ask.
     public static let donatedThroughIDKey = "spotlight.playcuts.donatedThroughID"
 
-    /// The pre-#839 key, which held a `chronOrderID`. Read once to seed
-    /// ``donatedThroughIDKey`` and never written again — on every shipped
-    /// build that value *was* the row id, so it migrates as-is. Left in
-    /// place rather than deleted: it costs nothing and removing a key is not
-    /// something to do on a hunch about who might still read it.
+    /// The pre-#839 key, which held a `chronOrderID`. Never read and never
+    /// written by this build: its stored value is not an id, and on some
+    /// devices it isn't even the same scale as one.
+    ///
+    /// The app's v1 URL is `wxyc.info/playlists/recentEntries`, served by
+    /// Backend-Service's playlist proxy. Until BS commit dc192d84
+    /// (2026-07-28) that proxy forwarded tubafrenzy's `chronOrderID`
+    /// verbatim, and tubafrenzy computes it as
+    /// `1000 * radioShowID + sequenceWithinShow` — ~1.7e8 against row ids
+    /// ~2.6e6. This service shipped in v3.2-RC1/RC2/RC3 (2026-07-19 through
+    /// 07-24), all inside that window, so those devices hold a value ~33x
+    /// past any real id. Seeding the id waterline from it would filter out
+    /// every row forever; a magnitude check to tell that cohort from the
+    /// post-07-28 one is the same kind of heuristic that caused the problem.
+    ///
+    /// So there is no migration. An absent waterline re-donates at most
+    /// ``batchLimit`` rows once — what a fresh install does — and Spotlight
+    /// indexing is an idempotent upsert on a stable identifier, so the cost
+    /// is one batch of XPC, not a duplicate. The key is left on disk rather
+    /// than deleted: removing it buys nothing and can't be undone.
     public static let watermarkKey = "spotlight.playcuts.watermark"
 
     /// Priority for a per-tick current-playcut donation. Deliberately above
@@ -207,17 +224,15 @@ public actor SpotlightDonationService: Sendable {
             .sorted { $0.id < $1.id }
             .prefix(Self.batchLimit)
 
+        // The newest row in the batch by id: both the new waterline and the
+        // id `SpotlightDonated` reports for correlation.
         guard let highestID = batch.last?.id else { return }
-
-        // The newest row in the batch by id — the representative id
-        // `SpotlightDonated` reports, and the same value the waterline takes.
-        let representativeID = highestID
 
         let entities = batch.map(PlaycutEntity.init(playcut:))
         do {
             try await indexer.indexPlaycuts(entities, priority: Self.batchPriority)
             advanceWatermarkIfNewer(highestID)
-            analytics.capture(SpotlightDonated(playcutID: String(representativeID), batchSize: entities.count, priorityTier: Self.batchPriority, kind: "playcuts"))
+            analytics.capture(SpotlightDonated(playcutID: String(highestID), batchSize: entities.count, priorityTier: Self.batchPriority, kind: "playcuts"))
         } catch {
             Log(.warning, category: .general, "Spotlight batch donation failed (\(entities.count) playcuts): \(error)")
             analytics.capture(SpotlightDonationFailed(errorKind: (error as NSError).domain, batchSize: entities.count))
@@ -293,7 +308,7 @@ public actor SpotlightDonationService: Sendable {
         // though this path shares no watermark of its own. Taken on `id`
         // rather than the ordering key for the same reason that one does:
         // ids are unique, so there is no tie to resolve.
-        let representativeID = playcuts.map(\.id).max() ?? 0
+        let representativeID = playcuts.lazy.map(\.id).max() ?? 0
 
         do {
             try await artistIndexer.indexArtists(Array(entities), priority: Self.batchPriority)
@@ -345,21 +360,12 @@ public actor SpotlightDonationService: Sendable {
 
     // MARK: - Watermark
 
+    /// Zero until the first successful donation writes ``donatedThroughIDKey``.
+    ///
+    /// Deliberately does not fall back to ``watermarkKey`` — see that property
+    /// for why the old value can't be trusted as an id.
     private var currentWatermark: UInt64 {
-        if let stored = storage.string(forKey: Self.donatedThroughIDKey).flatMap(UInt64.init) {
-            return stored
-        }
-        // Seed from the pre-#839 key. Its value was a `chronOrderID`, which on
-        // every shipped build equalled the row id — so it carries over as-is.
-        // The bound rejects a packed composite key (~8.4e15, far past any
-        // plausible flowsheet id — ~5.3e6 today, four decades of headroom
-        // below `UInt32.max`) in case a pre-release build wrote one; seeding
-        // from that would strand donation exactly as described on
-        // ``donatedThroughIDKey``.
-        guard let legacy = storage.string(forKey: Self.watermarkKey).flatMap(UInt64.init),
-              legacy <= UInt64(UInt32.max)
-        else { return 0 }
-        return legacy
+        storage.string(forKey: Self.donatedThroughIDKey).flatMap(UInt64.init) ?? 0
     }
 
     private func advanceWatermarkIfNewer(_ candidate: UInt64) {

@@ -88,8 +88,8 @@ The closest existing thing to "Playcut in Spotlight" is the launch `NSUserActivi
 
 | Entity | Source | Index name | Notes |
 |---|---|---|---|
-| `PlaycutEntity` | `Playcut` | `wxyc.playcuts` | Atomic unit. Accretive index. Use `id`, `chronOrderID`, `timeCreated`. |
-| `ShowEntity` | derived from `ShowMarker` pairs + DJ data | `wxyc.shows` | A single airing of a show; identifier is `start chronOrderID` or backend show id. |
+| `PlaycutEntity` | `Playcut` | `wxyc.playcuts` | Atomic unit. Accretive index. Use `id` and `timeCreated`. Not `chronOrderID` — since #839 it is derived from `(show_id, play_order)` and a dj-site reorder rewrites it, so it is neither stable nor unique. |
+| `ShowEntity` | derived from `ShowMarker` pairs + DJ data | `wxyc.shows` | A single airing of a show; identifier is the backend show id, or the sign-on marker's `id` — not its `chronOrderID`, for the reason above. |
 | `DJEntity` | derived from `ShowMarker.djName` (or future backend) | `wxyc.djs` | Tiny set, slow-changing. |
 | `ArtistEntity` | derived from `Playcut.artistName` dedup | `wxyc.artists` | Deduplicates plays. Cheap, high re-use. |
 | `ReleaseEntity` | derived from `Playcut` artist+release key | `wxyc.releases` | Album-level rollup. |
@@ -126,7 +126,7 @@ Each idea is sized **S/M/L/XL** for delivery scope and tagged with prerequisites
 
 #### F2. Donation pipeline anchored on `NowPlayingService`
 - **Scope**: M.
-- **What**: A new `SpotlightDonationService` (likely in `AppServices`) that subscribes to `NowPlayingService` and, on each tick + on background refresh completion, donates the current and recent playcuts to `CSSearchableIndex(name: "wxyc.playcuts")`. Tracks a "last donated chronOrderID" watermark in `DefaultsStorage`.
+- **What**: A new `SpotlightDonationService` (likely in `AppServices`) that subscribes to `NowPlayingService` and, on each tick + on background refresh completion, donates the current and recent playcuts to `CSSearchableIndex(name: "wxyc.playcuts")`. Tracks a "donated through this flowsheet id" waterline in `DefaultsStorage` (`spotlight.playcuts.donatedThroughID`). As built it briefly rode `chronOrderID`; #839 moved it to `id`, which is the property a high-water mark needs — unique, immutable, monotone in insertion order.
 - **Relationship to existing donations**: this is the *fourth* donation mechanism, complementary to the three already in place. The existing `AudioPlayerController.donatePlayIntent()` is the natural co-location point — when a play starts, we already donate an `INPlayMediaIntent`; we can also call `indexAppEntities` with the current `PlaycutEntity` from the same callsite. Do not remove the existing donations — they teach different system surfaces (Siri suggestions, Shortcuts learning) that the content index does not replace.
 - **Prereqs**: F1.
 - **Risks**: Background-refresh budget — we already have a tight budget per `docs/configuration.md`; the donation work must be bounded (≤50 rows per refresh).
@@ -181,7 +181,7 @@ Each idea is sized **S/M/L/XL** for delivery scope and tagged with prerequisites
 
 #### C5. `ShowEntity` donation + "open last night's Backseat Mafia"
 - **Scope**: L.
-- **What**: Extend `ShowEntity` (declared in F5) with a real donation pipeline against `CSSearchableIndex(name: "wxyc.shows")`, an `OpenShow: OpenIntent`, and a per-show detail view. Each show airing is a separate entity with a tracklist; identifier is `start chronOrderID` or backend show id.
+- **What**: Extend `ShowEntity` (declared in F5) with a real donation pipeline against `CSSearchableIndex(name: "wxyc.shows")`, an `OpenShow: OpenIntent`, and a per-show detail view. Each show airing is a separate entity with a tracklist; identifier is the backend show id, or the sign-on marker's `id` (see the entity table — `chronOrderID` churns on a reorder since #839).
 - **Prereqs**: F1, F2, F5, plus a new in-app "show detail" view. Probably needs a backend `/shows/{id}` endpoint to be useful beyond what we have in the 50-entry window.
 - **Risks**: This is the largest user-facing capability. Most of the cost is the show-detail view, not the entity wiring.
 
