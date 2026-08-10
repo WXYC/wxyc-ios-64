@@ -15,63 +15,7 @@ import Wallpaper
 import WXUI
 
 struct RootTabView: View {
-    enum Page: CaseIterable {
-        case playlist
-        case onTour
-        case liked
-        case station
-
-        /// Tab label. Also the accessibility label the tab bar exposes.
-        var title: String {
-            switch self {
-            case .playlist: "Now Playing"
-            case .onTour: "On Tour"
-            case .liked: "Liked"
-            case .station: "Station"
-            }
-        }
-
-        /// SF Symbol for the tab glyph — iconography the app already speaks on
-        /// adjacent surfaces. `radio` matches the widget and Siri intent;
-        /// `ticket` matches the Box Office ticket language the On Tour surface
-        /// reuses; `heart` matches the like affordance on playcut rows and the
-        /// detail card (#492); `antenna.radiowaves.left.and.right` reads the
-        /// Station page as the broadcast itself — the "Info" junk drawer
-        /// regrouped into station identity plus the "Talk to the booth" channels.
-        var systemImage: String {
-            switch self {
-            case .playlist: "radio"
-            case .onTour: "ticket"
-            case .liked: "heart"
-            case .station: "antenna.radiowaves.left.and.right"
-            }
-        }
-
-        /// Stable identifier for UI tests to select the tab item, independent of
-        /// the localized title or the tab bar's element type.
-        var accessibilityIdentifier: String {
-            switch self {
-            case .playlist: "tab.nowPlaying"
-            case .onTour: "tab.onTour"
-            case .liked: "tab.liked"
-            case .station: "tab.station"
-            }
-        }
-
-        /// Maps a `-marketing` recording route to its tab. Total (never fails);
-        /// the `.onChange` call site below handles a `nil` route as a no-op, so
-        /// this mapper stays pure and directly testable.
-        static func page(for route: MarketingRoute) -> Page {
-            switch route {
-            case .nowPlaying: .playlist
-            case .onTour: .onTour
-            case .liked: .liked
-            case .station: .station
-            }
-        }
-    }
-
-    @State private var selectedPage = Page.playlist
+    @State private var selectedPage = AppSection.playlist
     @State private var selectedPlaycut: PlaycutSelection?
     /// The zoom-transition namespace tying each playcut row to the detail cover
     /// it opens, mirroring `OnTourTabView`'s concert-row → concert-detail zoom.
@@ -86,7 +30,7 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $selectedPage) {
-            Tab(Page.playlist.title, systemImage: Page.playlist.systemImage, value: Page.playlist) {
+            Tab(AppSection.playlist.title, systemImage: AppSection.playlist.systemImage, value: AppSection.playlist) {
                 PlaylistView(selectedPlaycut: $selectedPlaycut, zoomNamespace: playcutZoom)
                     .themePickerGesture(
                         pickerState: appState.themePickerState,
@@ -103,9 +47,9 @@ struct RootTabView: View {
                     .environment(\.onAirBannerTheme, OnAirBannerTheme.debugOverride)
                     #endif
             }
-            .accessibilityIdentifier(Page.playlist.accessibilityIdentifier)
+            .accessibilityIdentifier(AppSection.playlist.accessibilityIdentifier)
 
-            Tab(Page.onTour.title, systemImage: Page.onTour.systemImage, value: Page.onTour) {
+            Tab(AppSection.onTour.title, systemImage: AppSection.onTour.systemImage, value: AppSection.onTour) {
                 OnTourTabView(model: appState.marketingOnTourModel ?? appState.onTourModel)
                     .themePickerGesture(
                         pickerState: appState.themePickerState,
@@ -113,9 +57,9 @@ struct RootTabView: View {
                     )
                     .clearTabBarBackground()
             }
-            .accessibilityIdentifier(Page.onTour.accessibilityIdentifier)
+            .accessibilityIdentifier(AppSection.onTour.accessibilityIdentifier)
 
-            Tab(Page.liked.title, systemImage: Page.liked.systemImage, value: Page.liked) {
+            Tab(AppSection.liked.title, systemImage: AppSection.liked.systemImage, value: AppSection.liked) {
                 LikedTabView()
                     .themePickerGesture(
                         pickerState: appState.themePickerState,
@@ -123,9 +67,9 @@ struct RootTabView: View {
                     )
                     .clearTabBarBackground()
             }
-            .accessibilityIdentifier(Page.liked.accessibilityIdentifier)
+            .accessibilityIdentifier(AppSection.liked.accessibilityIdentifier)
 
-            Tab(Page.station.title, systemImage: Page.station.systemImage, value: Page.station) {
+            Tab(AppSection.station.title, systemImage: AppSection.station.systemImage, value: AppSection.station) {
                 StationView()
                     .themePickerGesture(
                         pickerState: appState.themePickerState,
@@ -133,7 +77,7 @@ struct RootTabView: View {
                     )
                     .clearTabBarBackground()
             }
-            .accessibilityIdentifier(Page.station.accessibilityIdentifier)
+            .accessibilityIdentifier(AppSection.station.accessibilityIdentifier)
         }
         // Selected tab item uses the LCD accent hue/saturation at the active
         // segment brightness rather than the system default tint.
@@ -175,7 +119,7 @@ struct RootTabView: View {
         // fires for a production launch (`marketingRoute` stays nil).
         .onChange(of: appState.marketingRoute) { _, route in
             if let route {
-                selectedPage = Page.page(for: route)
+                selectedPage = route.section
             }
         }
     }

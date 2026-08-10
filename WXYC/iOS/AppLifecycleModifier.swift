@@ -13,14 +13,11 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Analytics
 import Core
-import Intents
 import Logger
 import Playback
 import SwiftUI
 import Wallpaper
-import WXYCIntents
 
 /// View-level lifecycle modifier extracted from `WXYCApp.body`. Routes
 /// per-window observations through a small set of named handlers.
@@ -50,12 +47,6 @@ struct AppLifecycleModifier: ViewModifier {
 
     private func handleAppear() {
         setUpQuickActions()
-        // Deliberately no scene-phase report here: `WXYCApp`'s
-        // `.onChange(of: scenePhase, initial: true)` is the app's only
-        // producer of foreground state. A per-window report would feed a
-        // possibly-`.inactive` per-scene phase into app-wide state while
-        // another window is `.active`, with no correcting edge to follow
-        // (multi-window Catalyst).
         appState.startWidgetStateService()
         appState.startReviewRequestTracking()
         // Register the shared-show-link observer here, synchronously and before
@@ -72,7 +63,7 @@ struct AppLifecycleModifier: ViewModifier {
         // First-launch path: the wallpaper isn't cached yet, so prime the
         // mesh-gradient palette before the user sees the home screen.
         if appState.themeConfiguration.meshGradientPalette == nil {
-            Self.extractWallpaperPalette(into: appState.themeConfiguration)
+            WallpaperPaletteExtraction.extract(into: appState.themeConfiguration)
         }
 
         #if os(iOS)
@@ -107,51 +98,11 @@ struct AppLifecycleModifier: ViewModifier {
     // MARK: - Deep links and Siri
 
     private func handleURL(_ url: URL) {
-        // `onOpenURL` delivers both `wxyc://` scheme links (Spotlight, shortcuts)
-        // and the https universal link handed over as a Smart App Banner's
-        // `app-argument` — which arrives here rather than as an `NSUserActivity`.
-        // `WXYCDeepLink(routing:)` resolves either spelling. A universal link
-        // that is *tapped* as a web link still comes through `handleUserActivity`.
-        switch WXYCDeepLink(routing: url) {
-        case .playcut(let id):
-            NotificationCenter.default.post(PlaycutOpenMessage(playcutID: id), subject: nil)
-        case .concert(let id):
-            NotificationCenter.default.post(
-                ConcertOpenMessage(concertID: id, source: .scheme),
-                subject: nil
-            )
-        case .play:
-            AudioPlayerController.shared.play(reason: .deepLink)
-        case nil:
-            // Unrecognised URL — the `.onContinueUserActivity` handler (line 40)
-            // owns the legacy `org.wxyc.iphoneapp.play` activity, not this path.
-            break
-        }
+        DeepLinkHandler.handle(url: url)
     }
 
     private func handleUserActivity(_ userActivity: NSUserActivity) {
-        if userActivity.activityType == NSUserActivityTypeBrowsingWeb {
-            // A tapped universal link (`https://wxyc.org/shows/<id>`). Route
-            // recognised show links to the On Tour tab; ignore any other web URL
-            // the AASA might hand us so it falls through to Safari.
-            if let webpageURL = userActivity.webpageURL,
-               case .concert(let id)? = WXYCDeepLink(universalLink: webpageURL) {
-                NotificationCenter.default.post(
-                    ConcertOpenMessage(concertID: id, source: .universalLink),
-                    subject: nil
-                )
-            }
-        } else if let reason = WXYCUserActivity.continuationReason(
-            activityType: userActivity.activityType,
-            userInfo: userActivity.userInfo
-        ) {
-            AudioPlayerController.shared.play(reason: reason)
-        } else if let intent = userActivity.interaction?.intent as? INPlayMediaIntent {
-            AudioPlayerController.shared.play(reason: .siriIntent)
-            StructuredPostHogAnalytics.shared.capture(HandleINIntent(
-                intentData: intent.description
-            ))
-        }
+        DeepLinkHandler.handle(userActivity: userActivity)
     }
 
     // MARK: - Memory
@@ -160,31 +111,6 @@ struct AppLifecycleModifier: ViewModifier {
         Log(.warning, category: .general, "Memory warning received — releasing caches and textures")
         Task {
             await appState.artworkService.releaseMemory()
-        }
-    }
-
-    // MARK: - Wallpaper palette
-
-    /// Captures the current wallpaper snapshot and caches its mesh-gradient
-    /// palette into `themeConfiguration`. Retries up to 5× (200, 400, 600, 800,
-    /// 1000 ms) to absorb renderer init timing.
-    ///
-    /// Exposed as a static func so both the View-level `.onAppear` (first
-    /// launch) and the Scene-level `.onChange(of: themePickerState.isActive)`
-    /// in `WXYCApp` can share the same implementation.
-    static func extractWallpaperPalette(into themeConfiguration: ThemeConfiguration) {
-        Task {
-            for attempt in 1...5 {
-                let delay = 200 * attempt
-                try? await Task.sleep(for: .milliseconds(delay))
-
-                if let snapshot = MetalWallpaperRenderer.captureMainSnapshot() {
-                    themeConfiguration.extractAndCachePalette(from: snapshot)
-                    Log(.info, category: .general, "Extracted wallpaper palette for theme: \(themeConfiguration.selectedThemeID) (attempt \(attempt))")
-                    return
-                }
-            }
-            Log(.warning, category: .general, "Failed to capture wallpaper snapshot after 5 attempts")
         }
     }
 }

@@ -211,7 +211,7 @@ struct PlaylistView: View {
             }
         }
 
-        .fullScreenCover(isPresented: $showingPartyHorn) {
+        .detailCover(isPresented: $showingPartyHorn) {
             PartyHornSwiftUIView()
                 .onAppear {
                     StructuredPostHogAnalytics.shared.capture(PartyHornPresented())

@@ -37,9 +37,9 @@ private struct PlaycutDetailCoverModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .fullScreenCover(item: $selection) { selection in
+            .detailCover(item: $selection) { selection in
                 PlaycutDetailView(playcut: selection.playcut, artwork: selection.artwork)
-                    .navigationTransition(.zoom(sourceID: selection.transitionID, in: namespace))
+                    .zoomTransition(sourceID: selection.transitionID, in: namespace)
                     // The cover hosts the detail in a separate presentation context, so
                     // the `@Environment(Singletonia.self)` it reads has to be re-injected
                     // here — the old inline `.overlaySheet` shared this tree and got it

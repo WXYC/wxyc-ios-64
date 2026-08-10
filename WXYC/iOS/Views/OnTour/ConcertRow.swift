@@ -68,7 +68,7 @@ struct ConcertRow: View {
             .opacity(presenter.isCancelled ? 0.7 : 1)
         }
         .buttonStyle(.plain)
-        .matchedTransitionSource(id: concert.id, in: namespace)
+        .zoomTransitionSource(id: concert.id, in: namespace)
         .contextMenu { contextActions }
         .concertShareSheet(concert: $shareTarget)
         .addToCalendar($calendarTrigger, surface: "row")
