@@ -825,7 +825,7 @@ struct FlowsheetConverterTests {
                 track_title: "Track \(n)", record_label: "Force Tracks",
                 rotation_id: nil, rotation_play_freq: nil,
                 request_flag: false, message: nil,
-                play_order: 30 + n, add_time: "2026-05-14T2\(n):00:00.000Z",
+                play_order: 30 + n, add_time: "2026-05-14T1\(n):00:00.000Z",
                 entry_type: "track"
             )
         }
@@ -968,24 +968,6 @@ struct FlowsheetConverterTests {
         #expect(playlist.entries.map(\.id) == [5_304_303, 5_304_302, 5_304_301, 5_304_300])
     }
 
-    @Test("The nil-show_id fallback is identical on the REST and single-entry SSE paths")
-    func nilShowIDFallbackMatchesAcrossRESTAndSSE() throws {
-        let entry = FlowsheetEntry(
-            id: 5_304_201, show_id: nil, album_id: nil,
-            artist_name: "Nilüfer Yanya", album_title: nil,
-            track_title: "Midnight Sun", record_label: nil,
-            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
-            message: nil, play_order: 7, add_time: "2026-07-31T18:00:00Z",
-            entry_type: "track"
-        )
-
-        let restPlaycut = try #require(FlowsheetConverter.convert([entry]).playcuts.first)
-        let ssePlaycut = try Self.decodeAsSingleEntrySSEInsert(entry)
-
-        #expect(restPlaycut.chronOrderID == ssePlaycut.chronOrderID)
-        #expect(restPlaycut.chronOrderID == UInt64(5_304_201))
-    }
-
     @Test(
         "An out-of-range show_id or play_order falls back to the id key instead of trapping or corrupting the packing",
         arguments: [
@@ -1019,6 +1001,13 @@ struct FlowsheetConverterTests {
 
     @Test("REST and single-entry SSE paths derive identical chronOrderID for the same FlowsheetEntry")
     func restAndSSEProduceIdenticalChronOrderID() throws {
+        // A structural guard, not a regression test: `LiveFsEvent.decodePlaycut`
+        // calls `FlowsheetConverter.convert([entry])` today, so this can only
+        // fail if someone forks the SSE path onto its own derivation. It
+        // cannot catch Backend omitting `show_id`/`play_order` from the
+        // `live-fs-topic` payload, since the fixture is a re-encoded Swift
+        // struct rather than a captured frame — that would need a recorded
+        // wire fixture.
         let entry = FlowsheetEntry(
             id: 5_304_111, show_id: 1_950_704, album_id: nil,
             artist_name: "Chuquimamani-Condori", album_title: "Edits",
@@ -1044,6 +1033,34 @@ struct FlowsheetConverterTests {
         let ssePlaycut = try Self.decodeAsSingleEntrySSEInsert(entry)
 
         #expect(restPlaycut.chronOrderID == ssePlaycut.chronOrderID)
+    }
+
+    @Test("A negative id drops the row instead of trapping the whole conversion")
+    func negativeIDDropsTheRowNotTheConversion() {
+        // `UInt64(entry.id)` is the row's identity, converted before the
+        // ordering key — an unguarded trap there takes down the poll and the
+        // SSE frame just as surely as one in the packing, and no other row in
+        // the batch survives it.
+        let malformed = FlowsheetEntry(
+            id: -1, show_id: 1_950_704, album_id: nil,
+            artist_name: "Chuquimamani-Condori", album_title: "Edits",
+            track_title: "Call Your Name", record_label: nil,
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 4, add_time: "2026-07-31T18:00:00Z",
+            entry_type: "track"
+        )
+        let intact = FlowsheetEntry(
+            id: 5_304_500, show_id: 1_950_704, album_id: nil,
+            artist_name: "Stereolab", album_title: "Aluminum Tunes",
+            track_title: "Pack Yr Romantic Mind", record_label: "Duophonic",
+            rotation_id: nil, rotation_play_freq: nil, request_flag: false,
+            message: nil, play_order: 5, add_time: "2026-07-31T18:01:00Z",
+            entry_type: "track"
+        )
+
+        let playlist = FlowsheetConverter.convert([malformed, intact])
+
+        #expect(playlist.playcuts.map(\.id) == [5_304_500])
     }
 
     // MARK: - Duplicate composite keys (#839)

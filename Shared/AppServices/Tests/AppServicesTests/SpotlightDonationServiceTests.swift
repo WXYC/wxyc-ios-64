@@ -61,13 +61,13 @@ struct SpotlightDonationServiceTests {
 
         await service.donateCurrentPlaycut(.stub(id: 1, chronOrderID: 999))
 
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == nil)
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == nil)
     }
 
     @Test("donateCurrentPlaycut still upserts when the playcut is older than the watermark")
     func currentPlaycutRunsBelowWatermark() async {
         let defaults = InMemoryDefaults()
-        defaults.set("2000", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("2000", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
@@ -77,7 +77,7 @@ struct SpotlightDonationServiceTests {
         // so an older playcut (e.g. a re-emit of the same playlist tick, or a
         // future "play this archived playcut" interaction) still gets indexed.
         #expect(await indexer.calls.count == 1)
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "2000")
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "2000")
     }
 
     @Test("donateCurrentPlaycut dedups byte-identical consecutive calls")
@@ -138,14 +138,14 @@ struct SpotlightDonationServiceTests {
         // the swallow-and-log contract (the actor method is `async` but not
         // throwing — the throw must not propagate to the caller).
         let defaults = InMemoryDefaults()
-        defaults.set("500", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("500", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer(shouldThrow: true)
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
         await service.donateCurrentPlaycut(.stub(id: 1, chronOrderID: 999))
 
         #expect(await indexer.calls.count == 1)
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "500")
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "500")
     }
 
     // MARK: - Recent playcut batch
@@ -153,15 +153,17 @@ struct SpotlightDonationServiceTests {
     @Test("donateRecentPlaycuts skips playcuts already at or below the watermark")
     func recentBatchSkipsStale() async throws {
         let defaults = InMemoryDefaults()
-        defaults.set("50", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("2", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
+        // chronOrderIDs deliberately run counter to the ids: the waterline
+        // rides `id`, so the display order must not decide what's already sent.
         await service.donateRecentPlaycuts([
-            .stub(id: 1, chronOrderID: 40),
-            .stub(id: 2, chronOrderID: 50),
-            .stub(id: 3, chronOrderID: 60),
-            .stub(id: 4, chronOrderID: 70),
+            .stub(id: 1, chronOrderID: 70),
+            .stub(id: 2, chronOrderID: 60),
+            .stub(id: 3, chronOrderID: 50),
+            .stub(id: 4, chronOrderID: 40),
         ])
 
         let call = try #require(await indexer.calls.first)
@@ -213,7 +215,7 @@ struct SpotlightDonationServiceTests {
         #expect(call.priority < SpotlightDonationService.currentPlaycutPriority)
     }
 
-    @Test("donateRecentPlaycuts advances the watermark to the highest indexed chronOrderID")
+    @Test("donateRecentPlaycuts advances the watermark to the highest indexed id")
     func recentBatchAdvancesWatermark() async {
         let defaults = InMemoryDefaults()
         let service = SpotlightDonationService(storage: defaults, indexer: MockSpotlightIndexer())
@@ -224,37 +226,37 @@ struct SpotlightDonationServiceTests {
             .stub(id: 3, chronOrderID: 20),
         ])
 
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "30")
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "3")
     }
 
     @Test("donateRecentPlaycuts does not advance the watermark when indexing fails")
     func recentBatchDoesNotAdvanceOnFailure() async {
         let defaults = InMemoryDefaults()
-        defaults.set("5", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("5", forKey: SpotlightDonationService.donatedThroughIDKey)
         let service = SpotlightDonationService(
             storage: defaults,
             indexer: MockSpotlightIndexer(shouldThrow: true)
         )
 
-        await service.donateRecentPlaycuts([.stub(id: 1, chronOrderID: 100)])
+        await service.donateRecentPlaycuts([.stub(id: 6, chronOrderID: 100)])
 
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "5")
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "5")
     }
 
     @Test("donateRecentPlaycuts does not call the indexer when every playcut is stale")
     func recentBatchSkipsWhenAllStale() async {
         let defaults = InMemoryDefaults()
-        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("100", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
         await service.donateRecentPlaycuts([
-            .stub(id: 1, chronOrderID: 10),
-            .stub(id: 2, chronOrderID: 100),
+            .stub(id: 10, chronOrderID: 10),
+            .stub(id: 100, chronOrderID: 100),
         ])
 
         #expect(await indexer.calls.isEmpty)
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "100")
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "100")
     }
 
     @Test("donateRecentPlaycuts is a no-op on an empty playlist")
@@ -266,69 +268,108 @@ struct SpotlightDonationServiceTests {
         await service.donateRecentPlaycuts([])
 
         #expect(await indexer.calls.isEmpty)
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == nil)
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == nil)
     }
 
-    // MARK: - Composite chronOrderID watermark migration (#839)
+    // MARK: - The watermark rides `id`, not the ordering key (#839)
 
-    @Test("An old id-scale persisted watermark does not strand donation once entries carry composite packed keys")
-    func oldScaleWatermarkDoesNotStrandCompositeKeyedDonation() async {
-        // The watermark predates the #839 composite-key change: it was
-        // written back when chronOrderID was the bare flowsheet id (~5.3e6
-        // at the time of the issue's live sample).
-        let defaults = InMemoryDefaults()
-        defaults.set("5300000", forKey: SpotlightDonationService.watermarkKey)
-        let indexer = MockSpotlightIndexer()
-        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
-
-        // A post-upgrade playlist carries packed (show_id << 32 | play_order)
-        // keys — several orders of magnitude above the stale watermark, but
-        // that's luck (advanceWatermarkIfNewer only ever moves up), not a
-        // guarantee this test pins down.
-        let packedChronOrderID = (UInt64(1_950_704) << 32) | UInt64(12)
-        await service.donateRecentPlaycuts([.stub(id: 1, chronOrderID: packedChronOrderID)])
-
-        let calls = await indexer.calls
-        #expect(calls.count == 1, "the stale, old-scale watermark must not silently swallow every post-upgrade row")
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == String(packedChronOrderID))
-    }
-
-    @Test("A row that couldn't be packed cannot push the watermark past the packed key space")
-    func unpackableRowDoesNotPoisonTheWatermark() async {
-        // The watermark takes the largest chronOrderID in the batch, so
-        // whatever key `FlowsheetConverter` hands an unpackable row (nil
-        // `show_id`, an out-of-range component) is persisted verbatim if it
-        // ranks highest. A fallback that shifted `id` into the high bits the
-        // way real keys are shifted would put ~2.3e16 here — above every real
-        // packed key (~8.4e15) — and `show_id` climbs ~930/month, so donation
-        // would stay stranded for roughly thirteen years with nothing to
-        // notice. The fallback is the bare id precisely so it can never win
-        // this comparison.
-        // These keys are literals because `FlowsheetConverter` is internal to
-        // `Playlist`; what they encode is its contract, pinned on that side by
-        // `FlowsheetConverterTests.nilShowIDNeverOutranksARealPackedKey`. This
-        // test owns the other half — that a batch containing such a row leaves
-        // the waterline where the real rows put it.
+    @Test("A v2 tick followed by a v1 tick still donates, though their chronOrderID scales differ by nine orders of magnitude")
+    func watermarkSurvivesAnAPIVersionFallback() async {
+        // `PlaylistAPIVersion.defaultVersion` is `.v1`, and `loadActive()`
+        // falls back to it whenever the PostHog `playlist_api_version` flag
+        // can't be evaluated — an offline launch, a flag miss, a debug
+        // override. v1 decodes `chronOrderID` straight out of tubafrenzy's
+        // JSON, where it is the row id (~5.3e6 today); v2 derives the packed
+        // composite (~8.4e15). One persisted watermark serves both and only
+        // ever moves up, so keying it on the ordering key means a single v2
+        // tick puts it permanently out of reach of every v1 row.
+        //
+        // `id` is the same flowsheet serial on both paths (verified against
+        // both live feeds), immutable, and monotone in insertion order — the
+        // properties a high-water mark actually needs, and the ones
+        // `chronOrderID` gave up when it started tracking reorders.
         let defaults = InMemoryDefaults()
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
-        let packedChronOrderID = (UInt64(1_950_704) << 32) | UInt64(12)
         await service.donateRecentPlaycuts([
-            .stub(id: 5_304_199, chronOrderID: packedChronOrderID),
-            .stub(id: 5_304_200, chronOrderID: UInt64(5_304_200)),   // unpackable: falls back to id
+            .stub(id: 5_306_219, chronOrderID: (UInt64(1_951_079) << 32) | UInt64(12)),
         ])
 
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == String(packedChronOrderID))
-
-        // The consequence that matters: the next real row still donates.
+        // The next launch resolves to v1: same rows, legacy-scale keys.
         await service.donateRecentPlaycuts([
-            .stub(id: 5_304_201, chronOrderID: (UInt64(1_950_704) << 32) | UInt64(13)),
+            .stub(id: 5_306_220, chronOrderID: 5_306_220),
         ])
 
         let calls = await indexer.calls
-        #expect(calls.count == 2, "a later real row must not be filtered out by a poisoned watermark")
-        #expect(calls.last?.entityIDs == [PlaycutID(5_304_201)])
+        #expect(calls.count == 2, "a v1 row after a v2 tick must still reach Spotlight")
+        #expect(calls.last?.entityIDs == [PlaycutID(5_306_220)])
+    }
+
+    @Test("A row whose play_order was lowered below the waterline is still donated")
+    func reorderedRowIsNotSkippedByTheWatermark() async {
+        // Backend-Service's schema.ts forbids a per-show UNIQUE on
+        // `play_order` outright ("BOTH paths are still live, so the two can
+        // still produce overlapping values" — the 2026-05-01 incident memo),
+        // and a dj-site reorder rewrites it downward by design. So the
+        // composite key is neither unique nor monotone, and a `>` filter over
+        // it drops rows permanently: the row is real, unseen, and now sorts
+        // below a waterline that can never come back down.
+        let defaults = InMemoryDefaults()
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        let show = UInt64(1_951_079) << 32
+        await service.donateRecentPlaycuts([.stub(id: 5_306_219, chronOrderID: show | 12)])
+
+        // A newly-logged row the DJ immediately drags above the previous one:
+        // higher id, lower play_order.
+        await service.donateRecentPlaycuts([.stub(id: 5_306_220, chronOrderID: show | 11)])
+
+        let calls = await indexer.calls
+        #expect(calls.count == 2, "a reordered row must not be filtered out by the waterline")
+        #expect(calls.last?.entityIDs == [PlaycutID(5_306_220)])
+    }
+
+    // MARK: - Legacy watermark migration (#839)
+
+    @Test("The pre-#839 watermark key seeds the id waterline, so an upgrade neither re-donates nor strands")
+    func legacyWatermarkKeySeedsTheIDWaterline() async {
+        // On every shipped build the old key held a `chronOrderID` that WAS
+        // the row id, so it carries over unchanged: rows at or below it stay
+        // donated, rows above it still go out.
+        let defaults = InMemoryDefaults()
+        defaults.set("5306219", forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        await service.donateRecentPlaycuts([
+            .stub(id: 5_306_219, chronOrderID: (UInt64(1_951_079) << 32) | UInt64(11)),
+            .stub(id: 5_306_220, chronOrderID: (UInt64(1_951_079) << 32) | UInt64(12)),
+        ])
+
+        let calls = await indexer.calls
+        #expect(calls.first?.entityIDs == [PlaycutID(5_306_220)], "the row at the legacy waterline stays donated")
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "5306220")
+        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "5306219", "the legacy key is read, never written")
+    }
+
+    @Test("A legacy value too large to be an id is ignored rather than seeded")
+    func implausibleLegacyWatermarkIsIgnored() async {
+        // Belt and braces for a pre-release build that persisted a packed
+        // composite key under the old name: seeding from it would put the
+        // waterline ~1.6 billion rows into the future and strand donation
+        // permanently — the exact failure the id waterline exists to avoid.
+        let defaults = InMemoryDefaults()
+        defaults.set(String((UInt64(1_951_079) << 32) | UInt64(12)), forKey: SpotlightDonationService.watermarkKey)
+        let indexer = MockSpotlightIndexer()
+        let service = SpotlightDonationService(storage: defaults, indexer: indexer)
+
+        await service.donateRecentPlaycuts([.stub(id: 5_306_220, chronOrderID: 5_306_220)])
+
+        let calls = await indexer.calls
+        #expect(calls.count == 1)
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "5306220")
     }
 
     // MARK: - Artist donation (C6)
@@ -569,16 +610,16 @@ struct SpotlightDonationServiceTests {
         // Only the batch path advances the watermark; a cross-instance test
         // has to drive it there so the second instance sees the persisted
         // state.
-        await first.donateRecentPlaycuts([.stub(id: 1, chronOrderID: 777)])
+        await first.donateRecentPlaycuts([.stub(id: 777, chronOrderID: 777)])
 
         let secondIndexer = MockSpotlightIndexer()
         let second = SpotlightDonationService(storage: defaults, indexer: secondIndexer)
 
         // Playcut 500 is stale relative to the persisted 777.
-        await second.donateRecentPlaycuts([.stub(id: 2, chronOrderID: 500)])
+        await second.donateRecentPlaycuts([.stub(id: 500, chronOrderID: 500)])
 
         #expect(await secondIndexer.calls.isEmpty)
-        #expect(defaults.string(forKey: SpotlightDonationService.watermarkKey) == "777")
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedThroughIDKey) == "777")
     }
 
     // MARK: - Metadata enrichment re-donation (issue #443)
@@ -586,7 +627,7 @@ struct SpotlightDonationServiceTests {
     @Test("handleMetadataEnrichment re-donates a row previously donated by the batch path")
     func reDonatesPreviouslyBatchDonatedRow() async {
         let defaults = InMemoryDefaults()
-        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("100", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
@@ -628,13 +669,13 @@ struct SpotlightDonationServiceTests {
     @Test("handleMetadataEnrichment is a no-op for a row that was never donated")
     func skipsRowNeverDonated() async {
         let defaults = InMemoryDefaults()
-        defaults.set("10", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("10", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
-        // chronOrderID 999 is above the watermark, and this instance never
-        // donated it via the per-tick path either.
-        let enriched = Playcut.stub(id: 1, chronOrderID: 999, metadataStatus: .enrichedMatch)
+        // id 11 is above the watermark, and this instance never donated it
+        // via the per-tick path either.
+        let enriched = Playcut.stub(id: 11, chronOrderID: 999, metadataStatus: .enrichedMatch)
         await service.handleMetadataEnrichment(for: enriched)
 
         #expect(await indexer.calls.isEmpty)
@@ -643,7 +684,7 @@ struct SpotlightDonationServiceTests {
     @Test("handleMetadataEnrichment re-donates at batch priority, not elevated")
     func reDonatesAtBatchPriority() async throws {
         let defaults = InMemoryDefaults()
-        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("100", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
@@ -656,7 +697,7 @@ struct SpotlightDonationServiceTests {
     @Test("observeMetadataEnrichment re-donates exactly once for a terminal transition on a donated row")
     func observeReDonatesExactlyOnceForDonatedRow() async {
         let defaults = InMemoryDefaults()
-        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("100", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
@@ -727,11 +768,11 @@ struct SpotlightDonationServiceTests {
     @Test("observeMetadataEnrichment does not donate a terminal transition on an undonated row")
     func observeSkipsUndonatedRow() async {
         let defaults = InMemoryDefaults()
-        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("100", forKey: SpotlightDonationService.donatedThroughIDKey)
         let indexer = MockSpotlightIndexer()
         let service = SpotlightDonationService(storage: defaults, indexer: indexer)
 
-        let neverDonated = Playcut.stub(id: 2, chronOrderID: 999, metadataStatus: .enrichedMatch)
+        let neverDonated = Playcut.stub(id: 200, chronOrderID: 999, metadataStatus: .enrichedMatch)
         let source = MockPlaylistService(transitions: [neverDonated])
 
         await service.observeMetadataEnrichment(from: source)
@@ -787,7 +828,7 @@ struct SpotlightDonationServiceTests {
     @Test("donateRecentPlaycuts emits nothing when every playcut is stale")
     func recentBatchEmitsNothingWhenAllStale() async {
         let defaults = InMemoryDefaults()
-        defaults.set("100", forKey: SpotlightDonationService.watermarkKey)
+        defaults.set("100", forKey: SpotlightDonationService.donatedThroughIDKey)
         let analytics = MockStructuredAnalytics()
         let service = SpotlightDonationService(
             storage: defaults,
@@ -795,7 +836,7 @@ struct SpotlightDonationServiceTests {
             analytics: analytics
         )
 
-        await service.donateRecentPlaycuts([.stub(id: 1, chronOrderID: 10)])
+        await service.donateRecentPlaycuts([.stub(id: 10, chronOrderID: 10)])
 
         #expect(analytics.events.isEmpty)
     }

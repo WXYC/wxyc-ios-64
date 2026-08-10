@@ -21,7 +21,7 @@
 //    already-donated row through `handleMetadataEnrichment(for:)` when its
 //    `metadata_status` lands in a terminal enriched state — issue #443.
 //
-//  The watermark ("last successfully-donated chronOrderID" from the batch
+//  The watermark ("last successfully-donated playcut id" from the batch
 //  path) lives in `DefaultsStorage` so the catalogue keeps advancing across
 //  launches. Only `donateRecentPlaycuts` moves the watermark — the per-tick
 //  and enrichment-re-donation paths are idempotent-upsert-only so neither
@@ -78,9 +78,37 @@ public actor SpotlightDonationService: Sendable {
 
     // MARK: - Constants
 
-    /// UserDefaults key for the "last successfully-donated chronOrderID".
-    /// Stored as a decimal `String` because `chronOrderID` is `UInt64` and
+    /// UserDefaults key for the id of the last successfully-donated playcut.
+    /// Stored as a decimal `String` because the id is `UInt64` and
     /// `DefaultsStorage.integer(forKey:)` returns a signed `Int`.
+    ///
+    /// A high-water mark needs a key that is unique, immutable, and monotone
+    /// in insertion order. `chronOrderID` was all three while it *was* the row
+    /// id; keying it on the composite `(show_id, play_order)` so it tracks
+    /// dj-site reorders (#839) gave up every one of them:
+    ///
+    /// - **Not monotone.** A reorder lowers `play_order` by design, so a row
+    ///   logged later can sort below the waterline and never be indexed.
+    /// - **Not unique.** Backend-Service's `schema.ts` forbids a per-show
+    ///   UNIQUE on `play_order` outright — tubafrenzy's webhook and dj-site
+    ///   both assign it and can overlap (the 2026-05-01 incident memo) — so a
+    ///   `>` filter can drop a row that merely ties the edge.
+    /// - **Not one scale.** The v1 data source decodes `chronOrderID` straight
+    ///   from tubafrenzy (~5.3e6); v2 derives the packed key (~8.4e15). One
+    ///   watermark serves both and only moves up, so a single v2 tick would
+    ///   put it permanently out of reach of every v1 row — and
+    ///   `PlaylistAPIVersion.defaultVersion` is `.v1`.
+    ///
+    /// The flowsheet `id` is the same serial on both API paths and survives a
+    /// reorder untouched, which is exactly what "have I sent this row yet?"
+    /// wants to ask.
+    public static let donatedThroughIDKey = "spotlight.playcuts.donatedThroughID"
+
+    /// The pre-#839 key, which held a `chronOrderID`. Read once to seed
+    /// ``donatedThroughIDKey`` and never written again — on every shipped
+    /// build that value *was* the row id, so it migrates as-is. Left in
+    /// place rather than deleted: it costs nothing and removing a key is not
+    /// something to do on a hunch about who might still read it.
     public static let watermarkKey = "spotlight.playcuts.watermark"
 
     /// Priority for a per-tick current-playcut donation. Deliberately above
@@ -161,29 +189,29 @@ public actor SpotlightDonationService: Sendable {
     /// Batch-upsert playcuts newer than the persisted watermark.
     ///
     /// Called after a background refresh completes with the freshly-fetched
-    /// playlist. Stale playcuts (`chronOrderID <= watermark`) are dropped,
-    /// the remainder is sorted ascending and capped at ``batchLimit``. On a
-    /// successful indexer return the watermark advances to the largest
-    /// `chronOrderID` in the sent batch; on failure it stays put and the
-    /// next tick retries the same range.
+    /// playlist. Already-donated playcuts (`id <= watermark`) are dropped, the
+    /// remainder is sorted by id ascending and capped at ``batchLimit``. On a
+    /// successful indexer return the watermark advances to the largest `id` in
+    /// the sent batch; on failure it stays put and the next tick retries the
+    /// same range.
+    ///
+    /// Both the filter and the waterline ride `id` rather than the display
+    /// order — see ``donatedThroughIDKey`` for why the ordering key can no
+    /// longer carry a high-water mark. A reorder therefore doesn't re-donate a
+    /// row, which is right: reordering changes where a play sits in the feed,
+    /// not what Spotlight would show for it.
     public func donateRecentPlaycuts(_ playcuts: [Playcut]) async {
         let watermark = currentWatermark
         let batch = playcuts
-            .filter { $0.chronOrderID > watermark }
-            // `sorted()` is `Playcut`'s own `Comparable` (chronOrderID, then id
-            // as an explicit tiebreak) — a duplicate `chronOrderID` is
-            // reachable (see FlowsheetConverter.chronOrderID's doc comment),
-            // and without the tiebreak two such rows would swap places
-            // between ticks, changing which one lands on the watermark edge.
-            .sorted()
+            .filter { $0.id > watermark }
+            .sorted { $0.id < $1.id }
             .prefix(Self.batchLimit)
 
-        guard let highestID = batch.last?.chronOrderID else { return }
+        guard let highestID = batch.last?.id else { return }
 
-        // The playcut `.id` (not chronOrderID, which only orders the batch and
-        // drives the watermark below) of the newest row in the batch — the
-        // representative id SpotlightDonated reports.
-        let representativeID = batch.last?.id ?? 0
+        // The newest row in the batch by id — the representative id
+        // `SpotlightDonated` reports, and the same value the waterline takes.
+        let representativeID = highestID
 
         let entities = batch.map(PlaycutEntity.init(playcut:))
         do {
@@ -200,7 +228,7 @@ public actor SpotlightDonationService: Sendable {
     /// to a terminal enrichment state (see
     /// `PlaylistService.terminalMetadataTransitions()`), but only when the
     /// row was donated previously — either by the batch path
-    /// (`chronOrderID <= watermark`) or by the per-tick path (it's the
+    /// (`id <= watermark`) or by the per-tick path (it's the
     /// current on-air playcut). `indexAppEntities` upserts on identifier, so
     /// this is a free no-op server-side; the guard exists so we don't spend
     /// an XPC round-trip on a row Spotlight has never indexed — the next
@@ -260,14 +288,12 @@ public actor SpotlightDonationService: Sendable {
         guard !entities.isEmpty else { return }
 
         // Representative playcut id for correlation with the flowsheet tick
-        // that produced this artist batch — the `.id` of the input playcut
-        // with the highest chronOrderID, matching donateRecentPlaycuts's
-        // newest-row-in-the-batch convention even though this path shares no
-        // watermark of its own. `max()` uses `Playcut`'s own `Comparable`
-        // (chronOrderID, then id as an explicit tiebreak) so a duplicate
-        // chronOrderID resolves deterministically instead of leaving the
-        // reported id to an unspecified tie order.
-        let representativeID = playcuts.max()?.id ?? 0
+        // that produced this artist batch — the highest input id, matching
+        // donateRecentPlaycuts's newest-row-in-the-batch convention even
+        // though this path shares no watermark of its own. Taken on `id`
+        // rather than the ordering key for the same reason that one does:
+        // ids are unique, so there is no tie to resolve.
+        let representativeID = playcuts.map(\.id).max() ?? 0
 
         do {
             try await artistIndexer.indexArtists(Array(entities), priority: Self.batchPriority)
@@ -311,21 +337,34 @@ public actor SpotlightDonationService: Sendable {
     }
 
     /// Whether `playcut` was already sent to Spotlight by either donation
-    /// path — the batch watermark has advanced past its `chronOrderID`, or
+    /// path — the batch watermark has advanced past its `id`, or
     /// it's the most recent per-tick current-playcut donation.
     private func wasPreviouslyDonated(_ playcut: Playcut) -> Bool {
-        playcut.chronOrderID <= currentWatermark || playcut.id == lastDonatedCurrentPlaycut?.id
+        playcut.id <= currentWatermark || playcut.id == lastDonatedCurrentPlaycut?.id
     }
 
     // MARK: - Watermark
 
     private var currentWatermark: UInt64 {
-        storage.string(forKey: Self.watermarkKey).flatMap(UInt64.init) ?? 0
+        if let stored = storage.string(forKey: Self.donatedThroughIDKey).flatMap(UInt64.init) {
+            return stored
+        }
+        // Seed from the pre-#839 key. Its value was a `chronOrderID`, which on
+        // every shipped build equalled the row id — so it carries over as-is.
+        // The bound rejects a packed composite key (~8.4e15, far past any
+        // plausible flowsheet id — ~5.3e6 today, four decades of headroom
+        // below `UInt32.max`) in case a pre-release build wrote one; seeding
+        // from that would strand donation exactly as described on
+        // ``donatedThroughIDKey``.
+        guard let legacy = storage.string(forKey: Self.watermarkKey).flatMap(UInt64.init),
+              legacy <= UInt64(UInt32.max)
+        else { return 0 }
+        return legacy
     }
 
     private func advanceWatermarkIfNewer(_ candidate: UInt64) {
         guard candidate > currentWatermark else { return }
-        storage.set(String(candidate), forKey: Self.watermarkKey)
+        storage.set(String(candidate), forKey: Self.donatedThroughIDKey)
     }
 }
 

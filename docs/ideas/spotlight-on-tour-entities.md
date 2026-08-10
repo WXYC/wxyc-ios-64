@@ -51,7 +51,7 @@ The through-line: **a concert id already routes to the On Tour poster detail fro
 - No `wxyc.concerts` / `wxyc.venues` `CSSearchableIndex`. The playcut index (`CoreSpotlightIndexer.indexName = "wxyc.playcuts"`, `Shared/AppServices/Sources/AppServices/SpotlightIndexer.swift`) is playcut-only: its one method is `indexPlaycuts(_:priority:)`.
 - No `OpenConcert` / `OpenVenue` `OpenIntent`.
 - No concert Siri intent. `WXYCAppShortcuts` (`WXYC/iOS/Intents.swift:181`) registers `WhatsPlayingOnWXYC`, `PlayWXYC`, `MakeARequest` — nothing touches concerts.
-- No concert donation. `SpotlightDonationService` (`Shared/AppServices/…/SpotlightDonationService.swift`) is watermark-based (`donateRecentPlaycuts` advances a monotonic `chronOrderID` high-water mark) — the wrong model for a churning, expiring concert window (see the crux below).
+- No concert donation. `SpotlightDonationService` (`Shared/AppServices/…/SpotlightDonationService.swift`) is watermark-based (`donateRecentPlaycuts` advances a high-water mark on the flowsheet `id` — on `chronOrderID` until #839 made that key mutable and multi-scale) — the wrong model for a churning, expiring concert window (see the crux below).
 
 ### On Tour data already shaped like entities
 
