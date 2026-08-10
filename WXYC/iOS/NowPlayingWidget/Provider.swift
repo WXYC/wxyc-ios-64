@@ -26,7 +26,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
     // Widget extensions run in a separate process from the main app.
     // They cannot access the main app's SwiftUI environment, so they
     // must create their own PlaylistService instance.
-    let playlistService = PlaylistService()
+    let playlistService: PlaylistService
     let artworkService = MultisourceArtworkService()
 
     init() {
@@ -35,6 +35,38 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             host: AppConfiguration.defaults.posthogHost
         )
         PostHogSDK.shared.setup(config)
+        // Constructed AFTER PostHog setup, deliberately: `PlaylistService.init`
+        // resolves `PlaylistAPIVersion.loadActive()` synchronously, and a
+        // stored-property default runs before this init body — pre-setup,
+        // `getFeatureFlag` returns nil unconditionally, deterministically
+        // pinning every widget process to `defaultVersion`. This fixes the
+        // ordering only: the widget's PostHog flag cache is per-container (no
+        // `appGroupIdentifier` is configured), so it still can't see the main
+        // app's flag values — but per-version cache keys
+        // (`PlaylistCacheKey.playlist(for:)`) keep a v1-resolving widget from
+        // poisoning the app's v2 cache either way.
+        playlistService = PlaylistService()
+    }
+
+    /// The four most recent playcuts as artwork-resolved items, head first.
+    ///
+    /// The head comes from `Playlist.currentPlaycut` — the same accessor every
+    /// other now-playing surface reads (see its doc for the cases where it
+    /// disagrees with a plain sort) — and the remaining three follow display
+    /// order. One derivation for both `snapshot` and `timeline`, so the
+    /// widget can't drift from the app's head-selection rule again.
+    private func nowPlayingItems(from playlist: Playlist) async -> [NowPlayingItem] {
+        guard let head = playlist.currentPlaycut else { return [] }
+        let recent = playlist.playcuts
+            .sorted(by: >)
+            .filter { $0.id != head.id }
+            .prefix(3)
+        return await ([head] + recent).asyncMap { playcut in
+            NowPlayingItem(
+                playcut: playcut,
+                artwork: try? await self.artworkService.fetchArtwork(for: playcut).toUIImage()
+            )
+        }
     }
 
     func placeholder(in context: Context) -> NowPlayingTimelineEntry {
@@ -62,17 +94,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             family: String(describing: family)
         ))
 
-        let playlist = await playlistService.fetchPlaylist()
-
-        var nowPlayingItems = await playlist.playcuts
-            .sorted(by: >)
-            .prefix(4)
-            .asyncMap { playcut in
-                NowPlayingItem(
-                    playcut: playcut,
-                    artwork: try? await self.artworkService.fetchArtwork(for: playcut).toUIImage()
-                )
-            }
+        var nowPlayingItems = await nowPlayingItems(from: playlistService.fetchPlaylist())
 
         // Handle empty playlist gracefully with empty state
         guard let (nowPlayingItem, recentItems) = nowPlayingItems.safePopFirst() else {
@@ -97,23 +119,19 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         var entry: NowPlayingTimelineEntry = .emptyState(family: family)
 
         if context.isPreview {
-            nowPlayingItemsWithArtwork = Array(repeating: .placeholder, count: 4)
+            // Four literal evaluations, not `Array(repeating:)`: `.placeholder`
+            // advances a rotating fixture per evaluation, while `repeating`
+            // evaluates once and yields four rows sharing one `playcut.id` —
+            // the key `LargeNowPlayingWidgetEntryView`'s `ForEach` requires to
+            // be unique. Same form `placeholder(in:)` uses.
+            nowPlayingItemsWithArtwork = [.placeholder, .placeholder, .placeholder, .placeholder]
         } else {
-            let playlist = await playlistService.fetchPlaylist()
-            let playcuts = playlist
-                .playcuts
-                .sorted(by: >)
-                .prefix(4)
-
-            nowPlayingItemsWithArtwork = await playcuts.asyncMap { playcut in
-                NowPlayingItem(
-                    playcut: playcut,
-                    artwork: try? await self.artworkService.fetchArtwork(for: playcut).toUIImage()
-                )
-            }
+            // Already head-first — no re-sort here: sorting by the ordering
+            // key would displace the `currentPlaycut` head exactly in the
+            // cases where the two disagree.
+            nowPlayingItemsWithArtwork = await nowPlayingItems(from: playlistService.fetchPlaylist())
         }
 
-        nowPlayingItemsWithArtwork.sort(by: >)
         if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.safePopFirst() {
             entry = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
