@@ -29,12 +29,16 @@ struct FlowsheetLiveEventSourceTests {
 
     /// One `insert` frame's JSON, on a single line as Backend emits it.
     private static func insertFrame(id: Int) -> String {
-        """
-        {"type":"insert","payload":{"id":\(id),"artist_name":"Juana Molina",\
-        "album_title":"DOGA","track_title":"la paradoja","play_order":1,\
-        "add_time":"2026-08-05T18:00:00Z","entry_type":"track",\
-        "metadata_status":"pending"},"timestamp":"2026-08-05T18:00:00Z"}
-        """
+        SSEFrame.json(
+            type: "insert",
+            payloadJSON: """
+            {"id":\(id),"artist_name":"Juana Molina","album_title":"DOGA",\
+            "track_title":"la paradoja","play_order":1,\
+            "add_time":"2026-08-05T18:00:00Z","entry_type":"track",\
+            "metadata_status":"pending"}
+            """,
+            timestamp: "2026-08-05T18:00:00Z"
+        )
     }
 
     /// A session whose traffic `CapturingURLProtocol` serves.
