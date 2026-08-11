@@ -46,14 +46,15 @@ Skip a single push with `git push --no-verify`, or globally with `git config wxy
 
 ### Testing the test-selection scripts themselves
 
-`.github/scripts/affected-tests.sh` decides which tests run for every change in this repo, so a regression in it does not fail loudly — it silently runs fewer tests than it should. Two shell suites cover it, and neither is wired into a workflow (`build-and-test.yml` is `workflow_dispatch`-only). Run them by hand after touching either script:
+`.github/scripts/affected-tests.sh` decides which tests run for every change in this repo, so a regression in it does not fail loudly — it silently runs fewer tests than it should. Three shell suites cover it and `scripts/test-affected.sh`'s own fallback behavior. They auto-run on `pull_request` via `.github/workflows/shell-script-tests.yml` — a separate, much lighter workflow than `build-and-test.yml` (no Xcode, no simulator, no submodule; the whole set runs in under two seconds), which is why it can auto-run when `build-and-test.yml` deliberately stays `workflow_dispatch`-only. Run them by hand after touching any of the scripts they cover:
 
 ```bash
 zsh .github/scripts/tests/test-affected-tests.sh   # affected-tests.sh: pbxproj classification, whitespace input, output() guard
 zsh scripts/tests/test-pre-push-hook.sh            # scripts/hooks/pre-push: BASE_REF derivation from git's stdin protocol
+zsh scripts/tests/test-affected-error-fallback.sh  # test-affected.sh: CoreTests coverage when affected-tests.sh itself crashes
 ```
 
-Both are dependency-free (no bats), print TAP-ish `ok -` / `FAIL -` lines, and exit nonzero on any failure. They build throwaway git repos in `mktemp -d`, so they never touch the working tree.
+All three are dependency-free (no bats), print TAP-ish `ok -` / `FAIL -` lines, and exit nonzero on any failure. They build throwaway git repos in `mktemp -d`, so they never touch the working tree.
 
 One case deserves care when editing `is_pbxproj_change_structural`: it compares *sorted structural fingerprints* of the two file versions rather than grepping the textual diff for marker keywords, because the array a membership entry lives in can be dozens of lines long and the keyword only appears on the array's unchanged declaration line. A fixture whose `membershipExceptions` array is short enough to keep that line inside git's 3 lines of context will pass while the real `WXYC.xcodeproj` fails. The suite pins mid-array add, mid-array remove, and cross-target move for exactly this reason.
 
@@ -84,6 +85,16 @@ xcodebuild -scheme WXYC -destination 'generic/platform=iOS'
 # Build for simulator
 xcodebuild -scheme WXYC -destination 'platform=iOS Simulator,name=iPhone Air'
 ```
+
+## The Xcode 27 Beta Toolchain
+
+`Shared/Intents` has eight `#if compiler(>=6.4)` gates in `Sources/Intents` and four more in `Tests/WXYCIntentsTests`, guarding AppIntents APIs (the `.audio` AppIntents schema, `IndexedEntityQuery` reindexing, etc.) that only exist in the Xcode 27 beta SDK. `#if compiler(>=X.Y)` keys off the compiler binary doing the compiling, not the deployment target or the simulator/device you build for — a routine build with the stable toolchain never even type-checks the gated block, regardless of which simulator you point it at.
+
+**Location and versions.** The beta lives at `/Applications/Xcode-beta.app`, side by side with the stable install. Verified 2026-08-11: `DEVELOPER_DIR=/Applications/Xcode-beta.app xcrun swiftc --version` reports `Apple Swift version 6.4 (swiftlang-6.4.0.27.1 …)` against an iOS 27.0 SDK (per `xcodebuild -showsdks`); the stable install reports `Apple Swift version 6.3.3 (swiftlang-6.3.3.1.3 …)`. A `#error`-in-both-branches probe compiled under each toolchain confirms `#if compiler(>=6.4)` evaluates false on stable and true on the beta — and confirms it identically whether the probe targets the macOS host or the iOS 27.0 simulator, which is the direct proof that the gate tracks the compiler, not the target.
+
+**Select the beta via `xcodebuild`/`xcrun`, never bare `swift`/`swiftc`.** `DEVELOPER_DIR=/Applications/Xcode-beta.app xcodebuild …` (or `xcrun swiftc …`) reliably dispatches to the beta compiler. Bare `swift`/`swiftc` do not: if a Swift toolchain manager (e.g. `swiftly`) is installed, its shim sits ahead of both Xcode installs on `$PATH` and silently ignores `DEVELOPER_DIR`, routing instead to whatever toolchain it has configured as its own default — a third toolchain, unrelated to either Xcode install. Confirmed on this machine 2026-08-11: `which swift` resolved to `~/.swiftly/bin/swift`, and a `DEVELOPER_DIR`-prefixed bare `swiftc` call against a `#if compiler(>=6.4)` probe returned the *same* (wrong, stable-like) result whether `DEVELOPER_DIR` pointed at the stable install or the beta — both invocations were silently landing on the swiftly-managed toolchain instead. `which swift` / `which swiftc` reveals the interception; `xcrun -f swiftc` under the desired `DEVELOPER_DIR` shows the binary that will actually run.
+
+**Host `swift build`/`swift test` can fail under the beta for a real, unrelated reason — not a broken SDK.** `Shared/Intents/Package.swift` declares `.macOS(.v15)` as its platform floor (macOS isn't Intents' real target; the floor exists for other code in the package). The beta SDK's `AppIntents.audio` schema symbols that the `#if compiler(>=6.4)` gates reference are `@available(macOS 27.0, *)`. A **host** build (`swift build`/`swift test`, which always compiles for the Mac you're running on, ignoring the package's `.iOS` platform entry) type-checks the gated code against that macOS 15 floor and fails — e.g. `'audio' is only available in macOS 27.0 or newer` — even though the declarations are correctly annotated `@available(iOS 27.0, *)` for their real, iOS deployment target. Reproduced 2026-08-11 via `DEVELOPER_DIR=/Applications/Xcode-beta.app xcrun swift build --package-path Shared/Intents`; passing an explicit `-Xswiftc -target` does **not** fix it — SwiftPM recomputes its own `-target` flag from `Package.swift` and silently drops the override. This is one of the reasons `Intents` is excluded from `SPM_RUNNABLE` (see [Affected-only test runs](#affected-only-test-runs-scriptstest-affectedsh) above). The iOS **simulator** path is unaffected — there the deployment target is `.iOS("18.4")` and the local `@available(iOS 27.0, *)` annotation is the only gate that applies — which is how the shipped features behind these gates were actually built and verified: via `xcodebuild` against an iOS 27.0 simulator, never via a host `swift build`.
 
 ## E2E Tests
 
