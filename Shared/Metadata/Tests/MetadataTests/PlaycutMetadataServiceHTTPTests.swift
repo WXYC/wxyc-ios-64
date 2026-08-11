@@ -403,7 +403,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // Given — the first two attempts hit a transient 5xx; the third
         // (bounded — #284 caps this service at 3 total attempts) succeeds.
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -477,7 +477,7 @@ struct PlaycutMetadataServiceHTTPTests {
             return (body, response)
         }
 
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -504,7 +504,7 @@ struct PlaycutMetadataServiceHTTPTests {
     func givesUpAfterExhaustingRetriesOnPersistentTransientError() async throws {
         // Given — every attempt 5xxs.
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -540,7 +540,7 @@ struct PlaycutMetadataServiceHTTPTests {
     func permanentNotFoundCachesNegativeEntryImmediatelyWithoutRetrying() async throws {
         // Given
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -586,7 +586,7 @@ struct PlaycutMetadataServiceHTTPTests {
         // pre-#284 behavior instead: fall back, cache nothing, re-attempt on
         // the next card open.
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
