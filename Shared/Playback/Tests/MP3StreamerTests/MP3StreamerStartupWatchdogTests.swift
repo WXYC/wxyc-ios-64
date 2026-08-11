@@ -5,6 +5,18 @@
 //  Tests for the startup watchdog that escalates when playback connects but
 //  never reaches the .playing state (Sentry IOS-31: "Playback not starting").
 //
+//  Driven by a `StartupWatchdogGate` (see #787/#807) rather than the wall
+//  clock. Every test in this file previously drove `MP3Streamer` with its real
+//  `startupTimeout` and polled `Task.sleep` loops hoping the watchdog's
+//  ~1s-clamped deadline had (or hadn't) elapsed by the time the poll budget
+//  ran out — under MainActor scheduling contention from a full-plan test run,
+//  the deadline and the poll budget could each drift independently, producing
+//  `connectCallCount` mismatches in both directions (#687). Gating the
+//  watchdog's sleep means a deadline can never fire, defer, or re-arm except
+//  in direct response to the test calling `release()`, so every assertion in
+//  this file is now decided by explicit test action instead of by racing a
+//  real clock against scheduler latency.
+//
 //  Created by Jake Bromberg on 07/12/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
@@ -29,12 +41,15 @@ struct MP3StreamerStartupWatchdogTests {
     /// reconnect instead of hanging.
     @Test("Escalates and reconnects when buffering starves before playing")
     func escalatesWhenBufferingStarves() async throws {
-        // `connectionTimeout: 0` keeps the config's `startupTimeout` clamp
-        // (`max(startupTimeout, connectionTimeout + 1)`) at its 1.0s floor, so the
-        // watchdog fires quickly instead of at the default connectionTimeout + 1.
+        // `connectionTimeout`/`startupTimeout` no longer control real timing —
+        // the gate does — but are kept close to the values a live watchdog
+        // would clamp to, since `StreamStartupError.timedOut(seconds:)` still
+        // reports `configuration.startupTimeout`.
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         // Connect succeeds, but no data ever arrives → stuck in buffering(0/5).
         mockHTTP.shouldSucceed = true
@@ -43,18 +58,21 @@ struct MP3StreamerStartupWatchdogTests {
         let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
-            audioPlayer: mockPlayer
+            audioPlayer: mockPlayer,
+            startupWatchdogSleep: gate.sleep
         )
 
         streamer.play()
 
-        // Without the watchdog, connectCallCount stays 1 forever. With it, the
-        // watchdog fires after ~1s (the clamped startupTimeout floor) and
-        // attemptReconnect() (first backoff wait is 0s) issues a second connect.
-        for _ in 0..<120 {
-            try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 2 { break }
-        }
+        // Prove the watchdog actually armed, then fire its deadline directly —
+        // no dependence on how long that takes to happen under load.
+        try await gate.waitForArm()
+        gate.release()
+
+        // Without the watchdog, connectCallCount stays 1 forever. With it firing,
+        // attemptReconnect() (first backoff wait is real but short) issues a
+        // second connect.
+        await pollUntil { mockHTTP.connectCallCount >= 2 }
 
         #expect(mockHTTP.connectCallCount >= 2,
                 "Startup watchdog should escalate a starved buffering phase into a reconnect")
@@ -69,13 +87,15 @@ struct MP3StreamerStartupWatchdogTests {
     /// reconnect re-escalates, driving further connects until the backoff exhausts.
     @Test("Re-arms the watchdog when a reconnect starves before playing")
     func reArmsWatchdogWhenReconnectStarves() async throws {
-        // Tiny, clamped backoff waits so successive escalation reconnects fire almost
-        // immediately. `connectionTimeout: 0` keeps the config's startupTimeout clamp
-        // at its 1.0s floor so each starved buffering phase trips the watchdog fast.
+        // Tiny backoff waits so successive escalation reconnects fire almost
+        // immediately. This wait is real wall-clock (Task.sleep inside
+        // attemptReconnect(), not gated) — kept tiny purely to keep the test fast.
         let backoff = ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.01, maximumAttempts: 10)
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         // Every connect succeeds at the HTTP layer but no data ever arrives → each
         // attempt parks in buffering(0/5) and starves.
@@ -86,19 +106,27 @@ struct MP3StreamerStartupWatchdogTests {
             configuration: config,
             httpClient: mockHTTP,
             audioPlayer: mockPlayer,
-            backoffTimer: backoff
+            backoffTimer: backoff,
+            startupWatchdogSleep: gate.sleep
         )
 
         streamer.play()
 
-        // Poll for a third connect: initial (1) + escalation reconnect (2) is all the
-        // pre-#487 behavior produces. A third connect proves the reconnect's own
-        // starvation was watched and re-escalated. Each escalation waits ~1s (the
-        // clamped startupTimeout floor), so budget generously.
-        for _ in 0..<200 {
-            try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 3 { break }
-        }
+        // release() always removes the arm it resumes before returning, so a
+        // waitForArm() right after it is unambiguous — it can only be observing
+        // the NEXT arm, never a stale one. Two release/wait cycles: the first
+        // escalates the initial starved connect into a reconnect (connect #2);
+        // the second proves that reconnect's own starvation is watched too
+        // (connect #3) — the pre-#487 regression plateaued at 2.
+        try await gate.waitForArm()
+        gate.release()
+
+        try await gate.waitForArm()
+        await pollUntil { mockHTTP.connectCallCount >= 2 }
+        #expect(mockHTTP.connectCallCount >= 2, "Precondition: the first escalation issued a reconnect")
+
+        gate.release()
+        await pollUntil { mockHTTP.connectCallCount >= 3 }
 
         #expect(mockHTTP.connectCallCount >= 3,
                 "The startup watchdog must be re-armed across reconnect connects so a starved reconnect re-escalates instead of hanging")
@@ -114,7 +142,6 @@ struct MP3StreamerStartupWatchdogTests {
     )
     func reconnectReachesPlayingCancelsWatchdog() async throws {
         let backoff = ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.01, maximumAttempts: 10)
-        // `connectionTimeout: 0` keeps the startupTimeout clamp at its 1.0s floor.
         let config = MP3StreamerConfiguration(
             url: Self.testStreamURL,
             minimumBuffersBeforePlayback: 2,
@@ -124,9 +151,11 @@ struct MP3StreamerStartupWatchdogTests {
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
         mockPlayer.immediatelyRequestMoreBuffers = false
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
-        // First connect starves; a later connect (the escalation reconnect) will be
-        // fed real data so it can cross the buffer threshold into `.playing`.
+        // First connect starves; the escalation reconnect below is fed real data
+        // so it can cross the buffer threshold into `.playing`.
         mockHTTP.shouldSucceed = true
         mockHTTP.testData = nil
 
@@ -134,26 +163,32 @@ struct MP3StreamerStartupWatchdogTests {
             configuration: config,
             httpClient: mockHTTP,
             audioPlayer: mockPlayer,
-            backoffTimer: backoff
+            backoffTimer: backoff,
+            startupWatchdogSleep: gate.sleep
         )
 
         streamer.play()
 
-        // Wait for the starved initial buffering phase.
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(25))
-            if case .buffering = streamer.streamingState { break }
+        // Precondition: reach the starved buffering phase before firing the
+        // watchdog.
+        try await gate.waitForArm()
+        await pollUntil {
+            if case .buffering = streamer.streamingState { return true }
+            return false
+        }
+        guard case .buffering = streamer.streamingState else {
+            Issue.record("Precondition: expected .buffering before firing the watchdog, got \(streamer.streamingState)")
+            return
         }
 
-        // Arm the recovery: the next connect (the watchdog's escalation reconnect)
-        // now feeds real MP3 data and should reach `.playing`.
+        // Arm the recovery before firing: the next connect (the watchdog's
+        // escalation reconnect) will feed real MP3 data.
         let testData = try TestAudioBufferFactory.loadMP3TestData()
         mockHTTP.testData = testData
 
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(50))
-            if case .playing = streamer.streamingState { break }
-        }
+        gate.release()
+
+        await pollUntil { streamer.streamingState == .playing }
 
         guard case .playing = streamer.streamingState else {
             // Environment couldn't decode real MP3 — skip rather than fail.
@@ -162,11 +197,14 @@ struct MP3StreamerStartupWatchdogTests {
 
         let connectsAtPlaying = mockHTTP.connectCallCount
 
-        // Give the (now-cancelled) re-armed watchdog well past the ~1s clamped
-        // startupTimeout to prove it does not fire another reconnect.
-        try await Task.sleep(for: .milliseconds(1300))
+        // Reaching .playing must cancel the re-armed watchdog outright — assert
+        // on the gate's own state (no live arm left), not on a deadline that,
+        // with the gate, can never fire on its own.
+        await pollUntil { !gate.hasPendingArm }
 
         #expect(streamer.streamingState == .playing)
+        #expect(!gate.hasPendingArm,
+                "Reaching .playing on a reconnect must cancel the re-armed watchdog")
         #expect(mockHTTP.connectCallCount == connectsAtPlaying,
                 "Reaching .playing on a reconnect must cancel the re-armed watchdog, not issue further reconnects")
     }
@@ -178,8 +216,6 @@ struct MP3StreamerStartupWatchdogTests {
         .tags(.startupWatchdog)
     )
     func doesNotFireOncePlaying() async throws {
-        // startupTimeout comfortably exceeds the decode-to-playing time so a
-        // healthy start never trips it; cancellation on `.playing` is what we assert.
         let config = MP3StreamerConfiguration(
             url: Self.testStreamURL,
             minimumBuffersBeforePlayback: 2,
@@ -188,6 +224,8 @@ struct MP3StreamerStartupWatchdogTests {
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
         mockPlayer.immediatelyRequestMoreBuffers = false
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         let testData = try TestAudioBufferFactory.loadMP3TestData()
         mockHTTP.testData = testData
@@ -195,40 +233,40 @@ struct MP3StreamerStartupWatchdogTests {
         let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
-            audioPlayer: mockPlayer
+            audioPlayer: mockPlayer,
+            startupWatchdogSleep: gate.sleep
         )
 
         streamer.play()
 
-        for _ in 0..<20 {
-            try await Task.sleep(for: .milliseconds(100))
-            if case .playing = streamer.streamingState { break }
-        }
+        // The gate's deadline is never released — a healthy start must reach
+        // .playing and cancel the watchdog entirely on its own, with no
+        // dependence on how long decoding real MP3 data takes.
+        await pollUntil { streamer.streamingState == .playing }
 
         guard case .playing = streamer.streamingState else {
             // Environment couldn't decode real MP3 — skip rather than fail.
             return
         }
 
-        // Give the (cancelled) watchdog a moment; it must not fire a reconnect.
-        try await Task.sleep(for: .milliseconds(200))
+        await pollUntil { !gate.hasPendingArm }
 
         #expect(streamer.streamingState == .playing)
+        #expect(!gate.hasPendingArm,
+                "Watchdog must be cancelled on reaching .playing, not left armed")
         #expect(mockHTTP.connectCallCount == 1,
                 "Watchdog must be cancelled on reaching .playing, not issue a reconnect")
     }
 
     /// Stopping before the deadline must cancel the watchdog so it can't fire a
     /// reconnect against an intentionally-stopped streamer.
-    @Test(
-        "Is cancelled by stop() before it can fire",
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-    )
+    @Test("Is cancelled by stop() before it can fire")
     func cancelledByStop() async throws {
-        // `connectionTimeout: 0` keeps the startupTimeout clamp at its 1.0s floor.
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         mockHTTP.shouldSucceed = true
         mockHTTP.testData = nil
@@ -236,28 +274,31 @@ struct MP3StreamerStartupWatchdogTests {
         let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
-            audioPlayer: mockPlayer
+            audioPlayer: mockPlayer,
+            startupWatchdogSleep: gate.sleep
         )
 
         streamer.play()
 
-        // Wait until the watchdog is provably armed before stopping. Arming happens
-        // inside play()'s deferred Task immediately before connect(), so a completed
-        // connect (connectCallCount == 1) guarantees the watchdog is live. Stopping on
-        // a fixed short sleep could race ahead of the deferred Task and cancel nothing,
-        // letting this test pass vacuously.
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 1 { break }
-        }
-        #expect(mockHTTP.connectCallCount == 1, "Precondition: the watchdog must be armed before stop()")
+        // Wait until the watchdog is provably armed before stopping. Formerly
+        // `.disabled(if: WXYC_SKIP_KNOWN_FLAKES == "1")` (#371/#687): the
+        // wall-clock version approximated "armed" with `connectCallCount == 1`
+        // and stopped on a poll racing the real ~1s deadline, which under load
+        // could already have fired by the time the poll noticed. Observing the
+        // gate directly removes that race rather than widening its budget.
+        try await gate.waitForArm()
 
         streamer.stop()
 
-        // Wait well past the ~1s clamped startupTimeout — the watchdog must not fire a reconnect.
-        try await Task.sleep(for: .milliseconds(1300))
+        // No live deadline remains to gate — stop() must have cancelled it
+        // synchronously as part of cancelStartupWatchdog(). Poll rather than
+        // assert immediately: the cancellation handler can lag the cancel()
+        // call by a scheduler hop.
+        await pollUntil { !gate.hasPendingArm }
 
         #expect(streamer.streamingState == .idle)
+        #expect(!gate.hasPendingArm,
+                "A stopped streamer must not leave a live startup watchdog behind")
         #expect(mockHTTP.connectCallCount == 1,
                 "A stopped streamer must not be reconnected by a stale startup watchdog")
     }
@@ -270,16 +311,14 @@ struct MP3StreamerStartupWatchdogTests {
     /// `maximumAttempts: 1` bounds the scenario: the disconnect-triggered reconnect
     /// consumes the single backoff attempt, so the watchdog escalation exhausts the
     /// backoff immediately rather than re-arming into a fresh reconnect loop (#487).
-    /// That makes the completion count deterministic: the initial connect completes,
-    /// the hung reconnect is cancelled mid-flight (never completes), and no further
-    /// connect is issued.
     @Test("Escalation cancels an in-flight reconnect instead of leaking it")
     func escalationCancelsInFlightReconnect() async throws {
         let backoff = ExponentialBackoff(initialWaitTime: 0.01, maximumWaitTime: 0.01, maximumAttempts: 1)
-        // `connectionTimeout: 0` keeps the startupTimeout clamp at its 1.0s floor.
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.2)
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         mockHTTP.shouldSucceed = true
         mockHTTP.testData = nil
@@ -288,32 +327,50 @@ struct MP3StreamerStartupWatchdogTests {
             configuration: config,
             httpClient: mockHTTP,
             audioPlayer: mockPlayer,
-            backoffTimer: backoff
+            backoffTimer: backoff,
+            startupWatchdogSleep: gate.sleep
         )
 
         streamer.play()
 
-        // Reach buffering — the initial connect completes immediately.
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(25))
-            if case .buffering = streamer.streamingState { break }
-        }
+        // Reach buffering — the initial connect completes.
+        try await gate.waitForArm()
+        await pollUntil { mockHTTP.connectCompletedCount == 1 }
         #expect(mockHTTP.connectCompletedCount == 1, "Precondition: the initial connect completed")
+        let armsAfterInitialConnect = gate.requestedDurations.count
 
-        // A mid-startup disconnect schedules a reconnect whose connect() hangs for
-        // longer than the ~1s clamped startupTimeout, so it is still in flight when
-        // the watchdog fires and escalates.
-        mockHTTP.nextConnectDelay = .milliseconds(1500)
+        // A mid-startup disconnect schedules a reconnect whose connect() hangs
+        // briefly, so it is still in flight when the watchdog fires and
+        // escalates. The hang only needs to outlast the settle time checked
+        // below, not any watchdog deadline — nothing can escalate before the
+        // test explicitly releases the gate, unlike the wall-clock version,
+        // which needed this hang to outlast the watchdog's own ~1s floor.
+        mockHTTP.nextConnectDelay = .milliseconds(300)
         mockHTTP.yield(.disconnected)
 
-        // Let the watchdog fire (~1s) and escalate while that reconnect is pending,
-        // then wait past the 1.5s hang so a *leaked* reconnect would have completed.
-        try await Task.sleep(for: .milliseconds(2500))
+        // The disconnect's own attemptReconnect() supersedes the play()-time arm
+        // (armStartupWatchdog() self-cancels it) and re-arms once its backoff
+        // wait elapses — that re-arm is the one spanning the now-in-flight, hung
+        // reconnect. `requestedDurations.count` increasing is unambiguous
+        // evidence of THIS specific re-arm: unlike `hasPendingArm` alone, which
+        // the superseded arm could still satisfy for a moment after the
+        // disconnect but before its own cancellation is processed, the count is
+        // updated in the same critical section as the disposition decision (see
+        // `StartupWatchdogGate.sleep(for:)`).
+        await pollUntil { gate.requestedDurations.count > armsAfterInitialConnect }
+        gate.release()
 
-        // The hung reconnect was issued (connectCallCount == 2) but cancelled mid-flight
-        // by the escalation, so it never completed — only the initial connect did.
+        // The watchdog's escalation must cancel the in-flight reconnect rather
+        // than let it run to completion.
+        await pollUntil { mockHTTP.connectCallCount >= 2 }
         #expect(mockHTTP.connectCallCount == 2,
                 "The mid-startup disconnect must have issued exactly one reconnect")
+
+        // Let the (cancelled) hung connect's own early-return settle — bounded
+        // by the mock's own artificial hang, not by any production deadline, so
+        // this isn't the wall-clock coupling #687 is about.
+        try await Task.sleep(for: .milliseconds(400))
+
         #expect(mockHTTP.connectCompletedCount == 1,
                 "Watchdog escalation must cancel the in-flight reconnect, not leak it to completion")
     }
@@ -324,10 +381,11 @@ struct MP3StreamerStartupWatchdogTests {
     /// not cancel it: the stopped streamer still issued a connect and armed a watchdog.
     @Test("A racing stop() cancels the deferred connect before it fires")
     func racingStopBeforeDeferredConnectDrains() async throws {
-        // `connectionTimeout: 0` keeps the startupTimeout clamp at its 1.0s floor.
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         mockHTTP.shouldSucceed = true
         mockHTTP.testData = nil
@@ -335,23 +393,30 @@ struct MP3StreamerStartupWatchdogTests {
         let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
-            audioPlayer: mockPlayer
+            audioPlayer: mockPlayer,
+            startupWatchdogSleep: gate.sleep
         )
 
         // play() then stop() in the SAME synchronous MainActor turn — no await
-        // between them — so the deferred connect Task has not run yet when stop() lands.
+        // between them — so the deferred connect Task has not run yet when
+        // stop() lands.
         streamer.play()
         streamer.stop()
 
-        // Drain: give the (superseded/cancelled) deferred Task ample time to run. It
-        // must observe the cancellation and abort before calling connect(). Also wait
-        // past the ~1s clamped startupTimeout floor so a leaked watchdog would fire.
-        try await Task.sleep(for: .milliseconds(1300))
+        // The deferred connect Task's very first line checks Task.isCancelled
+        // before doing anything else, so it either never starts or returns
+        // immediately without reaching armStartupWatchdog() — there is no
+        // window in which it can proceed past that guard. A few yields drain
+        // the MainActor queue far enough for that immediate return to actually
+        // run; nothing here depends on elapsed wall-clock time.
+        for _ in 0..<5 { await Task.yield() }
 
         #expect(mockHTTP.connectCallCount == 0,
                 "A stop() racing the deferred connect Task must cancel it before it connects")
         #expect(streamer.streamingState == .idle,
                 "A streamer stopped in the same turn as play() must settle at .idle")
+        #expect(!gate.hasPendingArm,
+                "The cancelled deferred connect Task must never reach armStartupWatchdog()")
     }
 
     /// #488 (resurrection race): replaying from a stuck state enqueues a deferred
@@ -359,14 +424,13 @@ struct MP3StreamerStartupWatchdogTests {
     /// stopped streamer is not resurrected into `.buffering` with a live watchdog.
     /// Before #488 that Task tore down, restored `.connecting`, armed a watchdog and
     /// connected — reviving an intentionally-stopped streamer.
-    @Test(
-        "A racing stop() after a replay does not resurrect a stopped streamer",
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-    )
+    @Test("A racing stop() after a replay does not resurrect a stopped streamer")
     func racingStopAfterReplayDoesNotResurrect() async throws {
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         mockHTTP.shouldSucceed = true
         mockHTTP.testData = nil
@@ -374,15 +438,14 @@ struct MP3StreamerStartupWatchdogTests {
         let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
-            audioPlayer: mockPlayer
+            audioPlayer: mockPlayer,
+            startupWatchdogSleep: gate.sleep
         )
 
         // Drive the streamer into a stuck (buffering) state with a live watchdog.
         streamer.play()
-        for _ in 0..<20 {
-            try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 1 { break }
-        }
+        try await gate.waitForArm()
+        await pollUntil { mockHTTP.connectCallCount >= 1 }
         #expect(mockHTTP.connectCallCount == 1, "Precondition: the initial connect happened")
         let connectsBefore = mockHTTP.connectCallCount
 
@@ -392,15 +455,20 @@ struct MP3StreamerStartupWatchdogTests {
         streamer.play()
         streamer.stop()
 
-        // Wait well past the ~1s clamped startupTimeout floor so a resurrected
-        // watchdog would have fired a reconnect by now.
-        try await Task.sleep(for: .milliseconds(1300))
+        // stop() cancels the still-parked watchdog from the FIRST play() directly;
+        // the replay's own deferred Task is cancelled before it can reach a second
+        // armStartupWatchdog() call — same reasoning as
+        // racingStopBeforeDeferredConnectDrains. A few yields drain that.
+        for _ in 0..<5 { await Task.yield() }
 
         #expect(streamer.streamingState == .idle,
                 "A stopped streamer must not be resurrected by the superseded replay Task")
         #expect(mockHTTP.connectCallCount == connectsBefore,
                 "No new connect must be issued after stop() cancels the replay Task")
+        #expect(!gate.hasPendingArm,
+                "No watchdog may remain armed — the original was cancelled by stop() and the replay's Task never reached a second arm")
     }
+
     // MARK: - #697: Waiting-for-Connectivity Gate
 
     /// Drains the streamer's internal event stream and records every `.error`
@@ -429,14 +497,11 @@ struct MP3StreamerStartupWatchdogTests {
     /// task self-resume once connectivity returns.
     @Test("Does not tear down a task waiting for connectivity; emits no startup_timeout")
     func doesNotTearDownTaskWaitingForConnectivity() async throws {
-        // `connectionTimeout: 0` keeps the config's startupTimeout clamp
-        // (`max(startupTimeout, connectionTimeout + 1)`) at its 1.0s floor, so the
-        // watchdog fires quickly instead of at the default connectionTimeout + 1
-        // — the same clamp `escalatesWhenBufferingStarves` relies on, and this
-        // test's poll budget below is sized against that same ~1.0s deadline.
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         // The connect is issued but never resolves — simulating a real
         // `waitsForConnectivity` park where neither `.connected` nor `.error`
@@ -447,12 +512,13 @@ struct MP3StreamerStartupWatchdogTests {
         // never reaches `didReceive response` while offline.
         mockHTTP.shouldSucceed = true
         mockHTTP.testData = nil
-        mockHTTP.nextConnectDelay = .seconds(5)
+        mockHTTP.nextConnectDelay = .seconds(30)
 
         let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
-            audioPlayer: mockPlayer
+            audioPlayer: mockPlayer,
+            startupWatchdogSleep: gate.sleep
         )
 
         let collector = InternalEventErrorCollector()
@@ -461,34 +527,28 @@ struct MP3StreamerStartupWatchdogTests {
 
         streamer.play()
 
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 1 { break }
-        }
+        try await gate.waitForArm()
+        await pollUntil { mockHTTP.connectCallCount >= 1 }
         #expect(mockHTTP.connectCallCount == 1, "Precondition: the initial connect was issued")
 
         // Simulate the OS reporting the outstanding task is parked offline.
         mockHTTP.yield(.waitingForConnectivity)
 
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(25))
-            if streamer.isWaitingForConnectivity { break }
-        }
+        await pollUntil { streamer.isWaitingForConnectivity }
         #expect(streamer.isWaitingForConnectivity,
                 "Precondition: the streamer observed the waiting-for-connectivity signal")
 
-        // `startupTimeout: 0.1` is clamped up to the config's ~1.0s floor
-        // (`max(startupTimeout, connectionTimeout + 1)`, see
-        // `MP3StreamerConfiguration.swift`) — the watchdog actually arms for
-        // ~1.0s, not 0.1s. Budget generously past that (mirroring
-        // `escalatesWhenBufferingStarves`'s 120×25ms poll for the same clamped
-        // floor) so the deadline genuinely fires at least once — twice, given the
-        // ~0.5s default backoff — WHILE the task is still parked. Without the
-        // gate this loop would observe `connectCallCount` reach 2 well inside the
-        // budget; with it, the loop exhausts its full 3s never seeing that.
-        for _ in 0..<120 {
-            try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 2 { break }
+        // Fire the watchdog's deadline twice while still parked. Each fire must
+        // defer (not escalate) and re-arm — proven directly by waiting for the
+        // NEXT arm after each release (safe: release() always removes the arm
+        // it resumes before returning, so a following waitForArm() can only be
+        // observing a genuinely new one), rather than hoping the wall clock
+        // produces a couple of fires inside a fixed budget. That hope is
+        // exactly #687's actual failure mode: under load, it sometimes didn't
+        // pay off in either direction.
+        for _ in 0..<2 {
+            gate.release()
+            try await gate.waitForArm()
         }
 
         #expect(mockHTTP.connectCallCount == 1,
@@ -509,6 +569,8 @@ struct MP3StreamerStartupWatchdogTests {
         let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
         let mockHTTP = MockHTTPStreamClient()
         let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
 
         // Hold the mock's own `connect()` from auto-yielding `.connected` so the
         // manual `.waitingForConnectivity` / `.connected` yields below are the
@@ -516,45 +578,38 @@ struct MP3StreamerStartupWatchdogTests {
         // `doesNotTearDownTaskWaitingForConnectivity` above.
         mockHTTP.shouldSucceed = true
         mockHTTP.testData = nil
-        mockHTTP.nextConnectDelay = .seconds(5)
+        mockHTTP.nextConnectDelay = .seconds(30)
 
         let streamer = MP3Streamer(
             configuration: config,
             httpClient: mockHTTP,
-            audioPlayer: mockPlayer
+            audioPlayer: mockPlayer,
+            startupWatchdogSleep: gate.sleep
         )
 
         streamer.play()
 
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 1 { break }
-        }
+        try await gate.waitForArm()
+        await pollUntil { mockHTTP.connectCallCount >= 1 }
 
         mockHTTP.yield(.waitingForConnectivity)
 
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(25))
-            if streamer.isWaitingForConnectivity { break }
-        }
+        await pollUntil { streamer.isWaitingForConnectivity }
         #expect(streamer.isWaitingForConnectivity)
 
-        // Let the ~1.0s clamped watchdog deadline elapse — and re-elapse, given
-        // the ~0.5s default backoff — while still parked, before connectivity
-        // returns. Same budget/rationale as `doesNotTearDownTaskWaitingForConnectivity`.
-        for _ in 0..<120 {
-            try await Task.sleep(for: .milliseconds(25))
-            if mockHTTP.connectCallCount >= 2 { break }
+        // Same rigor as doesNotTearDownTaskWaitingForConnectivity: fire the
+        // watchdog twice while parked, proving each fire defers and re-arms
+        // rather than escalating, before connectivity ever returns.
+        for _ in 0..<2 {
+            gate.release()
+            try await gate.waitForArm()
         }
         #expect(mockHTTP.connectCallCount == 1, "Precondition: still parked on the original connect")
 
         // Connectivity returns and the SAME task's response finally arrives.
         mockHTTP.yield(.connected)
 
-        for _ in 0..<40 {
-            try await Task.sleep(for: .milliseconds(25))
-            if !streamer.isWaitingForConnectivity { break }
-        }
+        await pollUntil { !streamer.isWaitingForConnectivity }
 
         #expect(!streamer.isWaitingForConnectivity,
                 "The waiting-for-connectivity flag must clear once the park resolves")
