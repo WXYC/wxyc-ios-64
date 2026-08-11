@@ -12,7 +12,7 @@
 # SPM_RUNNABLE (see #797).
 #
 # This exists because "the package builds and passes on the macOS host" has
-# twice been wrong evidence for a move onto the host-only path:
+# repeatedly been wrong evidence for a move onto the host-only path:
 #   - 3fb1c916 dropped Artwork after `swift test` hung indefinitely on the
 #     macos-latest CI runner (a paravirt/graphics-stack issue invisible
 #     locally).
@@ -20,8 +20,17 @@
 #     UIKit-gated suites (#if canImport(UIKit)) were silently skipping on
 #     the macOS host — the package "passed" while running none of that
 #     coverage.
+#   - 2026-08-11: under machine load, 9 of WXUI's 76 simulator test cases
+#     were SIGKILLed mid-suite (sim exit 65), yet the run still posted 76
+#     as its executed count — a killed case still lands in totalTestCount
+#     — so the gap comparison came out 0 and this script reported PARITY
+#     CHECK PASSED. See crashed_tests_from_xcresult_json below, which
+#     closes this by treating any crash signature as fatal independent of
+#     the count comparison.
 # Neither failure mode is visible from a local green run. This script makes
-# both detectable by comparing counts instead of trusting exit codes.
+# all three detectable — the first two by comparing counts instead of
+# trusting exit codes, the third by reading the crash signature counts
+# alone can't surface.
 #
 # Usage:
 #   scripts/verify-spm-parity.sh [options] [package...]
@@ -121,6 +130,25 @@
 #     --path <bundle>` reports a top-level `totalTestCount` that matches the
 #     host figure exactly, regardless of which framework produced the
 #     tests — see count_from_xcresult below.
+#
+#   - Crash detection (independent of both counts above): totalTestCount
+#     counts every test xcresulttool has a result entry for, including one
+#     whose process was killed mid-run. When that happens, Xcode's test
+#     runner synthesizes a failure entry for the interrupted test(s) with
+#     failureText reading "<test> crashed with signal <name>" — the same
+#     phrasing for every signal (kill, segmentation fault, abort, ...), so
+#     matching the "crashed with signal" substring rather than "signal
+#     kill" specifically catches the whole family, not just SIGKILL. That
+#     entry still counts toward totalTestCount even though the test body
+#     never ran, so it cannot be caught by comparing counts — the gap can
+#     land on exactly 0. crashed_tests_from_xcresult_json (below
+#     count_from_xcresult) scans the same xcresult summary's testFailures
+#     for this signature and fails the package unconditionally when found,
+#     regardless of what the counts say. An ordinary assertion failure — a
+#     test that ran to completion and failed normally, e.g. CachingTests'
+#     one known simulator-only failure below — has different failureText
+#     and does not match, so it is still tolerated by count-only
+#     comparison exactly as before.
 #
 set -euo pipefail
 
@@ -358,9 +386,22 @@ host_total_count() {
 # (always-zero) exit code, and the script died mid-package with a bare
 # unlabeled line and no PARITY CHECK verdict, no attempt 2 or 3, and no
 # per-package diagnostic — the retry loop below was unreachable. The `if`
-# guard is what makes retrying actually happen. Prints 0 (to stdout) if the
-# bundle doesn't exist, or after exhausting retries — the caller treats a 0
-# count as fatal for that package, not this function.
+# guard is what makes retrying actually happen.
+#
+# Prints exactly two lines: the totalTestCount (0 if the bundle doesn't
+# exist or every retry was exhausted — the caller treats a 0 count as fatal
+# for that package, not this function), then a comma-separated list of test
+# names whose failureText matched the "crashed with signal" pattern, or the
+# literal sentinel "NONE" if there were none. The sentinel matters: this
+# function's own output is itself captured through `result=$(...)`, and
+# command substitution strips ALL trailing newlines from what it captures —
+# not just one. A genuinely empty second line ("0\n\n") would collapse to a
+# single line ("0") with no trace a second line was ever there, and the
+# caller's `${raw#*$'\n'}` would then have no newline to split on and fall
+# back to returning the whole first line — silently corrupting the count
+# into a bogus "crash list". "NONE" is never empty, so it survives being
+# captured. Both lines are always present, even on the fallback paths, so
+# callers can split unconditionally on the first newline.
 count_from_xcresult() {
     # NOTE: the local var is deliberately not named "path" — zsh links the
     # scalar $path to the special $PATH-backing array, and shadowing it
@@ -371,21 +412,38 @@ count_from_xcresult() {
     if [[ ! -e "$bundle_path" ]]; then
         echo "no result bundle at $bundle_path" >&2
         echo 0
+        echo "NONE"
         return
     fi
-    local attempt result rc
+    local attempt result rc total_line
     for attempt in 1 2 3; do
         if result=$(xcrun xcresulttool get test-results summary --path "$bundle_path" 2>/dev/null \
             | python3 -c 'import json, sys
 try:
-    print(json.load(sys.stdin).get("totalTestCount", 0))
+    data = json.load(sys.stdin)
 except Exception:
-    print(0)'); then
+    data = None
+if data is None:
+    print(0)
+    print("NONE")
+else:
+    total = data.get("totalTestCount", 0)
+    failures = data.get("testFailures", [])
+    if isinstance(failures, dict):
+        failures = [failures]
+    crashed = []
+    for f in failures:
+        text = f.get("failureText") or ""
+        if "crashed with signal" in text:
+            crashed.append(f.get("testName", "?"))
+    print(total)
+    print(",".join(crashed) if crashed else "NONE")'); then
             rc=0
         else
             rc=$?
         fi
-        if [[ "$rc" -eq 0 && -n "$result" && "$result" != "0" ]]; then
+        total_line="${result%%$'\n'*}"
+        if [[ "$rc" -eq 0 && -n "$total_line" && "$total_line" != "0" ]]; then
             echo "$result"
             return
         fi
@@ -404,6 +462,25 @@ except Exception:
     echo "xcresulttool did not return a usable count for $bundle_path after 3 attempts (last exit=$rc):" >&2
     xcrun xcresulttool get test-results summary --path "$bundle_path" 2>&1 | tail -5 >&2 || true
     echo 0
+    echo "NONE"
+}
+
+# crashed_tests_from_xcresult <raw> — given count_from_xcresult's raw
+# two-line output, extracts the second line (the comma-separated crash
+# list, or empty if it was the "NONE" sentinel — see the count_from_xcresult
+# comment for why a sentinel is needed instead of a genuinely empty line).
+# A killed test still lands in totalTestCount (see the file header), so
+# this is the only signal that catches it; the caller fails the package
+# unconditionally when this is non-empty, independent of the count
+# comparison below.
+crashed_tests_from_xcresult() {
+    local raw="$1"
+    local second_line="${raw#*$'\n'}"
+    if [[ "$second_line" == "NONE" ]]; then
+        echo ""
+    else
+        echo "$second_line"
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -585,12 +662,27 @@ for pkg in "${PACKAGES[@]}"; do
     else
         sim_status="exit $?"
     fi
-    sim_count=$(count_from_xcresult "$(result_bundle_path "$pkg")")
+    sim_raw=$(count_from_xcresult "$(result_bundle_path "$pkg")")
+    sim_count="${sim_raw%%$'\n'*}"
     if [[ "$sim_count" -eq 0 ]]; then
         echo "$sim_output" >&2
         RESULT_STATUS[$pkg]="FAIL"
         RESULT_DETAIL[$pkg]="simulator executed 0 tests ($sim_status) — silent-skip signature, fatal regardless of exit status"
         printf '%-16s %8s %8s %8s %s\n' "$pkg" "$host_count" "0" "-" "FAIL: 0 sim tests"
+        continue
+    fi
+
+    # A crashed test still lands in totalTestCount (see the file header),
+    # so it can produce gap=0 and slide past the comparison below having
+    # verified nothing for that test. Check for it first, unconditionally —
+    # this is not a count comparison and doesn't get a tolerance.
+    sim_crashed=$(crashed_tests_from_xcresult "$sim_raw")
+    if [[ -n "$sim_crashed" ]]; then
+        echo "$sim_output" >&2
+        local -a crashed_arr=("${(s:,:)sim_crashed}")
+        RESULT_STATUS[$pkg]="FAIL"
+        RESULT_DETAIL[$pkg]="host=$host_count sim=$sim_count gap=$((sim_count - host_count)) — ${#crashed_arr} test(s) crashed under load ($sim_status): $sim_crashed — a crashed case still counts toward totalTestCount, so count parity alone can't catch it; any crash fails this check unconditionally, rerun once the machine is quiet"
+        printf '%-16s %8s %8s %8s %s\n' "$pkg" "$host_count" "$sim_count" "-" "FAIL: ${#crashed_arr} crashed"
         continue
     fi
 
