@@ -13,7 +13,20 @@ import Foundation
 @testable import Logger
 import LoggerTesting
 
-/// Serialized because ErrorReporting.shared is process-global.
+extension LoggerGlobalStateTests {
+
+/// Serialized (both directly and via the `LoggerGlobalStateTests` parent,
+/// which cascades `.serialized` to every nested suite) because
+/// ErrorReporting.shared is process-global. A per-suite `.serialized` trait
+/// alone only orders tests *within* this suite — it does not stop a sibling
+/// suite from swapping `ErrorReporting.shared` out from under
+/// `sharedCanBeSetAndRead` mid-test. Nesting under the shared parent closes
+/// that gap without adding locking to `ErrorReporting` itself: a lock around
+/// the global would make the swap atomic but would not stop a concurrently
+/// running sibling suite from observing (or clobbering) the wrong reporter,
+/// and a naive non-recursive `Mutex` around get/set risks aborting the
+/// process if a reporter's `report(...)` implementation ever reads
+/// `ErrorReporting.shared` again on the same thread.
 @Suite("ErrorReporter", .serialized)
 struct ErrorReporterTests {
 
@@ -87,4 +100,6 @@ struct ErrorReporterTests {
         mock.reset()
         #expect(mock.allReportedErrors.isEmpty)
     }
+}
+
 }

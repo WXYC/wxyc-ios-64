@@ -13,11 +13,14 @@ import Testing
 import Foundation
 @testable import Logger
 
-/// Serialized because `Logger.destinations` is process-global. Note that
-/// `.serialized` only orders tests *within* this suite — sibling suites keep
-/// running concurrently and their log lines land in any destination registered
-/// here. Every assertion below therefore scopes to a per-test UUID marker
-/// instead of a raw message count.
+extension LoggerGlobalStateTests {
+
+/// Serialized (both directly and via the `LoggerGlobalStateTests` parent,
+/// which cascades `.serialized` to every nested suite) because
+/// `Logger.destinations` is process-global. That parent only orders the
+/// suites nested under it — anything else in the process can still log while
+/// a destination is registered here, so every assertion below scopes to a
+/// per-test UUID marker instead of a raw message count.
 @Suite("LogDestination", .serialized)
 struct LogDestinationTests {
 
@@ -88,6 +91,8 @@ struct LogDestinationTests {
 
         #expect(destination.messages.allSatisfy { !$0.message.contains(marker) })
     }
+}
+
 }
 
 // MARK: - Test Double

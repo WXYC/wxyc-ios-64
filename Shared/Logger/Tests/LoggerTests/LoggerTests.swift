@@ -16,8 +16,12 @@ import Foundation
 
 // MARK: - Log File Write Tests
 
-/// Serialized because LoggerConfiguration.shared is process-global and
-/// other suites mutate its minimumLevel.
+extension LoggerGlobalStateTests {
+
+/// Serialized (both directly and via the `LoggerGlobalStateTests` parent,
+/// which cascades `.serialized` to every nested suite below) because
+/// LoggerConfiguration.shared and Logger's destinations are process-global
+/// and other suites mutate them.
 @Suite("Logger file writes", .serialized)
 struct LoggerFileWriteTests {
 
@@ -90,9 +94,14 @@ struct LoggerFileWriteTests {
     }
 }
 
+}
+
 // MARK: - Log Level Filtering Tests
 
-/// Serialized because these tests mutate LoggerConfiguration.shared.
+extension LoggerGlobalStateTests {
+
+/// Serialized (both directly and via the `LoggerGlobalStateTests` parent)
+/// because these tests mutate LoggerConfiguration.shared.
 @Suite("Log level filtering", .serialized)
 struct LogLevelFilteringTests {
 
@@ -143,8 +152,15 @@ struct LogLevelFilteringTests {
     }
 }
 
+}
+
 // MARK: - Log Format Tests
 
+extension LoggerGlobalStateTests {
+
+/// Serialized (both directly and via the `LoggerGlobalStateTests` parent)
+/// because logging from this suite shares the same per-process log file as
+/// every other suite here.
 @Suite("Log format", .serialized)
 struct LogFormatTests {
 
@@ -164,6 +180,8 @@ struct LogFormatTests {
         #expect(line.contains("[Network/ERROR]"))
         #expect(line.contains("LoggerTests.swift"))
     }
+}
+
 }
 
 // MARK: - Helpers
