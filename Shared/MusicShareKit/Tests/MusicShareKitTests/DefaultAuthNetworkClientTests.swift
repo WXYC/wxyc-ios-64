@@ -12,9 +12,10 @@
 //  `CoreTesting.QueuedStubURLProtocol` already does, with weaker guarantees
 //  (`nonisolated(unsafe)` mutable state instead of a lock, safe only by
 //  virtue of this suite's `.serialized` trait). It's gone; every test below
-//  now calls `QueuedStubURLProtocol` directly. This is the sole `URLProtocol`
-//  adopter in this bundle, so it needs no extension-of-a-shared-suite
-//  arrangement the way Metadata's and Core's multi-adopter bundles do.
+//  now calls `QueuedStubURLProtocol` directly. This suite is the bundle's
+//  one adopting `@Suite` for that protocol; further adopters join it as
+//  extensions (see `OEmbedClientTests.swift`), the same arrangement
+//  Metadata's and Core's multi-adopter bundles use.
 //
 
 import Core
