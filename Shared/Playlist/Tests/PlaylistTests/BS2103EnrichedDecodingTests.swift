@@ -46,7 +46,7 @@ struct BS2103EnrichedDecodingTests {
 
     /// Pinned in `Backend-Service tests/unit/services/playlist-proxy-wire-golden.test.ts`
     /// as `GOLDEN_SHA256`. Must match.
-    static let goldenSHA256 = "27be66ec764d332b8b5cd82889e9e140b367124269dcfe5f0077a1ddcafc7f3f"
+    static let goldenSHA256 = "a789b99b863374b44ba2c8ca0c3393d9659987ff1e403e1be90834c500a49313"
 
     static func fixture(_ name: String, _ ext: String) throws -> URL {
         try #require(
@@ -81,7 +81,55 @@ struct BS2103EnrichedDecodingTests {
 
     @Test("The enriched payload decodes as a Playlist")
     func payloadDecodes() throws {
-        #expect(try Self.loadPayload().playcuts.count == 12)
+        #expect(try Self.loadPayload().playcuts.count == 14)
+    }
+
+    // MARK: - Parser-differential and degenerate-array guards
+
+    /// Probe 9013 persists values that WHATWG `new URL()` accepts while
+    /// describing a *different* string than the backend would emit: a
+    /// backslash-in-authority (`https://www.discogs.com\@evil.example/…`, which
+    /// WHATWG folds to host `www.discogs.com` but Foundation resolves to host
+    /// `evil.example`) and embedded tab / LF / space, which WHATWG strips or
+    /// encodes before parsing. The backend now rejects these outright rather
+    /// than emitting the unnormalized original.
+    ///
+    /// The asymmetry is the point: had a backslash value shipped, this decoder
+    /// would have accepted it happily and opened the wrong host on tap — no
+    /// throw, no signal, just a link to somewhere else.
+    @Test("Values whose WHATWG parse disagrees with their bytes never arrive")
+    func parserDifferentialsSuppressed() throws {
+        let playcut = try Self.playcut(try Self.loadPayload(), artist: "Hermanos Gutiérrez")
+
+        #expect(playcut.discogsURL == nil) // backslash authority
+        #expect(playcut.artistWikipediaURL == nil) // backslash authority
+        #expect(playcut.spotifyURL == nil) // embedded tab
+        #expect(playcut.youtubeMusicURL == nil) // embedded LF
+        #expect(playcut.bandcampURL == nil) // embedded space
+        // Narrow, not blunt: the clean sibling field on the same row survives.
+        #expect(playcut.genres == ["Rock"])
+    }
+
+    /// Probe 9014 covers the one throwing decode that had no guard until now.
+    /// `album_metadata.genres`/`styles` are `text[]` with nullable elements, so
+    /// `[null]` is representable — and `decodeIfPresent([String].self)` throws
+    /// on it exactly like a malformed URL, taking the whole playlist down. The
+    /// backend now filters members and omits the key when nothing survives.
+    @Test("Degenerate text[] members are filtered before they can throw")
+    func degenerateArraysFiltered() throws {
+        let playcut = try Self.playcut(try Self.loadPayload(), artist: "Cat Power")
+
+        // Persisted `['Rock', null, '', '  Folk Rock  ']` — nulls and blanks
+        // dropped, survivors trimmed.
+        #expect(playcut.genres == ["Rock", "Folk Rock"])
+        // Persisted `[null]` — nothing survives, so the key is omitted entirely
+        // rather than shipping an empty array.
+        #expect(playcut.styles == nil)
+        // Whitespace-only bio and empty note are dropped on the same rule.
+        #expect(playcut.artistBio == nil)
+        #expect(playcut.discogsUnavailableNote == nil)
+        // The flag itself still rides — `true` is information, `''` was not.
+        #expect(playcut.discogsUnavailable == true)
     }
 
     // MARK: - The happy path
@@ -137,10 +185,11 @@ struct BS2103EnrichedDecodingTests {
         #expect(playcut.artistBio == nil)
         #expect(playcut.genres == nil)
         #expect(playcut.artistId == nil)
-        // `pending` is non-terminal with no fields present, so the detail view
-        // still issues its `/proxy/metadata/album` fetch rather than rendering
-        // an empty section.
-        #expect(playcut.metadataStatus == .pending)
+        // Option-3 serve rule: with zero renderable inline fields the backend
+        // withholds `metadataStatus` entirely (the column is `pending` in the
+        // DB), so this decodes as nil — the same arm a pre-BS#2103 payload
+        // takes — and the detail view issues its `/proxy/metadata/album` fetch.
+        #expect(playcut.metadataStatus == nil)
         #expect(!playcut.hasV2Metadata)
     }
 
@@ -224,9 +273,31 @@ struct BS2103EnrichedDecodingTests {
         #expect(playcut.discogsURL == nil) // javascript:alert(1)
         #expect(playcut.spotifyURL == nil) // //open.spotify.com/album/xyz
         #expect(playcut.bandcampURL == nil) // stereolab.bandcamp.com/... (no scheme)
-        // The row still decoded, and its terminal status still classifies it as
-        // enriched.
-        #expect(playcut.hasV2Metadata)
+    }
+
+    /// The blank-card regression guard, and the reason `metadataStatus` is
+    /// conditional on this endpoint. On shipped 3.2 a terminal status is a
+    /// CONTROL field: `PlaycutDetailView.loadMetadata()` renders straight from
+    /// the inline fields and never calls `/proxy/metadata/album` — and
+    /// `hasV2Metadata` is true *because* the status is terminal, so a
+    /// terminal-but-empty row builds an all-nil inline object and shows an
+    /// empty card. Stereolab is exactly that row: `enriched_match` in the DB,
+    /// every persisted value guarded off the wire. The backend therefore
+    /// withholds the status (option-3 serve rule, measured at 579 of 37,054
+    /// production playcuts), landing this row on the same fetch arm a
+    /// pre-BS#2103 payload takes.
+    @Test("A terminal-but-empty row arrives status-less and keeps the live-fetch fallback")
+    func terminalButEmptyKeepsFallback() throws {
+        let playcut = try Self.playcut(try Self.loadPayload(), artist: "Stereolab")
+
+        // Status withheld → decodes nil → the `.pending/.enriching/nil` arm.
+        #expect(playcut.metadataStatus == nil)
+        // And the predicate that would have short-circuited the fetch is false.
+        #expect(!playcut.hasV2Metadata)
+        // Excluded-from-predicate fields still ride; they don't make the row
+        // "renderable" and were never the blank-card hazard.
+        #expect(playcut.artistId == 7000)
+        #expect(playcut.discogsUnavailable == false)
     }
 
     // MARK: - The production corpus
