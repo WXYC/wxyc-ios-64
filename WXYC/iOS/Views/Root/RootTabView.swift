@@ -182,5 +182,6 @@ struct RootTabView: View {
 
 #Preview {
     RootTabView()
+        .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
 }
