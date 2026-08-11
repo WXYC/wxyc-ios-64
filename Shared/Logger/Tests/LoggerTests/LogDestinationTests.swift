@@ -14,7 +14,11 @@ import Foundation
 import struct Logger.Category
 @testable import Logger
 
-/// Serialized because Logger.destinations is process-global.
+/// Serialized because `Logger.destinations` is process-global. Note that
+/// `.serialized` only orders tests *within* this suite — sibling suites keep
+/// running concurrently and their log lines land in any destination registered
+/// here. Every assertion below therefore scopes to a per-test UUID marker
+/// instead of a raw message count.
 @Suite("LogDestination", .serialized)
 struct LogDestinationTests {
 
@@ -47,10 +51,12 @@ struct LogDestinationTests {
         let logger = Logger()
         logger(.warning, category: .network, "Multi-\(marker)")
 
-        #expect(dest1.messages.count == 1)
-        #expect(dest2.messages.count == 1)
-        #expect(dest1.messages.first?.message.contains("Multi-\(marker)") == true)
-        #expect(dest2.messages.first?.message.contains("Multi-\(marker)") == true)
+        let matching1 = dest1.messages.filter { $0.message.contains(marker) }
+        let matching2 = dest2.messages.filter { $0.message.contains(marker) }
+        #expect(matching1.count == 1)
+        #expect(matching2.count == 1)
+        #expect(matching1.first?.message.contains("Multi-\(marker)") == true)
+        #expect(matching2.first?.message.contains("Multi-\(marker)") == true)
     }
 
     @Test("Destinations not called for messages below minimum level")
@@ -68,7 +74,7 @@ struct LogDestinationTests {
         let logger = Logger()
         logger(.debug, category: .general, "FILTERED-\(marker)")
 
-        #expect(destination.messages.isEmpty)
+        #expect(destination.messages.allSatisfy { !$0.message.contains(marker) })
     }
 
     @Test("removeAllDestinations clears registered destinations")
@@ -77,10 +83,11 @@ struct LogDestinationTests {
         Logger.addDestination(destination)
         Logger.removeAllDestinations()
 
+        let marker = UUID().uuidString
         let logger = Logger()
-        logger(.error, category: .general, "After-Remove")
+        logger(.error, category: .general, "After-Remove-\(marker)")
 
-        #expect(destination.messages.isEmpty)
+        #expect(destination.messages.allSatisfy { !$0.message.contains(marker) })
     }
 }
 
