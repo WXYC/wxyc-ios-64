@@ -511,7 +511,7 @@ extension PlaycutMetadataServiceHTTPTests {
     @Test("A repair writes the terminal row's inline album back into the cache", .timeLimit(.minutes(1)))
     func repairWritesAlbumBackIntoCache() async throws {
         QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
         let resolver = PlaycutMetadataResolver(service: service)
@@ -543,7 +543,7 @@ extension PlaycutMetadataServiceHTTPTests {
         // later card that reads this cache entry would get no artist bio at
         // all (fetchArtistMetadata(discogsArtistId:) returns .empty on nil).
         QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
         let resolver = PlaycutMetadataResolver(service: service)
@@ -575,7 +575,7 @@ extension PlaycutMetadataServiceHTTPTests {
     @Test("A repair write-back that still lacks discogsArtistId gets the short TTL, not seven days", .timeLimit(.minutes(1)))
     func repairWriteBackWithoutArtistIdUsesShortTTL() async throws {
         QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
         let resolver = PlaycutMetadataResolver(service: service)
@@ -602,7 +602,7 @@ extension PlaycutMetadataServiceHTTPTests {
     )
     func repairWriteBackWithArtistIdKeepsSevenDayTTL() async throws {
         QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
         let resolver = PlaycutMetadataResolver(service: service)
@@ -643,7 +643,7 @@ extension PlaycutMetadataServiceHTTPTests {
         // artist bio to the absent discogsArtistId, and never persist the real
         // answer the proxy had just returned.
         QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
         let resolver = PlaycutMetadataResolver(service: service)

@@ -22,6 +22,7 @@
 import Testing
 import Foundation
 import Core
+import CachingTesting
 import CoreTesting
 import Playlist
 import PlaylistTesting
@@ -51,7 +52,7 @@ extension PlaycutMetadataServiceHTTPTests {
     @Test("Concurrent calls for the same (artist, release, track) share exactly one underlying fetch")
     func concurrentCallsForSameKeyShareOneUnderlyingFetch() async throws {
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -82,7 +83,7 @@ extension PlaycutMetadataServiceHTTPTests {
     @Test("Concurrent calls for different (artist, release, track) tuples issue independent fetches")
     func concurrentCallsForDifferentKeysAreIndependent() async throws {
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -127,7 +128,7 @@ extension PlaycutMetadataServiceHTTPTests {
         // entry. This guards that the coalescing key is at least as specific
         // as the query itself.
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -166,7 +167,7 @@ extension PlaycutMetadataServiceHTTPTests {
     @Test("One observer's cancellation does not fail another observer awaiting the same coalesced fetch")
     func cancellationOfOneObserverDoesNotFailAnother() async throws {
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
@@ -197,7 +198,7 @@ extension PlaycutMetadataServiceHTTPTests {
     @Test("The coalescing window is the in-flight duration only — a later call re-fetches rather than reusing a finished task")
     func laterCallAfterCompletionIssuesAFreshFetch() async throws {
         let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = PlaycutMetadataMockCache()
+        let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let service = PlaycutMetadataService(
             baseURL: URL(string: "https://api.wxyc.org")!,
