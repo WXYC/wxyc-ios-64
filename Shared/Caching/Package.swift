@@ -23,7 +23,12 @@ let package = Package(
         ),
         .testTarget(
             name: "CachingTests",
-            dependencies: ["Caching", "CachingTesting", "Logger"]
+            dependencies: [
+                "Caching",
+                "CachingTesting",
+                "Logger",
+                .product(name: "LoggerTesting", package: "Logger"),
+            ]
         )
     ]
 )

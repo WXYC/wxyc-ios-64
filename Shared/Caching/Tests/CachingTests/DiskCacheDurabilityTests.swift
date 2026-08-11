@@ -12,6 +12,8 @@
 
 import Testing
 import Foundation
+import Logger
+import LoggerTesting
 @testable import Caching
 
 @Suite("DiskCache Durability Tests")
@@ -303,6 +305,46 @@ struct DiskCacheDurabilityTests {
             return
         }
         try? FileManager.default.removeItem(at: caches.appending(path: subdirectory))
+    }
+}
+
+// MARK: - Rename-failure reporting
+
+/// Serialized because ``ErrorReporting/shared`` is a process-global.
+@Suite("DiskCache writeAtomically rename-failure reporting", .serialized)
+struct DiskCacheRenameFailureReportingTests {
+
+    @Test("A failed rename during an atomic write is reported through ErrorReporting, not only os_log")
+    func renameFailureIsReportedThroughErrorReporting() throws {
+        let subdirectory = "rename-failure-\(UUID().uuidString)"
+        let cache = DiskCache(subdirectory: subdirectory)
+        defer {
+            if let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+                try? FileManager.default.removeItem(at: caches.appending(path: subdirectory))
+            }
+        }
+
+        let caches = try #require(FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first)
+        let destination = caches.appending(path: subdirectory).appending(path: "entry")
+
+        // rename(2) fails with EISDIR when "to" already exists as a directory and
+        // "from" is a regular file (the atomic write's temp file always is) — a
+        // deterministic way to force the rename leg to fail that doesn't depend on
+        // permission bits, which don't induce a failure when tests run as root.
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+
+        let mockReporter = MockErrorReporter()
+        let previousReporter = ErrorReporting.shared
+        ErrorReporting.shared = mockReporter
+        defer { ErrorReporting.shared = previousReporter }
+
+        cache.set(Data("payload".utf8), metadata: CacheMetadata(lifespan: 3600), for: "entry")
+
+        let renameErrors = mockReporter.errors(in: "DiskCache writeAtomically: rename")
+        #expect(!renameErrors.isEmpty,
+                "a failed rename must be reported through ErrorReporting, not just os_log — a persistent rename outage is a silent total write outage")
+        #expect(FileManager.default.fileExists(atPath: destination.path),
+                "the pre-existing directory (standing in for an intact prior entry) must survive an abandoned rename")
     }
 }
 

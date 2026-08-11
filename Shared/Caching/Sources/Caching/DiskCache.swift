@@ -540,15 +540,30 @@ struct DiskCache: Cache, @unchecked Sendable {
             return
         }
 
-        let renameResult = tempURL.withUnsafeFileSystemRepresentation { source in
-            fileURL.withUnsafeFileSystemRepresentation { destination -> Int32 in
-                guard let source, let destination else { return -1 }
-                return rename(source, destination)
+        // errno is captured inside the closures, immediately after the rename(2)
+        // call — the same rationale as the getxattr legs above applies here:
+        // reading the ambient errno after both closures return risks a clobber
+        // between the call and the read.
+        let (renameResult, renameErrno) = tempURL.withUnsafeFileSystemRepresentation { source -> (Int32, Int32) in
+            fileURL.withUnsafeFileSystemRepresentation { destination -> (Int32, Int32) in
+                guard let source, let destination else { return (-1, 0) }
+                let result = rename(source, destination)
+                return (result, errno)
             }
         }
 
         if renameResult != 0 {
-            Log(.error, category: .caching, "Failed to rename temp file into place for \(fileURL.lastPathComponent): errno \(errno)")
+            Log(.error, category: .caching, "Failed to rename temp file into place for \(fileURL.lastPathComponent): errno \(renameErrno)")
+            // Reported through ErrorReporting for the same reason as the setxattr
+            // leg above: a persistent rename outage is a silent total write
+            // outage, which must be visible beyond os_log.
+            let error: DiskCacheError = "Failed to rename temp file into place during atomic cache write."
+            ErrorReporting.shared.report(
+                error,
+                context: "DiskCache writeAtomically: rename",
+                category: .caching,
+                additionalData: ["file": fileURL.lastPathComponent, "errno": "\(renameErrno)"]
+            )
             try? FileManager.default.removeItem(at: tempURL)
         }
     }
