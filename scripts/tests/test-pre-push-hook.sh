@@ -214,6 +214,28 @@ expect_contains "multi-ref: --base-ref flag is present" "$ARGV" "--base-ref"
 expect_contains "multi-ref: base-ref value comes from the second (non-delete) line" "$ARGV" "$MASTER_SHA"
 
 # =========================================================================
+# Case 5b: two real branch updates in one push (`git push origin a b`). The
+# FIRST non-delete line wins, per #361's "take the first that's not a delete".
+#
+# Worth pinning explicitly, because the hook validates the current working
+# tree once rather than validating each pushed ref against its own base —
+# a deliberate simplification documented in the hook. This assertion is what
+# makes that choice visible if someone later changes the selection rule.
+# =========================================================================
+
+echo ""
+echo "=== Case 5b: multiple refs (two real updates — first wins) ==="
+reset_logs
+SECOND_SHA=$(git -C "$TMP_REPO" rev-parse HEAD)
+run_hook "refs/heads/first-branch $LOCAL_TIP_SHA refs/heads/first-branch $MASTER_SHA
+refs/heads/second-branch $LOCAL_TIP_SHA refs/heads/second-branch $SECOND_SHA
+"
+ARGV=$(read_argv)
+expect_contains "two real updates: test-affected.sh was invoked" "$(cat "$CALLED_FILE" 2>/dev/null || echo '')" "called"
+expect_contains "two real updates: base-ref is the FIRST line's remote sha" "$ARGV" "$MASTER_SHA"
+expect_not_contains "two real updates: the SECOND line's remote sha is not used" "$ARGV" "$SECOND_SHA"
+
+# =========================================================================
 # Case 6: wxyc.skipTests=true — hook should exit before reading stdin at
 # all, regardless of what's on it.
 # =========================================================================

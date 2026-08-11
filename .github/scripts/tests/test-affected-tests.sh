@@ -236,10 +236,48 @@ cat > "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PBX'
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				ExistingFile.swift,
+				Tests/AlphaTests.swift,
+				Tests/BravoTests.swift,
+				Tests/CharlieTests.swift,
+				Tests/DeltaTests.swift,
+				Tests/EchoTests.swift,
+				Tests/FoxtrotTests.swift,
+				Tests/GolfTests.swift,
+				Tests/HotelTests.swift,
+				Tests/IndiaTests.swift,
+				Tests/JulietTests.swift,
+				Tests/KiloTests.swift,
+				Tests/LimaTests.swift,
+				Tests/MikeTests.swift,
+				Tests/NovemberTests.swift,
+				Tests/OscarTests.swift,
+				Tests/PapaTests.swift,
+				Tests/QuebecTests.swift,
+				Tests/RomeoTests.swift,
+				Tests/SierraTests.swift,
 			);
 			target = DDDD4444;
 		};
+		GGGG8888 = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Other/UniformTests.swift,
+				Other/VictorTests.swift,
+				Other/WhiskeyTests.swift,
+			);
+			target = EEEE5555;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin XCBuildConfiguration section */
+		HHHH9999 = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				MARKETING_VERSION = 3.2.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
 
 	};
 	rootObject = FFFF6666;
@@ -294,7 +332,7 @@ expect_contains "structural new target: run_all=true" "$LAST_GH" $'run_all=true'
 expect_contains "structural new target: reason names the file" "$LAST_OUT" "structural project file change: Fake.xcodeproj/project.pbxproj"
 git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
 
-# --- Structural: add a membershipExceptions entry (file joins a target) ---
+# --- Structural: add a membershipExceptions entry near the TOP of the array ---
 python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
 import sys
 path = sys.argv[1]
@@ -309,6 +347,147 @@ run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
 expect_contains "structural membershipExceptions change: run_all=true" "$LAST_GH" $'run_all=true'
 expect_contains "structural membershipExceptions change: reason names the file" "$LAST_OUT" "structural project file change: Fake.xcodeproj/project.pbxproj"
 git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Structural: add a membershipExceptions entry in the MIDDLE of the array.
+#
+# This is the case that matters most, and the reason the classifier compares
+# sorted fingerprints instead of grepping the textual diff for keywords. The
+# only line carrying the `membershipExceptions` keyword is the array's
+# declaration, which does not change when an entry is added — so a keyword
+# grep over the diff only sees it when the edit happens to land within git's
+# 3 lines of context. Real arrays in WXYC.xcodeproj are 5-78 entries and are
+# sorted by path, so an ordinary new test file lands mid-array and the keyword
+# is nowhere in the hunk. Measured against the real project file before the
+# fix: adding a test file to the WXYCTests exception set classified as
+# cosmetic, i.e. silently skipped every test. Keep an assertion on a mid-array
+# edit — a fixture whose array is short enough to keep the declaration line in
+# context will pass while the real repo fails.
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace(
+    "\t\t\t\tTests/JulietTests.swift,\n",
+    "\t\t\t\tTests/JulietTests.swift,\n\t\t\t\tTests/JulietteAddedTests.swift,\n",
+    1,
+)
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "structural mid-array membershipExceptions ADD: run_all=true" "$LAST_GH" $'run_all=true'
+expect_contains "structural mid-array membershipExceptions ADD: logged as structural" "$LAST_OUT" "structural project file change"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Structural: REMOVE an entry from the middle of the array (a file losing
+# target membership — test-affecting, and never accompanied by a change to the
+# .swift file itself, so nothing else in the changed-file set can cover it).
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace("\t\t\t\tTests/KiloTests.swift,\n", "", 1)
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "structural mid-array membershipExceptions REMOVE: run_all=true" "$LAST_GH" $'run_all=true'
+expect_contains "structural mid-array membershipExceptions REMOVE: logged as structural" "$LAST_OUT" "structural project file change"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Structural: MOVE a file from one target's exception set to another's.
+# The multiset of entry strings is unchanged by a naive whole-file comparison,
+# so the fingerprint has to be keyed by the owning object's UUID for this to
+# register. Without that key this reads as an identical permutation.
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace("\t\t\t\tTests/LimaTests.swift,\n", "", 1)
+text = text.replace(
+    "\t\t\t\tOther/UniformTests.swift,\n",
+    "\t\t\t\tOther/UniformTests.swift,\n\t\t\t\tTests/LimaTests.swift,\n",
+    1,
+)
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "structural cross-target membership MOVE: run_all=true" "$LAST_GH" $'run_all=true'
+expect_contains "structural cross-target membership MOVE: logged as structural" "$LAST_OUT" "structural project file change"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Cosmetic: reorder two entries within a membershipExceptions array.
+# Same membership set, different order — Xcode reshuffles these freely.
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace(
+    "\t\t\t\tTests/MikeTests.swift,\n\t\t\t\tTests/NovemberTests.swift,\n",
+    "\t\t\t\tTests/NovemberTests.swift,\n\t\t\t\tTests/MikeTests.swift,\n",
+    1,
+)
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "cosmetic intra-array reorder: run_all=false" "$LAST_GH" $'run_all=false'
+expect_contains "cosmetic intra-array reorder: logged as ignored" "$LAST_OUT" "ignoring cosmetic project file change"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Cosmetic: bump a build setting (MARKETING_VERSION). A real, recurring
+# pbxproj edit that has no bearing on which tests should run.
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace("MARKETING_VERSION = 3.2.0;", "MARKETING_VERSION = 3.2.1;", 1)
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "cosmetic build-setting bump: run_all=false" "$LAST_GH" $'run_all=false'
+expect_contains "cosmetic build-setting bump: logged as ignored" "$LAST_OUT" "ignoring cosmetic project file change"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Structural: add a local Swift package to the project.
+#
+# Regression guard for a real gap: commit 09923949f ("on-device liked-songs
+# store package") added Shared/LikedSongs to the project as a five-line diff
+# containing only an XCLocalSwiftPackageReference block and its
+# packageReferences entry — no PBX* object type anywhere in it. A fingerprint
+# tracking only PBX* types reports that as cosmetic.
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+addition = (
+    "/* Begin XCLocalSwiftPackageReference section */\n"
+    "\t\tPKGREF0001 /* XCLocalSwiftPackageReference \"Shared/NewPkg\" */ = {\n"
+    "\t\t\tisa = XCLocalSwiftPackageReference;\n"
+    "\t\t\trelativePath = Shared/NewPkg;\n"
+    "\t\t};\n"
+    "/* End XCLocalSwiftPackageReference section */\n\n"
+)
+text = text.replace("\t};\n\trootObject = FFFF6666;\n", "\t};\n" + addition + "\trootObject = FFFF6666;\n")
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "structural: adding a local Swift package: run_all=true" "$LAST_GH" $'run_all=true'
+expect_contains "structural: adding a local Swift package: logged as structural" "$LAST_OUT" "structural project file change"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Structural: an uncommitted working-tree edit is inspected too (the
+# pre-push hook routinely runs against a dirty tree). Every case above is
+# already a working-tree edit rather than a commit, which is the point — but
+# assert the committed-diff path as well so both are covered.
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace("\t\t\t\tTests/RomeoTests.swift,\n", "", 1)
+open(path, "w").write(text)
+PY
+git -C "$PBX_REPO" commit -q -am "committed structural change"
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "structural change in a COMMIT (not just worktree): run_all=true" "$LAST_GH" $'run_all=true'
+git -C "$PBX_REPO" reset -q --hard "$PBX_BASE_SHA"
 
 rm -rf "$PBX_REPO"
 

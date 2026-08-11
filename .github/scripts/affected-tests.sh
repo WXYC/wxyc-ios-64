@@ -88,53 +88,110 @@ run_all_and_exit() {
     exit 0
 }
 
-# is_pbxproj_change_structural — true (exit 0) when a *.xcodeproj/* diff
-# touches something that can change which tests should run: a target being
-# added/removed (PBXNativeTarget, PBXAggregateTarget), a manually-tracked
-# source reference being added/removed (PBXFileReference,
-# PBXSourcesBuildPhase), or a file's target membership changing
-# (membershipExceptions, PBXFileSystemSynchronizedBuildFileExceptionSet).
-# That last pair is not in the original #360 proposal but is load-bearing
-# here: this project's targets mostly use file-system-synchronized groups
-# (see docs/project-structure.md + CLAUDE.md), so a file joining or leaving a
-# target shows up as a membershipExceptions edit, not a PBXFileReference one
-# — a marker set drawn only from the issue's literal list would miss the
-# single most common real structural edit in this repo's pbxproj.
+# PBXPROJ_FINGERPRINT_AWK — reduces a project.pbxproj to a canonical
+# projection of just the facts that can change which tests should run:
 #
-# False (exit 1) for pure group/folder/ordering/rename churn — reordering a
-# group's children, renaming a group, re-ordering build phases — none of
-# which touch the markers above.
+#   ARR  <owning-uuid> membershipExceptions         <entry>  target membership
+#   ARR  <owning-uuid> files                        <entry>  build-phase inputs
+#   ARR  <owning-uuid> fileSystemSynchronizedGroups <entry>  folder→target
+#   ARR  <owning-uuid> targets                      <entry>  the target list
+#   ARR  <owning-uuid> packageReferences            <entry>  packages in project
+#   ARR  <owning-uuid> packageProductDependencies   <entry>  package→target link
+#   ARR  <owning-uuid> dependencies                 <entry>  inter-target deps
+#   DECL <owning-uuid> <line declaring a tracked object type>
 #
-# Diffs against the merge-base of BASE_REF and HEAD (not BASE_REF...HEAD, and
-# not BASE_REF alone): merge-base matches the three-dot semantics CI's own
-# top-level diff uses, while diffing against the *working tree* (not HEAD)
-# means locally-uncommitted pbxproj edits are inspected too — the same
-# working-tree-inclusive behavior scripts/test-affected.sh relies on for its
-# own top-level changed-files list.
+# Tracked object types cover the manually-listed file graph (PBXFileReference,
+# PBXBuildFile, PBXSourcesBuildPhase), the target graph (PBXNativeTarget,
+# PBXAggregateTarget, PBXTargetDependency), the synchronized-group machinery
+# this project mostly uses, and Swift package wiring (XCLocalSwiftPackageRef,
+# XCRemoteSwiftPackageRef, XCSwiftPackageProductDependency). The package types
+# matter: adding Shared/LikedSongs to the project was a five-line pbxproj diff
+# consisting only of an XCLocalSwiftPackageReference and its packageReferences
+# entry, with no PBX* marker anywhere in it.
 #
-# Fails open (treated as structural) if the diff itself can't be computed,
-# matching every other fallback in this script.
+# Deliberately absent: group names, `children` ordering, `buildPhases`
+# ordering, XCBuildConfiguration build settings, comments, whitespace. Those
+# are exactly the "cosmetic" churn #360 wants to stop forcing run-all — a
+# MARKETING_VERSION bump is the canonical example.
+#
+# Every emitted line carries the enclosing object's UUID so that moving a file
+# from one target's membershipExceptions to another's registers as a real
+# difference rather than a no-op permutation of the same multiset.
+PBXPROJ_FINGERPRINT_AWK='
+{
+    line = $0
+    sub(/^[ \t]+/, "", line); sub(/[ \t]+$/, "", line)
+    if (inarray) {
+        if (line == ");") { inarray = 0; next }
+        print "ARR " block " " arraykey " " line
+        next
+    }
+    if (line ~ /= \{$/) { block = line; sub(/ .*/, "", block) }
+    if (line ~ /^(membershipExceptions|files|fileSystemSynchronizedGroups|targets|packageReferences|packageProductDependencies|dependencies) = \($/) {
+        arraykey = line; sub(/ = \($/, "", arraykey); inarray = 1; next
+    }
+    if (line ~ /isa = (PBX(NativeTarget|AggregateTarget|FileReference|SourcesBuildPhase|BuildFile|TargetDependency|FileSystemSynchronizedBuildFileExceptionSet|FileSystemSynchronizedRootGroup)|XC(LocalSwiftPackageReference|RemoteSwiftPackageReference|SwiftPackageProductDependency))[;,]/) {
+        print "DECL " block " " line
+    }
+}
+'
+
+# is_pbxproj_change_structural — true (exit 0) when a *.xcodeproj/* change
+# alters the structural fingerprint above: a target added/removed/renamed, a
+# source reference added/removed, or a file's target membership changing.
+# False (exit 1) for pure group/folder/ordering/rename churn.
+#
+# Compares *sorted fingerprints of the two file versions* rather than grepping
+# the textual diff for marker keywords. The keyword-grep approach cannot work
+# here, and it is worth recording why so it doesn't get reintroduced:
+#
+#   A new membershipExceptions entry is an added line inside an otherwise
+#   unchanged `membershipExceptions = ( … );` array. The only line carrying the
+#   keyword is the array's declaration, which never changes — so whether the
+#   grep sees it depends purely on whether the edit happens to land within
+#   git's 3 lines of context. This repo's real arrays are 5–78 entries long
+#   (`WXYC.xcodeproj/project.pbxproj`), and the entries are sorted by path, so
+#   an ordinary new test file lands mid-array and the keyword is nowhere in the
+#   hunk. Measured against the real project file: adding a test file to the
+#   WXYCTests exception set, and removing a file from it, both classified as
+#   cosmetic — i.e. the single most common structural edit in this repo would
+#   have silently skipped every test. Only entries landing near the top of an
+#   array were caught, by proximity accident.
+#
+# Sorting makes intra-array reordering cosmetic (correct — Xcode reshuffles
+# these freely) while any genuine addition, removal, or cross-target move
+# changes the multiset.
+#
+# Reads the base side from the merge-base of BASE_REF and HEAD, matching the
+# three-dot semantics of CI's own top-level diff, and the current side from the
+# *working tree*, so locally-uncommitted pbxproj edits are inspected too — the
+# same working-tree-inclusive behavior scripts/test-affected.sh relies on for
+# its top-level changed-files list. That is what makes this correct under the
+# pre-push hook, which routinely runs against a dirty tree.
+#
+# Fails open (treated as structural) if neither side can be read, matching
+# every other fallback in this script.
 is_pbxproj_change_structural() {
     local file="$1"
     local merge_base
     merge_base=$(git merge-base "$BASE_REF" HEAD 2>/dev/null) || merge_base="$BASE_REF"
-    local diff_output
-    diff_output=$(git diff --no-color "$merge_base" -- "$file" 2>/dev/null) || return 0
-    # Deliberately matches the whole diff (default 3 lines of context), not
-    # only +/- changed lines. A new membershipExceptions entry is an added
-    # line inside an *unchanged* `membershipExceptions = ( ... );` array —
-    # the array's own declaration line, which carries the keyword, never
-    # changes. Restricting to changed lines misses exactly that case, which
-    # is the one this project actually hits (file-system-synchronized
-    # groups — see the comment above this function). The tradeoff: a cosmetic
-    # edit landing within 3 lines of an unrelated isa=PBXNativeTarget/
-    # PBXFileReference/PBXSourcesBuildPhase declaration now also reads as
-    # structural. That's the safe direction to be wrong in (run more tests,
-    # not fewer) and pbxproj's per-type "Begin/End section" grouping keeps
-    # real occurrences rare — group/folder edits don't normally sit adjacent
-    # to a target or file-reference declaration.
-    echo "$diff_output" | grep -qE \
-        'PBXNativeTarget|PBXAggregateTarget|PBXFileReference|PBXSourcesBuildPhase|membershipExceptions|PBXFileSystemSynchronizedBuildFileExceptionSet'
+
+    local base_fp="" current_fp=""
+    local have_base=1 have_current=1
+
+    base_fp=$(git show "$merge_base:$file" 2>/dev/null | awk "$PBXPROJ_FINGERPRINT_AWK" | sort) || have_base=0
+    if [[ -f "$file" ]]; then
+        current_fp=$(awk "$PBXPROJ_FINGERPRINT_AWK" < "$file" 2>/dev/null | sort) || have_current=0
+    else
+        have_current=0
+    fi
+
+    # Neither side readable → we learned nothing; run everything.
+    if (( have_base == 0 && have_current == 0 )); then
+        return 0
+    fi
+
+    [[ "$base_fp" != "$current_fp" ]]
 }
 
 # ---------------------------------------------------------------------------
