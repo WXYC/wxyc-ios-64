@@ -218,6 +218,10 @@ test_help_output() {
 # and producing gap=0. Before the fix, that gap=0 was the only signal the
 # script looked at, so it printed PARITY CHECK PASSED. This test must FAIL
 # against the unfixed script and PASS against the fix.
+#
+# The fixture keeps the incident's totals (76 total, 9 failed) but abbreviates
+# testFailures to two entries — the guard fires on ANY crash signature, so
+# listing all nine would only make the fixture longer, not the test stronger.
 # ============================================================================
 
 test_crash_signature_fails_despite_matching_counts() {
@@ -349,17 +353,27 @@ test_absolute_derived_data_stays_out_of_the_repo() {
     export MOCK_XCODEBUILD_EXIT=0
     export MOCK_XCRESULT_JSON='{"totalTestCount": 5, "result": "Passed", "testFailures": []}'
 
-    local repo_root
+    # The exact path the bug produces: "$REPO_ROOT/$DERIVED_DATA" against an
+    # absolute --derived-data appends the absolute path whole. TEST_TMP_DIR is
+    # unique per test, so this location is unique to this run — which means the
+    # check can't be satisfied by litter an earlier run left behind, and needs
+    # to delete nothing in the working tree to set itself up. Checking for a
+    # bare <repo>/var instead would mean rm -rf'ing a path outside the test's
+    # scratch space before every run, which is not a test's business.
+    local repo_root shadow
     repo_root="$(dirname "$PROJECT_DIR")"
-    rm -rf "${repo_root}/var"
+    shadow="${repo_root}${TEST_TMP_DIR}"
 
     run_parity WXUI > /dev/null 2>&1 || true
 
     local stray="absent"
-    [[ -e "${repo_root}/var" ]] && stray="present"
+    [[ -e "$shadow" ]] && stray="present"
+
+    # Remove only this run's own shadow subtree, never a broader path.
+    [[ -e "$shadow" ]] && rm -rf "$shadow"
 
     assert_contains "$stray" "absent" \
-        "an absolute --derived-data must not be re-rooted at the repo, which creates <repo>/var/folders/..." && \
+        "an absolute --derived-data must not be re-rooted at the repo — it created $shadow" && \
     assert_contains "$(ls "${TEST_TMP_DIR}/dd-results" 2>&1)" "WXUI.xcresult" \
         "the result bundle must land under the absolute --derived-data the caller asked for"
 }
