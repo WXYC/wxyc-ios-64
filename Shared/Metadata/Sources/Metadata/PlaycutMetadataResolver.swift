@@ -183,7 +183,30 @@ public struct PlaycutMetadataResolver: Sendable {
                           row.metadataStatus?.isTerminal == true
                     else { continue }
 
-                    continuation.yield(await resolve(for: row))
+                    let resolved = await resolve(for: row)
+
+                    // #821: write the repaired album back into the cache
+                    // before yielding it, so a sibling call that resolves
+                    // through the proxy branch inside the album TTL window
+                    // (a still-pending row, a V1 row) sees this richer
+                    // answer instead of the sparse pre-enrichment snapshot
+                    // the on-appear resolve may have cached. Routed through
+                    // `cacheRepairedAlbum`, not a direct cache write: a naive
+                    // write-through here would be wrong. The inline album
+                    // this branch produces is missing `discogsArtistId`/
+                    // `fullReleaseDate` (the #685 casualty list — see
+                    // `PlaycutMetadataService.fetchMetadata(for:inline:)`'s
+                    // doc comment), and `discogsArtistId` is load-bearing: a
+                    // cached album without it makes `fetchArtistMetadata`
+                    // return `.empty`, i.e. no artist bio, for as long as the
+                    // entry lives. `cacheRepairedAlbum` merges over whatever
+                    // is already cached (never losing a field the cache
+                    // already has) and shortens the TTL whenever the merged
+                    // record still lacks `discogsArtistId`, rather than
+                    // handing an incomplete record the full 7-day album TTL.
+                    await service.cacheRepairedAlbum(resolved.album, for: row)
+
+                    continuation.yield(resolved)
                     break
                 }
                 continuation.finish()
