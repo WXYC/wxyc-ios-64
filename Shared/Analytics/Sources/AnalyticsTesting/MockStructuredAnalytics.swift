@@ -3,47 +3,67 @@
 //  AnalyticsTesting
 //
 //  Test double for AnalyticsService that records captured events for verification
-//  in unit tests without sending data to a real analytics backend.
+//  in unit tests without sending data to a real analytics backend. Swift Testing
+//  runs suites in parallel by default, so `capture` must tolerate concurrent
+//  callers; state lives behind a `Mutex` rather than plain arrays (#816).
 //
 //  Created by Auto-Agent on 01/24/25.
 //
 
 import Analytics
 import Foundation
+import Synchronization
 
-public final class MockStructuredAnalytics: AnalyticsService, @unchecked Sendable {
-    public private(set) var events: [any AnalyticsEvent] = []
-    private var eventNames: [String] = []
+public final class MockStructuredAnalytics: AnalyticsService {
+    /// The recorded events and their names, kept in one lock so a reader
+    /// never observes the two arrays at different lengths mid-capture.
+    private struct RecordedState {
+        var events: [any AnalyticsEvent] = []
+        var eventNames: [String] = []
+    }
+
+    private let state = Mutex<RecordedState>(RecordedState())
 
     public init() {}
 
+    /// A snapshot of all captured events, in capture order.
+    public var events: [any AnalyticsEvent] {
+        state.withLock { $0.events }
+    }
+
     public func capture<T: AnalyticsEvent>(_ event: T) {
-        events.append(event)
-        eventNames.append(T.name)
+        state.withLock {
+            $0.events.append(event)
+            $0.eventNames.append(T.name)
+        }
     }
 
     public func reset() {
-        events.removeAll()
-        eventNames.removeAll()
+        state.withLock {
+            $0.events.removeAll()
+            $0.eventNames.removeAll()
+        }
     }
 
     // MARK: - Convenience Accessors
 
     /// All events with the given name.
     public func events(named name: String) -> [any AnalyticsEvent] {
-        zip(events, eventNames)
-            .filter { $0.1 == name }
-            .map { $0.0 }
+        state.withLock { current in
+            zip(current.events, current.eventNames)
+                .filter { $0.1 == name }
+                .map { $0.0 }
+        }
     }
 
     /// Filtered events of a specific type.
     public func typedEvents<T: AnalyticsEvent>(ofType: T.Type) -> [T] {
-        events.compactMap { $0 as? T }
+        state.withLock { $0.events.compactMap { $0 as? T } }
     }
 
     /// All captured event names (for filtering by name pattern).
     public func capturedEventNames() -> [String] {
-        eventNames
+        state.withLock { $0.eventNames }
     }
 }
 
