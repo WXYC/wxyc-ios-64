@@ -18,9 +18,11 @@
 //  bundle is "live" at any moment. That is exactly the "one live instance at
 //  a time, fresh per test" shape every adopting suite already uses
 //  `QueuedStubURLProtocol` for directly — this type just adds
-//  `responses[pattern] = body` sugar and per-instance request tracking on
-//  top, so a suite with several tests needing multi-endpoint pattern routing
-//  doesn't hand-roll its own `URLProtocol` subclass to get it.
+//  `responses[pattern] = body` sugar and request-log accessors on top, so a
+//  suite with several tests needing multi-endpoint pattern routing doesn't
+//  hand-roll its own `URLProtocol` subclass to get it. Note that the request
+//  log is read straight off `QueuedStubURLProtocol`, not held per instance:
+//  with two instances alive, both report the live one's requests.
 //
 //  Created by Jake Bromberg on 08/11/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -35,7 +37,7 @@ import os
 ///
 /// See the file header for why this shares `QueuedStubURLProtocol`'s
 /// one-adopter-per-bundle constraint despite being an instantiable type.
-public final class PatternRoutingWebSession: @unchecked Sendable {
+public final class PatternRoutingWebSession: Sendable {
     private struct State {
         var responses: [String: Data] = [:]
     }
@@ -51,7 +53,10 @@ public final class PatternRoutingWebSession: @unchecked Sendable {
         set { stateLock.withLock { $0.responses = newValue } }
     }
 
-    /// Every request URL observed since construction or the last `reset()`, in order.
+    /// Every request URL observed since construction or the last `reset()`,
+    /// in order. Read from `QueuedStubURLProtocol`'s shared capture log
+    /// rather than held per instance, so it reflects the most-recently
+    /// constructed instance — see the file header.
     public var requestedURLs: [URL] {
         QueuedStubURLProtocol.capturedRequests().compactMap(\.url)
     }
