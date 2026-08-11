@@ -20,15 +20,10 @@ enum SpotifyError: Error {
 
 final class SpotifyService: MusicServiceProvider {
     let identifier: MusicService = .spotify
+    static let hosts = ["open.spotify.com", "spotify.com"]
+    static let schemes = ["spotify"]
 
     init() {}
-
-    func canHandle(url: URL) -> Bool {
-        let host = url.host?.lowercased() ?? ""
-        let scheme = url.scheme?.lowercased() ?? ""
-
-        return host.contains("open.spotify.com") || host.contains("spotify.com") || scheme == "spotify"
-    }
 
     func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
