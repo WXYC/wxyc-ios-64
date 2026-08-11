@@ -347,7 +347,14 @@ public final class RadioPlayerController: PlaybackController {
     /// (#756), since neither controller read it outside interruption
     /// handling. This flag stays controller-owned because `play()` and
     /// `PlaybackStopTeardown` also touch it.
-    private var wasPlayingBeforeRouteDisconnect = false
+    ///
+    /// `package`, not `private`, so `PlaybackInterruptionRouteHandler` can
+    /// read and write it through `PlaybackInterruptionContext` conformance
+    /// (#804) — the same read/write access it already had via the
+    /// `getWasPlayingBeforeRouteDisconnect`/`setWasPlayingBeforeRouteDisconnect`
+    /// closures this replaced, just narrowed to the `Playback` package rather
+    /// than exposed as an anonymous closure pair.
+    package var wasPlayingBeforeRouteDisconnect = false
     private var playbackIntended = false
     /// Stable per-listen identifier (#665), generated at the play intent
     /// alongside `playbackTimer` and threaded onto every playback analytics
@@ -355,7 +362,13 @@ public final class RadioPlayerController: PlaybackController {
     /// stream. Cleared in `stop()` — except for the interruption and
     /// route-disconnect reasons, which stop playback only as a prelude to an
     /// imminent auto-resume and must preserve the id (see `stop(reason:)`).
-    private var sessionID: String?
+    ///
+    /// Getter is `package` so `PlaybackInterruptionRouteHandler` can read it
+    /// through `PlaybackInterruptionContext` conformance (#804); the setter
+    /// stays `private` — nothing outside this controller ever wrote it,
+    /// including the handler, which only ever read it via a `() -> String?`
+    /// closure.
+    package private(set) var sessionID: String?
     /// Cadence at which `playback_heartbeat` fires while playing (#666). See
     /// `AudioPlayerController.heartbeatInterval` for the interval choice and
     /// budget rationale, which applies identically here.
@@ -425,14 +438,8 @@ private extension RadioPlayerController {
     func setUpInterruptionRouteHandler(notificationCenter: NotificationCenter) {
         interruptionRouteHandler = PlaybackInterruptionRouteHandler(
             notificationCenter: notificationCenter,
-            isPlaying: { [weak self] in self?.isPlaying ?? false },
-            sessionID: { [weak self] in self?.sessionID },
-            playbackDuration: { [weak self] in self?.playbackTimer.duration() ?? 0 },
+            context: self,
             analytics: analytics,
-            stop: { [weak self] reason in self?.stop(reason: reason) },
-            play: { [weak self] reason in try? self?.play(reason: reason) },
-            getWasPlayingBeforeRouteDisconnect: { [weak self] in self?.wasPlayingBeforeRouteDisconnect ?? false },
-            setWasPlayingBeforeRouteDisconnect: { [weak self] value in self?.wasPlayingBeforeRouteDisconnect = value },
             onInterruptionReceived: { type in
                 Log(.info, category: .playback, "Session interrupted: type=\(type.rawValue)")
             },
@@ -720,3 +727,19 @@ private extension RadioPlayerController {
         }
     }
 }
+
+// MARK: - PlaybackInterruptionContext Conformance (#804)
+
+#if os(iOS) || os(tvOS)
+extension RadioPlayerController: PlaybackInterruptionContext {
+    /// `isPlaying`, `sessionID`, `wasPlayingBeforeRouteDisconnect`,
+    /// `stop(reason:)`, and `play(reason:)` are satisfied by the members
+    /// declared above (the first three widened from `private` to `package`
+    /// so `PlaybackInterruptionRouteHandler` can read/write them through this
+    /// conformance). `playbackDuration` has no controller-owned equivalent —
+    /// unlike `AudioPlayerController`, this controller only ever derived it
+    /// inline from `playbackTimer` — so it's added here, package-scoped,
+    /// purely for this conformance.
+    package var playbackDuration: TimeInterval { playbackTimer.duration() }
+}
+#endif

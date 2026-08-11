@@ -33,17 +33,17 @@ import Foundation
 /// also touch it — and is threaded through via a get/set pair instead of
 /// `inout`, since this type's own methods run later, asynchronously, from a
 /// stored notification-observer closure rather than a direct synchronous call.
+///
+/// The seven state accessors above (mandatory, no divergence between
+/// controllers) move behind `context: PlaybackInterruptionContext` (#804),
+/// holding it `weak` for the same reason every accessor closure captured its
+/// controller `[weak self]` before: this handler is owned by the controller
+/// it reads from, so a strong reference here would cycle.
 @MainActor
 public final class PlaybackInterruptionRouteHandler {
     private let notificationCenter: NotificationCenter
-    private let isPlaying: () -> Bool
-    private let sessionID: () -> String?
-    private let playbackDuration: () -> TimeInterval
+    private weak var context: (any PlaybackInterruptionContext)?
     private let analytics: AnalyticsService
-    private let stop: (PlaybackReason) -> Void
-    private let play: (PlaybackReason) -> Void
-    private let getWasPlayingBeforeRouteDisconnect: () -> Bool
-    private let setWasPlayingBeforeRouteDisconnect: (Bool) -> Void
     private let onInterruptionReceived: (AVAudioSession.InterruptionType) -> Void
     private let onInterruptionWillStopForPlayback: () -> Void
     private let onInterruptionBeganHandled: () -> Void
@@ -62,30 +62,18 @@ public final class PlaybackInterruptionRouteHandler {
 
     /// - Parameters:
     ///   - notificationCenter: Observed for `InterruptionMessage` and `RouteChangeMessage`.
-    ///   - isPlaying: Whether the controller is currently playing.
-    ///   - sessionID: The controller's current per-listen session id (#665), for the shared `PlaybackStoppedEvent`.
-    ///   - playbackDuration: The controller's current playback duration, for the shared `PlaybackStoppedEvent`.
+    ///   - context: The mandatory, non-divergent state accessors (`isPlaying`, `sessionID`, `playbackDuration`, `wasPlayingBeforeRouteDisconnect`, `stop(reason:)`, `play(reason:)`) — held weakly, since this handler is owned by the same controller it reads from.
     ///   - analytics: Sink for the shared `PlaybackStoppedEvent` capture.
-    ///   - stop: Called to stop playback for a given reason (`.interruptionBegan` / `.routeDisconnected`).
-    ///   - play: Called to (re)start playback for a given reason (`.resumeAfterInterruption` / `.resumeAfterRouteReconnect`).
-    ///   - getWasPlayingBeforeRouteDisconnect: Reads the controller-owned flag recording whether playback was active before the last route disconnect.
-    ///   - setWasPlayingBeforeRouteDisconnect: Writes that flag.
     ///   - onInterruptionReceived: Fired with the raw interruption type before the switch — e.g. for logging. Default no-op.
     ///   - onInterruptionWillStopForPlayback: Fired immediately before the shared `PlaybackStoppedEvent` capture on a `.began` that is actually stopping active playback — e.g. Radio's `InterruptionEvent` capture. Default no-op.
     ///   - onInterruptionBeganHandled: Fired unconditionally at the end of `.began` handling, whether or not playback was active — e.g. Radio's `.interrupted` state transition. Default no-op.
     ///   - onInterruptionEndedWithoutResume: Fired on `.ended` when no resume is warranted (no `.shouldResume`, or nothing was playing before the interruption) — e.g. Audio's deferred-session-activation reactivation. Default no-op.
     ///   - onRouteChangeReceived: Fired with the raw route-change reason before the switch — e.g. for logging. Default no-op.
     ///   - onRouteChangeRestartFallback: Fired for `.newDeviceAvailable` when no route-disconnect resume is warranted, and for every other route-change reason — e.g. Radio's "restart if still intended but the player already stopped" recovery. Default no-op. These were two distinct arms before extraction, deliberately collapsed onto one hook: Radio ran a byte-identical recovery in both, and Audio left both empty (its `default:` was an explicit `break`, on the grounds that `AudioEnginePlayer` restarts its own engine on configuration changes). The collapse is lossy for anyone wiring this hook on a controller that wants recovery **only** on a reconnect — it would also fire on `.categoryChange`, `.routeConfigurationChange`, `.override`, and `.wakeFromSleep`, which are frequent. Split it into two hooks at that point rather than accepting the wider firing.
-    public init(
+    package init(
         notificationCenter: NotificationCenter,
-        isPlaying: @escaping () -> Bool,
-        sessionID: @escaping () -> String?,
-        playbackDuration: @escaping () -> TimeInterval,
+        context: any PlaybackInterruptionContext,
         analytics: AnalyticsService,
-        stop: @escaping (PlaybackReason) -> Void,
-        play: @escaping (PlaybackReason) -> Void,
-        getWasPlayingBeforeRouteDisconnect: @escaping () -> Bool,
-        setWasPlayingBeforeRouteDisconnect: @escaping (Bool) -> Void,
         onInterruptionReceived: @escaping (AVAudioSession.InterruptionType) -> Void = { _ in },
         onInterruptionWillStopForPlayback: @escaping () -> Void = {},
         onInterruptionBeganHandled: @escaping () -> Void = {},
@@ -94,14 +82,8 @@ public final class PlaybackInterruptionRouteHandler {
         onRouteChangeRestartFallback: @escaping () -> Void = {}
     ) {
         self.notificationCenter = notificationCenter
-        self.isPlaying = isPlaying
-        self.sessionID = sessionID
-        self.playbackDuration = playbackDuration
+        self.context = context
         self.analytics = analytics
-        self.stop = stop
-        self.play = play
-        self.getWasPlayingBeforeRouteDisconnect = getWasPlayingBeforeRouteDisconnect
-        self.setWasPlayingBeforeRouteDisconnect = setWasPlayingBeforeRouteDisconnect
         self.onInterruptionReceived = onInterruptionReceived
         self.onInterruptionWillStopForPlayback = onInterruptionWillStopForPlayback
         self.onInterruptionBeganHandled = onInterruptionBeganHandled
@@ -132,22 +114,22 @@ public final class PlaybackInterruptionRouteHandler {
 
         switch message.type {
         case .began:
-            wasPlayingBeforeInterruption = isPlaying()
-            if isPlaying() {
+            wasPlayingBeforeInterruption = context?.isPlaying ?? false
+            if context?.isPlaying ?? false {
                 onInterruptionWillStopForPlayback()
                 analytics.capture(PlaybackStoppedEvent(
                     reason: PlaybackReason.interruptionBegan.rawValue,
                     source: PlaybackReason.interruptionBegan.playbackSource,
-                    duration: playbackDuration(),
-                    sessionID: sessionID()
+                    duration: context?.playbackDuration ?? 0,
+                    sessionID: context?.sessionID
                 ))
-                stop(.interruptionBegan)
+                context?.stop(reason: .interruptionBegan)
             }
             onInterruptionBeganHandled()
 
         case .ended:
             if message.options.contains(.shouldResume) && wasPlayingBeforeInterruption {
-                play(.resumeAfterInterruption)
+                try? context?.play(reason: .resumeAfterInterruption)
             } else {
                 onInterruptionEndedWithoutResume()
             }
@@ -164,24 +146,24 @@ public final class PlaybackInterruptionRouteHandler {
         switch message.reason {
         case .oldDeviceUnavailable:
             // Headphones unplugged - stop playback per Apple HIG.
-            let wasPlaying = isPlaying()
-            setWasPlayingBeforeRouteDisconnect(wasPlaying)
+            let wasPlaying = context?.isPlaying ?? false
+            context?.wasPlayingBeforeRouteDisconnect = wasPlaying
             if wasPlaying {
                 analytics.capture(PlaybackStoppedEvent(
                     reason: PlaybackReason.routeDisconnected.rawValue,
                     source: PlaybackReason.routeDisconnected.playbackSource,
-                    duration: playbackDuration(),
-                    sessionID: sessionID()
+                    duration: context?.playbackDuration ?? 0,
+                    sessionID: context?.sessionID
                 ))
-                stop(.routeDisconnected)
+                context?.stop(reason: .routeDisconnected)
             }
 
         case .newDeviceAvailable:
             // Device reconnected (e.g. AirPod reinserted) - resume if we were
             // playing before disconnect; otherwise let the fallback hook
             // decide whether a stalled player still needs restarting.
-            if getWasPlayingBeforeRouteDisconnect() {
-                play(.resumeAfterRouteReconnect)
+            if context?.wasPlayingBeforeRouteDisconnect ?? false {
+                try? context?.play(reason: .resumeAfterRouteReconnect)
             } else {
                 onRouteChangeRestartFallback()
             }
