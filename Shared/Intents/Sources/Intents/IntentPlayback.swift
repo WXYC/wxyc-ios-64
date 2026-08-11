@@ -89,45 +89,36 @@ enum IntentPlayback {
     /// copy-pasted between them.
     ///
     /// - Parameters:
-    ///   - reason: The `PlaybackReason` passed to `toggle`.
+    ///   - reason: The `PlaybackReason` passed to `toggle(reason:)`.
     ///   - context: Log prefix identifying the calling intent (e.g. `"ToggleWXYC intent"`).
     ///   - timeout: How long to wait for playback to start after toggling on.
-    ///   - prepareForPlayback: Session-preparation hook; defaults to the shared controller. Injectable for tests.
-    ///   - isPlaybackRequested: Pre-toggle predicate, read *before* `toggle` runs to predict which
-    ///     branch it takes. Must be the same predicate `toggle` itself branches on — reading `isPlaying`
-    ///     here would report `false` for a start already in flight, so the toggle would stop it while
-    ///     this waited out the full timeout for audio that is never coming. Defaults to the shared
-    ///     controller. Injectable for tests.
-    ///   - isPlaying: Post-toggle poll predicate, passed through to `awaitPlaybackStart`. Defaults to
-    ///     the shared controller. Injectable for tests.
-    ///   - toggle: Toggle action; defaults to the shared controller. Injectable for tests.
+    ///   - controller: Playback-control surface; defaults to the shared
+    ///     controller. Injectable for tests (#497), the same seam
+    ///     `startAndAwait` uses.
     @MainActor
     static func toggleAndAwait(
         reason: PlaybackReason,
         context: String,
         timeout: Duration = .seconds(10),
-        prepareForPlayback: @MainActor () -> Void = { AudioPlayerController.shared.prepareForPlayback() },
-        isPlaybackRequested: @MainActor () -> Bool = { AudioPlayerController.shared.isPlaybackRequested },
-        isPlaying: @MainActor () -> Bool = { AudioPlayerController.shared.isPlaying },
-        toggle: @MainActor (PlaybackReason) -> Void = { AudioPlayerController.shared.toggle(reason: $0) }
+        controller: any IntentPlaybackControlling = AudioPlayerController.shared
     ) async {
         Log(.info, "\(context)")
 
         // Prepare audio session early to signal to iOS that audio playback is imminent
-        prepareForPlayback()
+        controller.prepareForPlayback()
 
         // Must be the same predicate `toggle(reason:)` branches on, or this
         // mispredicts which way the toggle went. Reading `isPlaying` here
         // would report `false` for a start already in flight — the toggle
         // would stop it while this waited out the full timeout for audio that
         // is never coming.
-        let wasRequested = isPlaybackRequested()
-        toggle(reason)
+        let wasRequested = controller.isPlaybackRequested
+        controller.toggle(reason: reason)
 
         // If we toggled to play, wait for playback to start before returning
         // so iOS doesn't suspend the app before the stream connects
         if !wasRequested {
-            await awaitPlaybackStart(timeout: timeout, context: context, isPlaying: isPlaying)
+            await awaitPlaybackStart(timeout: timeout, context: context) { controller.isPlaying }
         }
     }
 }
