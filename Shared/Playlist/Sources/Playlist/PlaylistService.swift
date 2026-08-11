@@ -283,6 +283,28 @@ public final actor PlaylistService: Sendable {
         await waitForCacheLoad()
         return currentPlaylist
     }
+
+    /// Cumulative count of fetch failures observed by the currently-active
+    /// fetcher, for debug-panel observability (WXYC/wxyc-ios-64#267).
+    ///
+    /// Every thrown error (network timeout, server error, decode failure) is
+    /// swallowed by `PlaylistFetcherProtocol.fetchPlaylist()` into an empty
+    /// playlist with no signal in its return value, and the broadcast-empty
+    /// guard in `ingest(_:)` — correctly — keeps the last good playlist on
+    /// screen through a transient failure. That combination means a sustained
+    /// failure (decoder drift, a bad deploy) looks identical from the UI to a
+    /// quiet night with nothing playing. This counter is the missing signal:
+    /// it does not change fetch or broadcast behavior, only makes failures
+    /// observable.
+    ///
+    /// Delegates to `fetcher.fetchErrorCount` rather than keeping an
+    /// independent tally, so it resets when `switchAPIVersion(to:)` rebuilds
+    /// the fetcher — intentional, since conflating a v1 error streak with a
+    /// v2 one would obscure exactly the version-scoped drift this exists to
+    /// surface.
+    public func fetchErrorCount() -> Int {
+        fetcher.fetchErrorCount
+    }
     
     /// Fetch playlist and cache it, always fetching fresh data (ignores cache).
     /// Used for background refresh to ensure we always get the latest data.

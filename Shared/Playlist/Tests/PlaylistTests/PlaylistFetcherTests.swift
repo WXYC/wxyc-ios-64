@@ -128,6 +128,59 @@ struct PlaylistFetcherTests {
         #expect(mockErrorReporter.allReportedErrors.isEmpty)
         #expect(mockAnalytics.events(named: FetchPlaylistEvent.name).isEmpty)
     }
+
+    // MARK: - fetchErrorCount (WXYC/wxyc-ios-64#267)
+    //
+    // `fetchPlaylist()` swallows every thrown error to `.empty` with no signal
+    // in its return value, so a caller polling in a loop (`PlaylistService`)
+    // cannot distinguish a genuinely empty playlist from a failed fetch.
+    // `fetchErrorCount` is a cumulative, in-process counter of genuine
+    // failures — observability only, does not change what `fetchPlaylist()`
+    // returns.
+
+    @Test("fetchErrorCount is cumulative across failures and unaffected by successes")
+    func fetchErrorCountAccumulatesAcrossFailures() async {
+        let mockDataSource = MockPlaylistDataSource()
+        let fetcher = PlaylistFetcher(
+            dataSource: mockDataSource,
+            errorReporter: MockErrorReporter(),
+            analytics: MockStructuredAnalytics()
+        )
+
+        #expect(fetcher.fetchErrorCount == 0)
+
+        mockDataSource.errorToThrow = NSError(domain: "TestDomain", code: 500, userInfo: nil)
+        _ = await fetcher.fetchPlaylist()
+        #expect(fetcher.fetchErrorCount == 1)
+
+        // A subsequent success must not move the counter.
+        mockDataSource.errorToThrow = nil
+        mockDataSource.playlistToReturn = .stub(playcuts: [
+            .stub(songTitle: "la paradoja", artistName: "Juana Molina")
+        ])
+        _ = await fetcher.fetchPlaylist()
+        #expect(fetcher.fetchErrorCount == 1)
+
+        // A further failure increments again — cumulative, not "last outcome."
+        mockDataSource.errorToThrow = URLError(.timedOut)
+        _ = await fetcher.fetchPlaylist()
+        #expect(fetcher.fetchErrorCount == 2)
+    }
+
+    @Test("cancellation does not increment fetchErrorCount")
+    func fetchErrorCountIgnoresCancellation() async {
+        let mockDataSource = MockPlaylistDataSource()
+        mockDataSource.errorToThrow = CancellationError()
+        let fetcher = PlaylistFetcher(
+            dataSource: mockDataSource,
+            errorReporter: MockErrorReporter(),
+            analytics: MockStructuredAnalytics()
+        )
+
+        _ = await fetcher.fetchPlaylist()
+
+        #expect(fetcher.fetchErrorCount == 0)
+    }
 }
 
 // MARK: - PlaylistFetcher Analytics Tests (#414 / #415)
