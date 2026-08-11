@@ -110,7 +110,7 @@ enum EmitterMethod: Sendable {
     case info, warn, error
 }
 
-private final class RecordingEmitter: SentryLogEmitter, @unchecked Sendable {
+private nonisolated final class RecordingEmitter: SentryLogEmitter, @unchecked Sendable {
     struct Call {
         let method: EmitterMethod
         let message: String
