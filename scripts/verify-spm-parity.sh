@@ -58,24 +58,10 @@
 # stale copy of that list). Pass explicit packages to check a candidate
 # addition instead, e.g.:
 #
-#   scripts/verify-spm-parity.sh                          # today's SPM_RUNNABLE — every package passes except LikedSongs, which prints NOT CHECKED (see below) and is why the run still exits non-zero
+#   scripts/verify-spm-parity.sh                          # today's SPM_RUNNABLE — every package passes
 #   scripts/verify-spm-parity.sh AnalyticsMacros Core \
 #     Caching Analytics Playlist LikedSongs Metadata \
 #     MusicShareKit Concerts WXUI ColorPalette            # negative case (must fail on ColorPalette)
-#
-# LikedSongs cannot currently be measured on the simulator side at all:
-# `xcodebuild -only-testing:LikedSongsTests -testPlan WXYC` fails with
-# "isn't a member of the specified test plan or scheme", and isolating it via
-# -skip-testing of every other target instead fails with "There are no test
-# bundles available to test" — reproducible from a clean -derivedDataPath,
-# unrelated to anything in this script (see PR #798's Blockers section for
-# the full investigation). This script does not attempt LikedSongs'
-# simulator side; it reports LikedSongs as NOT CHECKED with that reason
-# rather than either skipping it silently or letting the attempt fail and
-# masking every package after it in package-list order (that masking was a
-# real bug here once — see the "Compare" section below for how per-package
-# failures are now isolated). LikedSongs' host side is unaffected and still
-# runs for real evidence.
 #
 # Playback is deliberately not runnable through this script's execution path
 # below cost limits: its xcodebuild side is four bundles (PlaybackTests,
@@ -275,7 +261,6 @@ PKG_SKIP_TEST[Core]="ImageCompatibilityTests"
 # the full investigation (reproduced from a clean -derivedDataPath, both
 # -only-testing and -skip-testing isolation styles tried).
 typeset -A PKG_KNOWN_BLOCKED
-PKG_KNOWN_BLOCKED[LikedSongs]="LikedSongsTests cannot be selected via xcodebuild against WXYC.xctestplan: -only-testing:LikedSongsTests fails with \"isn't a member of the specified test plan or scheme\", and isolating it via -skip-testing of every other target instead fails with \"There are no test bundles available to test\". Unrelated to this script or #797/#798 — see PR #798 Blockers."
 
 # ---------------------------------------------------------------------------
 # Default package list: today's SPM_RUNNABLE, sourced from
