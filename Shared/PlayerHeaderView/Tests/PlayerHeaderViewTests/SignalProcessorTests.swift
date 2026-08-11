@@ -32,10 +32,11 @@ struct SignalProcessorTests {
         }
     }
 
-    private static func process(_ processor: any AudioProcessor, amplitude: Float) -> [Float] {
+    private static func process(_ processor: any AudioProcessor, amplitude: Float) throws -> [Float] {
         var buffer = tone(amplitude: amplitude)
-        return buffer.withUnsafeMutableBufferPointer { pointer in
-            processor.process(data: pointer.baseAddress!, frameLength: frameLength)
+        return try buffer.withUnsafeMutableBufferPointer { pointer in
+            let base = try #require(pointer.baseAddress)
+            return processor.process(data: base, frameLength: frameLength)
         }
     }
 
@@ -56,36 +57,36 @@ struct SignalProcessorTests {
     // behavior; if `reset()` were a no-op, the lingering peak would suppress
     // it well below `magnitudeLimit`.
     @Test("reset() clears the EMA running peak — FFTProcessor")
-    func fftResetClearsRunningPeak() {
+    func fftResetClearsRunningPeak() throws {
         let processor = Self.makeFFTProcessor(mode: .ema)
-        _ = Self.process(processor, amplitude: 1.0)
+        _ = try Self.process(processor, amplitude: 1.0)
         processor.reset()
-        let output = Self.process(processor, amplitude: 0.2)
+        let output = try Self.process(processor, amplitude: 0.2)
         #expect(abs((output.max() ?? 0) - VisualizerConstants.magnitudeLimit) < 0.01)
     }
 
     @Test("reset() clears the EMA running peak — RMSProcessor")
-    func rmsResetClearsRunningPeak() {
+    func rmsResetClearsRunningPeak() throws {
         let processor = Self.makeRMSProcessor(mode: .ema)
-        _ = Self.process(processor, amplitude: 1.0)
+        _ = try Self.process(processor, amplitude: 1.0)
         processor.reset()
-        let output = Self.process(processor, amplitude: 0.2)
+        let output = try Self.process(processor, amplitude: 0.2)
         #expect(abs((output.max() ?? 0) - VisualizerConstants.magnitudeLimit) < 0.01)
     }
 
     @Test("without reset(), a prior loud call suppresses the next quiet call — FFTProcessor")
-    func fftWithoutResetPeakLingers() {
+    func fftWithoutResetPeakLingers() throws {
         let processor = Self.makeFFTProcessor(mode: .ema)
-        _ = Self.process(processor, amplitude: 1.0)
-        let output = Self.process(processor, amplitude: 0.2)
+        _ = try Self.process(processor, amplitude: 1.0)
+        let output = try Self.process(processor, amplitude: 0.2)
         #expect((output.max() ?? 0) < VisualizerConstants.magnitudeLimit - 0.01)
     }
 
     @Test("without reset(), a prior loud call suppresses the next quiet call — RMSProcessor")
-    func rmsWithoutResetPeakLingers() {
+    func rmsWithoutResetPeakLingers() throws {
         let processor = Self.makeRMSProcessor(mode: .ema)
-        _ = Self.process(processor, amplitude: 1.0)
-        let output = Self.process(processor, amplitude: 0.2)
+        _ = try Self.process(processor, amplitude: 1.0)
+        let output = try Self.process(processor, amplitude: 0.2)
         #expect((output.max() ?? 0) < VisualizerConstants.magnitudeLimit - 0.01)
     }
 
@@ -97,21 +98,21 @@ struct SignalProcessorTests {
     // proves the mode switch actually swapped the live normalizer rather
     // than leaving the old one in place.
     @Test("setNormalizationMode swaps the live normalizer — FFTProcessor")
-    func fftSetNormalizationModeSwaps() {
+    func fftSetNormalizationModeSwaps() throws {
         let processor = Self.makeFFTProcessor(mode: .none)
-        let rawOutput = Self.process(processor, amplitude: 0.3)
+        let rawOutput = try Self.process(processor, amplitude: 0.3)
         processor.setNormalizationMode(.ema)
-        let normalizedOutput = Self.process(processor, amplitude: 0.3)
+        let normalizedOutput = try Self.process(processor, amplitude: 0.3)
         #expect(rawOutput != normalizedOutput)
         #expect(abs((normalizedOutput.max() ?? 0) - VisualizerConstants.magnitudeLimit) < 0.01)
     }
 
     @Test("setNormalizationMode swaps the live normalizer — RMSProcessor")
-    func rmsSetNormalizationModeSwaps() {
+    func rmsSetNormalizationModeSwaps() throws {
         let processor = Self.makeRMSProcessor(mode: .none)
-        let rawOutput = Self.process(processor, amplitude: 0.3)
+        let rawOutput = try Self.process(processor, amplitude: 0.3)
         processor.setNormalizationMode(.ema)
-        let normalizedOutput = Self.process(processor, amplitude: 0.3)
+        let normalizedOutput = try Self.process(processor, amplitude: 0.3)
         #expect(rawOutput != normalizedOutput)
         #expect(abs((normalizedOutput.max() ?? 0) - VisualizerConstants.magnitudeLimit) < 0.01)
     }
