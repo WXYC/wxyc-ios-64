@@ -50,3 +50,8 @@ worklog/
 # Scratch clone used by scripts/regenerate-api-types.sh / verify-api-types.sh
 # (already covered by **/.build/* above; called out explicitly for clarity)
 .build/wxyc-shared-codegen/
+
+# Catalogs and reports written by the code-audit tool. Machine-generated and
+# rebuilt on demand; the tool appends this entry itself, so ignoring it here
+# keeps `code-audit` from dirtying every tree it runs in.
+.audit/
