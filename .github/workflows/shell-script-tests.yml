@@ -13,19 +13,28 @@ name: Shell Script Tests
 #
 # Path-filtered to the directories these scripts (and their tests) actually
 # live in, so an unrelated PR (docs, Swift-only) doesn't spend a macOS
-# runner-minute on a check that could not have caught anything.
+# runner-minute on a check that could not have caught anything. Note that a
+# macOS job is billed at a 10x multiplier and rounded up to a whole minute,
+# so "runs in two seconds" still costs ~10 billable minutes per run on this
+# private repo — the path filter is what keeps that off most PRs.
+#
+# This workflow's own path is in the filter on purpose: a self-excluding
+# workflow can be broken by an edit that never triggers it, which is the
+# exact failure class this file exists to prevent.
 
 on:
   pull_request:
     paths:
       - ".github/scripts/**"
       - "scripts/**"
+      - ".github/workflows/shell-script-tests.yml"
   push:
     branches:
       - master
     paths:
       - ".github/scripts/**"
       - "scripts/**"
+      - ".github/workflows/shell-script-tests.yml"
   workflow_dispatch:
 
 concurrency:
@@ -34,9 +43,21 @@ concurrency:
 
 jobs:
   shell-script-tests:
-    # macOS, not ubuntu: .github/scripts/tests/test-affected-tests.sh's
-    # pbxproj fixtures are edited with BSD sed (`sed -i ''`), which GNU sed
-    # on ubuntu runners parses differently (no separate backup-suffix arg).
+    # macOS, not ubuntu. Three reasons, in increasing order of how much work
+    # it would take to lift them:
+    #   1. test-affected-tests.sh edits its pbxproj fixtures with BSD sed
+    #      (`sed -i ''`). GNU sed takes its backup suffix appended to the
+    #      option, never as a separate argument, so it would read `''` as the
+    #      script and `s/.../.../` as a filename and fail.
+    #   2. Every script here and every script under test is `#!/bin/zsh` and
+    #      leans on zsh-only syntax (`${0:A:h}`, `${(k)…}`, `${=VAR}`,
+    #      `typeset -A`). Ubuntu runners would need zsh installed first.
+    #   3. affected-tests.sh's pbxproj fingerprint runs through awk + sort,
+    #      whose BSD and GNU behaviors diverge; the thing under test ships to
+    #      macOS runners, so testing it on a macOS userland is the honest
+    #      configuration.
+    # Lifting 1 and 2 is plausible if the 10x macOS billing multiplier ever
+    # becomes the deciding factor; 3 argues against it regardless.
     runs-on: macos-latest
     timeout-minutes: 5
 
