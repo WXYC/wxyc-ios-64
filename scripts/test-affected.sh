@@ -190,16 +190,38 @@ else
         export GITHUB_OUTPUT="$OUTPUT_FILE"
         zsh .github/scripts/affected-tests.sh
     ) > /dev/null 2> "$STDERR_FILE" || {
-        echo "affected-tests.sh failed; falling back to full plan" >&2
+        echo "affected-tests.sh failed; retrying with FORCE_RUN_ALL=true" >&2
         if [[ -s "$STDERR_FILE" ]]; then
             echo "--- affected-tests.sh stderr ---" >&2
             cat "$STDERR_FILE" >&2
             echo "--------------------------------" >&2
         fi
-        rm -f "$OUTPUT_FILE"
-        OUTPUT_FILE=""
-        RUN_ALL="true"
-        XCB_REQUIRED="true"
+        # Don't hand-roll a third copy of "what runs when everything runs"
+        # here (SPM_AFFECTED/SKIP_FLAGS's static defaults above are too
+        # narrow — they never covered CoreTests, which is deliberately
+        # skipped by every xcodebuild invocation and only ever runs via the
+        # SPM step when Core appears in SPM_AFFECTED). Instead, retry the
+        # same FORCE_RUN_ALL=true call the --full branch above uses, so this
+        # failure path gets the exact same authoritative spm_all/skip lists
+        # from affected-tests.sh's own run_all_and_exit rather than a second,
+        # driftable copy. FORCE_RUN_ALL bypasses all of affected-tests.sh's
+        # BASE_REF/CHANGED_FILES-dependent code, so it also sidesteps
+        # whatever just crashed there.
+        : > "$STDERR_FILE"
+        (
+            export FORCE_RUN_ALL=true
+            export GITHUB_OUTPUT="$OUTPUT_FILE"
+            zsh .github/scripts/affected-tests.sh
+        ) > /dev/null 2> "$STDERR_FILE" || {
+            echo "affected-tests.sh failed under FORCE_RUN_ALL=true too (no further fallback)" >&2
+            if [[ -s "$STDERR_FILE" ]]; then
+                echo "--- affected-tests.sh stderr ---" >&2
+                cat "$STDERR_FILE" >&2
+                echo "--------------------------------" >&2
+            fi
+            rm -f "$OUTPUT_FILE" "$STDERR_FILE"
+            exit 1
+        }
     }
 fi
 rm -f "$STDERR_FILE"
