@@ -1,6 +1,6 @@
 # Logger
 
-A unified logging API for the WXYC app, wrapping `os.Logger` for consistent debug output across iOS, watchOS, and macOS.
+A unified logging API for the WXYC app, wrapping `os.Logger` for consistent debug output across iOS, watchOS, macOS, and tvOS.
 
 ## Features
 
@@ -111,7 +111,8 @@ Logger is fully thread-safe and `Sendable`-compliant. File writes happen **synch
 
 ## Requirements
 
-- iOS 18.0+
+- iOS 18.4+
 - watchOS 11.0+
 - macOS 15.0+
+- tvOS 18.4+
 - Swift 6.2+
