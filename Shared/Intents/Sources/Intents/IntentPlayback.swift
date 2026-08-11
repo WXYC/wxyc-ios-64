@@ -21,6 +21,11 @@ enum IntentPlayback {
     /// Prepares the audio session, starts playback for `reason`, then waits for the
     /// stream to begin (or `timeout` to elapse) — keeping the calling intent alive.
     ///
+    /// - Parameters:
+    ///   - controller: Playback-control surface; defaults to the shared
+    ///     controller. Injectable for tests (#497) — `MockAudioPlayer`
+    ///     (`PlaybackTestUtilities`) isn't importable from `WXYCIntentsTests`,
+    ///     so tests substitute a fake `IntentPlaybackControlling` instead.
     /// - Returns: Whether playback actually started before `timeout` elapsed.
     ///   `PlayWXYC` and `PlayWXYCAudio` report a friendly dialog either way and
     ///   don't need this, but `PlayMediaIntentHandler` (#829) does: without it,
@@ -29,17 +34,21 @@ enum IntentPlayback {
     ///   `@discardableResult` so those two callers don't need updating.
     @MainActor
     @discardableResult
-    static func startAndAwait(reason: PlaybackReason, timeout: Duration = .seconds(10)) async -> Bool {
+    static func startAndAwait(
+        reason: PlaybackReason,
+        timeout: Duration = .seconds(10),
+        controller: any IntentPlaybackControlling = AudioPlayerController.shared
+    ) async -> Bool {
         Log(.info, "\(reason)")
 
         // Prepare audio session early to signal to iOS that audio playback is imminent
-        AudioPlayerController.shared.prepareForPlayback()
+        controller.prepareForPlayback()
 
-        AudioPlayerController.shared.play(reason: reason)
+        controller.play(reason: reason)
 
         // Wait for playback to start before returning, keeping the intent alive
         // so iOS doesn't suspend the app before the stream connects
-        return await awaitPlaybackStart(timeout: timeout, context: reason.description)
+        return await awaitPlaybackStart(timeout: timeout, context: reason.description) { controller.isPlaying }
     }
 
     /// Polls `isPlaying` until it becomes true or `timeout` elapses.
