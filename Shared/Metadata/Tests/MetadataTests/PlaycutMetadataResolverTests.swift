@@ -504,4 +504,123 @@ extension PlaycutMetadataServiceHTTPTests {
 
         continuation.finish()
     }
+
+    // MARK: - Repair write-back (#821)
+
+    @Test("A repair writes the terminal row's inline album back into the cache", .timeLimit(.minutes(1)))
+    func repairWritesAlbumBackIntoCache() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
+        let resolver = PlaycutMetadataResolver(service: service)
+
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+        _ = try #require(await repairs.next())
+        continuation.finish()
+
+        let albumKey = MetadataCacheKey.album(artistName: "Djrum", releaseTitle: "Meaning's Edge")
+        let cachedAlbum: AlbumMetadata? = try? await cache.value(for: albumKey)
+        let album = try #require(cachedAlbum, "The repair must write the album it resolved back into the cache")
+        #expect(album.releaseYear == 2024)
+        #expect(album.genres == ["Electronic"])
+    }
+
+    @Test(
+        "The repair write-back never overwrites a cached discogsArtistId or fullReleaseDate the proxy already resolved",
+        .timeLimit(.minutes(1))
+    )
+    func repairWriteBackPreservesProxyOnlyFields() async throws {
+        // The naive-write-back hazard #821 documents: the inline album this
+        // repair branch produces carries no discogsArtistId/fullReleaseDate
+        // (the #685 casualty list — only /proxy/metadata/album supplies
+        // those). If the write-back replaced rather than merged, an
+        // already-cached proxy answer would be downgraded to nil, and any
+        // later card that reads this cache entry would get no artist bio at
+        // all (fetchArtistMetadata(discogsArtistId:) returns .empty on nil).
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
+        let resolver = PlaycutMetadataResolver(service: service)
+
+        let albumKey = MetadataCacheKey.album(artistName: "Djrum", releaseTitle: "Meaning's Edge")
+        let proxyResolvedAlbum = AlbumMetadata(
+            label: "Houndstooth",
+            releaseYear: 2024,
+            discogsURL: URL(string: "https://www.discogs.com/release/30000001"),
+            discogsArtistId: 1_234,
+            fullReleaseDate: "2024-10-25",
+            artworkURL: URL(string: "https://i.discogs.com/meanings-edge.jpg")
+        )
+        await cache.set(value: proxyResolvedAlbum, for: albumKey, lifespan: .sevenDays)
+
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+        _ = try #require(await repairs.next())
+        continuation.finish()
+
+        let cachedAlbum: AlbumMetadata? = try? await cache.value(for: albumKey)
+        let album = try #require(cachedAlbum)
+        #expect(album.discogsArtistId == 1_234, "The repair write-back must not erase a discogsArtistId the cache already had")
+        #expect(album.fullReleaseDate == "2024-10-25", "The repair write-back must not erase a fullReleaseDate the cache already had")
+    }
+
+    @Test("A repair write-back that still lacks discogsArtistId gets the short TTL, not seven days", .timeLimit(.minutes(1)))
+    func repairWriteBackWithoutArtistIdUsesShortTTL() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
+        let resolver = PlaycutMetadataResolver(service: service)
+
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+        _ = try #require(await repairs.next())
+        continuation.finish()
+
+        let albumKey = MetadataCacheKey.album(artistName: "Djrum", releaseTitle: "Meaning's Edge")
+        let metadata = mockCache.metadata(for: albumKey)
+        #expect(metadata != nil)
+        #expect(
+            metadata?.lifespan == PlaycutMetadataService.sparseAlbumLifespan,
+            "A repaired album still missing discogsArtistId must not get the full seven-day TTL"
+        )
+    }
+
+    @Test(
+        "A repair write-back that already carries discogsArtistId (from a pre-existing cache entry) keeps the seven-day TTL",
+        .timeLimit(.minutes(1))
+    )
+    func repairWriteBackWithArtistIdKeepsSevenDayTTL() async throws {
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
+        let resolver = PlaycutMetadataResolver(service: service)
+
+        let albumKey = MetadataCacheKey.album(artistName: "Djrum", releaseTitle: "Meaning's Edge")
+        await cache.set(
+            value: AlbumMetadata(discogsArtistId: 1_234),
+            for: albumKey,
+            lifespan: PlaycutMetadataService.sparseAlbumLifespan
+        )
+
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [enrichedRow()]))
+        _ = try #require(await repairs.next())
+        continuation.finish()
+
+        let metadata = mockCache.metadata(for: albumKey)
+        #expect(metadata?.lifespan == .sevenDays)
+    }
 }

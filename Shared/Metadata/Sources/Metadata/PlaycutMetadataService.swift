@@ -351,6 +351,62 @@ public actor PlaycutMetadataService {
             + MetadataCacheKey.streaming(artistName: playcut.artistName, songTitle: playcut.songTitle)
     }
 
+    // MARK: - Repair write-back (#821)
+
+    /// Writes the album metadata the detail card's enrichment repair (#812)
+    /// resolved for `playcut` back into the album cache, merging over
+    /// whatever's already cached rather than replacing it.
+    ///
+    /// The repair path (`PlaycutMetadataResolver.repairs(for:playlists:)`)
+    /// takes ``fetchMetadata(for:inline:)``'s terminal short-circuit, so its
+    /// only source of an album is the inline V2 flowsheet row — never the
+    /// proxy (#685's zero-request budget on a terminal row must stay
+    /// structural, not conditional; this method only touches the cache,
+    /// never `client`). That inline album is missing exactly the two fields
+    /// only `/proxy/metadata/album` supplies — `discogsArtistId` and
+    /// `fullReleaseDate` (see ``fetchMetadata(for:inline:)``'s doc comment
+    /// for the full #685 casualty list). Writing it verbatim would downgrade
+    /// an already-cached proxy answer, and — because `discogsArtistId` is
+    /// load-bearing, not decorative — worse than that: `fetchArtistMetadata`
+    /// returns `.empty` when it's `nil`, so an album cached without it denies
+    /// artist bio to any later read that hits this entry.
+    ///
+    /// `AlbumMetadata.coalescing(over:)` makes the merge monotonic: a field
+    /// the cached record already has survives regardless of what the repair
+    /// carries. Reuses #814's merge rather than hand-rolling a second one.
+    ///
+    /// The TTL answers a narrower question than the proxy-fetch gate in
+    /// ``fetchAlbumAndStreamingUncoalesced(for:)``: not "is this sparse" (a
+    /// repaired album from a terminal row's inline fields usually isn't — it
+    /// typically carries `releaseYear`/`artworkURL`/`genres`) but "does the
+    /// merged record still lack `discogsArtistId`". A merged record without
+    /// one gets ``sparseAlbumLifespan`` — the same 15-minute bound #812 gives
+    /// a mid-enrichment sparse answer — so a bio-less window can't outlive
+    /// that; one that already carries `discogsArtistId` (from the repair
+    /// itself, or preserved from what was already cached) keeps the normal
+    /// `.sevenDays`.
+    ///
+    /// Skips the write entirely when the merge produces nothing the cache
+    /// didn't already have, so a repair that can't improve the cached answer
+    /// doesn't reset its TTL clock for no reason.
+    func cacheRepairedAlbum(_ repaired: AlbumMetadata, for playcut: Playcut) async {
+        let albumCacheKey = MetadataCacheKey.album(
+            artistName: playcut.artistName,
+            releaseTitle: playcut.releaseTitle ?? ""
+        )
+        let cachedAlbum: AlbumMetadata? = try? await cache.value(for: albumCacheKey)
+        let merged = repaired.coalescing(over: cachedAlbum ?? .empty)
+
+        if let cachedAlbum, merged == cachedAlbum {
+            return
+        }
+
+        let lifespan: TimeInterval = merged.discogsArtistId == nil
+            ? Self.sparseAlbumLifespan
+            : .sevenDays
+        await cache.set(value: merged, for: albumCacheKey, lifespan: lifespan)
+    }
+
     /// Fetches album metadata and streaming links from the backend proxy in a single call.
     ///
     /// Deliberately not refactored onto `cachedFetch`: one network response feeds two
