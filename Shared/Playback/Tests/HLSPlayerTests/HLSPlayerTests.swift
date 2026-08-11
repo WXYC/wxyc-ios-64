@@ -112,6 +112,32 @@ struct HLSPlayerTests {
         #expect(player.state == .playing)
     }
 
+    @Test("Rate change from an unrelated AVPlayer is ignored, but the player's own AVPlayer still drives it")
+    func rateChangeIsScopedToOwnAVPlayer() {
+        let ownPlayer = AVPlayer()
+        let otherPlayer = AVPlayer()
+        let mock = MockHLSAVPlayer()
+        mock.underlyingAVPlayer = ownPlayer
+        let nc = NotificationCenter()
+        let player = HLSPlayer(player: mock, analytics: nil, notificationCenter: nc)
+
+        player.play()
+        #expect(player.state == .loading)
+
+        // A rate change posted with a *different* AVPlayer as its subject must
+        // not affect this player's state -- if it did, two AVPlayer-backed
+        // players sharing a notification center would cross-talk.
+        otherPlayer.rate = 1.0
+        nc.post(name: AVPlayer.rateDidChangeNotification, object: otherPlayer)
+        #expect(player.state == .loading)
+
+        // The player's own underlying AVPlayer must still be able to drive
+        // it -- proving the observer isn't simply broken outright.
+        ownPlayer.rate = 1.0
+        nc.post(name: AVPlayer.rateDidChangeNotification, object: ownPlayer)
+        #expect(player.state == .playing)
+    }
+
     @Test("Failure notification transitions to error state")
     func failureTransitionsToError() {
         let (player, _, nc) = makePlayer()

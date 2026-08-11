@@ -27,6 +27,12 @@ final class MockHLSAVPlayer: HLSAVPlayerProtocol {
     var mockCurrentTime: CMTime = .zero
     var mockSeekableTimeRanges: [NSValue] = []
 
+    /// The real `AVPlayer` this mock stands in for, if any. `nil` by default
+    /// so existing tests (which post rate-change notifications with a `nil`
+    /// subject) keep working unscoped; set it to exercise `HLSPlayer`'s
+    /// per-instance observer scoping.
+    var underlyingAVPlayer: AVPlayer?
+
     func play() {
         playCallCount += 1
         if autoSetRateOnPlay {
