@@ -254,11 +254,25 @@ struct DeviceFingerprintTests {
             )
         }
 
+        // The two tests below touch the real Keychain and are gated on
+        // `WXYC_SKIP_KNOWN_FLAKES`. Despite the "(#371)" citation this reason
+        // historically carried, they are not part of #371's tracked scope
+        // (that issue is three unrelated CI-load flakes in
+        // `Shared/Playback`/`Shared/AppServices` and never mentions Keychain).
+        // See `KeychainTokenStorageTests.swift`'s "Real Keychain, iOS
+        // Simulator only" comment for the full explanation. In short: a
+        // deterministic entitlement gap specific to running inside the iOS
+        // Simulator, not a flake, and not lost CI coverage — `MusicShareKit` is
+        // SPM-runnable, so CI exercises these two unskipped via `swift test` on
+        // the macOS host. The trait cannot fire in CI at all, because the only
+        // step that sets the var (xcodebuild/Simulator) is the only step that
+        // excludes `MusicShareKitTests`; it exists for local full-plan runs.
+
         @Test(
             "Two instances see the same UUID",
             .disabled(
                 if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
-                "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+                "Deterministic errSecMissingEntitlement in the iOS Simulator's SPM test bundle — not a flake, not #371. Passes under swift test on the macOS host, the path CI uses. See the comment above."
             )
         )
         func twoInstancesShareValue() throws {
@@ -280,7 +294,7 @@ struct DeviceFingerprintTests {
             "Repeated calls on the same instance are idempotent",
             .disabled(
                 if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
-                "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+                "Deterministic errSecMissingEntitlement in the iOS Simulator's SPM test bundle — not a flake, not #371. Passes under swift test on the macOS host, the path CI uses. See the comment above."
             )
         )
         func repeatedCallsIdempotent() throws {
