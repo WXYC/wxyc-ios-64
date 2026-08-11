@@ -13,6 +13,36 @@
 #
 #   git config wxyc.skipTests true
 #
+# Git invokes a pre-push hook as `pre-push <remote-name> <remote-url>`, with
+# one line per ref on stdin:
+#
+#   <local-ref> SP <local-sha> SP <remote-ref> SP <remote-sha> LF
+#
+# BASE_REF is derived from that stdin data — the remote's current sha for
+# the ref being updated — instead of hardcoding origin/master (which
+# scripts/test-affected.sh still falls back to when this hook can't derive
+# anything better). Hardcoding origin/master here mis-scoped three real
+# pushes: a push to a fork remote (diffed against origin/master instead of
+# the fork's base), a push updating a long-running non-master branch like
+# release/v2 (diffed against origin/master, a much larger and irrelevant
+# range), and a same-ref push like `origin master:master` from a feature
+# branch (diffed feature...origin/master instead of the true no-op
+# origin/master...origin/master).
+#
+# Edge cases:
+#   - New branch (remote-sha all zeros): the remote ref doesn't exist yet,
+#     so there's nothing to diff against directly. Fall back to the local
+#     branch's configured upstream (@{u}) if one is set; otherwise leave
+#     BASE_REF unset so test-affected.sh applies its own origin/master
+#     default.
+#   - Delete push (local-sha all zeros): nothing local to validate — skip
+#     entirely rather than running test-affected.sh against a ref that's
+#     going away.
+#   - Multiple ref lines (e.g. `git push --all`, or one delete bundled with
+#     one real update): the first non-delete line is authoritative for this
+#     run. Validating every pushed ref independently is out of scope here —
+#     multi-ref pushes are rare in this workflow, and the common case (one
+#     ref) is unaffected by this simplification.
 
 if [[ "$(git config --get wxyc.skipTests || echo false)" == "true" ]]; then
     echo "pre-push: skipping (wxyc.skipTests=true)" >&2
@@ -20,4 +50,50 @@ if [[ "$(git config --get wxyc.skipTests || echo false)" == "true" ]]; then
 fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-exec "$REPO_ROOT/scripts/test-affected.sh"
+
+is_zero_sha() {
+    # Matches both SHA-1 (40 hex chars) and SHA-256 (64 hex chars) all-zero
+    # object names rather than hardcoding a length.
+    [[ "$1" =~ ^0+$ ]]
+}
+
+BASE_REF_OVERRIDE=""
+found_non_delete_ref=0
+
+# remote_ref is read (matching git's 4-field pre-push stdin protocol) but
+# not otherwise consulted below — only its sha matters for BASE_REF
+# derivation. Left named rather than positional-skipped so the read line
+# still documents the protocol shape.
+# shellcheck disable=SC2034
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [[ -z "$local_ref" ]] && continue
+    if is_zero_sha "$local_sha"; then
+        # This ref is being deleted, not pushed — no local content to
+        # validate. Move on to the next ref line, if any.
+        continue
+    fi
+    found_non_delete_ref=1
+    if is_zero_sha "$remote_sha"; then
+        # New branch: no remote ref to diff against yet.
+        upstream=$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null || true)
+        if [[ -n "$upstream" ]]; then
+            BASE_REF_OVERRIDE="$upstream"
+        fi
+        # Else: leave BASE_REF_OVERRIDE unset; test-affected.sh's own
+        # origin/master default applies.
+    else
+        BASE_REF_OVERRIDE="$remote_sha"
+    fi
+    break
+done
+
+if [[ "$found_non_delete_ref" == "0" ]]; then
+    echo "pre-push: no non-delete refs to validate" >&2
+    exit 0
+fi
+
+if [[ -n "$BASE_REF_OVERRIDE" ]]; then
+    exec "$REPO_ROOT/scripts/test-affected.sh" --base-ref "$BASE_REF_OVERRIDE"
+else
+    exec "$REPO_ROOT/scripts/test-affected.sh"
+fi
