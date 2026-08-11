@@ -64,4 +64,26 @@ public struct MusicTrack: Sendable {
         
         return components.joined(separator: " ")
     }
+
+    /// Returns a copy of this track with the given non-nil metadata values applied; any
+    /// argument left `nil` keeps the track's existing value for that field. `service`, `url`,
+    /// and `identifier` never change — fetching metadata refines a track, it doesn't re-identify
+    /// it. This replaces the repeated `MusicTrack(service:url:title:artist:album:identifier:
+    /// artworkURL:)` rebuild that ended every `MusicServiceProvider.fetchMetadata(for:)`.
+    public func merging(
+        title: String? = nil,
+        artist: String? = nil,
+        album: String? = nil,
+        artworkURL: URL? = nil
+    ) -> MusicTrack {
+        MusicTrack(
+            service: service,
+            url: url,
+            title: title ?? self.title,
+            artist: artist ?? self.artist,
+            album: album ?? self.album,
+            identifier: identifier,
+            artworkURL: artworkURL ?? self.artworkURL
+        )
+    }
 }

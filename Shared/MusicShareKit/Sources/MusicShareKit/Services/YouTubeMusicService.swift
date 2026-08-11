@@ -91,15 +91,9 @@ final class YouTubeMusicService: MusicServiceProvider {
         // Use direct YouTube thumbnail URL for better quality than oEmbed thumbnail
         let artworkURL = try await fetchHighQualityThumbnail(videoId: videoId)
         
-        return MusicTrack(
-            service: track.service,
-            url: track.url,
-            title: title ?? track.title,
-            artist: artist ?? track.artist,
-            album: nil, // YouTube doesn't have albums
-            identifier: track.identifier,
-            artworkURL: artworkURL ?? track.artworkURL
-        )
+        // album: nil — YouTube doesn't have albums, and every YouTube track already starts
+        // with a nil album from parse(url:), so this leaves it unchanged either way.
+        return track.merging(title: title, artist: artist, album: nil, artworkURL: artworkURL)
     }
     
     private func fetchHighQualityThumbnail(videoId: String) async throws -> URL? {

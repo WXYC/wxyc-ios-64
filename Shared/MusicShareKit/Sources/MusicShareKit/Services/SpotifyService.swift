@@ -107,14 +107,13 @@ final class SpotifyService: MusicServiceProvider {
 
         let json = try JSONDecoder.shared.decode(SpotifyTrackProxyResponse.self, from: data)
 
-        return MusicTrack(
-            service: track.service,
-            url: track.url,
-            title: json.title.isEmpty ? track.title : json.title,
-            artist: json.artist.isEmpty ? track.artist : json.artist,
-            album: json.album.isEmpty ? track.album : json.album,
-            identifier: track.identifier,
-            artworkURL: json.artworkUrl.flatMap { URL(string: $0) } ?? track.artworkURL
+        // json's fields are non-optional but "" stands in for "not provided" — merging()
+        // treats nil the same way, so empty strings are normalized to nil on the way in.
+        return track.merging(
+            title: json.title.isEmpty ? nil : json.title,
+            artist: json.artist.isEmpty ? nil : json.artist,
+            album: json.album.isEmpty ? nil : json.album,
+            artworkURL: json.artworkUrl.flatMap { URL(string: $0) }
         )
     }
 }

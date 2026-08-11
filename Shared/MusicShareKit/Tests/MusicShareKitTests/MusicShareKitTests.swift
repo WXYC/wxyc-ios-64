@@ -139,6 +139,68 @@ struct MusicServiceArtworkFetchingTests {
     }
 }
 
+// MARK: - MusicTrack.merging Tests
+
+@Suite("MusicTrack Merging")
+struct MusicTrackMergingTests {
+
+    private let baseTrack = MusicTrack(
+        service: .appleMusic,
+        url: URL(string: "https://music.apple.com/us/album/take-a-little-trip/1280170831?i=1280171884")!,
+        title: "Old Title",
+        artist: "Old Artist",
+        album: "Old Album",
+        identifier: "1280171884",
+        artworkURL: URL(string: "https://example.com/old-artwork.jpg")
+    )
+
+    @Test("Non-nil arguments override the corresponding field")
+    func overridesProvidedFields() {
+        let newArtwork = URL(string: "https://example.com/new-artwork.jpg")!
+
+        let merged = baseTrack.merging(
+            title: "New Title",
+            artist: "New Artist",
+            album: "New Album",
+            artworkURL: newArtwork
+        )
+
+        #expect(merged.title == "New Title")
+        #expect(merged.artist == "New Artist")
+        #expect(merged.album == "New Album")
+        #expect(merged.artworkURL == newArtwork)
+    }
+
+    @Test("Omitted (nil) arguments keep the existing field values")
+    func keepsExistingFieldsWhenNil() {
+        let merged = baseTrack.merging()
+
+        #expect(merged.title == baseTrack.title)
+        #expect(merged.artist == baseTrack.artist)
+        #expect(merged.album == baseTrack.album)
+        #expect(merged.artworkURL == baseTrack.artworkURL)
+    }
+
+    @Test("merging never changes service, url, or identifier")
+    func preservesIdentityFields() {
+        let merged = baseTrack.merging(title: "New Title")
+
+        #expect(merged.service == baseTrack.service)
+        #expect(merged.url == baseTrack.url)
+        #expect(merged.identifier == baseTrack.identifier)
+    }
+
+    @Test("A mix of nil and non-nil arguments merges independently per field")
+    func mergesFieldsIndependently() {
+        let merged = baseTrack.merging(artist: "New Artist", artworkURL: nil)
+
+        #expect(merged.title == baseTrack.title)
+        #expect(merged.artist == "New Artist")
+        #expect(merged.album == baseTrack.album)
+        #expect(merged.artworkURL == baseTrack.artworkURL)
+    }
+}
+
 // MARK: - Service-Specific URL Parsing Tests
 
 @Suite("URL Parsing")
