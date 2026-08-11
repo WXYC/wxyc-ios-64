@@ -15,6 +15,7 @@
 //
 
 #if compiler(>=6.4)
+import PlaybackCore
 import Testing
 @testable import WXYCIntents
 
@@ -80,6 +81,52 @@ struct PlayWXYCAudioTests {
         guard #available(iOS 27.0, *) else { return }
 
         #expect(PlayWXYCAudio.openAppWhenRun == false)
+    }
+
+    // MARK: - perform() (#497)
+    //
+    // `PlayWXYCAudio.perform()`'s entire body is
+    // `await IntentPlayback.startAndAwait(reason: .playAudioSchemaIntent)`.
+    // App Intents instantiates the intent itself via a non-public `init()`,
+    // so a fake controller can't be injected into `perform()` directly --
+    // the seam lives on `startAndAwait(reason:controller:)` instead (see
+    // `IntentPlaybackTests.swift`, which covers the poll/timeout mechanics
+    // generically). These two tests drive that exact call with the exact
+    // reason `perform()` passes, so a regression that changed the reason or
+    // dropped the await would be caught here even though `perform()` itself
+    // can't be called with a fake underneath it.
+
+    @Test("perform()'s playback call starts with reason .playAudioSchemaIntent and reports success once playing")
+    func performsPlaybackCallReportsSuccessWhenPlaying() async {
+        guard #available(iOS 27.0, *) else { return }
+
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaying = true
+
+        let started = await IntentPlayback.startAndAwait(
+            reason: .playAudioSchemaIntent,
+            controller: controller
+        )
+
+        #expect(started)
+        #expect(controller.prepareForPlaybackCallCount == 1)
+        #expect(controller.playedReasons == [.playAudioSchemaIntent])
+    }
+
+    @Test("perform()'s playback call reports failure when playback never starts within the timeout")
+    func performsPlaybackCallReportsFailureOnTimeout() async {
+        guard #available(iOS 27.0, *) else { return }
+
+        let controller = FakeIntentPlaybackController()
+
+        let started = await IntentPlayback.startAndAwait(
+            reason: .playAudioSchemaIntent,
+            timeout: .milliseconds(300),
+            controller: controller
+        )
+
+        #expect(!started, "A timed-out wait must report that playback never started")
+        #expect(controller.playedReasons == [.playAudioSchemaIntent])
     }
 }
 #endif
