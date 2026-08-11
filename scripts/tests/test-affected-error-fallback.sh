@@ -80,6 +80,15 @@ expect_not_contains() {
     fi
 }
 
+expect_exit() {
+    local desc="$1" actual="$2" expected="$3" out="$4"
+    if [[ "$actual" == "$expected" ]]; then
+        ok "$desc"
+    else
+        fail "$desc" "expected exit $expected, got $actual" "--- actual ---" "${(f)out}" "--------------"
+    fi
+}
+
 # -----------------------------------------------------------------------
 # Fixture: a throwaway git repo containing a fresh copy of the real
 # scripts/test-affected.sh plus a stub .github/scripts/affected-tests.sh
@@ -155,6 +164,63 @@ expect_contains "CoreTests is covered by the SPM (host swift test) runner after 
 expect_not_contains "SPM steps line does not read '(none)' after the crash" "$SPM_LINE" "(none)"
 
 rm -rf "$FIXTURE"
+
+# =========================================================================
+# Case 2: affected-tests.sh fails even under FORCE_RUN_ALL=true. There is no
+# third fallback, so the run must fail loudly rather than proceed with an
+# unknown subset of the suite.
+#
+# This is the riskiest behavior the retry introduces, and it is the half that
+# is NOT covered by Case 1: before the fix, a crash degraded to the narrow
+# static defaults and the run continued (exit 0 under --dry-run); now a
+# double failure aborts. A caller relying on the old limp-along — notably the
+# opt-in pre-push hook — sees a blocked push instead of a silent under-run.
+# That is the intended trade (an under-run is invisible, a blocked push is
+# not, and `--no-verify` / `wxyc.skipTests` are the documented escapes), but
+# it is a behavior change and it deserves a pinned test rather than a
+# paragraph in a commit message.
+#
+# Non-vacuity: against the pre-fix script this case fails on both assertions
+# — the old code swallows the crash, prints a full plan, and exits 0.
+# =========================================================================
+
+echo ""
+echo "=== Case 2: affected-tests.sh fails under FORCE_RUN_ALL=true too ==="
+
+FIXTURE2=$(mktemp -d)
+git -C "$FIXTURE2" init -q -b master
+git -C "$FIXTURE2" config user.email "test@wxyc.org"
+git -C "$FIXTURE2" config user.name "WXYC CI Test"
+echo "root" > "$FIXTURE2/README.md"
+git -C "$FIXTURE2" add README.md
+git -C "$FIXTURE2" commit -q -m "root commit"
+
+mkdir -p "$FIXTURE2/.github/scripts" "$FIXTURE2/scripts"
+cp "$REAL_SCRIPT" "$FIXTURE2/scripts/test-affected.sh"
+chmod +x "$FIXTURE2/scripts/test-affected.sh"
+
+cat > "$FIXTURE2/.github/scripts/affected-tests.sh" <<'STUB2'
+#!/bin/zsh
+# Fails unconditionally, including under FORCE_RUN_ALL=true — models the
+# script being missing, unreadable, or broken in run_all_and_exit itself,
+# i.e. the one situation where there is nothing left to fall back to.
+echo "simulated total failure" >&2
+exit 1
+STUB2
+chmod +x "$FIXTURE2/.github/scripts/affected-tests.sh"
+
+echo "change" >> "$FIXTURE2/README.md"
+
+OUT2=$(cd "$FIXTURE2" && zsh scripts/test-affected.sh --dry-run --base-ref HEAD 2>&1)
+RC2=$?
+
+expect_exit "double failure exits nonzero instead of running an unknown subset" "$RC2" "1" "$OUT2"
+expect_contains "the second failure is reported as terminal" "$OUT2" "no further fallback"
+# If any plan were printed, the script would have proceeded past the error
+# handler — which is exactly the silent under-run this fix exists to stop.
+expect_not_contains "no test plan is printed after the double failure" "$OUT2" "SPM steps:"
+
+rm -rf "$FIXTURE2"
 
 # =========================================================================
 # Summary

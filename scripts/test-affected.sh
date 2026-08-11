@@ -38,6 +38,15 @@
 # file change, etc.), this script falls back to the full xcodebuild plan,
 # matching CI.
 #
+# Fail-closed, by contrast, when affected-tests.sh *crashes*: this script
+# retries it once under FORCE_RUN_ALL=true (the same call --full makes, and
+# the one path in that script that touches no BASE_REF/CHANGED_FILES code),
+# and exits 1 if the retry also fails. It deliberately does not fall back to
+# the static SKIP_FLAGS/SPM_AFFECTED defaults below — those are narrower than
+# run_all_and_exit's lists and leave CoreTests covered by neither runner,
+# which is an invisible under-run. A double failure means the scoping script
+# is broken outright, and there is no honest way to pick a subset then.
+#
 
 set -euo pipefail
 
@@ -122,7 +131,9 @@ DESTINATION="platform=iOS Simulator,${SIMULATOR}"
 # Both the --full path and the normal diff-based path delegate entirely to
 # .github/scripts/affected-tests.sh — neither carries its own copy of "what
 # runs when everything runs" (the spm_all / skip list inside
-# run_all_and_exit). That duplication is exactly what let this script's
+# run_all_and_exit). The diff-based path may make two delegated calls rather
+# than one (the scoped call, then a FORCE_RUN_ALL retry if that call
+# crashed); both are delegated, so neither adds a copy. That duplication is exactly what let this script's
 # --full path drift from CI: it kept hosting ColorPalette long after #394
 # moved it off SPM_RUNNABLE in the CI script, because the two lists lived in
 # two places and only one got the fix. See #797.
