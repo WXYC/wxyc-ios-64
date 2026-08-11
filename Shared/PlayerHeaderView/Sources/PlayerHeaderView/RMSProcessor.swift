@@ -15,8 +15,8 @@ import Synchronization
 /// Root Mean Square processor for time domain visualization
 /// Note: @unchecked Sendable because it's primarily accessed from the single-threaded audio processing context.
 /// The normalizer property is protected with Mutex for thread-safe access when normalization mode changes from MainActor.
-final class RMSProcessor: @unchecked Sendable, AudioProcessor {
-    private let normalizerMutex: Mutex<any Normalizer>
+final class RMSProcessor: @unchecked Sendable, SignalProcessor {
+    let normalizerMutex: Mutex<any Normalizer>
     
     init(normalizationMode: NormalizationMode = .ema) {
         self.normalizerMutex = Mutex(normalizationMode.createNormalizer())
@@ -50,17 +50,5 @@ final class RMSProcessor: @unchecked Sendable, AudioProcessor {
         }
         
         return rmsValues
-    }
-    
-    func reset() {
-        normalizerMutex.withLock { normalizer in
-            normalizer.reset()
-        }
-    }
-    
-    func setNormalizationMode(_ mode: NormalizationMode) {
-        normalizerMutex.withLock { normalizer in
-            normalizer = mode.createNormalizer()
-        }
     }
 }
