@@ -14,19 +14,23 @@ import Foundation
 final class YouTubeMusicService: MusicServiceProvider {
     let identifier: MusicService = .youtubeMusic
 
-    // music.youtube.com and youtu.be are handled by the protocol's host-list default below.
+    // music.youtube.com and youtu.be are handled by the protocol's host-list default.
     // Plain youtube.com can't join that list: youtube.com hosts far more than music videos, so
-    // a bare suffix match would over-match every non-music YouTube link. Only its "/watch" path
-    // is a video/track link, which needs its own path-conditional check — hence the override.
+    // an unconditional host match would claim every non-music YouTube link. Only its "/watch"
+    // path is a video/track link, which needs its own path condition — hence the override below.
     static let hosts = ["music.youtube.com", "youtu.be"]
 
     init() {}
 
+    /// The declarative host/scheme match, *plus* youtube.com's "/watch"-only rule. Delegating the
+    /// first half to `matchesDeclaredHostOrScheme` rather than re-implementing it keeps this in
+    /// step with the protocol default (a copy would, for one, ignore `schemes` outright).
     func canHandle(url: URL) -> Bool {
-        let host = url.host?.lowercased() ?? ""
-        if Self.hosts.contains(where: { host.contains($0) }) {
+        if matchesDeclaredHostOrScheme(url: url) {
             return true
         }
+
+        let host = url.host?.lowercased() ?? ""
         return host.contains("youtube.com") && url.path.contains("/watch")
     }
 

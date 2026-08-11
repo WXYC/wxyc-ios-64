@@ -15,8 +15,15 @@ import Foundation
 public protocol MusicServiceProvider: Sendable {
     var identifier: MusicService { get }
 
-    /// Host suffixes this service's web URLs use, e.g. "bandcamp.com". Matched via
-    /// `host.contains(_:)` against the URL's lowercased host by the default `canHandle`.
+    /// Host fragments this service's web URLs use, e.g. "bandcamp.com".
+    ///
+    /// Matching is **substring**, not suffix: the default `canHandle` asks
+    /// `url.host.lowercased().contains(fragment)`. That is carried over verbatim from the five
+    /// per-service `canHandle` bodies this replaced, so it is deliberately no looser and no
+    /// tighter than before — but it does mean a hostile host such as
+    /// `bandcamp.com.example.invalid` matches. Tightening this to an exact-or-dot-suffix test
+    /// would be a behavior change, not a refactor, so it is left alone here; do not read the
+    /// list as offering any anti-spoofing guarantee.
     static var hosts: [String] { get }
 
     /// Custom URL schemes this service also owns, e.g. "spotify" for `spotify://` deep links.
@@ -43,9 +50,16 @@ extension MusicServiceProvider {
     /// Default: no scheme-based deep links. Conformers that need one override it.
     public static var schemes: [String] { [] }
 
-    /// Default implementation matches when the URL's host contains any of `hosts`, or
-    /// (for services that declare one) the URL's scheme is one of `schemes`.
-    public func canHandle(url: URL) -> Bool {
+    /// True when the URL's host contains any of `hosts`, or its scheme is one of `schemes`.
+    ///
+    /// Factored out of `canHandle` so a conformer that needs an *extra* condition can add it on
+    /// top of the declarative match instead of re-implementing it. `YouTubeMusicService` is the
+    /// one such conformer today. A `canHandle` override cannot reach the protocol extension's
+    /// default — there is no `super` for protocol extensions, and calling `canHandle` again
+    /// dispatches straight back to the override — so without this helper the only way to extend
+    /// the default is to copy it, which then silently stops tracking changes to it (including
+    /// the `schemes` branch).
+    func matchesDeclaredHostOrScheme(url: URL) -> Bool {
         let host = url.host?.lowercased() ?? ""
         if Self.hosts.contains(where: { host.contains($0) }) {
             return true
@@ -54,6 +68,12 @@ extension MusicServiceProvider {
         guard !Self.schemes.isEmpty else { return false }
         let scheme = url.scheme?.lowercased() ?? ""
         return Self.schemes.contains(scheme)
+    }
+
+    /// Default implementation matches when the URL's host contains any of `hosts`, or
+    /// (for services that declare one) the URL's scheme is one of `schemes`.
+    public func canHandle(url: URL) -> Bool {
+        matchesDeclaredHostOrScheme(url: url)
     }
 
     /// Default implementation returns the track unchanged
