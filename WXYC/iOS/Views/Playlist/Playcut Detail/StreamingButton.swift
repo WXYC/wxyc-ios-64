@@ -20,6 +20,15 @@ struct StreamingButton: View {
 
     @State private var showingSafari = false
 
+    /// `url`, gated on actually belonging to `service` — a `spotify_url` field
+    /// holding a Deezer (or spoofed) host renders no button rather than a
+    /// mislabeled one. Defense-in-depth against a mislabeled backend field;
+    /// see `MusicService.matchesHost(of:)` and WXYC/wxyc-ios-64#563.
+    private var gatedURL: URL? {
+        guard let url, service.matchesHost(of: url) else { return nil }
+        return url
+    }
+
     private var icon: LinkButtonLabel.Icon {
         if service.hasCustomIcon {
             .custom(name: service.iconName, bundle: .playlist)
@@ -30,7 +39,7 @@ struct StreamingButton: View {
 
     var body: some View {
         Group {
-            if let url = url {
+            if let url = gatedURL {
                 Button {
                     onTap?(service)
                     if service.opensInBrowser {
