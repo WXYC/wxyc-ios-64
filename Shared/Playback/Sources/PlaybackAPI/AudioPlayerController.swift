@@ -308,6 +308,13 @@ public final class AudioPlayerController {
     /// minute. Injectable so tests can use a short interval and observe
     /// several ticks quickly.
     private let heartbeatInterval: Duration
+    /// The sleep behind each `playback_heartbeat` tick. Defaults to the real
+    /// wall clock; tests substitute a `StartupWatchdogGate` (#787, reused per
+    /// #815) so cadence is driven by an explicit release instead of racing a
+    /// wall-clock deadline against however long the test process actually
+    /// gets scheduled — the same exposure #807 fixed one layer down in
+    /// `PlaybackHeartbeat` itself. Mirrors `startupWatchdogSleep`.
+    private let heartbeatSleep: @Sendable (Duration) async throws -> Void
     /// Owns the `playback_heartbeat` cancel-then-loop-sleep-emit task shape
     /// (#666), extracted into `PlaybackCore` so both this controller and
     /// `RadioPlayerController` compose the same implementation instead of
@@ -494,6 +501,9 @@ public final class AudioPlayerController {
     ///     teardown, defeating the `[weak self]` capture in `armStartupWatchdog()`.
     ///     Must throw only on cancellation; any other error is treated as a
     ///     failed sleep and suppresses the escalation rather than triggering it.
+    ///   - heartbeatSleep: The sleep behind each `playback_heartbeat` tick
+    ///     (#666). Production keeps the real wall clock; tests substitute a
+    ///     gate for the same reason as `startupWatchdogSleep` above. See #815.
     public init(
         player: AudioPlayerProtocol,
         audioSession: AudioSessionProtocol?,
@@ -507,7 +517,8 @@ public final class AudioPlayerController {
         heartbeatInterval: Duration = .seconds(60),
         sessionActivationRetryDelay: Duration = .milliseconds(250),
         backgroundTasks: (any BackgroundTaskAssertionProtocol)? = nil,
-        startupWatchdogSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+        startupWatchdogSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+        heartbeatSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.player = player
         self.audioSession = audioSession
@@ -522,6 +533,7 @@ public final class AudioPlayerController {
         self.reachability = reachability
         self.defaults = defaults
         self.heartbeatInterval = heartbeatInterval
+        self.heartbeatSleep = heartbeatSleep
 
         // NOTE: We intentionally do NOT call configureAudioSessionIfNeeded() here.
         // Setting the audio session category to .playback during init interrupts
@@ -549,7 +561,8 @@ public final class AudioPlayerController {
         reachability: NetworkReachability? = nil,
         defaults: DefaultsStorage = UserDefaults.standard,
         heartbeatInterval: Duration = .seconds(60),
-        startupWatchdogSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
+        startupWatchdogSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+        heartbeatSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.player = player
         self.notificationCenter = notificationCenter
@@ -560,6 +573,7 @@ public final class AudioPlayerController {
         self.reachability = reachability
         self.defaults = defaults
         self.heartbeatInterval = heartbeatInterval
+        self.heartbeatSleep = heartbeatSleep
 
         setUpPlayerObservation()
         setUpCPUAggregator()
@@ -1887,7 +1901,7 @@ extension AudioPlayerController {
     /// closure captures `self` weakly, which Swift only permits once every
     /// stored property already has a value.
     private func setUpHeartbeat() {
-        heartbeat = PlaybackHeartbeat(interval: heartbeatInterval) { [weak self] in
+        heartbeat = PlaybackHeartbeat(interval: heartbeatInterval, sleep: heartbeatSleep) { [weak self] in
             self?.emitHeartbeat()
         }
     }
