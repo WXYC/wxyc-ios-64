@@ -29,7 +29,7 @@ struct PlayWXYCAudioTests {
 
     @Test("Audio search for the station name resolves to WXYC", arguments: stationSearchTerms)
     func audioSearchResolvesStation(term: String) async throws {
-        guard #available(iOS 27.0, *) else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return }
 
         let matches = try await LiveRadioStationEntity.defaultQuery.entities(matching: term)
 
@@ -40,7 +40,7 @@ struct PlayWXYCAudioTests {
 
     @Test("Audio search for an unrelated term resolves nothing")
     func audioSearchIgnoresUnrelatedTerms() async throws {
-        guard #available(iOS 27.0, *) else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return }
 
         let matches = try await LiveRadioStationEntity.defaultQuery.entities(matching: "the weather tomorrow")
 
@@ -49,7 +49,7 @@ struct PlayWXYCAudioTests {
 
     @Test("The station resolves back from its stable identifier")
     func stationResolvesByIdentifier() async throws {
-        guard #available(iOS 27.0, *) else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return }
 
         let matches = try await LiveRadioStationEntity.defaultQuery.entities(for: ["org.wxyc.live"])
 
@@ -59,7 +59,7 @@ struct PlayWXYCAudioTests {
 
     @Test("An unknown identifier resolves to nothing")
     func unknownIdentifierResolvesNothing() async throws {
-        guard #available(iOS 27.0, *) else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return }
 
         let matches = try await LiveRadioStationEntity.defaultQuery.entities(for: ["org.example.other"])
 
@@ -68,7 +68,7 @@ struct PlayWXYCAudioTests {
 
     @Test("The station entity's initializer carries stable identity")
     func liveRadioStationInitializer() {
-        guard #available(iOS 27.0, *) else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return }
 
         let station = LiveRadioStationEntity()
 
@@ -78,7 +78,7 @@ struct PlayWXYCAudioTests {
 
     @Test("The intent starts playback in the background without opening the app")
     func intentRunsInBackground() {
-        guard #available(iOS 27.0, *) else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return }
 
         #expect(PlayWXYCAudio.openAppWhenRun == false)
     }

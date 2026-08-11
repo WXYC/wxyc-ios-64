@@ -37,7 +37,7 @@ struct IntentTitleTests {
     /// actions indistinguishable in the metadata Siri's media-domain routing consumes.
     @Test("All three playback intents have pairwise-distinct titles")
     func allPlaybackTitlesArePairwiseDistinct() {
-        guard #available(iOS 27.0, *) else { return }
+        guard #available(iOS 27.0, macOS 27.0, visionOS 27.0, *) else { return }
 
         let titles: [LocalizedStringResource] = [PlayWXYC.title, ToggleWXYC.title, PlayWXYCAudio.title]
 
