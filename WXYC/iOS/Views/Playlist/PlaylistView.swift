@@ -11,6 +11,7 @@
 
 import Analytics
 import AppIntents
+import AppServices
 import DebugPanel
 import MusicShareKit
 import PartyHorn
@@ -21,9 +22,11 @@ import UIKit
 import Wallpaper
 import WXUI
 
+/// The flowsheet row's selection state for the detail cover. Composes AppServices'
+/// `NowPlayingItem` for its `{ playcut, artwork }` pair — see #408 — rather than
+/// re-declaring those two fields, and adds only the zoom-transition identity on top.
 struct PlaycutSelection: Equatable, Identifiable {
-    let playcut: Playcut
-    let artwork: UIImage?
+    private let item: NowPlayingItem
     /// The value the detail cover's zoom transition keys on. Defaults to the
     /// (unique) playcut id the flowsheet uses; the Liked tab overrides it with the
     /// snapshot's stable string key, because `LikedSongSnapshot.toPlaycut()`
@@ -31,10 +34,19 @@ struct PlaycutSelection: Equatable, Identifiable {
     /// the zoom couldn't tell which row it left from.
     let transitionID: AnyHashable
 
+    var playcut: Playcut { item.playcut }
+    var artwork: UIImage? { item.artwork }
+
     init(playcut: Playcut, artwork: UIImage?, transitionID: AnyHashable? = nil) {
-        self.playcut = playcut
-        self.artwork = artwork
-        self.transitionID = transitionID ?? AnyHashable(playcut.id)
+        self.init(item: NowPlayingItem(playcut: playcut, artwork: artwork), transitionID: transitionID)
+    }
+
+    /// Bridges directly from AppServices' stream element (e.g. `NowPlayingService`'s
+    /// `NowPlayingItem`), so the two types share one `{ playcut, artwork }` contract
+    /// instead of each re-declaring it.
+    init(item: NowPlayingItem, transitionID: AnyHashable? = nil) {
+        self.item = item
+        self.transitionID = transitionID ?? AnyHashable(item.playcut.id)
     }
 
     /// Identity is the zoom key — unique on both surfaces (the flowsheet's playcut

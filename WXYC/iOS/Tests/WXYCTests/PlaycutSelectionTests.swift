@@ -9,10 +9,15 @@
 //  `playcut.id` would collapse every liked row to source id 0 and the zoom
 //  couldn't tell which row it animated out of.
 //
+//  Also guards #408: `PlaycutSelection` composes AppServices' `NowPlayingItem`
+//  for its `{ playcut, artwork }` pair rather than re-declaring the two fields,
+//  so the field mapping and the bridging initializer are pinned here.
+//
 //  Created by Jake Bromberg on 08/01/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import AppServices
 import Foundation
 import LikedSongs
 import Playlist
@@ -71,5 +76,34 @@ struct PlaycutSelectionTests {
         #expect(selA.id != selB.id)
         #expect(selA != selB)
         #expect(selA.transitionID == AnyHashable(a.id))
+    }
+
+    @Test("Bridges from a NowPlayingItem, since it's the same {playcut, artwork} contract AppServices already declares")
+    func bridgesFromNowPlayingItem() {
+        let pc = playcut(id: 7, artist: "Stereolab", title: "Miss Modular")
+        let item = NowPlayingItem(playcut: pc, artwork: nil)
+
+        let selection = PlaycutSelection(item: item)
+
+        // The pair forwards verbatim from the AppServices item — no separate
+        // re-declared fields to drift out of sync with it.
+        #expect(selection.playcut == item.playcut)
+        #expect(selection.artwork == item.artwork)
+        // The default transition id still keys on the playcut id, matching
+        // the `init(playcut:artwork:transitionID:)` entry point's default.
+        #expect(selection.transitionID == AnyHashable(pc.id))
+    }
+
+    @Test("The playcut/artwork initializer and the NowPlayingItem-bridging initializer agree")
+    func playcutInitializerAgreesWithItemInitializer() {
+        let pc = playcut(id: 9, artist: "Chuquimamani-Condori", title: "Call Your Name")
+
+        let viaFields = PlaycutSelection(playcut: pc, artwork: nil, transitionID: "custom-key")
+        let viaItem = PlaycutSelection(item: NowPlayingItem(playcut: pc, artwork: nil), transitionID: "custom-key")
+
+        #expect(viaFields.playcut == viaItem.playcut)
+        #expect(viaFields.artwork == viaItem.artwork)
+        #expect(viaFields.transitionID == viaItem.transitionID)
+        #expect(viaFields == viaItem)
     }
 }
