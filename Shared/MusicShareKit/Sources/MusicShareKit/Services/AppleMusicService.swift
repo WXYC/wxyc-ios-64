@@ -90,14 +90,6 @@ final class AppleMusicService: MusicServiceProvider {
             artworkURL = URL(string: highResUrl)
         }
         
-        return MusicTrack(
-            service: track.service,
-            url: track.url,
-            title: title ?? track.title,
-            artist: artist ?? track.artist,
-            album: album ?? track.album,
-            identifier: track.identifier,
-            artworkURL: artworkURL ?? track.artworkURL
-        )
+        return track.merging(title: title, artist: artist, album: album, artworkURL: artworkURL)
     }
 }

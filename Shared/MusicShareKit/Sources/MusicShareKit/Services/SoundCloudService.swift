@@ -67,14 +67,8 @@ final class SoundCloudService: MusicServiceProvider {
             artworkURL = URL(string: thumbnailUrlString)
         }
         
-        return MusicTrack(
-            service: track.service,
-            url: track.url,
-            title: title ?? track.title,
-            artist: artist ?? track.artist,
-            album: nil, // SoundCloud doesn't have albums
-            identifier: track.identifier,
-            artworkURL: artworkURL ?? track.artworkURL
-        )
+        // album: nil — SoundCloud doesn't have albums, and every SoundCloud track already
+        // starts with a nil album from parse(url:), so this leaves it unchanged either way.
+        return track.merging(title: title, artist: artist, album: nil, artworkURL: artworkURL)
     }
 }

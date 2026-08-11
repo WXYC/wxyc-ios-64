@@ -90,15 +90,11 @@ final class BandcampService: MusicServiceProvider {
             album = title
         }
         
-        return MusicTrack(
-            service: track.service,
-            url: track.url,
-            title: nil,
-            artist: artist ?? track.artist,
-            album: album ?? track.album,
-            identifier: track.identifier,
-            artworkURL: artworkURL ?? track.artworkURL
-        )
+        // `title` (parsed above only to help split off `artist`) is deliberately not forwarded
+        // to `merging` — this preserves fetchMetadata's pre-existing behavior of never setting
+        // the track's title. (`merging(title: nil, ...)` keeps whatever title the track already
+        // had, which `parse(url:)` always leaves as nil, so the net effect is unchanged.)
+        return track.merging(title: nil, artist: artist, album: album, artworkURL: artworkURL)
     }
     
     private func extractMetaContent(from html: String, property: String) -> String? {
