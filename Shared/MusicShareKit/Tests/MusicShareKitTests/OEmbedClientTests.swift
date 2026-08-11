@@ -96,6 +96,30 @@ struct OEmbedClientTests {
         #expect(response.thumbnailURL == nil)
     }
 
+    /// `endpoint` is a parameter, so an unparseable value must not be able to trap. The
+    /// pre-refactor code force-unwrapped a string literal, which was safe by construction;
+    /// once the endpoint became caller-supplied the force-unwrap became a crash path.
+    @Test(
+        "An endpoint string URLComponents can't parse returns an empty response instead of trapping",
+        arguments: ["https://exa mple.com/oembed", "http://[::1", "https://ex^ample.com"]
+    )
+    func unparseableEndpointReturnsEmpty(endpoint: String) async throws {
+        let interceptor = OEmbedRequestInterceptor()
+        interceptor.responseBody = #"{"title": "should never be reached"}"#.data(using: .utf8)!
+        let session = makeOEmbedSession(interceptor: interceptor)
+
+        let response = try await OEmbedClient.fetch(
+            endpoint: endpoint,
+            trackURL: URL(string: "https://soundcloud.com/juanamolina/la-paradoja")!,
+            session: session
+        )
+
+        #expect(response.title == nil)
+        #expect(response.authorName == nil)
+        #expect(response.thumbnailURL == nil)
+        #expect(interceptor.lastRequest == nil, "No request should be issued for an unparseable endpoint")
+    }
+
     @Test("Malformed JSON throws rather than returning an empty response")
     func malformedJSONThrows() async throws {
         let interceptor = OEmbedRequestInterceptor()
