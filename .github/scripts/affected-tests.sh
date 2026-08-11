@@ -28,6 +28,11 @@
 #
 # The dependency graph is hardcoded from Shared/*/Package.swift. Update it
 # when packages are added, removed, or have their dependencies changed.
+#
+# *.xcodeproj/* changes only force run-all when the diff is structural (a
+# target or manually-tracked source/membership reference added or removed) —
+# see is_pbxproj_change_structural below. Pure group/folder/ordering/rename
+# churn falls through to normal Shared/ package scoping instead.
 
 set -euo pipefail
 
@@ -81,6 +86,55 @@ run_all_and_exit() {
     output "xcb_required" "true"
     output "affected_summary" "all tests ($reason)"
     exit 0
+}
+
+# is_pbxproj_change_structural — true (exit 0) when a *.xcodeproj/* diff
+# touches something that can change which tests should run: a target being
+# added/removed (PBXNativeTarget, PBXAggregateTarget), a manually-tracked
+# source reference being added/removed (PBXFileReference,
+# PBXSourcesBuildPhase), or a file's target membership changing
+# (membershipExceptions, PBXFileSystemSynchronizedBuildFileExceptionSet).
+# That last pair is not in the original #360 proposal but is load-bearing
+# here: this project's targets mostly use file-system-synchronized groups
+# (see docs/project-structure.md + CLAUDE.md), so a file joining or leaving a
+# target shows up as a membershipExceptions edit, not a PBXFileReference one
+# — a marker set drawn only from the issue's literal list would miss the
+# single most common real structural edit in this repo's pbxproj.
+#
+# False (exit 1) for pure group/folder/ordering/rename churn — reordering a
+# group's children, renaming a group, re-ordering build phases — none of
+# which touch the markers above.
+#
+# Diffs against the merge-base of BASE_REF and HEAD (not BASE_REF...HEAD, and
+# not BASE_REF alone): merge-base matches the three-dot semantics CI's own
+# top-level diff uses, while diffing against the *working tree* (not HEAD)
+# means locally-uncommitted pbxproj edits are inspected too — the same
+# working-tree-inclusive behavior scripts/test-affected.sh relies on for its
+# own top-level changed-files list.
+#
+# Fails open (treated as structural) if the diff itself can't be computed,
+# matching every other fallback in this script.
+is_pbxproj_change_structural() {
+    local file="$1"
+    local merge_base
+    merge_base=$(git merge-base "$BASE_REF" HEAD 2>/dev/null) || merge_base="$BASE_REF"
+    local diff_output
+    diff_output=$(git diff --no-color "$merge_base" -- "$file" 2>/dev/null) || return 0
+    # Deliberately matches the whole diff (default 3 lines of context), not
+    # only +/- changed lines. A new membershipExceptions entry is an added
+    # line inside an *unchanged* `membershipExceptions = ( ... );` array —
+    # the array's own declaration line, which carries the keyword, never
+    # changes. Restricting to changed lines misses exactly that case, which
+    # is the one this project actually hits (file-system-synchronized
+    # groups — see the comment above this function). The tradeoff: a cosmetic
+    # edit landing within 3 lines of an unrelated isa=PBXNativeTarget/
+    # PBXFileReference/PBXSourcesBuildPhase declaration now also reads as
+    # structural. That's the safe direction to be wrong in (run more tests,
+    # not fewer) and pbxproj's per-type "Begin/End section" grouping keeps
+    # real occurrences rare — group/folder edits don't normally sit adjacent
+    # to a target or file-reference declaration.
+    echo "$diff_output" | grep -qE \
+        'PBXNativeTarget|PBXAggregateTarget|PBXFileReference|PBXSourcesBuildPhase|membershipExceptions|PBXFileSystemSynchronizedBuildFileExceptionSet'
 }
 
 # ---------------------------------------------------------------------------
@@ -141,7 +195,13 @@ while IFS= read -r file; do
     case "$file" in
         Shared/*)                                 ;; # handled in step 4
         WXYC/*)                                   run_all_and_exit "app source changed: $file" ;;
-        *.xcodeproj/*)                            run_all_and_exit "project file changed: $file" ;;
+        *.xcodeproj/*)
+            if is_pbxproj_change_structural "$file"; then
+                run_all_and_exit "structural project file change: $file"
+            else
+                echo "  ignoring cosmetic project file change: $file"
+            fi
+            ;;
         *.xctestplan)                             run_all_and_exit "test plan changed: $file" ;;
         .github/scripts/affected-tests.sh)        run_all_and_exit "affected-tests.sh changed" ;;
         .github/workflows/build-and-test.yml)     run_all_and_exit "build-and-test workflow changed" ;;

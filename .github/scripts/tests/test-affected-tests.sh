@@ -15,6 +15,10 @@
 #   zsh .github/scripts/tests/test-affected-tests.sh
 #
 # Covers:
+#   - #360: *.xcodeproj/* fallback distinguishes structural pbxproj edits
+#     (new PBXNativeTarget, new membershipExceptions entry) from cosmetic
+#     ones (renamed PBXGroup, reordered children) — only the former forces
+#     run-all.
 #   - #362 item 2: whitespace-only CHANGED_FILES is treated as "no changed
 #     files" (run-all with a clear reason), not silently threaded through as
 #     if it named a real file.
@@ -190,6 +194,123 @@ if [[ "$BAD_EXIT" != "0" ]]; then
 else
     fail "multi-line value: guard fails loudly (subprocess exit $BAD_EXIT, nonzero)" "expected nonzero, got 0"
 fi
+
+# =========================================================================
+# Group 3 (#360) — pbxproj structural vs. cosmetic fallback
+# =========================================================================
+
+echo ""
+echo "=== Group 3: pbxproj structural-vs-cosmetic (#360) ==="
+
+PBX_REPO=$(mktemp -d)
+git -C "$PBX_REPO" init -q
+git -C "$PBX_REPO" config user.email "test@wxyc.org"
+git -C "$PBX_REPO" config user.name "WXYC CI Test"
+
+mkdir -p "$PBX_REPO/Fake.xcodeproj"
+cat > "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PBX'
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXFileReference section */
+		AAAA1111 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		BBBB2222 = {
+			isa = PBXGroup;
+			name = "Docs";
+			children = (
+				AAAA1111 /* README.md */,
+				CCCC3333 /* Sources */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		GGGG7777 = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ExistingFile.swift,
+			);
+			target = DDDD4444;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+	};
+	rootObject = FFFF6666;
+}
+PBX
+git -C "$PBX_REPO" add -A
+git -C "$PBX_REPO" commit -q -m "base pbxproj fixture"
+PBX_BASE_SHA=$(git -C "$PBX_REPO" rev-parse HEAD)
+
+# --- Cosmetic: rename a PBXGroup (no isa=/membershipExceptions line touched) ---
+sed -i '' 's/name = "Docs";/name = "Documentation";/' "$PBX_REPO/Fake.xcodeproj/project.pbxproj"
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "cosmetic group rename: run_all=false" "$LAST_GH" $'run_all=false'
+expect_contains "cosmetic group rename: logged as ignored, not run-all" "$LAST_OUT" "ignoring cosmetic project file change"
+expect_not_contains "cosmetic group rename: does not claim a structural reason" "$LAST_OUT" "structural project file change"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Cosmetic: reorder two entries in a children array ---
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace(
+    "\t\t\t\tAAAA1111 /* README.md */,\n\t\t\t\tCCCC3333 /* Sources */,\n",
+    "\t\t\t\tCCCC3333 /* Sources */,\n\t\t\t\tAAAA1111 /* README.md */,\n",
+)
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "cosmetic reorder: run_all=false" "$LAST_GH" $'run_all=false'
+expect_contains "cosmetic reorder: logged as ignored" "$LAST_OUT" "ignoring cosmetic project file change"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Structural: add a new PBXNativeTarget block ---
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+addition = (
+    "\n/* Begin PBXNativeTarget section */\n"
+    "\t\tDDDD4444 /* NewTestTarget */ = {\n"
+    "\t\t\tisa = PBXNativeTarget;\n"
+    "\t\t\tname = NewTestTarget;\n"
+    "\t\t};\n"
+    "/* End PBXNativeTarget section */\n"
+)
+text = text.replace("\trootObject = FFFF6666;\n", addition + "\trootObject = FFFF6666;\n")
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "structural new target: run_all=true" "$LAST_GH" $'run_all=true'
+expect_contains "structural new target: reason names the file" "$LAST_OUT" "structural project file change: Fake.xcodeproj/project.pbxproj"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+# --- Structural: add a membershipExceptions entry (file joins a target) ---
+python3 - "$PBX_REPO/Fake.xcodeproj/project.pbxproj" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path).read()
+text = text.replace(
+    "\t\t\t\tExistingFile.swift,\n",
+    "\t\t\t\tExistingFile.swift,\n\t\t\t\tNewlyAddedFile.swift,\n",
+)
+open(path, "w").write(text)
+PY
+run_script "$PBX_REPO" "$PBX_BASE_SHA" 1 "Fake.xcodeproj/project.pbxproj"
+expect_contains "structural membershipExceptions change: run_all=true" "$LAST_GH" $'run_all=true'
+expect_contains "structural membershipExceptions change: reason names the file" "$LAST_OUT" "structural project file change: Fake.xcodeproj/project.pbxproj"
+git -C "$PBX_REPO" checkout -q -- Fake.xcodeproj/project.pbxproj
+
+rm -rf "$PBX_REPO"
 
 # =========================================================================
 # Summary
