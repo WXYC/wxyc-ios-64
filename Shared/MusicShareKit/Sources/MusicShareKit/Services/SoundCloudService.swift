@@ -40,35 +40,11 @@ final class SoundCloudService: MusicServiceProvider {
     }
     
     func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
-        // Use SoundCloud oEmbed API (no auth required)
-        // API: https://soundcloud.com/oembed?format=json&url=[url]
-        var components = URLComponents(string: "https://soundcloud.com/oembed")!
-        components.queryItems = [
-            URLQueryItem(name: "format", value: "json"),
-            URLQueryItem(name: "url", value: track.url.absoluteString),
-        ]
-        guard let apiURL = components.url else {
-            return track
-        }
-        
-        let (data, _) = try await URLSession.shared.data(from: apiURL)
-        
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return track
-        }
-        
-        // Extract metadata from oEmbed response
-        let title = json["title"] as? String
-        let artist = json["author_name"] as? String
-        
-        // Get artwork URL
-        var artworkURL: URL?
-        if let thumbnailUrlString = json["thumbnail_url"] as? String {
-            artworkURL = URL(string: thumbnailUrlString)
-        }
-        
+        // Use SoundCloud's oEmbed API (no auth required)
+        let response = try await OEmbedClient.fetch(endpoint: "https://soundcloud.com/oembed", trackURL: track.url)
+
         // album: nil — SoundCloud doesn't have albums, and every SoundCloud track already
         // starts with a nil album from parse(url:), so this leaves it unchanged either way.
-        return track.merging(title: title, artist: artist, album: nil, artworkURL: artworkURL)
+        return track.merging(title: response.title, artist: response.authorName, album: nil, artworkURL: response.thumbnailURL)
     }
 }
