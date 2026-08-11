@@ -115,5 +115,5 @@ struct SeamView: View {
 
 #Preview {
     PlaylistPage()
-        .environment(\.playlistService, PlaylistService())
+        .environment(\.playlistService, .preview)
 }

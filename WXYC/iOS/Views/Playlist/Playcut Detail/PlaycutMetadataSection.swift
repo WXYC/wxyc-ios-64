@@ -94,10 +94,10 @@ struct PlaycutMetadataSection: View {
             hour: 0,
             chronOrderID: 0,
             timeCreated: 0,
-            songTitle: "Pharoah's Dance",
-            labelName: "Columbia",
-            artistName: "Miles Davis",
-            releaseTitle: "Bitches Brew"
+            songTitle: "Back, Baby",
+            labelName: "Drag City",
+            artistName: "Jessica Pratt",
+            releaseTitle: "On Your Own Love Again"
         ),
         artwork: nil,
         isLightboxActive: $isShowingLightbox,

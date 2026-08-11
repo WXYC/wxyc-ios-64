@@ -8,6 +8,7 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
+import AppServices
 import SwiftUI
 import Playlist
 import Wallpaper
@@ -183,5 +184,5 @@ struct RootTabView: View {
 #Preview {
     RootTabView()
         .environment(Singletonia.shared)
-        .environment(\.playlistService, PlaylistService())
+        .environment(\.playlistService, .preview)
 }

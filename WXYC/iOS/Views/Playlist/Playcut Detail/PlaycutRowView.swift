@@ -7,6 +7,7 @@
 //
 
 import Analytics
+import AppServices
 import SwiftUI
 import UIKit
 import WXUI
@@ -323,11 +324,13 @@ extension View {
     @Previewable @Namespace var zoomNamespace
     PlaylistView(selectedPlaycut: .constant(nil), zoomNamespace: zoomNamespace)
         .environment(Singletonia.shared)
-        .environment(\.playlistService, PlaylistService())
         .background(WXYCGradient())
 }
 
 #Preview {
+    // PlaylistTesting (Playcut.stub()) isn't linked into the app target — see
+    // SeamRowView.swift's #Preview comment — so this builds the WXYC-canonical
+    // fixture directly, matching Playcut.stub()'s own defaults.
     @Previewable @Namespace var zoomNamespace
     PlaycutRowView(
         playcut: Playcut(
@@ -335,10 +338,10 @@ extension View {
             hour: 1706544000000,
             chronOrderID: 1,
             timeCreated: 1706549400000, // 3:30 PM
-            songTitle: "Belleville",
+            songTitle: "Call Your Name",
             labelName: nil,
-            artistName: "Laurel Halo",
-            releaseTitle: "Atlas"
+            artistName: "Chuquimamani-Condori",
+            releaseTitle: "Edits"
         ),
         namespace: zoomNamespace,
         onSelect: { _ in }
