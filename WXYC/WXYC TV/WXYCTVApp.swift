@@ -39,5 +39,9 @@ struct WXYCTVApp: App {
 }
 
 #Preview {
+    // Matches the scene above: `ContentView` hosts `PlayerPage`, whose
+    // `\.playlistService` read is non-optional as of #768 and asserts on a
+    // missed injection.
     ContentView(playbackController: AudioPlayerController.shared)
+        .environment(\.playlistService, PlaylistService())
 }

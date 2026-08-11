@@ -41,7 +41,12 @@ struct StationView: View {
     /// route observation lives exactly as long as the tab is on screen.
     @State private var routeMonitor = AudioRouteMonitor()
 
-    @Environment(\.playlistService) private var playlistService
+    /// Read off `appState` rather than `\.playlistService` for the same reason
+    /// `PlaylistView` and `PlaycutDetailView` do: `Singletonia` already owns
+    /// this service, and reaching a single value through two mechanisms is the
+    /// bug #768 is about. The custom key stays for the consumers `Singletonia`
+    /// can't reach — watchOS, tvOS, and `DebugPanel`.
+    @Environment(Singletonia.self) private var appState
     @Environment(\.openURL) private var openURL
 
     /// Booth presence, derived from the live on-air signal. Drives whether the
@@ -118,7 +123,7 @@ struct StationView: View {
         }
         .accessibilityIdentifier("stationView")
         .task {
-            for await playlist in playlistService.updates() {
+            for await playlist in appState.playlistService.updates() {
                 onAir = playlist.onAir
             }
         }
@@ -446,6 +451,5 @@ nonisolated func collectBugReportLogs() -> [LogAttachment] {
 #Preview("Station") {
     StationView()
         .environment(Singletonia.shared)
-        .environment(\.playlistService, PlaylistService())
         .background(WXYCGradient())
 }

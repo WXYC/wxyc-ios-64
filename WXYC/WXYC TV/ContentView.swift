@@ -8,8 +8,10 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 
-import SwiftUI
+import AppServices
 import Playback
+import Playlist
+import SwiftUI
 import Wallpaper
 
 struct ContentView: View {
@@ -30,5 +32,8 @@ struct ContentView: View {
 }
 
 #Preview {
+    // `PlayerPage`, below this view, reads the non-optional `\.playlistService`
+    // and asserts on a missed injection as of #768.
     ContentView(playbackController: AudioPlayerController.shared)
+        .environment(\.playlistService, PlaylistService())
 }

@@ -4,17 +4,29 @@
 //
 //  Proves the `\.playlistService` environment key's missed-injection path is
 //  loud, not silent (WXYC/wxyc-ios-64#768). `PlaylistServiceEnvironmentDefault`
-//  is the seam `PlaylistServiceKey.defaultValue` calls when nothing was
+//  is the seam `PlaylistServiceKey.defaultValue` resolves to when nothing was
 //  injected; a live `assertionFailure()` would trap the test process under
 //  the debug configuration `swift test` runs in, so these tests exercise the
 //  seam directly with an injected `assert` closure rather than reading the
 //  real SwiftUI environment default.
+//
+//  Known limit of that seam, verified by mutation: rewriting
+//  `PlaylistServiceKey.defaultValue` to `PlaylistService()` — bypassing
+//  `PlaylistServiceEnvironmentDefault` entirely — leaves every test here
+//  green. Nothing in a debug-configuration test can read the miss path
+//  end-to-end, because reading it is what trips the assertion. What holds the
+//  wiring honest instead is the type: `defaultValue` is non-optional, so the
+//  `guard let` / `?.` call sites that used to swallow a miss no longer
+//  compile. `injectedServiceIsWhatResolves` covers the other half — that the
+//  key's getter and setter address the same slot, so an injected service is
+//  the one a view actually receives.
 //
 //  Created by Jake Bromberg on 08/10/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Playlist
+import SwiftUI
 import Synchronization
 import Testing
 @testable import AppServices
@@ -23,9 +35,9 @@ import Testing
 struct PlaylistServiceEnvironmentTests {
     @Test("a missing injection fires the miss hook")
     func missingInjectionFiresMissHook() {
-        // `assert` is `@Sendable` (it stands in for `assertionFailure`, called
-        // from a `static var` getter), so the spy needs a thread-safe capture
-        // rather than a plain `var`.
+        // `assert` is `@Sendable` (it stands in for `assertionFailure`, run
+        // from the lazy initializer of a `static let`), so the spy needs a
+        // thread-safe capture rather than a plain `var`.
         let fired = Mutex(false)
         _ = PlaylistServiceEnvironmentDefault.missingInjectionFallback(assert: { fired.withLock { $0 = true } })
         #expect(fired.withLock { $0 })
@@ -35,14 +47,27 @@ struct PlaylistServiceEnvironmentTests {
     func missingInjectionReturnsUsableFallback() {
         // Compiles only because the fallback's return type is `PlaylistService`,
         // not `PlaylistService?` — the old `guard let playlistService else {
-        // return }` call sites (StationView, WatchXYC's PlayerPage/PlaylistPage,
-        // DebugPanel's VisualizerDebugView) no longer compile against this type
-        // and were rewritten to read it unconditionally.
+        // return }` call sites (WatchXYC's PlayerPage/PlaylistPage, DebugPanel's
+        // VisualizerDebugView) no longer compile against this type and were
+        // rewritten to read it unconditionally.
         let service: PlaylistService = PlaylistServiceEnvironmentDefault.missingInjectionFallback(assert: {})
 
         // A live, functioning stream — not a stub that traps on first use —
         // proves the fallback is safe to hand a view in Release, where
         // `assertionFailure` above is a no-op.
         _ = service.updates()
+    }
+
+    @Test("an injected service is the one the key resolves to")
+    func injectedServiceIsWhatResolves() {
+        // Reads the stored slot, never `defaultValue`, so this exercises the
+        // real `EnvironmentValues` plumbing without tripping the assertion.
+        // Guards the getter/setter pair against addressing different keys —
+        // which would silently route every consumer to the fallback.
+        let injected = PlaylistService()
+        var values = EnvironmentValues()
+        values.playlistService = injected
+
+        #expect(values.playlistService === injected)
     }
 }

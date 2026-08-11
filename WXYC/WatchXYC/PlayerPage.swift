@@ -227,5 +227,9 @@ extension SwiftUI.Image {
 }
 
 #Preview {
+    // `\.playlistService` is non-optional as of #768: a preview that skips the
+    // injection trips `assertionFailure` on first read instead of quietly
+    // rendering an empty page.
     PlayerPage(playbackController: RadioPlayerController.shared)
+        .environment(\.playlistService, PlaylistService())
 }
