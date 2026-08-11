@@ -44,6 +44,19 @@ The hook derives its diff base from the ref data git pipes on stdin (the remote'
 
 Skip a single push with `git push --no-verify`, or globally with `git config wxyc.skipTests true`.
 
+### Testing the test-selection scripts themselves
+
+`.github/scripts/affected-tests.sh` decides which tests run for every change in this repo, so a regression in it does not fail loudly — it silently runs fewer tests than it should. Two shell suites cover it, and neither is wired into a workflow (`build-and-test.yml` is `workflow_dispatch`-only). Run them by hand after touching either script:
+
+```bash
+zsh .github/scripts/tests/test-affected-tests.sh   # affected-tests.sh: pbxproj classification, whitespace input, output() guard
+zsh scripts/tests/test-pre-push-hook.sh            # scripts/hooks/pre-push: BASE_REF derivation from git's stdin protocol
+```
+
+Both are dependency-free (no bats), print TAP-ish `ok -` / `FAIL -` lines, and exit nonzero on any failure. They build throwaway git repos in `mktemp -d`, so they never touch the working tree.
+
+One case deserves care when editing `is_pbxproj_change_structural`: it compares *sorted structural fingerprints* of the two file versions rather than grepping the textual diff for marker keywords, because the array a membership entry lives in can be dozens of lines long and the keyword only appears on the array's unchanged declaration line. A fixture whose `membershipExceptions` array is short enough to keep that line inside git's 3 lines of context will pass while the real `WXYC.xcodeproj` fails. The suite pins mid-array add, mid-array remove, and cross-target move for exactly this reason.
+
 ### Running the full plan directly (mind the two flags)
 
 Prefer `scripts/test-affected.sh --full` over invoking `xcodebuild test -scheme WXYC` by hand. A bare `xcodebuild test -scheme WXYC` is a trap: it runs the whole `WXYC.xctestplan`, including tests the sanctioned runs deliberately exclude, so it fails with confusing "environmental" errors that aren't real defects. To match what CI and `test-affected.sh` actually run, pass both:
