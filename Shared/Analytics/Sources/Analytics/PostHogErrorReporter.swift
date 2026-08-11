@@ -14,7 +14,6 @@
 
 import Foundation
 import Logger
-import struct Logger.Category
 
 /// Reports errors to both the local log file and PostHog analytics.
 ///
@@ -39,7 +38,7 @@ public struct PostHogErrorReporter: ErrorReporter {
     public func report(
         _ error: any Error,
         context: String,
-        category: Category,
+        category: LogCategory,
         additionalData: [String: String]
     ) {
         Log(.error, category: category, "\(context): \(error)")

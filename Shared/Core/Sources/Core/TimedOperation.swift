@@ -12,7 +12,6 @@
 
 import Foundation
 import Logger
-import struct Logger.Category
 
 /// Executes an async throwing operation with standardized timing, logging, and error handling.
 ///
@@ -45,7 +44,7 @@ import struct Logger.Category
 /// - Returns: The operation's result on success, or `fallback` on failure.
 public func timedOperation<T: Sendable>(
     context: String,
-    category: Category,
+    category: LogCategory,
     fallback: T,
     errorReporter: any ErrorReporter = ErrorReporting.shared,
     additionalData: [String: String] = [:],

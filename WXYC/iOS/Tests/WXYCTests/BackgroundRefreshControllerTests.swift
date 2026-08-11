@@ -14,7 +14,6 @@
 import BackgroundTasks
 import Foundation
 import Logger
-import struct Logger.Category
 import Testing
 @testable import WXYC
 
@@ -131,7 +130,7 @@ private final class FakeErrorReporter: ErrorReporter, @unchecked Sendable {
     func report(
         _ error: any Error,
         context: String,
-        category: Category,
+        category: LogCategory,
         additionalData: [String: String]
     ) {
         lock.withLock {

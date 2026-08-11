@@ -11,7 +11,6 @@
 
 import Foundation
 import Logger
-import struct Logger.Category
 import Sentry
 
 /// Forwards log messages to Sentry as breadcrumbs.
@@ -20,7 +19,7 @@ import Sentry
 /// `addBreadcrumb` is thread-safe and non-blocking, so this is safe to
 /// call from the logging thread.
 struct SentryBreadcrumbDestination: LogDestination {
-    func receive(level: LogLevel, category: Category, message: String) {
+    func receive(level: LogLevel, category: LogCategory, message: String) {
         let crumb = Breadcrumb(level: sentryLevel(for: level), category: category.rawValue)
         crumb.message = message
         SentrySDK.addBreadcrumb(crumb)

@@ -12,7 +12,6 @@
 import Testing
 import Foundation
 import Logger
-import struct Logger.Category
 @testable import WXYC
 
 @Suite("SentryLogsDestination")
@@ -66,7 +65,7 @@ struct SentryLogsDestinationTests {
         )
 
         let call = try? #require(emitter.calls.first)
-        #expect(call?.attributes["category"] as? String == Category.network.rawValue)
+        #expect(call?.attributes["category"] as? String == LogCategory.network.rawValue)
     }
 
     @Test("formatted prefix is stripped, leaving only the developer body")
@@ -98,7 +97,7 @@ struct SentryLogsDestinationTests {
     // MARK: - Helpers
 
     /// Mirrors the shape produced by `Logger.log(...)`.
-    private func formatted(_ level: LogLevel, category: Category, body: String) -> String {
+    private func formatted(_ level: LogLevel, category: LogCategory, body: String) -> String {
         "2026-06-02 12:34:56.789 SomeFile.swift:42 someFunction() [\(category.rawValue)/\(level)] \(body)"
     }
 }
