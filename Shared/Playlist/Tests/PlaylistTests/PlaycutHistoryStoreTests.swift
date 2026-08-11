@@ -621,7 +621,9 @@ struct PlaycutHistoryStoreTests {
         ]))
         continuation.finish()
 
-        let ingested = await waitUntil { await store.allIndexable().count == 1 }
+        // 5s, matching the budget the removed 250x20ms local loop allowed.
+        // The default 1s is not sized for a loaded CI machine.
+        let ingested = await waitUntil(timeout: .seconds(5)) { await store.allIndexable().count == 1 }
         #expect(ingested)
         let all = await store.allIndexable()
         #expect(all.count == 1)
@@ -643,7 +645,8 @@ struct PlaycutHistoryStoreTests {
 
         await store.start(observing: service)
 
-        let ingested = await waitUntil { await store.allIndexable().count == 1 }
+        // 5s, matching the budget the removed 250x20ms local loop allowed.
+        let ingested = await waitUntil(timeout: .seconds(5)) { await store.allIndexable().count == 1 }
         #expect(ingested)
         let all = await store.allIndexable()
         #expect(all.count == 1)
