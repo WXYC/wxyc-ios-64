@@ -207,7 +207,13 @@ else
         # driftable copy. FORCE_RUN_ALL bypasses all of affected-tests.sh's
         # BASE_REF/CHANGED_FILES-dependent code, so it also sidesteps
         # whatever just crashed there.
+        # Truncate both: the crashed run may have appended a partial set of
+        # KEY=VALUE lines before dying, and the retry appends to the same
+        # file. The parser below is last-wins per key and run_all_and_exit
+        # always writes all six keys, so a stale partial would be masked
+        # today — but only by accident. Start clean instead.
         : > "$STDERR_FILE"
+        : > "$OUTPUT_FILE"
         (
             export FORCE_RUN_ALL=true
             export GITHUB_OUTPUT="$OUTPUT_FILE"
