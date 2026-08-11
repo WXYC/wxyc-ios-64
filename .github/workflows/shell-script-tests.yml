@@ -1,0 +1,54 @@
+name: Shell Script Tests
+
+# Distinct from build-and-test.yml on purpose: that workflow is
+# workflow_dispatch-only by deliberate choice (PRs get no auto-CI there,
+# because it needs Xcode + a simulator + the private Wallpaper submodule
+# deploy key and costs 20-30 minutes). These suites are different in kind —
+# hand-rolled zsh regression tests for the CI scripts themselves
+# (.github/scripts/affected-tests.sh, scripts/test-affected.sh,
+# scripts/hooks/pre-push). They need no simulator, no submodule, and no
+# secrets; the whole set runs in under two seconds. That asymmetry — cheap
+# and self-contained vs. expensive and credential-gated — is the reason this
+# workflow auto-runs on pull_request while build-and-test.yml stays manual.
+#
+# Path-filtered to the directories these scripts (and their tests) actually
+# live in, so an unrelated PR (docs, Swift-only) doesn't spend a macOS
+# runner-minute on a check that could not have caught anything.
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/**"
+      - "scripts/**"
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/scripts/**"
+      - "scripts/**"
+  workflow_dispatch:
+
+concurrency:
+  group: shell-script-tests-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  shell-script-tests:
+    # macOS, not ubuntu: .github/scripts/tests/test-affected-tests.sh's
+    # pbxproj fixtures are edited with BSD sed (`sed -i ''`), which GNU sed
+    # on ubuntu runners parses differently (no separate backup-suffix arg).
+    runs-on: macos-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: affected-tests.sh regression suite
+        run: zsh .github/scripts/tests/test-affected-tests.sh
+
+      - name: pre-push hook regression suite
+        run: zsh scripts/tests/test-pre-push-hook.sh
+
+      - name: test-affected.sh error-fallback regression suite
+        run: zsh scripts/tests/test-affected-error-fallback.sh
