@@ -348,24 +348,47 @@ struct MP3StreamerTests {
             audioPlayer: mockPlayer
         )
 
-        streamer.play()
-        try await Task.sleep(for: .milliseconds(300))
-
-        // Simulate stall while playing
-        if case .playing = streamer.streamingState {
-            mockPlayer.simulateStall()
-            try await Task.sleep(for: .milliseconds(50))
-
-            // Should be stalled now
-            #expect(streamer.streamingState == .stalled)
-
-            // Feed more data to trigger recovery
-            mockHTTP.feedData(testData)
-            try await Task.sleep(for: .milliseconds(200))
-
-            // Should have recovered to playing
-            #expect(streamer.streamingState == .playing)
+        // Observe every state transition as it happens, rather than sampling
+        // `streamingState` after a fixed sleep. The full MP3 file is decoded
+        // continuously in the background regardless of playback state, so once
+        // `simulateStall()` lands there can already be enough buffered decode
+        // backlog for the streamer's own stall-recovery path to flip
+        // `.stalled → .playing` again inside the same MainActor turn — a
+        // sample taken after any sleep can race straight past `.stalled` and
+        // observe only the recovery (#701). `stateStreamInternal` yields every
+        // transition in order and buffers them, so a `.stalled` value is
+        // captured even when the very next turn already recovers it.
+        var sawStalled = false
+        let observer = Task { @MainActor in
+            for await state in streamer.stateStreamInternal {
+                if state == .stalled { sawStalled = true }
+            }
         }
+        defer { observer.cancel() }
+
+        streamer.play()
+
+        // No vacuous-pass path: a streamer that never reaches .playing must
+        // fail loudly here, not silently skip the stall/recovery assertions
+        // below the way the old `if case .playing` guard did.
+        await pollUntil { streamer.streamingState == .playing }
+        #expect(streamer.streamingState == .playing,
+                "Streamer must warm up to .playing before stall/recovery can be exercised")
+        guard case .playing = streamer.streamingState else { return }
+
+        // Simulate stall while playing.
+        mockPlayer.simulateStall()
+
+        await pollUntil { sawStalled }
+        #expect(sawStalled,
+                "A stall must surface as .stalled at least momentarily, regardless of how quickly it then recovers")
+
+        // Feed more data to trigger recovery.
+        mockHTTP.feedData(testData)
+
+        await pollUntil { streamer.streamingState == .playing }
+        #expect(streamer.streamingState == .playing,
+                "Feeding ≥ minimumBuffersBeforePlayback buffers after a stall must recover playback")
     }
 }
 
