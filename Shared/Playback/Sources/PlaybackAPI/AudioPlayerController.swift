@@ -157,8 +157,25 @@ public final class AudioPlayerController {
             holdingReconnectInFlight: holdingReconnectInFlight,
             reachabilitySatisfied: lastReachabilitySatisfied,
             holdingReconnectTrigger: holdingReconnectTrigger,
-            liveHandbackAssertions: liveHandbackAssertionCount
+            liveHandbackAssertions: liveHandbackAssertionCount,
+            sessionActivationRetryInFlight: sessionActivationRetryInFlightValue
         )
+    }
+
+    /// Whether the bounded `CannotInterruptOthers` activation-retry loop
+    /// (#514) is currently running. `sessionActivationPending` off iOS/tvOS
+    /// doesn't exist, so this reads `false` there — a test waiting on it gets
+    /// the honest "nothing to wait for" answer rather than a platform branch.
+    /// A test can poll this instead of racing a fixed sleep against the
+    /// bounded-retry budget: once it flips back to `false`, the retry task has
+    /// run to completion and `setActive` will not be called again for this
+    /// attempt. See #371.
+    private var sessionActivationRetryInFlightValue: Bool {
+        #if os(iOS) || os(tvOS)
+        sessionActivationPending
+        #else
+        false
+        #endif
     }
 
     /// Background-execution assertions the deferred handback still holds. A
@@ -192,6 +209,9 @@ public final class AudioPlayerController {
         /// Background-execution assertions the deferred handback still holds.
         /// Always zero off iOS/tvOS, where there are no such assertions.
         public let liveHandbackAssertions: Int
+        /// Whether the bounded `CannotInterruptOthers` activation-retry loop
+        /// (#514) is currently running. Always `false` off iOS/tvOS. See #371.
+        public let sessionActivationRetryInFlight: Bool
 
         public var description: String {
             [
@@ -207,6 +227,7 @@ public final class AudioPlayerController {
                 "reachabilitySatisfied=\(reachabilitySatisfied.map(String.init(describing:)) ?? "nil")",
                 "holdingReconnectTrigger=\(holdingReconnectTrigger.rawValue)",
                 "liveHandbackAssertions=\(liveHandbackAssertions)",
+                "sessionActivationRetryInFlight=\(sessionActivationRetryInFlight)",
             ].joined(separator: ", ")
         }
     }

@@ -86,10 +86,7 @@ struct SessionActivationRetryTests {
 
     // MARK: - Retry is bounded (does not busy-loop forever)
 
-    @Test(
-        "Retries are bounded when CannotInterruptOthers never clears",
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-    )
+    @Test("Retries are bounded when CannotInterruptOthers never clears")
     func retriesAreBounded() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
@@ -99,14 +96,26 @@ struct SessionActivationRetryTests {
 
         harness.controller.play()
 
-        // Let the retry loop run well past its bounded budget
-        // (initial attempt + maxSessionActivationRetries × retryDelay).
-        try? await Task.sleep(for: .milliseconds(1500))
-        let attemptsAfterExhaustion = harness.mockSession.setActiveCallCount
+        // `play()`'s synchronous activation failure schedules the bounded
+        // retry loop before returning, so the flag should already be up.
+        // Asserting this (rather than only the eventual `false`) is what makes
+        // the wait below non-vacuous: a retry loop that never started would
+        // also leave `sessionActivationRetryInFlight` `false` and would
+        // otherwise pass the same assertions with zero attempts made.
+        #expect(harness.audioController?.debugState.sessionActivationRetryInFlight == true,
+               "The bounded retry loop should be scheduled synchronously by the failed activation")
 
-        // The retries must have stopped by now — a further wait adds no calls.
-        try? await Task.sleep(for: .milliseconds(600))
-        #expect(harness.mockSession.setActiveCallCount == attemptsAfterExhaustion,
+        // Wait for the retry loop to run its bounded budget to completion
+        // instead of racing a fixed sleep against
+        // maxSessionActivationRetries × sessionActivationRetryDelay (#371).
+        // The loop clears this flag in the same synchronous block that sets
+        // `sessionActivationRetryTask = nil`, so once it observes `false` here
+        // no further `setActive` calls can follow from this attempt — no
+        // separate stability re-check is needed.
+        await harness.waitUntil({ harness.audioController?.debugState.sessionActivationRetryInFlight == false })
+
+        let attemptsAfterExhaustion = harness.mockSession.setActiveCallCount
+        #expect(harness.audioController?.debugState.sessionActivationRetryInFlight == false,
                "Activation retries must be bounded and stop after the budget is exhausted")
         // A handful of bounded attempts, never an unbounded busy-loop.
         #expect(attemptsAfterExhaustion <= 8,
