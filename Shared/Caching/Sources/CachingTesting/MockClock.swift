@@ -3,7 +3,7 @@
 //  CachingTesting
 //
 //  Controllable Clock implementation for deterministic testing of TTL-based
-//  expiration without sleeps. Shared by CachingTests and downstream packages
+//  expiration without sleeps. Available to CachingTests and downstream packages
 //  that test against an injected CacheCoordinator clock.
 //
 //  Created by Jake Bromberg on 07/10/26.
