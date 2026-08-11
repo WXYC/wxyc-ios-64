@@ -75,6 +75,19 @@ struct PlaybackInterruptionRouteHandlerTests {
         }
     }
 
+    /// Trivial no-op conformance for the tests that exercise the handler's own
+    /// lifetime — `deinit`'s observer teardown, and the `weak` context
+    /// reference — rather than the state a context carries.
+    @MainActor
+    private final class NoOpContext: PlaybackInterruptionContext {
+        var isPlaying = false
+        var sessionID: String?
+        var playbackDuration: TimeInterval = 0
+        var wasPlayingBeforeRouteDisconnect = false
+        func stop(reason: PlaybackReason) {}
+        func play(reason: PlaybackReason) throws {}
+    }
+
     // MARK: - Interruption began
 
     @Test("Interruption began while playing captures PlaybackStoppedEvent and calls stop")
@@ -281,17 +294,6 @@ struct PlaybackInterruptionRouteHandlerTests {
 
     @Test("Deallocating the handler removes its notification observers")
     func deallocatingRemovesObservers() {
-        /// Trivial no-op conformance — this test only exercises `deinit`'s
-        /// observer teardown, not the state the context carries.
-        final class NoOpContext: PlaybackInterruptionContext {
-            var isPlaying = false
-            var sessionID: String?
-            var playbackDuration: TimeInterval = 0
-            var wasPlayingBeforeRouteDisconnect = false
-            func stop(reason: PlaybackReason) {}
-            func play(reason: PlaybackReason) throws {}
-        }
-
         var interruptionsReceived: [AVAudioSession.InterruptionType] = []
         let center = NotificationCenter()
         // Held strongly here: the handler only holds `context` weakly (matching
@@ -319,32 +321,31 @@ struct PlaybackInterruptionRouteHandlerTests {
 
     @Test("The handler holds its context weakly, so the owning controller can still deallocate")
     func handlerDoesNotRetainContext() {
-        final class NoOpContext: PlaybackInterruptionContext {
-            var isPlaying = false
-            var sessionID: String?
-            var playbackDuration: TimeInterval = 0
-            var wasPlayingBeforeRouteDisconnect = false
-            func stop(reason: PlaybackReason) {}
-            func play(reason: PlaybackReason) throws {}
+        weak var weakContext: NoOpContext?
+        let handler: PlaybackInterruptionRouteHandler
+        do {
+            let context = NoOpContext()
+            weakContext = context
+            handler = PlaybackInterruptionRouteHandler(
+                notificationCenter: NotificationCenter(),
+                context: context,
+                analytics: MockStructuredAnalytics()
+            )
         }
 
-        var context: NoOpContext? = NoOpContext()
-        weak var weakContext = context
-        let handler = PlaybackInterruptionRouteHandler(
-            notificationCenter: NotificationCenter(),
-            context: context!,
-            analytics: MockStructuredAnalytics()
-        )
-        _ = handler
-
-        // Drop the only other strong reference. If the handler stored
-        // `context` strongly (rather than `weak`), this would be a no-op and
-        // `weakContext` would still resolve — exactly the retain cycle #804
-        // must not introduce, since every real controller owns its handler
-        // strongly and would pass itself as `context`.
-        context = nil
-
-        #expect(weakContext == nil, "PlaybackInterruptionRouteHandler must not retain its context strongly")
+        // Scope exit dropped the only other strong reference. If the handler
+        // stored `context` strongly (rather than `weak`), `weakContext` would
+        // still resolve here — exactly the retain cycle #804 must not
+        // introduce, since every real controller owns its handler strongly
+        // and passes itself as `context`.
+        //
+        // `withExtendedLifetime` is load-bearing, not decoration: ARC may
+        // release `handler` after its last use, and a released handler drops
+        // its context either way, so without it this assertion would pass
+        // against a strong reference too.
+        withExtendedLifetime(handler) {
+            #expect(weakContext == nil, "PlaybackInterruptionRouteHandler must not retain its context strongly")
+        }
     }
 }
 #endif
