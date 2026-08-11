@@ -10,10 +10,11 @@
 //  a delivery discriminator: both declared `name` as AVPlayer.rateDidChangeNotification,
 //  and addMainActorObserver(of:for:using:) registers on that Notification.Name alone. The
 //  only discriminator is, and was, the subject passed to `of:` — non-nil scopes delivery
-//  to one AVPlayer, nil receives every rate change on the center. RadioPlayer passes a
-//  real AVPlayer (AVPlayer conforms to PlayerProtocol directly); HLSPlayer's production
-//  AVPlayerHLSAdapter wraps an AVPlayer rather than subclassing one, so its
-//  `player as? AVPlayer` is nil and it observes unscoped. Both facts predate this type.
+//  to one AVPlayer, nil receives every rate change on the center. Both players observe
+//  scoped: RadioPlayer passes a real AVPlayer (AVPlayer conforms to PlayerProtocol
+//  directly), and HLSPlayer passes `player.underlyingAVPlayer` (PR #878 — its production
+//  AVPlayerHLSAdapter wraps an AVPlayer rather than subclassing one, so the earlier
+//  `player as? AVPlayer` cast was always nil there and silently observed unscoped).
 //  See RateDidChangeMessageTests for the executable form of that scoping contract.
 //
 //  Created by Jake Bromberg on 08/10/26.

@@ -483,7 +483,7 @@ struct HLSPlayerTests {
 
     /// Posts a rate change with a `nil` subject, which reaches only players
     /// whose `underlyingAVPlayer` is `nil` — the `MockHLSAVPlayer` default.
-    /// It also relies on that `nil` object to make `HLSRateDidChangeMessage`
+    /// It also relies on that `nil` object to make `RateDidChangeMessage`
     /// fall through to `userInfo["rate"]`; had the subject been a real
     /// `AVPlayer`, the message would read `player.rate` instead and ignore the
     /// `rate` argument. Giving the mock a real `AVPlayer` therefore breaks

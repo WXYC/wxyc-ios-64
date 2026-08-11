@@ -14,6 +14,7 @@ import Testing
 import Foundation
 import AVFoundation
 import Core
+import PlaybackTestUtilities
 @testable import PlaybackCore
 
 @Suite("RateDidChangeMessage", .serialized)
@@ -125,7 +126,7 @@ struct RateDidChangeMessageTests {
 
         center.post(RateDidChangeMessage(rate: 1.0), subject: playerA)
         center.post(RateDidChangeMessage(rate: 1.0), subject: playerA)
-        try await Task.sleep(for: .milliseconds(100))
+        await pollUntil { countA.value == 2 }
 
         #expect(countA.value == 2, "playerA's observer should see both of playerA's posts")
         #expect(countB.value == 0, "playerB's observer must not see playerA's rate changes")
@@ -133,9 +134,10 @@ struct RateDidChangeMessageTests {
 
     @Test("A nil-subject observer receives rate changes from any player")
     func nilSubjectObserverReceivesEveryPlayer() async throws {
-        // This is HLSPlayer's real production configuration: AVPlayerHLSAdapter wraps an
-        // AVPlayer instead of subclassing it, so `player as? AVPlayer` is nil and the
-        // observer registers unscoped.
+        // No production player observes unscoped anymore — HLSPlayer reaches through its
+        // adapter via `underlyingAVPlayer` (PR #878) and RadioPlayer passes its AVPlayer
+        // directly — but the nil-subject path is still API (MockHLSAVPlayer defaults its
+        // `underlyingAVPlayer` to nil, so existing tests rely on it), so pin its contract.
         let center = NotificationCenter()
         let playerA = AVPlayer()
         let playerB = AVPlayer()
@@ -151,7 +153,7 @@ struct RateDidChangeMessageTests {
 
         center.post(RateDidChangeMessage(rate: 1.0), subject: playerA)
         center.post(RateDidChangeMessage(rate: 1.0), subject: playerB)
-        try await Task.sleep(for: .milliseconds(100))
+        await pollUntil { count.value == 2 }
 
         #expect(count.value == 2, "an unscoped observer sees every player's rate change")
     }
