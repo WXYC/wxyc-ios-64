@@ -397,16 +397,19 @@ struct PlaycutDetailView: View {
 // MARK: - Preview
 
 #Preview {
+    // PlaylistTesting (Playcut.stub()) isn't linked into the app target — see
+    // SeamRowView.swift's #Preview comment — so this builds the WXYC-canonical
+    // fixture directly, matching Playcut.stub()'s own defaults.
     PlaycutDetailView(
         playcut: Playcut(
             id: 1,
             hour: 0,
             chronOrderID: 1,
             timeCreated: 0,
-            songTitle: "Marilyn (feat. Micachu)",
-            labelName: "Warp",
-            artistName: "Mount Kimbie",
-            releaseTitle: "Love What Survives"
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA"
         ),
         artwork: nil
     )

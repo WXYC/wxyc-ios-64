@@ -422,6 +422,5 @@ struct PlaylistSectionHeader: View {
     @Previewable @Namespace var zoomNamespace
     PlaylistView(selectedPlaycut: .constant(nil), zoomNamespace: zoomNamespace)
         .environment(Singletonia.shared)
-        .environment(\.playlistService, PlaylistService())
         .background(WXYCGradient())
 }

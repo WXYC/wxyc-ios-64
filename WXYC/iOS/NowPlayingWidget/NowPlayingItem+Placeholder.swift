@@ -23,46 +23,50 @@ extension NowPlayingItem {
     private static let placeholderLock = NSLock()
     private static var playcutsIterator = CircularIterator(placeholderPlaycuts)
     
+    // PlaylistTesting (Playcut.stub()) isn't linked into the widget extension
+    // target — see SeamRowView.swift's #Preview comment — so these are built
+    // directly, using the same WXYC-canonical values Playcut.stub() defaults
+    // to. See docs/test-fixtures.md.
     private static let placeholderPlaycuts: [Playcut] = [
         Playcut(
             id: 0,
             hour: 0,
             chronOrderID: 0,
             timeCreated: 0,
-            songTitle: "VI Scose Poise",
-            labelName: nil,
-            artistName: "Autechre",
-            releaseTitle: "Confield"
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA"
         ),
         Playcut(
             id: 1,
             hour: 0,
             chronOrderID: 1,
             timeCreated: 0,
-            songTitle: "Belleville",
-            labelName: nil,
-            artistName: "Laurel Halo",
-            releaseTitle: "Atlas"
+            songTitle: "Back, Baby",
+            labelName: "Drag City",
+            artistName: "Jessica Pratt",
+            releaseTitle: "On Your Own Love Again"
         ),
         Playcut(
             id: 2,
             hour: 0,
             chronOrderID: 2,
             timeCreated: 0,
-            songTitle: "Bismillahi 'Rrahmani 'Rrahim",
+            songTitle: "Call Your Name",
             labelName: nil,
-            artistName: "Harold Budd",
-            releaseTitle: "Pavilion of Dreams"
+            artistName: "Chuquimamani-Condori",
+            releaseTitle: "Edits"
         ),
         Playcut(
             id: 3,
             hour: 0,
             chronOrderID: 3,
             timeCreated: 0,
-            songTitle: "Guinnevere",
-            labelName: nil,
-            artistName: "Miles Davis",
-            releaseTitle: "Bitches Brew"
+            songTitle: "In a Sentimental Mood",
+            labelName: "Impulse Records",
+            artistName: "Duke Ellington & John Coltrane",
+            releaseTitle: "Duke Ellington & John Coltrane"
         )
     ]
         
