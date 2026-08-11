@@ -36,10 +36,16 @@ struct LoaderTransitionTests {
     // MARK: - load
 
     // `ArtworkLoader.State` isn't `Sendable` (its `.loaded` case carries a
-    // `Core.Image`, itself not `Sendable`), but these cases are immutable
-    // data used only to parameterize tests that run serially — safe to
-    // assert `Sendable` here rather than widen `State`'s conformance for
-    // production code just to satisfy `@Test(arguments:)`.
+    // `Core.Image`, itself not `Sendable`), so this narrow test-only shim
+    // avoids widening `State`'s conformance in production code just to
+    // satisfy `@Test(arguments:)`.
+    //
+    // What makes the `@unchecked` honest — swift-testing runs cases in
+    // parallel, so "they run serially" would not be a justification:
+    // every stored property is a `let`, nothing mutates a `LoadCase` after
+    // construction, and no case below carries a `.loaded` payload, so no
+    // reference-typed value crosses a task boundary at all. The instances
+    // are read and never written.
     struct LoadCase: @unchecked Sendable {
         let description: String
         let existingState: ArtworkLoader.State?
@@ -181,6 +187,41 @@ struct LoaderTransitionTests {
         let result = LoaderTransition.apply(.fetchSucceeded(key: key, image: staleImage), to: entries)
 
         #expect(result.next[key]?.state == .loaded(currentImage), "a late completion must not clobber a newer state")
+    }
+
+    @Test("fetchSucceeded must not clobber a .notOnDiscogs entry flagged while the fetch was in flight")
+    func fetchSucceededOnNotOnDiscogsIsNoOp() {
+        // The production-reachable case for the .loading guard: PlaylistView
+        // re-`load`s every visible playcut on each poll, so a playcut whose MD
+        // flag flips to discogsUnavailable while its fetch is in flight lands
+        // on .notOnDiscogs before the fetch resolves. Writing .loaded here
+        // would render artwork the #390 flag exists to suppress.
+        let playcut = Playcut.stub(artistName: "flagged-mid-flight", discogsUnavailable: true, discogsUnavailableNote: "embargo")
+        let key = playcut.artworkCacheKey
+        let entries: [String: ArtworkLoader.Entry] = [
+            key: ArtworkLoader.Entry(state: .notOnDiscogs(note: "embargo"), playcut: playcut)
+        ]
+        let inFlightResult = CGImage.testImageWithColor(.red).toImage()
+
+        let result = LoaderTransition.apply(.fetchSucceeded(key: key, image: inFlightResult), to: entries)
+
+        #expect(result.next[key]?.state == .notOnDiscogs(note: "embargo"), "a suppressed entry must not be resurrected by an in-flight fetch")
+    }
+
+    @Test("fetchSucceeded must not clobber a .failed entry left by a newer fetch")
+    func fetchSucceededOnFailedIsNoOp() {
+        let playcut = Playcut.stub(artistName: "stale-success")
+        let key = playcut.artworkCacheKey
+        let entries: [String: ArtworkLoader.Entry] = [
+            key: ArtworkLoader.Entry(state: .failed, playcut: playcut)
+        ]
+        let staleImage = CGImage.testImageWithColor(.blue).toImage()
+
+        let result = LoaderTransition.apply(.fetchSucceeded(key: key, image: staleImage), to: entries)
+
+        // The next `load(_:)` retries a .failed entry, so nothing is lost
+        // permanently — the newer fetch's verdict simply wins.
+        #expect(result.next[key]?.state == .failed, "the newest fetch's outcome wins; a superseded success does not overwrite it")
     }
 
     // MARK: - fetchFailed

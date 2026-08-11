@@ -294,13 +294,20 @@ struct ArtworkLoaderTests {
         #expect(loader.state(for: dropped) == .unloaded)
     }
 
-    // MARK: - Prune-mid-flight race (#298)
+    // MARK: - Late-completion races (#298)
     //
-    // The pure LoaderTransition guards fetchSucceeded/fetchFailed on the
-    // entry still being .loading, so a fetch that resolves after its key was
-    // pruned mid-flight must not resurrect it. This is the one integration-
-    // level test the #298 acceptance criteria calls for — the race lives in
-    // the shell's async ordering, not in the pure function alone.
+    // The race lives in the shell's async ordering, not in the pure function
+    // alone, so #298 asks for integration-level coverage of it. Two distinct
+    // cases, and they are worth keeping straight:
+    //
+    // 1. Prune-mid-flight (below). The entry is *gone* when the fetch lands.
+    //    This already held before #298 — the pre-refactor completion handler
+    //    wrote `entries[key]?.state = .loaded(...)`, and optional chaining on
+    //    an absent key is a no-op. This test pins that behavior; it does not
+    //    exercise the new `.loading` guard, and passes with the guard removed.
+    // 2. Flag-arrives-mid-flight (further below). The entry is *present but
+    //    no longer .loading* when the fetch lands. Only the new guard makes
+    //    this one pass — it is the case #298 actually changed.
 
     @Test("a fetch completing after prune does not resurrect the pruned entry")
     func fetchCompletingAfterPruneDoesNotResurrectEntry() async throws {
@@ -323,6 +330,36 @@ struct ArtworkLoaderTests {
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(loader.state(for: playcut) == .unloaded, "a late-completing fetch must not resurrect a pruned entry")
+        #expect(service.fetchCount == 1)
+    }
+
+    @Test("a fetch completing after the discogsUnavailable flag arrives does not clobber .notOnDiscogs")
+    func fetchCompletingAfterFlagArrivesDoesNotClobberNotOnDiscogs() async throws {
+        let service = MockArtworkService()
+        service.artworkToReturn = CGImage.testImageWithColor(.magenta)
+        service.delaySeconds = 0.1
+
+        let loader = ArtworkLoader(service: service)
+        let artistName = UUID().uuidString
+        let unflagged = Playcut.stub(artistName: artistName, discogsUnavailable: nil)
+
+        loader.load(unflagged)
+        #expect(loader.state(for: unflagged) == .loading)
+
+        // The next poll delivers the same artwork-cache key with the MD's
+        // "Not on Discogs" flag now set, while the first fetch is still in
+        // flight. Same key, so this lands on the in-flight entry.
+        let flagged = Playcut.stub(artistName: artistName, discogsUnavailable: true, discogsUnavailableNote: "embargo")
+        loader.load(flagged)
+        #expect(loader.state(for: flagged) == .notOnDiscogs(note: "embargo"))
+
+        // Let the superseded fetch resolve successfully.
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(
+            loader.state(for: flagged) == .notOnDiscogs(note: "embargo"),
+            "an in-flight fetch resolving after the flag arrives must not render artwork #390 suppresses"
+        )
         #expect(service.fetchCount == 1)
     }
 }
