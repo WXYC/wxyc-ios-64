@@ -11,7 +11,9 @@
 //
 //  Also guards #408: `PlaycutSelection` composes AppServices' `NowPlayingItem`
 //  for its `{ playcut, artwork }` pair rather than re-declaring the two fields,
-//  so the field mapping and the bridging initializer are pinned here.
+//  so the field mapping and the bridging initializer are pinned here — as is
+//  the one thing composition must NOT bring along, `NowPlayingItem`'s
+//  playcut-plus-artwork `==`.
 //
 //  Created by Jake Bromberg on 08/01/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -22,6 +24,7 @@ import Foundation
 import LikedSongs
 import Playlist
 import Testing
+import UIKit
 @testable import WXYC
 
 @MainActor
@@ -38,6 +41,16 @@ struct PlaycutSelectionTests {
             artistName: artist,
             releaseTitle: nil
         )
+    }
+
+    /// A distinguishable artwork instance. `UIImage` doesn't override `isEqual:`,
+    /// so holding on to the instance lets a test assert *which* image came back
+    /// (`===`) rather than merely that two nils match.
+    private func swatch() -> UIImage {
+        UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4)).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }
     }
 
     @Test("A flowsheet selection keys the zoom on the unique playcut id")
@@ -105,5 +118,41 @@ struct PlaycutSelectionTests {
         #expect(viaFields.artwork == viaItem.artwork)
         #expect(viaFields.transitionID == viaItem.transitionID)
         #expect(viaFields == viaItem)
+    }
+
+    @Test("Forwards the composed item's artwork instance, not a fresh one")
+    func forwardsTheComposedItemsArtwork() {
+        let artwork = swatch()
+        let pc = playcut(id: 11, artist: "Cat Power", title: "Metal Heart")
+
+        // The two tests above pass `artwork: nil` on both sides, so a forwarder
+        // that returned a constant `nil` would satisfy them. Identity on a real
+        // image is what actually pins `artwork` to the composed `NowPlayingItem`.
+        #expect(PlaycutSelection(item: NowPlayingItem(playcut: pc, artwork: artwork)).artwork === artwork)
+        #expect(PlaycutSelection(playcut: pc, artwork: artwork).artwork === artwork)
+    }
+
+    @Test("Equality still keys on the transition id alone, not on the composed item's fields")
+    func equalityIgnoresTheComposedItemsFields() {
+        // Same zoom key, different playcut *and* different artwork.
+        // `NowPlayingItem`'s own `==` compares exactly those two (deliberately —
+        // an artwork-only enrichment has to read as a new value there). If
+        // `PlaycutSelection`'s explicit `==` were ever dropped, the synthesized
+        // one would reach through the composed item and call these unequal,
+        // silently changing what `.onChange(of: selectedPlaycut)` fires on and
+        // how SwiftUI diffs the selection. Keep the two conformances separate.
+        let a = PlaycutSelection(
+            playcut: playcut(id: 0, artist: "Juana Molina", title: "la paradoja"),
+            artwork: nil,
+            transitionID: "one-row"
+        )
+        let b = PlaycutSelection(
+            playcut: playcut(id: 1, artist: "Stereolab", title: "Miss Modular"),
+            artwork: swatch(),
+            transitionID: "one-row"
+        )
+
+        #expect(a == b)
+        #expect(a.id == b.id)
     }
 }

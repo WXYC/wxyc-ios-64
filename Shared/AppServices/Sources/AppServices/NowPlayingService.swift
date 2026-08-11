@@ -20,10 +20,15 @@ import UIKit
 import AppKit
 #endif
 
-/// The `{ playcut, artwork }` pair for a resolved playcut. The app target's
-/// `PlaylistView.PlaycutSelection` composes this type for its own selection state
-/// (adding a zoom-transition identity) rather than re-declaring the same two
-/// fields — see #408. Keep this the single declaration of that shape.
+/// The `{ playcut, artwork }` pair for a resolved playcut. The iOS app's
+/// flowsheet selection state composes this type (adding a zoom-transition
+/// identity) rather than re-declaring the same two fields — see #408. Keep this
+/// the single declaration of that shape.
+///
+/// Note the `Equatable` conformance below is the artwork-refresh one: it compares
+/// the image, so an enrichment that only fills in artwork reads as a new value.
+/// Composers that need a different identity declare their own `==` rather than
+/// inheriting this one.
 public struct NowPlayingItem: Sendable, Equatable, Comparable {
     public let playcut: Playcut
     public var artwork: Image?
