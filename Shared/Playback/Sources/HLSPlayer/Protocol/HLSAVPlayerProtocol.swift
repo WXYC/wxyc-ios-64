@@ -25,6 +25,14 @@ public protocol HLSAVPlayerProtocol: Sendable {
     func currentTime() -> CMTime
     var seekableTimeRanges: [NSValue] { get }
     func seek(to time: CMTime) async -> Bool
+
+    /// The real `AVPlayer` this instance is backed by, or `nil` if it isn't
+    /// backed by one (e.g. a test double). `HLSPlayer` passes this as the
+    /// subject when registering its rate-change observer, scoping the
+    /// observer to this specific player instance so it doesn't fire for
+    /// rate changes on some other `AVPlayer` sharing the same
+    /// `NotificationCenter`.
+    var underlyingAVPlayer: AVPlayer? { get }
 }
 
 // MARK: - AVPlayer Adapter
@@ -45,6 +53,8 @@ final class AVPlayerHLSAdapter: HLSAVPlayerProtocol, @unchecked Sendable {
     }
 
     var rate: Float { player.rate }
+
+    var underlyingAVPlayer: AVPlayer? { player }
 
     func play() { player.play() }
 

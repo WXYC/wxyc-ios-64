@@ -137,7 +137,7 @@ public final class HLSPlayer: Sendable {
         self.timePositionContinuation = timePositionContinuation
 
         self.rateObservation = notificationCenter.addMainActorObserver(
-            of: player as? AVPlayer,
+            of: player.underlyingAVPlayer,
             for: HLSRateDidChangeMessage.self
         ) { [weak self] message in
             guard let self else { return }
