@@ -431,6 +431,7 @@ struct WXYCApp: App {
         pickerState: ThemePickerState()
     ) {
         RootTabView()
+            .environment(Singletonia.shared)
             .environment(\.playlistService, .preview)
             .environment(\.artworkService, .preview)
             .environment(\.playbackController, AudioPlayerController.shared)
