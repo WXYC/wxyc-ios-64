@@ -114,8 +114,8 @@ struct IntentPlaybackTests {
 }
 
 /// Records `IntentPlaybackControlling` calls and lets a test drive `isPlaying`
-/// directly, so `IntentPlayback.startAndAwait(reason:controller:)` -- the
-/// path `PlayWXYC`, `PlayWXYCAudio`, and `PlayMediaIntentHandler` all run --
+/// directly, so `IntentPlayback.startAndAwait(reason:controller:)` and
+/// `toggleAndAwait(reason:context:)` -- the paths every playback intent runs --
 /// can be exercised without touching `AudioPlayerController.shared` or a real
 /// audio session. #497: `MockAudioPlayer` (`PlaybackTestUtilities`) isn't
 /// importable here because that target isn't a product library; this fake
@@ -127,14 +127,40 @@ struct IntentPlaybackTests {
 final class FakeIntentPlaybackController: IntentPlaybackControlling {
     private(set) var prepareForPlaybackCallCount = 0
     private(set) var playedReasons: [PlaybackReason] = []
-    var isPlaying = false
+    private(set) var toggledReasons: [PlaybackReason] = []
+    /// Ordered record of the mutating calls, for sequence assertions.
+    private(set) var events: [String] = []
+    /// How many times `isPlaying` was read — the toggle tests assert on this
+    /// to prove the wait branch was (or wasn't) taken.
+    private(set) var isPlayingPollCount = 0
+    /// Runs after a `toggle(reason:)` is recorded, so a test can model the
+    /// toggle's side effect (e.g. flipping `isPlaying` on).
+    var onToggle: (@MainActor () -> Void)?
+    var isPlaybackRequested = false
+
+    private var isPlayingValue = false
+    var isPlaying: Bool {
+        get {
+            isPlayingPollCount += 1
+            return isPlayingValue
+        }
+        set { isPlayingValue = newValue }
+    }
 
     func prepareForPlayback() {
         prepareForPlaybackCallCount += 1
+        events.append("prepare")
     }
 
     func play(reason: PlaybackReason) {
         playedReasons.append(reason)
+        events.append("play")
+    }
+
+    func toggle(reason: PlaybackReason) {
+        toggledReasons.append(reason)
+        events.append("toggle")
+        onToggle?()
     }
 }
 
@@ -143,77 +169,64 @@ final class FakeIntentPlaybackController: IntentPlaybackControlling {
 struct IntentPlaybackToggleAndAwaitTests {
     @Test("Prepares the audio session before toggling")
     func preparesBeforeToggling() async {
-        var order: [String] = []
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaybackRequested = true
 
         await IntentPlayback.toggleAndAwait(
             reason: .testToggle,
             context: "test",
-            prepareForPlayback: { order.append("prepare") },
-            isPlaybackRequested: { true },
-            isPlaying: { true },
-            toggle: { _ in order.append("toggle") }
+            controller: controller
         )
 
-        #expect(order == ["prepare", "toggle"])
+        #expect(controller.events == ["prepare", "toggle"])
     }
 
     @Test("Passes the given reason through to toggle")
     func passesReasonToToggle() async {
-        var capturedReason: PlaybackReason?
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaybackRequested = true
 
         await IntentPlayback.toggleAndAwait(
             reason: .widgetToggle,
             context: "test",
-            prepareForPlayback: { },
-            isPlaybackRequested: { true },
-            isPlaying: { true },
-            toggle: { capturedReason = $0 }
+            controller: controller
         )
 
-        #expect(capturedReason == .widgetToggle)
+        #expect(controller.toggledReasons == [.widgetToggle])
     }
 
     @Test("Skips the wait when playback was already requested before the toggle")
     func skipsWaitWhenAlreadyRequested() async {
-        var isPlayingCallCount = 0
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaybackRequested = true
+        controller.isPlaying = true
 
         await IntentPlayback.toggleAndAwait(
             reason: .testToggle,
             context: "test",
-            prepareForPlayback: { },
-            isPlaybackRequested: { true },
-            isPlaying: {
-                isPlayingCallCount += 1
-                return true
-            },
-            toggle: { _ in }
+            controller: controller
         )
 
         // Since playback was already requested, toggling is turning it off,
         // so there's nothing to wait for — isPlaying should never be polled.
-        #expect(isPlayingCallCount == 0)
+        #expect(controller.isPlayingPollCount == 0)
     }
 
     @Test("Waits for playback to start when it was not already requested before the toggle")
     func waitsWhenNotAlreadyRequested() async {
-        var isPlayingCallCount = 0
-        var isPlayingValue = false
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaybackRequested = false
+        controller.onToggle = { [weak controller] in controller?.isPlaying = true }
 
         await IntentPlayback.toggleAndAwait(
             reason: .testToggle,
             context: "test",
-            prepareForPlayback: { },
-            isPlaybackRequested: { false },
-            isPlaying: {
-                isPlayingCallCount += 1
-                return isPlayingValue
-            },
-            toggle: { _ in isPlayingValue = true }
+            controller: controller
         )
 
         // Post-toggle poll: isPlaying reports true immediately, so
         // awaitPlaybackStart's loop exits on its first check.
-        #expect(isPlayingCallCount == 1)
+        #expect(controller.isPlayingPollCount == 1)
     }
 
     @Test("Reads isPlaybackRequested, not isPlaying, as the pre-toggle probe")
@@ -229,21 +242,17 @@ struct IntentPlaybackToggleAndAwaitTests {
         // `isPlaybackRequested` (true) as the pre-toggle probe would conclude
         // playback was *not* requested, fail to skip the wait, and poll
         // isPlaying at least once. The correct implementation never polls it.
-        var isPlayingCallCount = 0
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaybackRequested = true
+        controller.isPlaying = false
 
         await IntentPlayback.toggleAndAwait(
             reason: .testToggle,
             context: "test",
             timeout: .milliseconds(200),
-            prepareForPlayback: { },
-            isPlaybackRequested: { true },
-            isPlaying: {
-                isPlayingCallCount += 1
-                return false
-            },
-            toggle: { _ in }
+            controller: controller
         )
 
-        #expect(isPlayingCallCount == 0)
+        #expect(controller.isPlayingPollCount == 0)
     }
 }
