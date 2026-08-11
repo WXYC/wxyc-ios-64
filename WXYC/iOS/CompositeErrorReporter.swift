@@ -12,7 +12,6 @@
 import Analytics
 import Foundation
 import Logger
-import struct Logger.Category
 import Sentry
 
 /// Reports errors to all three backends: local log, PostHog, and Sentry.
@@ -20,7 +19,7 @@ struct CompositeErrorReporter: ErrorReporter {
     func report(
         _ error: any Error,
         context: String,
-        category: Category,
+        category: LogCategory,
         additionalData: [String: String]
     ) {
         // 1. Local log

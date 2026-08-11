@@ -10,14 +10,14 @@
 //
 
 import Foundation
-@_exported import struct Logger.Category
+@_exported import typealias Logger.LogCategory
 import Logger
 
 /// A recorded error report for test assertions.
 public struct ReportedError: Sendable {
     public let error: any Error
     public let context: String
-    public let category: Category
+    public let category: LogCategory
     public let additionalData: [String: String]
 }
 
@@ -33,7 +33,7 @@ public final class MockErrorReporter: ErrorReporter, @unchecked Sendable {
     public func report(
         _ error: any Error,
         context: String,
-        category: Category,
+        category: LogCategory,
         additionalData: [String: String]
     ) {
         lock.withLock {

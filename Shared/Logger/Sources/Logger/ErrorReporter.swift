@@ -28,7 +28,7 @@ public protocol ErrorReporter: Sendable {
     func report(
         _ error: any Error,
         context: String,
-        category: Category,
+        category: LogCategory,
         additionalData: [String: String]
     )
 }
@@ -40,7 +40,7 @@ public extension ErrorReporter {
     func report(
         _ error: any Error,
         context: String,
-        category: Category = .general,
+        category: LogCategory = .general,
         additionalData: [String: String] = [:]
     ) {
         report(error, context: context, category: category, additionalData: additionalData)

@@ -11,7 +11,6 @@
 
 import Testing
 import Foundation
-import struct Logger.Category
 @testable import Logger
 
 /// Serialized because Logger.destinations is process-global.
@@ -89,7 +88,7 @@ struct LogDestinationTests {
 final class RecordingDestination: LogDestination, @unchecked Sendable {
     struct Entry {
         let level: LogLevel
-        let category: Category
+        let category: LogCategory
         let message: String
     }
 
@@ -100,7 +99,7 @@ final class RecordingDestination: LogDestination, @unchecked Sendable {
         lock.withLock { _messages }
     }
 
-    func receive(level: LogLevel, category: Category, message: String) {
+    func receive(level: LogLevel, category: LogCategory, message: String) {
         lock.withLock {
             _messages.append(Entry(level: level, category: category, message: message))
         }

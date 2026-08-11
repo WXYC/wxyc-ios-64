@@ -13,7 +13,6 @@
 
 import Foundation
 import Logger
-import struct Logger.Category
 import Sentry
 
 /// Abstraction over the subset of `SentrySDK.logger` that `SentryLogsDestination`
@@ -70,7 +69,7 @@ struct SentryLogsDestination: LogDestination {
         self.emitter = emitter
     }
 
-    func receive(level: LogLevel, category: Category, message: String) {
+    func receive(level: LogLevel, category: LogCategory, message: String) {
         guard level >= .info else { return }
 
         let body = Self.stripFormattedPrefix(from: message)
