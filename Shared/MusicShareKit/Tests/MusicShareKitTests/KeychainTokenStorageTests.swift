@@ -28,13 +28,67 @@ struct KeychainTokenStorageTests {
         deleteAllTestKeychainItems()
     }
 
+    // MARK: - Real Keychain, iOS Simulator only
+    //
+    // The four tests below touch the real Keychain and are gated on
+    // `WXYC_SKIP_KNOWN_FLAKES`. Two corrections to the reason string this
+    // section used to carry:
+    //
+    // 1. The "(#371)" citation was wrong. #371 tracks three CI-load flakes in
+    //    `Shared/Playback`/`Shared/AppServices` (Widget relevance,
+    //    stream-error analytics, render-tap teardown) and never mentions
+    //    Keychain or entitlements. `51e0c07a` borrowed that issue's mechanism
+    //    and its number together; only the mechanism applied.
+    //
+    // 2. This is not a flake, it is deterministic. Run inside the iOS
+    //    Simulator, the sandboxed SPM test-bundle process has no
+    //    Keychain-access entitlement, so every `SecItemAdd` /
+    //    `SecItemCopyMatching` below fails with `errSecMissingEntitlement`
+    //    (-34018), every time. On a plain macOS host under `swift test` they
+    //    all pass: an ordinary macOS process can use the login Keychain
+    //    without that entitlement, and these tests pass `accessGroup: nil`, so
+    //    no entitlement-bearing access group ever enters the query. No
+    //    physical device is involved on either side — contrary to the original
+    //    skip commit's "local runs still exercise the path on developers'
+    //    devices".
+    //
+    // Which CI path these traits affect is easy to get backwards, so, exactly:
+    //
+    //   * The host `swift test` step DOES run all four, unskipped.
+    //     `MusicShareKit` is on `affected-tests.sh`'s `SPM_RUNNABLE` list, so
+    //     the "swift test SPM-runnable packages" step runs `swift test
+    //     --package-path Shared/MusicShareKit`, and that step deliberately
+    //     never sets `WXYC_SKIP_KNOWN_FLAKES` — see the env-scoping comment on
+    //     the `TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES` step env in
+    //     `.github/workflows/build-and-test.yml`.
+    //   * The xcodebuild/Simulator step never runs them at all, skipped or
+    //     otherwise. `MusicShareKitTests` is excluded on both branches of
+    //     `affected-tests.sh`: explicitly on the run-all path
+    //     (`-skip-testing:MusicShareKitTests`), and implicitly on the affected
+    //     path, where `SPM_RUNNABLE` packages `continue` before their
+    //     `TEST_TARGETS` entries are collected.
+    //
+    // So the one step that sets the var is the one step that never runs this
+    // target, and these traits cannot fire in CI at all. Their real audience is
+    // a LOCAL full-plan run, which `docs/build-test.md` documents as requiring
+    // `TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES=1`. (`build-and-test.yml` is
+    // `workflow_dispatch`-only regardless, so none of the above happens until
+    // someone dispatches it by hand.)
+    //
+    // Retiring these traits therefore means making that local Simulator run
+    // stop hitting `errSecMissingEntitlement` — i.e. giving the Simulator's SPM
+    // test-bundle process a Keychain-access entitlement. Dropping the coverage
+    // from the xcodebuild path is not the lever it looks like: CI already does
+    // exactly that. Either way it is a test-plan/signing decision, not a
+    // comment fix — left as-is here.
+
     // MARK: - Round-Trip Persistence
 
     @Test(
         "Save and load round-trips session across instances",
         .disabled(
             if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
-            "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+            "Deterministic errSecMissingEntitlement in the iOS Simulator's SPM test bundle — not a flake, not #371. Passes under swift test on the macOS host, the path CI uses. See the \"Real Keychain, iOS Simulator only\" comment above."
         )
     )
     func saveAndLoadRoundTripsAcrossInstances() throws {
@@ -64,7 +118,7 @@ struct KeychainTokenStorageTests {
         "Save falls back to non-synchronizable when iCloud Keychain is unavailable",
         .disabled(
             if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
-            "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+            "Deterministic errSecMissingEntitlement in the iOS Simulator's SPM test bundle — not a flake, not #371. Passes under swift test on the macOS host, the path CI uses. See the \"Real Keychain, iOS Simulator only\" comment above."
         )
     )
     func saveFallsBackToNonSynchronizable() throws {
@@ -92,7 +146,7 @@ struct KeychainTokenStorageTests {
         "Save fallback persists across instances",
         .disabled(
             if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
-            "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+            "Deterministic errSecMissingEntitlement in the iOS Simulator's SPM test bundle — not a flake, not #371. Passes under swift test on the macOS host, the path CI uses. See the \"Real Keychain, iOS Simulator only\" comment above."
         )
     )
     func saveFallbackPersistsAcrossInstances() throws {
@@ -123,7 +177,7 @@ struct KeychainTokenStorageTests {
         "Load with synchronizable=true finds non-synchronizable items",
         .disabled(
             if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
-            "Requires Keychain entitlement that the SPM unit-test bundle doesn't have on the iOS sim — errSecMissingEntitlement (#371)"
+            "Deterministic errSecMissingEntitlement in the iOS Simulator's SPM test bundle — not a flake, not #371. Passes under swift test on the macOS host, the path CI uses. See the \"Real Keychain, iOS Simulator only\" comment above."
         )
     )
     func loadFindsFallbackItems() throws {
