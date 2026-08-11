@@ -66,15 +66,22 @@ struct StructuredPostHogAnalyticsTests {
     }
 }
 
-final class CapturingPostHogClient: PostHogClientProtocol {
+final class CapturingPostHogClient: PostHogClientProtocol, @unchecked Sendable {
     struct Captured {
         let name: String
         let properties: [String: Any]?
     }
 
-    private(set) var events: [Captured] = []
+    private let lock = NSLock()
+    private var _events: [Captured] = []
+
+    var events: [Captured] {
+        lock.withLock { _events }
+    }
 
     func capture(_ name: String, properties: [String: Any]?) {
-        events.append(.init(name: name, properties: properties))
+        lock.withLock {
+            _events.append(.init(name: name, properties: properties))
+        }
     }
 }
