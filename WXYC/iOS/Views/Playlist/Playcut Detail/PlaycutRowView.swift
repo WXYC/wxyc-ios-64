@@ -328,10 +328,10 @@ extension View {
 }
 
 #Preview {
-    // PlaylistTesting (Playcut.stub()) isn't linked into the app target — see
-    // SeamRowView.swift's #Preview comment — so this builds the WXYC-canonical
-    // fixture directly, matching Playcut.stub()'s own defaults.
     @Previewable @Namespace var zoomNamespace
+    // Built through `Playcut.init` rather than `Playcut.stub()`: the app target
+    // doesn't link `PlaylistTesting`. See `PreviewFixtures` for why, and
+    // `docs/test-fixtures.md` for the canonical values used here.
     PlaycutRowView(
         playcut: Playcut(
             id: 1,

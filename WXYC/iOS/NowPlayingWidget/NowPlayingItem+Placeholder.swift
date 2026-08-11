@@ -23,10 +23,16 @@ extension NowPlayingItem {
     private static let placeholderLock = NSLock()
     private static var playcutsIterator = CircularIterator(placeholderPlaycuts)
     
-    // PlaylistTesting (Playcut.stub()) isn't linked into the widget extension
-    // target — see SeamRowView.swift's #Preview comment — so these are built
-    // directly, using the same WXYC-canonical values Playcut.stub() defaults
-    // to. See docs/test-fixtures.md.
+    /// The widget-gallery placeholder rotation. Four entries, one per
+    /// `NowPlayingItem.placeholder` evaluation in `Provider` — `placeholder(in:)`
+    /// and the `context.isPreview` timeline branch each take exactly four, and
+    /// `LargeNowPlayingWidgetEntryView`'s `ForEach` keys on `playcut.id`, so the
+    /// count and the distinct ids are both load-bearing.
+    ///
+    /// Built through `Playcut.init` rather than `Playcut.stub()`: the widget
+    /// extension target doesn't link `PlaylistTesting`. See `PreviewFixtures` for
+    /// why. The four tracks are the WXYC-canonical fixture set from
+    /// `docs/test-fixtures.md`.
     private static let placeholderPlaycuts: [Playcut] = [
         Playcut(
             id: 0,
