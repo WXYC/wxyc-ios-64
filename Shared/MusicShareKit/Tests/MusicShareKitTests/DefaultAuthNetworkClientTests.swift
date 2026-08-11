@@ -7,8 +7,18 @@
 //  Created by Jake Bromberg on 04/01/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
+//  #786: this file used to hand-roll a private `AuthRequestInterceptor` —
+//  the same "configurable status code + body, capture the last request" job
+//  `CoreTesting.QueuedStubURLProtocol` already does, with weaker guarantees
+//  (`nonisolated(unsafe)` mutable state instead of a lock, safe only by
+//  virtue of this suite's `.serialized` trait). It's gone; every test below
+//  now calls `QueuedStubURLProtocol` directly. This is the sole `URLProtocol`
+//  adopter in this bundle, so it needs no extension-of-a-shared-suite
+//  arrangement the way Metadata's and Core's multi-adopter bundles do.
+//
 
 import Core
+import CoreTesting
 import Foundation
 import Testing
 @testable import MusicShareKit
@@ -20,58 +30,50 @@ struct DefaultAuthNetworkClientTests {
 
     @Test("Sign-in URL uses /auth/sign-in/anonymous path")
     func signInURLPath() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validBetterAuthResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validBetterAuthResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
 
-        let capturedURL = try #require(interceptor.lastRequest?.url)
+        let capturedURL = try #require(QueuedStubURLProtocol.capturedRequest()?.url)
         #expect(capturedURL.path == "/auth/sign-in/anonymous")
         #expect(capturedURL.host() == "api.example.com")
     }
 
     @Test("Sign-in request includes Origin header matching baseURL")
     func signInOriginHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validBetterAuthResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validBetterAuthResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
 
-        let origin = interceptor.lastRequest?.value(forHTTPHeaderField: "Origin")
+        let origin = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "Origin")
         #expect(origin == "https://api.example.com")
     }
 
     @Test("Sign-in request uses POST method with JSON content type")
     func signInMethodAndContentType() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validBetterAuthResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validBetterAuthResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
 
-        let request = try #require(interceptor.lastRequest)
+        let request = try #require(QueuedStubURLProtocol.capturedRequest())
         #expect(request.httpMethod == "POST")
         #expect(request.value(forHTTPHeaderField: "Content-Type") == "application/json")
     }
 
     @Test("Sign-in sends X-Device-Fingerprint header when provided")
     func signInSendsDeviceFingerprintHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validBetterAuthResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validBetterAuthResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.signInAnonymously(
@@ -79,17 +81,15 @@ struct DefaultAuthNetworkClientTests {
             deviceFingerprint: "fingerprint-uuid-1234"
         )
 
-        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "X-Device-Fingerprint")
+        let header = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "X-Device-Fingerprint")
         #expect(header == "fingerprint-uuid-1234")
     }
 
     @Test("Sign-in omits X-Device-Fingerprint header when nil")
     func signInOmitsDeviceFingerprintHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validBetterAuthResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validBetterAuthResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.signInAnonymously(
@@ -97,17 +97,15 @@ struct DefaultAuthNetworkClientTests {
             deviceFingerprint: nil
         )
 
-        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "X-Device-Fingerprint")
+        let header = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "X-Device-Fingerprint")
         #expect(header == nil)
     }
 
     @Test("fetchJWT sends X-Device-Fingerprint header when provided")
     func fetchJWTSendsDeviceFingerprintHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validJWTTokenResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validJWTTokenResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.fetchJWT(
@@ -116,17 +114,15 @@ struct DefaultAuthNetworkClientTests {
             deviceFingerprint: "fingerprint-uuid-5678"
         )
 
-        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "X-Device-Fingerprint")
+        let header = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "X-Device-Fingerprint")
         #expect(header == "fingerprint-uuid-5678")
     }
 
     @Test("fetchJWT omits X-Device-Fingerprint header when nil")
     func fetchJWTOmitsDeviceFingerprintHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validJWTTokenResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validJWTTokenResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.fetchJWT(
@@ -135,24 +131,22 @@ struct DefaultAuthNetworkClientTests {
             deviceFingerprint: nil
         )
 
-        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "X-Device-Fingerprint")
+        let header = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "X-Device-Fingerprint")
         #expect(header == nil)
     }
 
     @Test("Sign-in sends User-Agent header")
     func signInSendsUserAgentHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validBetterAuthResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validBetterAuthResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.signInAnonymously(
             baseURL: "https://api.example.com", deviceFingerprint: nil
         )
 
-        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "User-Agent")
+        let header = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "User-Agent")
         #expect(header == UserAgentHeader.value)
         // Format check: must match WXYC-iOS/<something>
         #expect(header?.hasPrefix("WXYC-iOS/") == true)
@@ -160,11 +154,9 @@ struct DefaultAuthNetworkClientTests {
 
     @Test("fetchJWT sends User-Agent header")
     func fetchJWTSendsUserAgentHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validJWTTokenResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validJWTTokenResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.fetchJWT(
@@ -173,7 +165,7 @@ struct DefaultAuthNetworkClientTests {
             deviceFingerprint: nil
         )
 
-        let header = interceptor.lastRequest?.value(forHTTPHeaderField: "User-Agent")
+        let header = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "User-Agent")
         #expect(header == UserAgentHeader.value)
     }
 
@@ -181,11 +173,9 @@ struct DefaultAuthNetworkClientTests {
 
     @Test("Parses better-auth anonymous response with nested user.id")
     func parsesBetterAuthResponse() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validBetterAuthResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validBetterAuthResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         let authSession = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
@@ -213,11 +203,9 @@ struct DefaultAuthNetworkClientTests {
         }
         """.data(using: .utf8)!
 
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = fullResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: fullResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         let authSession = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
@@ -230,13 +218,11 @@ struct DefaultAuthNetworkClientTests {
 
     @Test("Throws serverError for 403 status")
     func throwsServerErrorFor403() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = """
+        QueuedStubURLProtocol.setResponse(statusCode: 403, body: Data("""
         {"message": "Missing or null Origin", "code": "MISSING_OR_NULL_ORIGIN"}
-        """.data(using: .utf8)!
-        interceptor.responseStatusCode = 403
+        """.utf8))
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
@@ -246,11 +232,9 @@ struct DefaultAuthNetworkClientTests {
 
     @Test("Throws invalidResponse for malformed JSON")
     func throwsInvalidResponseForMalformedJSON() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = "not json".data(using: .utf8)!
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: Data("not json".utf8))
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
@@ -264,11 +248,9 @@ struct DefaultAuthNetworkClientTests {
         {"token": "abc", "user_id": "123", "expires_at": "2026-04-02T00:00:00Z"}
         """.data(using: .utf8)!
 
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = oldFormat
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: oldFormat)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
@@ -292,60 +274,52 @@ struct DefaultAuthNetworkClientTests {
 
     @Test("fetchJWT URL uses GET /auth/token path")
     func fetchJWTURLPath() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validJWTTokenResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validJWTTokenResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "session-tok", deviceFingerprint: nil)
 
-        let capturedURL = try #require(interceptor.lastRequest?.url)
+        let capturedURL = try #require(QueuedStubURLProtocol.capturedRequest()?.url)
         #expect(capturedURL.path == "/auth/token")
         #expect(capturedURL.host() == "api.example.com")
 
-        let request = try #require(interceptor.lastRequest)
+        let request = try #require(QueuedStubURLProtocol.capturedRequest())
         #expect(request.httpMethod == "GET")
     }
 
     @Test("fetchJWT includes Authorization: Bearer header with session token")
     func fetchJWTAuthorizationHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validJWTTokenResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validJWTTokenResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "my-session-token", deviceFingerprint: nil)
 
-        let auth = interceptor.lastRequest?.value(forHTTPHeaderField: "Authorization")
+        let auth = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "Authorization")
         #expect(auth == "Bearer my-session-token")
     }
 
     @Test("fetchJWT includes Origin header matching baseURL")
     func fetchJWTOriginHeader() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validJWTTokenResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validJWTTokenResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
 
-        let origin = interceptor.lastRequest?.value(forHTTPHeaderField: "Origin")
+        let origin = QueuedStubURLProtocol.capturedRequest()?.value(forHTTPHeaderField: "Origin")
         #expect(origin == "https://api.example.com")
     }
 
     @Test("fetchJWT returns token string from response")
     func fetchJWTReturnsToken() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = validJWTTokenResponse
-        interceptor.responseStatusCode = 200
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validJWTTokenResponse)
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         let jwt = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
@@ -355,13 +329,11 @@ struct DefaultAuthNetworkClientTests {
 
     @Test("fetchJWT throws serverError for non-200 status")
     func fetchJWTThrowsServerError() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = """
+        QueuedStubURLProtocol.setResponse(statusCode: 401, body: Data("""
         {"error": "Unauthorized"}
-        """.data(using: .utf8)!
-        interceptor.responseStatusCode = 401
+        """.utf8))
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
@@ -371,13 +343,11 @@ struct DefaultAuthNetworkClientTests {
 
     @Test("fetchJWT throws invalidResponse for missing token field")
     func fetchJWTThrowsInvalidResponseForMissingToken() async throws {
-        let interceptor = AuthRequestInterceptor()
-        interceptor.responseBody = """
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: Data("""
         {"error": "nope"}
-        """.data(using: .utf8)!
-        interceptor.responseStatusCode = 200
+        """.utf8))
 
-        let session = makeSession(interceptor: interceptor)
+        let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
         await #expect(throws: AuthenticationError.self) {
@@ -415,44 +385,3 @@ private let validJWTTokenResponse = """
     "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjoxNzM1Njg5NjAwfQ.fakesig"
 }
 """.data(using: .utf8)!
-
-/// URLProtocol subclass that intercepts requests and returns configured responses.
-private final class AuthRequestInterceptor: URLProtocol, @unchecked Sendable {
-    nonisolated(unsafe) static var current: AuthRequestInterceptor?
-
-    nonisolated(unsafe) var responseBody: Data = Data()
-    nonisolated(unsafe) var responseStatusCode: Int = 200
-    nonisolated(unsafe) var lastRequest: URLRequest?
-
-    override class func canInit(with request: URLRequest) -> Bool {
-        true
-    }
-
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
-        request
-    }
-
-    override func startLoading() {
-        Self.current?.lastRequest = request
-
-        let response = HTTPURLResponse(
-            url: request.url!,
-            statusCode: Self.current?.responseStatusCode ?? 200,
-            httpVersion: "HTTP/1.1",
-            headerFields: ["Content-Type": "application/json"]
-        )!
-
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Self.current?.responseBody ?? Data())
-        client?.urlProtocolDidFinishLoading(self)
-    }
-
-    override func stopLoading() {}
-}
-
-private func makeSession(interceptor: AuthRequestInterceptor) -> URLSession {
-    AuthRequestInterceptor.current = interceptor
-    let config = URLSessionConfiguration.ephemeral
-    config.protocolClasses = [AuthRequestInterceptor.self]
-    return URLSession(configuration: config)
-}

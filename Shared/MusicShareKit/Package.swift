@@ -36,6 +36,7 @@ let package = Package(
                 "MusicShareKit",
                 .product(name: "AnalyticsTesting", package: "Analytics"),
                 .product(name: "Caching", package: "Caching"),
+                .product(name: "CoreTesting", package: "Core"),
             ]),
     ]
 )
