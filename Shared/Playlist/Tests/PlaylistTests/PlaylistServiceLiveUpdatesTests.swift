@@ -279,7 +279,7 @@ struct PlaylistServiceLiveUpdatesTests {
         // there would orphan the live loop and let a third start alongside it.
         await service.setForegrounded(false)
         await service.setForegrounded(true)
-        #expect(await waitUntil { source.connectCount == 2 })
+        #expect(await waitUntil(timeout: .seconds(2)) { source.connectCount == 2 })
 
         // Give the superseded loop every opportunity to run its teardown.
         for _ in 0..<50 { await Task.yield() }
