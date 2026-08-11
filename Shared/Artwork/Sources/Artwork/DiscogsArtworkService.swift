@@ -118,6 +118,16 @@ extension [URLQueryItem] {
 // MARK: - Discogs API Models
 
 public struct Discogs {
+    /// Shared `{id, name}` shape used by `Release.labels`, `Release.artists`,
+    /// and `Master.artists` — the release-label and release/master-artist
+    /// sub-objects the Discogs API returns are structurally identical, and
+    /// none of the three declares custom `CodingKeys` or `init(from:)`, so
+    /// collapsing them changes nothing about decoding.
+    struct NamedEntity: Codable {
+        let id: Int
+        let name: String
+    }
+
     public struct SearchResults: Codable {
         public let results: [SearchResult]
     }
@@ -213,20 +223,10 @@ public struct Discogs {
         let id: Int
         let title: String
         let year: Int?
-        let labels: [Label]?
-        let artists: [ReleaseArtist]?
+        let labels: [NamedEntity]?
+        let artists: [NamedEntity]?
         let uri: String?
-        
-        struct Label: Codable {
-            let name: String
-            let id: Int
-        }
-        
-        struct ReleaseArtist: Codable {
-            let id: Int
-            let name: String
-        }
-        
+
         public var primaryLabel: String? {
             labels?.first?.name
         }
@@ -248,13 +248,8 @@ public struct Discogs {
         let title: String
         let year: Int?
         let uri: String?
-        let artists: [ReleaseArtist]?
-        
-        struct ReleaseArtist: Codable {
-            let id: Int
-            let name: String
-        }
-        
+        let artists: [NamedEntity]?
+
         public var primaryArtistId: Int? {
             artists?.first?.id
         }
