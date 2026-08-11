@@ -96,6 +96,11 @@ struct PlayWXYCAudioTests {
     // dropped the await would be caught here even though `perform()` itself
     // can't be called with a fake underneath it.
 
+    // `FakeIntentPlaybackController` and `startAndAwait` are both `@MainActor`
+    // (the intents only ever run there), and this suite -- unlike
+    // `IntentPlaybackTests` -- is not actor-isolated, so these two tests opt in
+    // per-function rather than isolating the six entity-resolution tests above.
+    @MainActor
     @Test("perform()'s playback call starts with reason .playAudioSchemaIntent and reports success once playing")
     func performsPlaybackCallReportsSuccessWhenPlaying() async {
         guard #available(iOS 27.0, *) else { return }
@@ -113,6 +118,7 @@ struct PlayWXYCAudioTests {
         #expect(controller.playedReasons == [.playAudioSchemaIntent])
     }
 
+    @MainActor
     @Test("perform()'s playback call reports failure when playback never starts within the timeout")
     func performsPlaybackCallReportsFailureOnTimeout() async {
         guard #available(iOS 27.0, *) else { return }
