@@ -448,5 +448,5 @@ nonisolated func collectBugReportLogs() -> [LogAttachment] {
     StationView()
         .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
-        .background(WXYCBackground())
+        .background(WXYCGradient())
 }

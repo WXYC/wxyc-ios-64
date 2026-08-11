@@ -184,5 +184,5 @@ struct LikedTabView: View {
 #Preview {
     LikedTabView()
         .environment(Singletonia.shared)
-        .background(WXYCBackground())
+        .background(WXYCGradient())
 }

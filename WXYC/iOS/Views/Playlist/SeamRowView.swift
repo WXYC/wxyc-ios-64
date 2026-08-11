@@ -77,5 +77,5 @@ struct SeamRowView: View {
         SeamRowView(seam: Seam(id: 4, hasMicBreak: true, breakpoint: breakpoint))
     }
     .padding()
-    .background(WXYCBackground())
+    .background(WXYCGradient())
 }
