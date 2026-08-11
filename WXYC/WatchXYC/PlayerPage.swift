@@ -106,7 +106,6 @@ struct PlayerPage: View {
             }
             #endif
             .task {
-                guard let playlistService else { return }
                 for await playlist in playlistService.updates() {
                     self.playlist = playlist
                 }

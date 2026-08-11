@@ -98,19 +98,3 @@ public protocol PlaybackController: AnyObject, Observable {
     func handleAppWillEnterForeground()
     #endif
 }
-
-// MARK: - Environment Key
-
-private struct PlaybackControllerKey: @MainActor EnvironmentKey {
-    @MainActor static var defaultValue: (any PlaybackController)? = nil
-}
-
-// MARK: - Environment Values Extension
-
-public extension EnvironmentValues {
-    /// The playback controller to use for audio playback
-    @MainActor var playbackController: (any PlaybackController)? {
-        get { self[PlaybackControllerKey.self] }
-        set { self[PlaybackControllerKey.self] = newValue }
-    }
-}

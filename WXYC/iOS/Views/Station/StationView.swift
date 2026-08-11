@@ -118,7 +118,6 @@ struct StationView: View {
         }
         .accessibilityIdentifier("stationView")
         .task {
-            guard let playlistService else { return }
             for await playlist in playlistService.updates() {
                 onAir = playlist.onAir
             }

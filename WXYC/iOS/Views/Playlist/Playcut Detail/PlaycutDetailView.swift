@@ -45,9 +45,7 @@ struct PlaycutDetailView: View {
     @Namespace private var artworkNamespace
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.artworkService) private var artworkService
     @Environment(\.colorScheme) var colorScheme
-    @Environment(\.reviewRequestService) var reviewRequestService
     @Environment(\.upcomingShowResolver) private var upcomingShowResolver
     @Environment(Singletonia.self) private var appState
     /// The interpolated theme snapshot, source of the ticket's palette. Reading it
@@ -330,8 +328,8 @@ struct PlaycutDetailView: View {
             }
 
             // Store in artwork service cache so playlist rows pick it up
-            if let artworkService, let cgImage = image.cgImage {
-                await artworkService.cacheExternalArtwork(cgImage, for: playcut)
+            if let cgImage = image.cgImage {
+                await appState.artworkService.cacheExternalArtwork(cgImage, for: playcut)
             }
 
             await MainActor.run {
@@ -392,7 +390,7 @@ struct PlaycutDetailView: View {
             try? await intent.donate()
         }
 
-        reviewRequestService?.recordSongAddedToLibrary()
+        appState.reviewRequestService.recordSongAddedToLibrary()
     }
 }
 
