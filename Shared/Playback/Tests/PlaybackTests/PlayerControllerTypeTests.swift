@@ -10,6 +10,7 @@ import Testing
 import Foundation
 import PostHog
 @testable import Playback
+@testable import PlaybackCore
 
 @Suite("PlayerControllerType Experiment Tests")
 @MainActor
@@ -85,39 +86,44 @@ struct PlayerControllerTypeTests {
 @MainActor
 struct HLSEnvironmentTests {
 
-    init() {
-        HLSEnvironment.clearOverride()
+    // The three UserDefaults-touching tests below used to share the process-wide
+    // `.wxyc` app-group suite via the public `HLSEnvironment.loadActive()` /
+    // `.persist()` / `.clearOverride()` entry points. Swift Testing runs sibling
+    // `@Test` functions concurrently, so one instance's `init()` clearing that
+    // shared suite could race another instance's `persist()`, wiping its state
+    // before the assertion ran — reproduced locally at 4/8 full-suite runs
+    // failing on exactly this interleaving (#371). Each test below now drives an
+    // isolated `UserDefaults` suite through the internal `defaults:`-injectable
+    // overloads instead, so no two tests can ever observe each other's writes.
+    // The remaining pure-value tests (urlIsNonEmpty / stagingURLIsCorrect /
+    // productionURLIsCorrect) never touched UserDefaults and were never at risk.
+
+    /// Creates a fresh, isolated `UserDefaults` suite so concurrent test
+    /// instances can't bleed into each other's persisted state.
+    private func makeTestDefaults() -> UserDefaults {
+        let suiteName = "com.wxyc.test.HLSEnvironmentTests.\(UUID().uuidString)"
+        return UserDefaults(suiteName: suiteName)!
     }
 
-    // The three UserDefaults-touching tests below carry the flake trait. The remaining
-    // pure-value tests (urlIsNonEmpty / stagingURLIsCorrect / productionURLIsCorrect)
-    // don't share the parallel-instance UserDefaults bleed mechanism and stay on. #371.
-
-    @Test(
-        "Default environment is production",
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-    )
+    @Test("Default environment is production")
     func defaultIsProduction() {
-        #expect(HLSEnvironment.loadActive() == .production)
+        let defaults = makeTestDefaults()
+        #expect(HLSEnvironment.loadActive(from: defaults) == .production)
     }
 
-    @Test(
-        "Manual override persists and loads",
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-    )
+    @Test("Manual override persists and loads")
     func manualOverride() {
-        HLSEnvironment.staging.persist()
-        #expect(HLSEnvironment.loadActive() == .staging)
+        let defaults = makeTestDefaults()
+        HLSEnvironment.staging.persist(to: defaults)
+        #expect(HLSEnvironment.loadActive(from: defaults) == .staging)
     }
 
-    @Test(
-        "Clearing override reverts to default",
-        .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-    )
+    @Test("Clearing override reverts to default")
     func clearOverride() {
-        HLSEnvironment.staging.persist()
-        HLSEnvironment.clearOverride()
-        #expect(HLSEnvironment.loadActive() == .production)
+        let defaults = makeTestDefaults()
+        HLSEnvironment.staging.persist(to: defaults)
+        HLSEnvironment.clearOverride(from: defaults)
+        #expect(HLSEnvironment.loadActive(from: defaults) == .production)
     }
 
     @Test("Each environment has a distinct URL", arguments: HLSEnvironment.allCases)
