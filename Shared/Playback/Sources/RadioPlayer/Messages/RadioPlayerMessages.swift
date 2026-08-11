@@ -13,42 +13,6 @@ import Foundation
 import AVFoundation
 import Core
 
-// MARK: - Rate Change Message
-
-/// Message for AVPlayer rate changes, indicating playback state transitions.
-struct PlayerRateDidChangeMessage: MainActorNotificationMessage {
-    typealias Subject = AVPlayer
-
-    static var name: Notification.Name {
-        AVPlayer.rateDidChangeNotification
-    }
-
-    /// The new playback rate (> 0 means playing)
-    let rate: Float
-
-    static func makeMessage(_ notification: sending Notification) -> Self? {
-        // Extract rate from the player object if available
-        if let player = notification.object as? AVPlayer {
-            return Self(rate: player.rate)
-        }
-        // For mock players in tests, check userInfo
-        if let rate = notification.userInfo?["rate"] as? Float {
-            return Self(rate: rate)
-        }
-        // Default to 0 if we can't determine rate
-        return Self(rate: 0)
-    }
-
-    @MainActor
-    static func makeNotification(_ message: Self, object: AVPlayer?) -> Notification {
-        Notification(
-            name: name,
-            object: object,
-            userInfo: ["rate": message.rate]
-        )
-    }
-}
-
 // MARK: - Playback Stalled Message
 
 /// Message for AVPlayerItem playback stalls.

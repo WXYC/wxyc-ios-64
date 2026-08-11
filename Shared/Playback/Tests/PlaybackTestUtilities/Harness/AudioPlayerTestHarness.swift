@@ -255,7 +255,7 @@ public final class AudioPlayerTestHarness {
             // Post rate change message - synchronous on MainActor via MainActorNotificationMessage
             mockPlayer?.rate = 1.0
             notificationCenter.post(
-                PlayerRateDidChangeMessage(rate: 1.0),
+                RateDidChangeMessage(rate: 1.0),
                 subject: nil as AVPlayer?
             )
         }
@@ -330,7 +330,7 @@ public final class AudioPlayerTestHarness {
             // Rate change message indicates recovery - synchronous on MainActor
             mockPlayer?.rate = 1.0
             notificationCenter.post(
-                PlayerRateDidChangeMessage(rate: 1.0),
+                RateDidChangeMessage(rate: 1.0),
                 subject: nil as AVPlayer?
             )
         }

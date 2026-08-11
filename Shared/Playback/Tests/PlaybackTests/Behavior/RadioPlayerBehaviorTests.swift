@@ -81,7 +81,7 @@ struct RadioPlayerBehaviorTests {
         let firstCount = mockPlayer.playCallCount
 
         // Simulate player started playing via notification
-        // PlayerRateDidChangeMessage reads rate from userInfo when object isn't AVPlayer
+        // RateDidChangeMessage reads rate from userInfo when object isn't AVPlayer
         notificationCenter.post(
             name: AVPlayer.rateDidChangeNotification,
             object: nil,
