@@ -17,10 +17,11 @@
 //
 
 #if compiler(>=6.4)
+#if !os(watchOS) && !os(tvOS)
 import AppIntents
 import PlaybackCore
 
-@available(iOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 @AppIntent(schema: .audio.playAudio)
 struct PlayWXYCAudio: AudioPlaybackIntent {
     var audioEntity: AudioItem
@@ -33,4 +34,5 @@ struct PlayWXYCAudio: AudioPlaybackIntent {
         return .result()
     }
 }
+#endif
 #endif
