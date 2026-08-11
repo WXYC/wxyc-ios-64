@@ -9,6 +9,23 @@
 //  Created by Jake Bromberg on 05/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
+//  #786: kept deliberately distinct from `CoreTesting.QueuedStubURLProtocol`
+//  rather than folded into it. The two solve the same underlying problem
+//  ("a URLProtocol's registration is by class, so its state is shared") with
+//  different routing keys, and the choice is load-bearing here: this file's
+//  state is keyed by *request URL*, which lets `FlowsheetLiveEventSourceTests`,
+//  `PlaylistDataSourceV1Tests`, and `PlaylistDataSourceV2Tests` each stub
+//  their own distinct URL (`URL.WXYCPlaylist`, `URL.WXYCFlowsheet`, ...) and
+//  run as three independent, non-`.serialized`-with-each-other adopters in
+//  the same bundle. `QueuedStubURLProtocol` keys by a single global
+//  handler/queue instead, so it caps a bundle at one adopting suite (see its
+//  header doc's "one adopter per bundle" note) — merging these three
+//  consumers under that model would force them into one suite the way
+//  Metadata's Playcut-service suites were merged for #786, for no benefit
+//  here since they don't share fixtures or a service under test. Folding
+//  would trade a genuine capability (N independent concurrent adopters) for
+//  consistency alone.
+//
 
 import Foundation
 import os
