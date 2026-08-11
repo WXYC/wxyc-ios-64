@@ -66,6 +66,22 @@ struct StructuredPostHogAnalyticsTests {
     }
 }
 
+/// Recording double for `PostHogClientProtocol`, shared by this suite and
+/// `StructuredPostHogAnalyticsConcurrencyTests`.
+///
+/// Synchronized so the recorder itself can't be what races: the concurrency
+/// suite hammers one instance from a task group, and the `Sendable` refinement
+/// #309 put on `PostHogClientProtocol` requires conformers to mean it.
+///
+/// `NSLock` rather than `Mutex`, deliberately. The repo default is `Mutex`
+/// (see `MockStructuredAnalytics`, #816), but that only works when the guarded
+/// value is `Sendable`. `Captured.properties` is `[String: Any]?` — PostHog's
+/// own property shape — so `Mutex<[Captured]>` cannot hand a snapshot back out:
+/// `withLock`'s `inout sending Value` makes any value derived from the payload
+/// task-isolated, and the getter fails to compile with "'inout sending'
+/// parameter '$0' cannot be task-isolated at end of function". The only way to
+/// reach `Mutex` here is to declare `Captured: @unchecked Sendable`, which
+/// would be a worse lie than the one this annotation makes honest.
 final class CapturingPostHogClient: PostHogClientProtocol, @unchecked Sendable {
     struct Captured {
         let name: String
@@ -75,13 +91,14 @@ final class CapturingPostHogClient: PostHogClientProtocol, @unchecked Sendable {
     private let lock = NSLock()
     private var _events: [Captured] = []
 
+    /// A snapshot of everything captured so far, in capture order.
     var events: [Captured] {
         lock.withLock { _events }
     }
 
     func capture(_ name: String, properties: [String: Any]?) {
         lock.withLock {
-            _events.append(.init(name: name, properties: properties))
+            _events.append(Captured(name: name, properties: properties))
         }
     }
 }
