@@ -297,15 +297,16 @@ struct DiskCacheDurabilityTests {
         }
         #expect(isExcluded == false)
     }
+}
 
-    // MARK: - Helpers
+// MARK: - Helpers
 
-    private func removeCachesSubdirectory(_ subdirectory: String) {
-        guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
-            return
-        }
-        try? FileManager.default.removeItem(at: caches.appending(path: subdirectory))
+/// File-scoped so both suites in this file share one cleanup path.
+private func removeCachesSubdirectory(_ subdirectory: String) {
+    guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+        return
     }
+    try? FileManager.default.removeItem(at: caches.appending(path: subdirectory))
 }
 
 // MARK: - Rename-failure reporting
@@ -318,14 +319,11 @@ struct DiskCacheRenameFailureReportingTests {
     func renameFailureIsReportedThroughErrorReporting() throws {
         let subdirectory = "rename-failure-\(UUID().uuidString)"
         let cache = DiskCache(subdirectory: subdirectory)
-        defer {
-            if let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
-                try? FileManager.default.removeItem(at: caches.appending(path: subdirectory))
-            }
-        }
+        defer { removeCachesSubdirectory(subdirectory) }
 
         let caches = try #require(FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first)
-        let destination = caches.appending(path: subdirectory).appending(path: "entry")
+        let cacheDirectory = caches.appending(path: subdirectory)
+        let destination = cacheDirectory.appending(path: "entry")
 
         // rename(2) fails with EISDIR when "to" already exists as a directory and
         // "from" is a regular file (the atomic write's temp file always is) — a
@@ -343,8 +341,24 @@ struct DiskCacheRenameFailureReportingTests {
         let renameErrors = mockReporter.errors(in: "DiskCache writeAtomically: rename")
         #expect(!renameErrors.isEmpty,
                 "a failed rename must be reported through ErrorReporting, not just os_log — a persistent rename outage is a silent total write outage")
+
+        // Pins the errno capture, not just the report: the value has to be the
+        // one rename(2) actually set. Reading the ambient errno later — as this
+        // leg used to — can surface whatever an intervening libc call left behind.
+        let report = try #require(renameErrors.first)
+        #expect(report.category == .caching)
+        #expect(report.additionalData["file"] == "entry")
+        #expect(report.additionalData["errno"] == "\(EISDIR)",
+                "the reported errno must be the one rename(2) set (EISDIR), captured inside the closure")
+
         #expect(FileManager.default.fileExists(atPath: destination.path),
                 "the pre-existing directory (standing in for an intact prior entry) must survive an abandoned rename")
+
+        // The abandoned write must not leak its temp file into the cache directory.
+        let leftovers = try FileManager.default
+            .contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil)
+            .filter(DiskCache.isTempFile)
+        #expect(leftovers.isEmpty, "an abandoned rename must clean up its temp file")
     }
 }
 
