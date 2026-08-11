@@ -29,9 +29,11 @@ struct PlaybackInterruptionRouteHandlerTests {
 
     /// Records every hook invocation and lets a test drive `isPlaying` /
     /// `wasPlayingBeforeRouteDisconnect` as controllable state, mirroring how
-    /// a real controller would wire the component.
+    /// a real controller would wire the component. Conforms to
+    /// `PlaybackInterruptionContext` directly (#804), the same way
+    /// `AudioPlayerController` / `RadioPlayerController` do.
     @MainActor
-    private final class Fixture {
+    private final class Fixture: PlaybackInterruptionContext {
         let notificationCenter = NotificationCenter()
         let analytics = MockStructuredAnalytics()
 
@@ -49,16 +51,13 @@ struct PlaybackInterruptionRouteHandlerTests {
         private(set) var interruptionEndedWithoutResumeCount = 0
         private(set) var routeChangeRestartFallbackCount = 0
 
+        func stop(reason: PlaybackReason) { stopCalls.append(reason) }
+        func play(reason: PlaybackReason) throws { playCalls.append(reason) }
+
         lazy var handler = PlaybackInterruptionRouteHandler(
             notificationCenter: notificationCenter,
-            isPlaying: { [weak self] in self?.isPlaying ?? false },
-            sessionID: { [weak self] in self?.sessionID },
-            playbackDuration: { [weak self] in self?.playbackDuration ?? 0 },
+            context: self,
             analytics: analytics,
-            stop: { [weak self] reason in self?.stopCalls.append(reason) },
-            play: { [weak self] reason in self?.playCalls.append(reason) },
-            getWasPlayingBeforeRouteDisconnect: { [weak self] in self?.wasPlayingBeforeRouteDisconnect ?? false },
-            setWasPlayingBeforeRouteDisconnect: { [weak self] value in self?.wasPlayingBeforeRouteDisconnect = value },
             onInterruptionReceived: { [weak self] type in self?.interruptionsReceived.append(type) },
             onInterruptionWillStopForPlayback: { [weak self] in self?.willStopForPlaybackCount += 1 },
             onInterruptionBeganHandled: { [weak self] in self?.interruptionBeganHandledCount += 1 },
@@ -282,18 +281,27 @@ struct PlaybackInterruptionRouteHandlerTests {
 
     @Test("Deallocating the handler removes its notification observers")
     func deallocatingRemovesObservers() {
+        /// Trivial no-op conformance — this test only exercises `deinit`'s
+        /// observer teardown, not the state the context carries.
+        final class NoOpContext: PlaybackInterruptionContext {
+            var isPlaying = false
+            var sessionID: String?
+            var playbackDuration: TimeInterval = 0
+            var wasPlayingBeforeRouteDisconnect = false
+            func stop(reason: PlaybackReason) {}
+            func play(reason: PlaybackReason) throws {}
+        }
+
         var interruptionsReceived: [AVAudioSession.InterruptionType] = []
         let center = NotificationCenter()
+        // Held strongly here: the handler only holds `context` weakly (matching
+        // the pre-#804 closures, each of which captured its controller `[weak self]`),
+        // so an unretained temporary would deallocate before this test could use it.
+        let context = NoOpContext()
         var localHandler: PlaybackInterruptionRouteHandler? = PlaybackInterruptionRouteHandler(
             notificationCenter: center,
-            isPlaying: { false },
-            sessionID: { nil },
-            playbackDuration: { 0 },
+            context: context,
             analytics: MockStructuredAnalytics(),
-            stop: { _ in },
-            play: { _ in },
-            getWasPlayingBeforeRouteDisconnect: { false },
-            setWasPlayingBeforeRouteDisconnect: { _ in },
             onInterruptionReceived: { interruptionsReceived.append($0) }
         )
         _ = localHandler
@@ -305,6 +313,38 @@ struct PlaybackInterruptionRouteHandlerTests {
 
         center.post(InterruptionMessage(type: .began, options: []), subject: nil as AVAudioSession?)
         #expect(interruptionsReceived == [.began], "No further delivery once the handler is deallocated")
+    }
+
+    // MARK: - No retain cycle (#804)
+
+    @Test("The handler holds its context weakly, so the owning controller can still deallocate")
+    func handlerDoesNotRetainContext() {
+        final class NoOpContext: PlaybackInterruptionContext {
+            var isPlaying = false
+            var sessionID: String?
+            var playbackDuration: TimeInterval = 0
+            var wasPlayingBeforeRouteDisconnect = false
+            func stop(reason: PlaybackReason) {}
+            func play(reason: PlaybackReason) throws {}
+        }
+
+        var context: NoOpContext? = NoOpContext()
+        weak var weakContext = context
+        let handler = PlaybackInterruptionRouteHandler(
+            notificationCenter: NotificationCenter(),
+            context: context!,
+            analytics: MockStructuredAnalytics()
+        )
+        _ = handler
+
+        // Drop the only other strong reference. If the handler stored
+        // `context` strongly (rather than `weak`), this would be a no-op and
+        // `weakContext` would still resolve — exactly the retain cycle #804
+        // must not introduce, since every real controller owns its handler
+        // strongly and would pass itself as `context`.
+        context = nil
+
+        #expect(weakContext == nil, "PlaybackInterruptionRouteHandler must not retain its context strongly")
     }
 }
 #endif
