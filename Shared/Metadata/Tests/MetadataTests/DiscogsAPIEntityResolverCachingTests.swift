@@ -31,15 +31,26 @@
 //  `.serialized` and don't contend for that type's one-adopter-per-bundle
 //  slot.
 //
-//  On `FailFastURLProtocol` alone NOT being load-bearing for the three
-//  cache-hit tests below: `cachedFetch` (Caching) returns straight from a
-//  cache hit without ever calling `fetch`, so `urlSession` is never touched
-//  in a passing run — mutating `FailFastURLProtocol` to succeed instead of
-//  fail changes nothing observable. Each test now also asserts
-//  `mockCache.setCallCount == 0`, since `cachedFetch` only calls `cache.set`
-//  on its fetch-and-recache path, never on a hit — that is what actually
-//  proves the fetch closure never ran, independent of what the injected
-//  session would have done had it been reached.
+//  #877: why the three cache-hit tests below assert `setCallCount` and not
+//  just the resolved value. `cachedFetch` (Caching) returns straight from a
+//  cache hit without ever calling `fetch`, so `urlSession` is untouched in a
+//  passing run — mutating `FailFastURLProtocol` to succeed changes nothing
+//  observable while the tests pass. It is NOT inert under regression,
+//  though: bypass the cache read and the real stub throws
+//  `URLError(.notConnectedToInternet)`, which `cachedFetch`'s no-fallback
+//  overload propagates, so `try await resolver.resolveArtist(...)` fails the
+//  test before it reaches any assertion. The stub is a genuine backstop —
+//  just a coarse one, reporting a cache regression as `NSURLErrorDomain
+//  -1009`, which reads like a network problem rather than a cache problem.
+//
+//  What it cannot catch is a bypass whose fetch *succeeds* — a working stub,
+//  a reachable network, or some future `cachedFetch` that writes on a hit.
+//  Verified: with the cache read bypassed AND the stub returning a body that
+//  decodes to the value already cached, `result ==` still passed and only
+//  `setCallCount` failed. So each test now also asserts
+//  `mockCache.setCallCount == 0` — `cachedFetch` calls `cache.set` only on
+//  its fetch-and-recache path, never on a hit — which covers that wider
+//  class and names the actual failure instead of blaming the network.
 //
 
 import Testing
@@ -69,13 +80,11 @@ struct DiscogsAPIEntityResolverCachingTests {
         // When
         let result = try await resolver.resolveArtist(id: 12345)
 
-        // Then — FailFastURLProtocol backs `urlSession` so a network attempt
-        // would throw, but that alone isn't load-bearing here: a cache hit
-        // never reaches `urlSession` at all, so this assertion would pass
-        // identically whether the injected session failed or silently
-        // succeeded. `setCallCount` is what actually proves no fetch-and-
-        // recache happened — `cachedFetch` only calls `cache.set` on its
-        // fetch path, never on a hit.
+        // Then — FailFastURLProtocol backs `urlSession`, so a bypass of the
+        // cache read throws out of the resolver and fails this test on its
+        // own. `setCallCount` covers the case that stub can't: a bypass whose
+        // fetch succeeds and happens to return the cached value, which the
+        // equality check below would wave through. See the file header.
         #expect(result == "Cached Artist Name")
         #expect(mockCache.setCallCount == 0, "A cache hit must not fetch and recache")
     }
@@ -94,8 +103,8 @@ struct DiscogsAPIEntityResolverCachingTests {
         // When
         let result = try await resolver.resolveRelease(id: 54321)
 
-        // Then — see resolveArtistReturnsCached for why setCallCount, not
-        // FailFastURLProtocol, is what actually proves no fetch happened.
+        // Then — see resolveArtistReturnsCached for what setCallCount adds
+        // over FailFastURLProtocol's coarser backstop.
         #expect(result == "Cached Album Title")
         #expect(mockCache.setCallCount == 0, "A cache hit must not fetch and recache")
     }
@@ -114,8 +123,8 @@ struct DiscogsAPIEntityResolverCachingTests {
         // When
         let result = try await resolver.resolveMaster(id: 11111)
 
-        // Then — see resolveArtistReturnsCached for why setCallCount, not
-        // FailFastURLProtocol, is what actually proves no fetch happened.
+        // Then — see resolveArtistReturnsCached for what setCallCount adds
+        // over FailFastURLProtocol's coarser backstop.
         #expect(result == "Cached Master Title")
         #expect(mockCache.setCallCount == 0, "A cache hit must not fetch and recache")
     }
