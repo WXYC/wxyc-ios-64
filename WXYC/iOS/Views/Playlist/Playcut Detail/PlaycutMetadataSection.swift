@@ -75,19 +75,25 @@ struct PlaycutMetadataSection: View {
     @Previewable @State var isShowingLightbox = false
     @Previewable @Namespace var previewNamespace
 
+    // The album block and the header's playcut have to describe the *same*
+    // release — this preview stacks them, so a mismatched label reads as a real
+    // (and wrong) record rather than as fixture data.
     let metadata = PlaycutMetadata(
         artist: .empty,
         album: AlbumMetadata(
-            label: "Warp",
-            releaseYear: 2001,
-            genres: ["Electronic"],
-            styles: ["IDM", "Abstract"]
+            label: "Drag City",
+            releaseYear: 2015,
+            genres: ["Rock"],
+            styles: ["Folk Rock", "Acoustic"]
         ),
         streaming: .empty
     )
 
     PlaycutLoadingSection()
 
+    // Built through `Playcut.init` rather than `Playcut.stub()`: the app target
+    // doesn't link `PlaylistTesting`. See `PreviewFixtures` for why, and
+    // `docs/test-fixtures.md` for the canonical values used here.
     PlaycutHeaderSection(
         playcut: Playcut(
             id: 0,

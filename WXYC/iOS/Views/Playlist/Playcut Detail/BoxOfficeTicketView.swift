@@ -543,6 +543,13 @@ private extension TicketColors {
 /// detail view. When the data source is wired, this is the layout the real
 /// `BoxOfficeTicketView(show:)` drops into (see `PlaycutDetailView` line ~55).
 private struct BoxOfficeTicketDetailContextPreview: View {
+    // Deliberately *not* one of the four `docs/test-fixtures.md` tracks, and
+    // deliberately not `Playcut.stub()` (the app target doesn't link
+    // `PlaylistTesting` — see `PreviewFixtures`). The whole point of this mockup
+    // is that the playcut and `Concert.previewInContext` name the same artist,
+    // so the ticket reads as "the band you're looking at is playing nearby".
+    // Nilüfer Yanya is in the org's canonical artist pool; swapping her for a
+    // fixture-table artist would desynchronize the pair and destroy the mockup.
     private let playcut = Playcut(
         id: 1, hour: 0, chronOrderID: 1, timeCreated: 0,
         songTitle: "Method Actor",
