@@ -66,34 +66,17 @@ final class YouTubeMusicService: MusicServiceProvider {
     
     func fetchMetadata(for track: MusicTrack) async throws -> MusicTrack {
         guard let videoId = track.identifier else { return track }
-        
-        // Use YouTube oEmbed API (no auth required)
-        // API: https://www.youtube.com/oembed?url={url}&format=json
-        var components = URLComponents(string: "https://www.youtube.com/oembed")!
-        components.queryItems = [
-            URLQueryItem(name: "url", value: track.url.absoluteString),
-            URLQueryItem(name: "format", value: "json"),
-        ]
-        guard let apiURL = components.url else {
-            return track
-        }
-        
-        let (data, _) = try await URLSession.shared.data(from: apiURL)
-        
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return track
-        }
-        
-        // Extract metadata from oEmbed response
-        let title = json["title"] as? String
-        let artist = json["author_name"] as? String
-        
-        // Use direct YouTube thumbnail URL for better quality than oEmbed thumbnail
+
+        // Use YouTube's oEmbed API (no auth required) for title/artist.
+        let response = try await OEmbedClient.fetch(endpoint: "https://www.youtube.com/oembed", trackURL: track.url)
+
+        // Use the direct YouTube thumbnail URL for better quality than oEmbed's own thumbnail
+        // (oEmbed's response.thumbnailURL is intentionally not used here).
         let artworkURL = try await fetchHighQualityThumbnail(videoId: videoId)
-        
+
         // album: nil — YouTube doesn't have albums, and every YouTube track already starts
         // with a nil album from parse(url:), so this leaves it unchanged either way.
-        return track.merging(title: title, artist: artist, album: nil, artworkURL: artworkURL)
+        return track.merging(title: response.title, artist: response.authorName, album: nil, artworkURL: artworkURL)
     }
     
     private func fetchHighQualityThumbnail(videoId: String) async throws -> URL? {
