@@ -5,7 +5,7 @@
 //  Parameterized tests for stream error analytics reporting.
 //  Ensures consistent error reporting across all PlaybackController implementations.
 //
-//  Created by Claude on 01/17/26.
+//  Created on 01/17/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
@@ -36,9 +36,16 @@ import Core
 /// `backoffExhausted` — a deliberate ~3s cold-connect grace window (see that
 /// function's comment) so a still-connecting stream isn't torn down early.
 /// `RadioPlayerController`'s equivalent path has no such grace window, which is
-/// why only the `AudioPlayerController` argument ever failed. Waiting the
-/// package-wide `stallTolerantTimeout` (30s, comfortably past the 3s floor)
-/// instead of a bespoke 2s budget fixes this without weakening the assertion.
+/// why only the `AudioPlayerController` argument ever failed.
+///
+/// The floor is therefore `maximumAttempts × 3s`, not a flat 3s — each failed
+/// attempt burns its own grace window before the ramp re-enters. Measured on
+/// the iPhone 17 simulator: the four `maximumAttempts: 1` tests take ~4.0s
+/// each, and `streamErrorIncludesReconnectAttemptCount` (`maximumAttempts: 2`)
+/// takes ~7.1s. Waiting the package-wide `stallTolerantTimeout` (30s, ~4x that
+/// worst case) instead of a bespoke 2s budget fixes this without weakening
+/// anything: the assertions are unchanged, only the patience is. Raising
+/// `maximumAttempts` in these tests raises the floor with it.
 @Suite("Stream Error Analytics Tests")
 @MainActor
 struct StreamErrorAnalyticsTests {
@@ -266,9 +273,10 @@ struct StreamErrorAnalyticsTests {
 // MARK: - Startup Timeout Classification
 
 /// Deterministic classification test for the startup watchdog escalation
-/// (Sentry IOS-31). Kept in its own suite — not gated behind the #371 flake skip
-/// that disables `StreamErrorAnalyticsTests` — because the `simulateError` path is
-/// synchronous and reliable, so it should run in CI to guard the mapping.
+/// (Sentry IOS-31). Kept in its own suite because the `simulateError` path is
+/// synchronous and reliable: it needs none of the connect-grace patience the
+/// backoff-exhaustion tests above require, so it stayed runnable in CI
+/// throughout the period when those tests were quarantined (#371).
 #if os(iOS) || os(tvOS)
 @Suite("Startup Timeout Classification")
 @MainActor
@@ -304,8 +312,8 @@ struct StartupTimeoutClassificationTests {
 /// Deterministic classification tests for the `com.apple.coreaudio.avfaudio`
 /// error domain. Before #514 every avfaudio failure fell through to `.unknown`,
 /// hiding real AVAudioEngine / AVAudioSession errors in telemetry. Kept in its
-/// own suite (not gated behind the #371 flake skip) because `simulateError` is
-/// synchronous and reliable.
+/// own suite because `simulateError` is synchronous and reliable, needing none
+/// of the connect-grace patience the backoff-exhaustion tests above require.
 #if os(iOS) || os(tvOS)
 @Suite("CoreAudio avfaudio Classification")
 @MainActor
