@@ -12,15 +12,24 @@
 //  fields in favor of a single `Core.WXYCProxyClient`, so its test-only
 //  `session: WebSession` seam (`EntityResolverMockWebSession`) is gone too.
 //  Cache-hit tests (which must never reach the network) now inject a
-//  stateless `FailFastURLProtocol`-backed session instead — no mock object
-//  needed, since the assertion is just "no request was attempted." Tests that
-//  DO need to observe a real request are declared as extensions of
-//  `PlaycutMetadataServiceHTTPTests` and use `CoreTesting.QueuedStubURLProtocol`,
-//  matching the convention already established below for the 401
-//  reauthenticate-and-retry test: that type's state is static/global, so at
-//  most one adopting `@Suite` per test bundle may touch it, and further
-//  adopters join as extensions of the existing one rather than a parallel
-//  `@Suite`.
+//  stateless `CoreTesting.FailFastURLProtocol`-backed session instead — no
+//  mock object needed, since the assertion is just "no request was
+//  attempted." Tests that DO need to observe a real request are declared as
+//  extensions of `PlaycutMetadataServiceHTTPTests` and use
+//  `CoreTesting.QueuedStubURLProtocol`, matching the convention already
+//  established below for the 401 reauthenticate-and-retry test: that type's
+//  state is static/global, so at most one adopting `@Suite` per test bundle
+//  may touch it, and further adopters join as extensions of the existing one
+//  rather than a parallel `@Suite`.
+//
+//  #786: `FailFastURLProtocol` used to be declared privately in this file —
+//  it's now `CoreTesting.FailFastURLProtocol`, promoted so other packages
+//  asserting "this must never touch the network" don't reinvent it. It stays
+//  a genuinely distinct type from `QueuedStubURLProtocol` rather than folding
+//  into it: it carries no lock/state at all, so — unlike everything above
+//  that touches `QueuedStubURLProtocol` — the three tests below don't need
+//  `.serialized` and don't contend for that type's one-adopter-per-bundle
+//  slot.
 //
 
 import Testing
@@ -30,34 +39,6 @@ import CoreTesting
 @testable import Caching
 import CachingTesting
 @testable import Metadata
-
-// MARK: - Fail-fast session for cache-hit tests
-
-/// A `URLProtocol` that fails every request immediately, with no
-/// configurable state — unlike `QueuedStubURLProtocol`, it needs no
-/// synchronization because its behavior never varies, so it's safe to use
-/// from a suite that isn't `.serialized`.
-///
-/// Used only to assert a cache-hit path never reaches the network: if
-/// `DiscogsAPIEntityResolver` regressed and attempted a fetch despite the
-/// cache already holding the value, the request fails fast here instead of
-/// silently succeeding or hanging on a real `URLSession.shared` call in CI.
-private final class FailFastURLProtocol: URLProtocol, @unchecked Sendable {
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-    override func startLoading() {
-        client?.urlProtocol(self, didFailWithError: URLError(.notConnectedToInternet))
-    }
-
-    override func stopLoading() {}
-}
-
-private func failFastSession() -> URLSession {
-    let config = URLSessionConfiguration.ephemeral
-    config.protocolClasses = [FailFastURLProtocol.self]
-    return URLSession(configuration: config)
-}
 
 // MARK: - DiscogsAPIEntityResolver Caching Tests
 
@@ -69,7 +50,7 @@ struct DiscogsAPIEntityResolverCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let resolver = DiscogsAPIEntityResolver(urlSession: failFastSession(), cache: cache)
+        let resolver = DiscogsAPIEntityResolver(urlSession: FailFastURLProtocol.makeSession(), cache: cache)
 
         // Pre-populate cache with artist name
         await cache.set(value: "Cached Artist Name", for: "discogs-artist-12345", lifespan: 3600)
@@ -87,7 +68,7 @@ struct DiscogsAPIEntityResolverCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let resolver = DiscogsAPIEntityResolver(urlSession: failFastSession(), cache: cache)
+        let resolver = DiscogsAPIEntityResolver(urlSession: FailFastURLProtocol.makeSession(), cache: cache)
 
         // Pre-populate cache
         await cache.set(value: "Cached Album Title", for: "discogs-release-54321", lifespan: 3600)
@@ -105,7 +86,7 @@ struct DiscogsAPIEntityResolverCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let resolver = DiscogsAPIEntityResolver(urlSession: failFastSession(), cache: cache)
+        let resolver = DiscogsAPIEntityResolver(urlSession: FailFastURLProtocol.makeSession(), cache: cache)
 
         // Pre-populate cache
         await cache.set(value: "Cached Master Title", for: "discogs-master-11111", lifespan: 3600)
