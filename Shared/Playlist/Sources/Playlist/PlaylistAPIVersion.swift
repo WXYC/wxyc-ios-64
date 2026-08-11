@@ -29,15 +29,42 @@ public enum PlaylistAPIVersion: String, CaseIterable, Identifiable, Hashable, Se
     /// PostHog feature flag key
     static let featureFlagKey = "playlist_api_version"
 
-    /// The default API version
-    public static let defaultVersion: PlaylistAPIVersion = .v1
+    /// The API version a build falls back to when nothing overrides it.
+    ///
+    /// This constant is the app-version gate for the v2 rollout, and it is
+    /// deliberately a compile-time constant rather than a remote lookup.
+    ///
+    /// `v3.1` reads this same flag on its production path but predates the v2
+    /// envelope decode fix (`8b05e66e`, 2026-04-17): the v2 endpoint wraps rows
+    /// in `{"entries": [...]}`, `v3.1` decodes a bare `[FlowsheetEntry]`, and
+    /// the resulting `typeMismatch` is swallowed by `fetchPlaylist()` into an
+    /// empty playlist. Serving v2 to those clients is a silent outage — it
+    /// happened on 2026-04-28 and again on 2026-08-10.
+    ///
+    /// Because this value is baked into each binary, a build can only default
+    /// to the version it shipped with. `v3.1` has `.v1` compiled in and cannot
+    /// be reached from here, no matter how the flag is configured. That is the
+    /// guarantee PostHog release conditions could not give us: every
+    /// server-side notion of a client's app version (`$app_version` on events,
+    /// on the person record, or in a cohort) is written by the ingestion
+    /// pipeline, so it is stale exactly when it matters and absent entirely
+    /// while ingestion is down. See #846.
+    ///
+    /// The feature flag keeps its rollback role — see ``loadActive(featureFlagProvider:defaults:)``.
+    public static let defaultVersion: PlaylistAPIVersion = .v2
 
     /// Loads the active API version to use.
     ///
     /// Priority order:
     /// 1. Manual debug override (if set)
     /// 2. PostHog feature flag
-    /// 3. Default to v1
+    /// 3. ``defaultVersion``
+    ///
+    /// Step 2 is now a **kill switch, not a rollout lever**. With `.v2`
+    /// compiled in as the default, setting `playlist_api_version` to `v1`
+    /// pulls a misbehaving build back without shipping a release; setting it
+    /// to `v2` is a no-op for builds that already default there, and remains
+    /// actively unsafe for any build older than 3.2.
     public static func loadActive() -> PlaylistAPIVersion {
         loadActive(featureFlagProvider: PostHogFeatureFlagProvider.shared)
     }

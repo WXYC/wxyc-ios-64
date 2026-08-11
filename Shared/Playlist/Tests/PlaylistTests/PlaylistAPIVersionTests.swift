@@ -25,8 +25,22 @@ struct PlaylistAPIVersionTests {
         return UserDefaults(suiteName: suiteName)!
     }
 
+    /// Pins the compiled-in default.
+    ///
+    /// This constant *is* the app-version gate for the v2 rollout. It is baked
+    /// into each binary, so a build can only ever default to the version it
+    /// shipped with: `v3.1` — which predates the v2 envelope decode fix
+    /// `8b05e66e` and renders an empty playlist on v2 — has `.v1` compiled in
+    /// and is unreachable from here. That is the property PostHog release
+    /// conditions could not provide (see #846), so don't weaken this to a
+    /// remote lookup.
+    @Test("Default version is v2")
+    func defaultVersionIsV2() {
+        #expect(PlaylistAPIVersion.defaultVersion == .v2)
+    }
+
     @Test("Returns default version when no override and no feature flag")
-    func defaultsToV1WhenNoOverrideOrFlag() {
+    func defaultsToV2WhenNoOverrideOrFlag() {
         let mockProvider = MockFeatureFlagProvider()
         let defaults = makeTestDefaults()
 
@@ -35,7 +49,7 @@ struct PlaylistAPIVersionTests {
             defaults: defaults
         )
 
-        #expect(version == .v1)
+        #expect(version == .v2)
         #expect(version == PlaylistAPIVersion.defaultVersion)
     }
 
@@ -53,6 +67,10 @@ struct PlaylistAPIVersionTests {
         #expect(version == .v2)
     }
 
+    /// The remote kill switch. With `.v2` compiled in as the default, the flag's
+    /// job is no longer to *roll v2 out* but to pull a misbehaving build *back*
+    /// to v1 without shipping a release — so this is the case that has to keep
+    /// working. Setting `playlist_api_version` to `v1` must beat the default.
     @Test("Returns v1 when feature flag is set to v1")
     func returnsV1WhenFeatureFlagIsV1() {
         let mockProvider = MockFeatureFlagProvider()
@@ -116,7 +134,7 @@ struct PlaylistAPIVersionTests {
             defaults: defaults
         )
 
-        #expect(version == .v1)
+        #expect(version == .v2)
     }
 
     @Test("Non-string feature flag value falls back to default")
@@ -130,7 +148,7 @@ struct PlaylistAPIVersionTests {
             defaults: defaults
         )
 
-        #expect(version == .v1)
+        #expect(version == .v2)
     }
 
     @Test("Persist saves to UserDefaults correctly")

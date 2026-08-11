@@ -63,8 +63,8 @@ public final actor PlaylistService: Sendable {
     /// API version alone, matters: `WXYC/WatchXYC/PlaylistPage.swift` and
     /// `PlayerPage.swift` consume `updates()` as their only refresh path and
     /// never opt into SSE, so a version-keyed 300 s would silently make the
-    /// watch up to 5 minutes stale once `PlaylistAPIVersion.defaultVersion`
-    /// flips to `.v2`.
+    /// watch up to 5 minutes stale — which it now would, unconditionally, since
+    /// `PlaylistAPIVersion.defaultVersion` is `.v2`.
     private static let liveUpdatesReconciliationInterval: TimeInterval = 300
 
     /// Poll cadence when no push channel backs freshness: v1 always (it has

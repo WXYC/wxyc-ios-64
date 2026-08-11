@@ -275,10 +275,11 @@ struct SpotlightDonationServiceTests {
 
     @Test("A v2 tick followed by a v1 tick still donates, though their chronOrderID scales differ by nine orders of magnitude")
     func watermarkSurvivesAnAPIVersionFallback() async {
-        // `PlaylistAPIVersion.defaultVersion` is `.v1`, and `loadActive()`
-        // falls back to it whenever the PostHog `playlist_api_version` flag
-        // can't be evaluated — an offline launch, a flag miss, a debug
-        // override. v1 decodes `chronOrderID` straight out of tubafrenzy's
+        // `PlaylistAPIVersion.defaultVersion` is `.v2`, but a single install
+        // still sees both scales: the `playlist_api_version` flag can pull a
+        // build back to v1 as a kill switch, the debug panel can pin either
+        // version, and an upgrade from 3.1 inherits what v1 already persisted.
+        // v1 decodes `chronOrderID` straight out of tubafrenzy's
         // JSON, where it is the row id; v2 derives the packed composite, nine
         // orders of magnitude up (see `donatedThroughIDKey`'s doc). One
         // persisted watermark serves both and only ever moves up, so keying

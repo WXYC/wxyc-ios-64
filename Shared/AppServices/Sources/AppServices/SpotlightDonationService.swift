@@ -97,8 +97,11 @@ public actor SpotlightDonationService: Sendable {
     ///   wire, where Backend-Service's playlist proxy sets it to the row id
     ///   (~5.3e6); v2 derives the packed key (~8.4e15). One watermark serves
     ///   both and only moves up, so a single v2 tick would put it permanently
-    ///   out of reach of every v1 row — and `PlaylistAPIVersion.defaultVersion`
-    ///   is `.v1`, which `loadActive()` also falls back to on a flag miss.
+    ///   out of reach of every v1 row. `PlaylistAPIVersion.defaultVersion` is
+    ///   now `.v2`, which does not retire the hazard: one install still sees
+    ///   both scales, because the `playlist_api_version` flag can pull a build
+    ///   back to v1 as a kill switch, the debug panel can pin either version,
+    ///   and an upgrade from 3.1 inherits whatever v1 already persisted.
     ///   ``watermarkKey`` records what that scale mismatch already cost once.
     ///
     /// The flowsheet `id` is the same serial on both API paths and survives a

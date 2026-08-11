@@ -49,7 +49,14 @@ struct PlaylistFetcherTests {
         let mockAnalytics = MockStructuredAnalytics()
         mockDataSource.errorToThrow = NSError(domain: "TestDomain", code: 123, userInfo: nil)
 
+        // The reported context embeds the resolved version, so pin it rather
+        // than inheriting `PlaylistAPIVersion.defaultVersion` — and build the
+        // expectation from the same constant, so this asserts the *shape* of
+        // the context string instead of re-pinning a version literal that has
+        // to be chased every time the default moves.
+        let apiVersion = PlaylistAPIVersion.v2
         let fetcher = PlaylistFetcher(
+            apiVersion: apiVersion,
             dataSource: mockDataSource,
             errorReporter: mockErrorReporter,
             analytics: mockAnalytics
@@ -59,7 +66,7 @@ struct PlaylistFetcherTests {
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
         #expect(mockErrorReporter.allReportedErrors.count == 1)
-        #expect(mockErrorReporter.allReportedErrors.first?.context == "fetchPlaylist(API v1)")
+        #expect(mockErrorReporter.allReportedErrors.first?.context == "fetchPlaylist(API \(apiVersion.rawValue))")
     }
 
     @Test("fetchPlaylist returns empty playlist on URLError")

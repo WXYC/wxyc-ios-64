@@ -87,7 +87,14 @@ struct PlaylistServiceMetadataTransitionsTests {
             .stub(id: 1, chronOrderID: 1, artworkURL: URL(string: "https://example.com/1.jpg"), metadataStatus: .enrichedMatch),
             .stub(id: 2, chronOrderID: 2, artworkURL: URL(string: "https://example.com/2.jpg"), metadataStatus: .enrichedNoMatch),
         ])
-        await coordinator.set(value: cachedEnriched, for: PlaylistCacheKey.playlist(for: .v1), lifespan: 15 * 60)
+        // Cache keys are version-scoped, and this test's whole premise is a warm
+        // cache, so the seed and the service must agree on a version. Derived
+        // from one constant rather than left to `PlaylistAPIVersion.defaultVersion`
+        // — a mismatch here doesn't fail loudly, it hangs: the warm window is
+        // never found, `updates()` never yields, and the iterator blocks until
+        // the time limit.
+        let apiVersion = PlaylistAPIVersion.v2
+        await coordinator.set(value: cachedEnriched, for: PlaylistCacheKey.playlist(for: apiVersion), lifespan: 15 * 60)
 
         let mockFetcher = MockPlaylistFetcher()
         // First fetch: same enriched window plus a brand-new pending row.
@@ -95,7 +102,12 @@ struct PlaylistServiceMetadataTransitionsTests {
             .stub(id: 3, chronOrderID: 3, metadataStatus: .pending)
         ])
 
-        let service = PlaylistService(fetcher: mockFetcher, interval: 0.05, cacheCoordinator: coordinator)
+        let service = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 0.05,
+            cacheCoordinator: coordinator,
+            apiVersion: apiVersion
+        )
 
         var transitions = service.terminalMetadataTransitions().makeAsyncIterator()
         var iterator = service.updates().makeAsyncIterator()

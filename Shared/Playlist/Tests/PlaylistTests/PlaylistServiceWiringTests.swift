@@ -327,8 +327,8 @@ struct PlaylistServiceWiringTests {
         // touching the shared UserDefaults.wxyc app-group override (which is
         // process-global and would make parallel suites order-dependent).
         // Pins that watchOS/tvOS/widgets/intents — none of which pass
-        // `liveUpdatesEnabled: true` — stay poll-only even once
-        // `PlaylistAPIVersion.defaultVersion` flips to `.v2`.
+        // `liveUpdatesEnabled: true` — stay poll-only now that
+        // `PlaylistAPIVersion.defaultVersion` is `.v2`.
         //
         // "Production-shaped" here is about leaving `liveUpdatesEnabled` at
         // its default, not about the cache: the coordinator is still injected,

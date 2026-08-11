@@ -18,10 +18,13 @@ import Synchronization
 /// Test double for ``LiveFsEventSource`` that replays a fixed script of events.
 ///
 /// Pass an explicit `apiVersion:` that supports live updates. Omitting it
-/// resolves via `PlaylistAPIVersion.loadActive()`, which in a test process has
-/// no feature flag or debug override to read and so lands on `.v1` — a version
-/// with no push channel. The service then wires in no source at all, this mock
-/// is never connected, and the test passes while exercising nothing.
+/// resolves via `PlaylistAPIVersion.loadActive()`, which couples the test to a
+/// process-global lookup. `PlaylistAPIVersion.defaultVersion` is `.v2`, so that
+/// usually lands on a version with a push channel — but `loadActive()` consults
+/// the shared `UserDefaults.wxyc` app group first, and a debug override left on
+/// the simulator by an earlier run pins it to `.v1`, which has no push channel.
+/// The service then wires in no source at all, this mock is never connected,
+/// and the test passes while exercising nothing.
 /// See WXYC/wxyc-ios-64#749.
 ///
 /// ```swift
