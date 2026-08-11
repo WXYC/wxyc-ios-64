@@ -257,9 +257,16 @@ PKG_SKIP_TEST[Core]="ImageCompatibilityTests"
 # in list order. Recorded here as an explicit, commented exception instead
 # of a bare failure so the reason is visible without re-deriving it: this
 # script reports these as NOT CHECKED rather than either silently skipping
-# them or letting a doomed attempt run. See PR #798's Blockers section for
-# the full investigation (reproduced from a clean -derivedDataPath, both
-# -only-testing and -skip-testing isolation styles tried).
+# them or letting a doomed attempt run. A NOT CHECKED package still fails
+# the run (see the exit logic at the bottom), so an entry here is an
+# explicit admission of a measurement gap, never a way to make the guard
+# green.
+#
+# The map is intentionally empty. Its only entry so far was LikedSongs,
+# whose test target was unselectable through WXYC.xctestplan until #809
+# wired the package into the project navigator's Packages group. Any future
+# entry should carry its own one-line reason and a link to the
+# investigation behind it, as that one did.
 typeset -A PKG_KNOWN_BLOCKED
 
 # ---------------------------------------------------------------------------
@@ -505,11 +512,11 @@ run_simulator() {
 # finishes. No package's outcome can mask another's: a failure or a
 # known-blocked package (see PKG_KNOWN_BLOCKED above) moves on to the next
 # package via `continue`, never `exit`. An earlier version of this script
-# used `exit 1` on the first fatal condition, which meant LikedSongs' known,
-# unrelated xcodebuild breakage (6th in the default package-list order)
-# silently prevented Metadata, MusicShareKit, Concerts, and WXUI — the two
-# packages this ticket is actually about — from ever being checked in the
-# same run. See PR #798 review.
+# used `exit 1` on the first fatal condition, which meant LikedSongs'
+# xcodebuild breakage (6th in the default package-list order, since fixed
+# in #809) silently prevented Metadata, MusicShareKit, Concerts, and
+# WXUI — the two packages that ticket was actually about — from ever being
+# checked in the same run. See PR #798 review.
 # ---------------------------------------------------------------------------
 
 typeset -A RESULT_STATUS   # pkg -> PASS | FAIL | NOT_CHECKED
@@ -535,8 +542,10 @@ for pkg in "${PACKAGES[@]}"; do
         continue
     fi
 
-    # Host: always attempted, even for a known-blocked package — LikedSongs'
-    # host side works fine; only its simulator side is blocked.
+    # Host: always attempted, even for a known-blocked package —
+    # PKG_KNOWN_BLOCKED marks packages whose *simulator* side can't be
+    # measured, and the host side of such a package still runs and is still
+    # worth recording.
     #
     # A nonzero exit alone is not fatal — it can mean an individual test
     # failed or errored, which is not this script's concern (it compares
