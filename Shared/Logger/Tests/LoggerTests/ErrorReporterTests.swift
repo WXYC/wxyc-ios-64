@@ -21,12 +21,13 @@ extension LoggerGlobalStateTests {
 /// alone only orders tests *within* this suite — it does not stop a sibling
 /// suite from swapping `ErrorReporting.shared` out from under
 /// `sharedCanBeSetAndRead` mid-test. Nesting under the shared parent closes
-/// that gap without adding locking to `ErrorReporting` itself: a lock around
-/// the global would make the swap atomic but would not stop a concurrently
-/// running sibling suite from observing (or clobbering) the wrong reporter,
-/// and a naive non-recursive `Mutex` around get/set risks aborting the
-/// process if a reporter's `report(...)` implementation ever reads
-/// `ErrorReporting.shared` again on the same thread.
+/// that gap without adding locking to `ErrorReporting` itself: a lock would
+/// make each individual get and set atomic, but the race here spans a whole
+/// test body — read the previous reporter, install a mock, report, restore —
+/// and per-accessor atomicity does nothing for that sequence. Serializing the
+/// suites is what makes it safe. The durable fix is injecting the reporter
+/// rather than reaching for a mutable global at all, which is the same defect
+/// family as issues #309 and #848 and is out of scope here.
 @Suite("ErrorReporter", .serialized)
 struct ErrorReporterTests {
 
