@@ -53,6 +53,50 @@ struct ImageCompatibilityTests {
         #expect(decodedImage != nil)
     }
 
+    // MARK: - CGImage-level HEIF Encoding Tests (#411)
+    //
+    // Artwork/CachingArtworkFetcher.swift used to reimplement this
+    // CGImageDestination dance directly on a CGImage (it never wraps its
+    // scaled artwork back into a platform Image). These tests pin the
+    // CGImage-level entry point Artwork now calls, and prove it produces
+    // byte-identical output to the Image-level `heifData(compressionQuality:)`
+    // above — the two are now the same code path.
+
+    @Test("CGImage.heifData produces byte-identical output to Image.heifData for the same image")
+    func cgImageHeifDataMatchesImageHeifData() throws {
+        let image = try createTestImage(width: 120, height: 90)
+        let cgImage = try #require(extractCGImage(from: image))
+
+        let viaImage = image.heifData(compressionQuality: 0.8)
+        let viaCGImage = cgImage.heifData(compressionQuality: 0.8)
+
+        #expect(viaImage != nil)
+        #expect(viaCGImage != nil)
+        #expect(viaImage == viaCGImage, "Image.heifData must delegate to the same CGImage-level encoder Artwork uses")
+    }
+
+    @Test("CGImage.heifData respects compression quality parameter")
+    func cgImageHeifDataRespectsCompressionQuality() throws {
+        let image = try createTestImage(width: 200, height: 200)
+        let cgImage = try #require(extractCGImage(from: image))
+
+        let highQualityData = cgImage.heifData(compressionQuality: 1.0)
+        let lowQualityData = cgImage.heifData(compressionQuality: 0.1)
+
+        #expect(highQualityData != nil)
+        #expect(lowQualityData != nil)
+        // Higher quality should generally produce larger data
+        #expect(highQualityData!.count >= lowQualityData!.count)
+    }
+
+    @Test("CGImage.heifData defaults to a compression quality of 0.8")
+    func cgImageHeifDataDefaultsToPointEight() throws {
+        let image = try createTestImage(width: 150, height: 150)
+        let cgImage = try #require(extractCGImage(from: image))
+
+        #expect(cgImage.heifData() == cgImage.heifData(compressionQuality: 0.8))
+    }
+
     // MARK: - Scaling Tests
 
     @Test("scaledToWidth scales images wider than target")
@@ -148,6 +192,14 @@ struct ImageCompatibilityTests {
         NSRect(x: width / 4, y: height / 4, width: width / 2, height: height / 2).fill()
         image.unlockFocus()
         return image
+        #endif
+    }
+
+    private func extractCGImage(from image: Image) -> CGImage? {
+        #if canImport(UIKit)
+        return image.cgImage
+        #elseif canImport(AppKit)
+        return image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         #endif
     }
 }

@@ -12,6 +12,32 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
+public extension CGImage {
+    /// Encodes the image as HEIF (HEIC) data with the specified compression quality.
+    ///
+    /// This is the single `CGImageDestination`-based HEIF encoder in the app — both
+    /// `Image.heifData(compressionQuality:)` below and Artwork's on-disk artwork cache
+    /// (which only ever holds a bare `CGImage`, never a platform `Image`) call into it.
+    /// - Parameter compressionQuality: Compression quality from 0.0 (most compression) to 1.0 (least compression). Defaults to 0.8.
+    /// - Returns: HEIF-encoded data, or nil if encoding fails.
+    func heifData(compressionQuality: CGFloat = 0.8) -> Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data as CFMutableData,
+            UTType.heic.identifier as CFString,
+            1,
+            nil
+        ) else { return nil }
+
+        CGImageDestinationAddImage(destination, self, [
+            kCGImageDestinationLossyCompressionQuality: compressionQuality
+        ] as CFDictionary)
+
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
+    }
+}
+
 #if canImport(UIKit)
 import UIKit
 public typealias Image = UIImage
@@ -23,25 +49,14 @@ public extension Image {
     convenience init?(compatibilityData data: Data) { self.init(data: data) }
 
     /// Encodes the image as HEIF data with the specified compression quality.
+    ///
+    /// Delegates to `CGImage.heifData(compressionQuality:)` — the actual
+    /// `CGImageDestination` encoding lives there, in exactly one place.
     /// - Parameter compressionQuality: Compression quality from 0.0 (most compression) to 1.0 (least compression). Defaults to 0.8.
     /// - Returns: HEIF-encoded data, or nil if encoding fails.
     func heifData(compressionQuality: CGFloat = 0.8) -> Data? {
         guard let cgImage = self.cgImage else { return nil }
-
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            data as CFMutableData,
-            UTType.heic.identifier as CFString,
-            1,
-            nil
-        ) else { return nil }
-
-        CGImageDestinationAddImage(destination, cgImage, [
-            kCGImageDestinationLossyCompressionQuality: compressionQuality
-        ] as CFDictionary)
-
-        guard CGImageDestinationFinalize(destination) else { return nil }
-        return data as Data
+        return cgImage.heifData(compressionQuality: compressionQuality)
     }
 
     /// Scales the image to the specified width, maintaining aspect ratio.
@@ -102,27 +117,16 @@ public extension Image {
     }
 
     /// Encodes the image as HEIF data with the specified compression quality.
+    ///
+    /// Delegates to `CGImage.heifData(compressionQuality:)` — the actual
+    /// `CGImageDestination` encoding lives there, in exactly one place.
     /// - Parameter compressionQuality: Compression quality from 0.0 (most compression) to 1.0 (least compression). Defaults to 0.8.
     /// - Returns: HEIF-encoded data, or nil if encoding fails.
     func heifData(compressionQuality: CGFloat = 0.8) -> Data? {
         guard let cgImage = self.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             return nil
         }
-
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(
-            data as CFMutableData,
-            UTType.heic.identifier as CFString,
-            1,
-            nil
-        ) else { return nil }
-
-        CGImageDestinationAddImage(destination, cgImage, [
-            kCGImageDestinationLossyCompressionQuality: compressionQuality
-        ] as CFDictionary)
-
-        guard CGImageDestinationFinalize(destination) else { return nil }
-        return data as Data
+        return cgImage.heifData(compressionQuality: compressionQuality)
     }
 
     /// Scales the image to the specified width, maintaining aspect ratio.
