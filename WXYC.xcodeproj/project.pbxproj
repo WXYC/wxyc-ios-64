@@ -151,6 +151,7 @@
 		F77598F39CF7FC65590EA6AF /* AppServices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = AppServices; path = Shared/AppServices; sourceTree = SOURCE_ROOT; };
 		FF0D2C45269DEE0E530C46D3 /* PartyHorn */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyHorn; path = Shared/PartyHorn; sourceTree = SOURCE_ROOT; };
 		INTENTSPKGFILEREF000001 /* Intents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Intents; path = Shared/Intents; sourceTree = SOURCE_ROOT; };
+		LIKEDSONGSFILEREF000001 /* LikedSongs */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LikedSongs; path = Shared/LikedSongs; sourceTree = SOURCE_ROOT; };
 		WALLPAPER0FILEREF0000001 /* Wallpaper */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Wallpaper; path = Shared/Wallpaper; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -475,6 +476,7 @@
 				05E8AA4420F87C191FBB0E08 /* Core */,
 				DEBUGPNL0FILEREF0000001 /* DebugPanel */,
 				INTENTSPKGFILEREF000001 /* Intents */,
+				LIKEDSONGSFILEREF000001 /* LikedSongs */,
 				21C88FF06CCC47E090003EAD /* Logger */,
 				2E2DA266F8734B81F467E9C3 /* Metadata */,
 				1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */,
