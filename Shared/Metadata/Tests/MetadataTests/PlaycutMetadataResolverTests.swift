@@ -623,4 +623,44 @@ extension PlaycutMetadataServiceHTTPTests {
         let metadata = mockCache.metadata(for: albumKey)
         #expect(metadata?.lifespan == .sevenDays)
     }
+
+    @Test(
+        "A repair carrying no enrichment does not manufacture a cold album cache entry",
+        .timeLimit(.minutes(1))
+    )
+    func repairWithNothingToContributeLeavesAColdCacheCold() async throws {
+        // Terminal is not the same as enriched. `hasV2Metadata` is `true` for
+        // every terminal row by its first clause alone, so `resolve(for:)`
+        // still builds an inline album for an `enrichedNoMatch` free-text
+        // play — and that album is the label and nothing else, i.e. `isSparse`.
+        //
+        // Merged over a warm entry that's harmless, because coalescing can
+        // only add. Merged over a cold one it would *install* the
+        // pre-enrichment shape #812 exists to bound: for the next
+        // `sparseAlbumLifespan` a sibling row resolving through the proxy
+        // branch would read it as an album cache hit, render from it, lose its
+        // artist bio to the absent discogsArtistId, and never persist the real
+        // answer the proxy had just returned.
+        QueuedStubURLProtocol.setBody(Self.emptyAlbumBody)
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(urlSession: QueuedStubURLProtocol.makeSession(), cache: cache)
+        let resolver = PlaycutMetadataResolver(service: service)
+
+        let (playlists, continuation) = AsyncStream.makeStream(of: Playlist.self)
+        var repairs = resolver.repairs(for: enrichingRow(), playlists: playlists).makeAsyncIterator()
+
+        continuation.yield(.stub(playcuts: [noMatchRow()]))
+        let repaired = try #require(await repairs.next())
+        continuation.finish()
+
+        // The card still repairs — this is about the cache, not the render.
+        #expect(repaired.album.isSparse, "Precondition: the no-match row's inline album carries no enrichment")
+
+        let albumKey = MetadataCacheKey.album(artistName: "Djrum", releaseTitle: "Meaning's Edge")
+        #expect(
+            mockCache.metadata(for: albumKey) == nil,
+            "A repair with nothing to contribute must leave a cold album key for the proxy branch to fill"
+        )
+    }
 }

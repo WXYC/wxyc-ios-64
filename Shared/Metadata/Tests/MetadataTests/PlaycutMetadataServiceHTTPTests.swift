@@ -572,4 +572,43 @@ struct PlaycutMetadataServiceHTTPTests {
         #expect(mockCache.setKeys.contains(albumKey), "A 404 should store a negative album cache entry immediately")
         #expect(mockCache.metadata(for: albumKey)?.lifespan == .sevenDays)
     }
+
+    @Test("A 401 is neither retried nor recorded as a negative answer")
+    func authFailureIsNeitherRetriedNorNegativeCached() async throws {
+        // #284's permanent bucket is a definitive absence — a 404 — and
+        // nothing else. A 401 that outlived `authedData`'s
+        // reauthenticate-and-retry is not Backend saying "no such album"; the
+        // same goes for a 400 or a decode failure on a malformed payload.
+        // Folding them in would pin a label-only record on the seven-day album
+        // TTL, so a single auth outage would blank a week of cards — the exact
+        // negative-cache poisoning this ticket exists to remove. They keep the
+        // pre-#284 behavior instead: fall back, cache nothing, re-attempt on
+        // the next card open.
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        QueuedStubURLProtocol.setResponse(statusCode: 401, body: Data(#"{"error": "Unauthorized"}"#.utf8))
+
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            metadataStatus: nil
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then
+        #expect(result.album.label == "Sonamos", "Falls back to the flowsheet label")
+        #expect(QueuedStubURLProtocol.capturedRequests().count == 1, "A 401 is not transient, so it is not retried")
+        #expect(mockCache.setKeys.isEmpty, "An auth failure must not be recorded as 'this album does not exist'")
+    }
 }

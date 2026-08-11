@@ -259,7 +259,7 @@ public actor PlaycutMetadataService {
         }
 
         let task = Task<ArtistMetadata, Never> {
-            defer { Task { await self.clearPendingArtistFetch(for: artistId) } }
+            defer { self.clearPendingArtistFetch(for: artistId) }
             return await self.fetchArtistMetadataUncoalesced(artistId: artistId)
         }
         pendingArtistFetches[artistId] = task
@@ -316,6 +316,15 @@ public actor PlaycutMetadataService {
     /// arrives after completion always re-enters ``fetchAlbumAndStreamingUncoalesced(for:)``,
     /// which re-checks the (possibly now-populated) TTL cache, rather than
     /// reusing a stale finished `Task` forever.
+    ///
+    /// That `defer` calls ``clearPendingAlbumFetch(for:)`` *directly*, not
+    /// through a nested `Task`. `Task.init` inherits actor context, so this
+    /// closure is already isolated to `self` and the clear needs no
+    /// suspension — wrapping it would only push the removal onto a later
+    /// actor job, leaving a window in which the dict still holds a
+    /// **finished** task and making "the next call re-fetches" depend on
+    /// unspecified job ordering rather than on the `defer`. (The nested form
+    /// also warned: "no 'async' operations occur within 'await' expression".)
     private func fetchAlbumAndStreaming(for playcut: Playcut) async -> (AlbumMetadata, StreamingLinks) {
         let pendingKey = Self.pendingAlbumFetchKey(for: playcut)
 
@@ -324,7 +333,7 @@ public actor PlaycutMetadataService {
         }
 
         let task = Task<(AlbumMetadata, StreamingLinks), Never> {
-            defer { Task { await self.clearPendingAlbumFetch(for: pendingKey) } }
+            defer { self.clearPendingAlbumFetch(for: pendingKey) }
             return await self.fetchAlbumAndStreamingUncoalesced(for: playcut)
         }
         pendingAlbumAndStreamingFetches[pendingKey] = task
@@ -386,9 +395,29 @@ public actor PlaycutMetadataService {
     /// itself, or preserved from what was already cached) keeps the normal
     /// `.sevenDays`.
     ///
-    /// Skips the write entirely when the merge produces nothing the cache
-    /// didn't already have, so a repair that can't improve the cached answer
-    /// doesn't reset its TTL clock for no reason.
+    /// Two things it will not do, both of which would make the write a net
+    /// loss rather than an optimization:
+    ///
+    /// 1. **Reset a TTL clock for nothing.** When the merge produces exactly
+    ///    what was already cached, the repair had nothing to add and the
+    ///    entry is left alone.
+    /// 2. **Create an entry that carries no enrichment.** `repaired` is only
+    ///    as good as the terminal row's inline fields, and a terminal row is
+    ///    not necessarily an *enriched* one — `enrichedNoMatch` on a
+    ///    free-text play yields ``AlbumMetadata/isSparse``, typically the
+    ///    label alone (``Playcut/hasV2Metadata`` is `true` for every terminal
+    ///    row by its first clause, so ``PlaycutMetadataResolver/resolve(for:)``
+    ///    still builds an inline album from base columns). Merged over a warm
+    ///    cache that's harmless — coalescing can only add. Merged over a cold
+    ///    one it would *install* the pre-enrichment shape #812 exists to
+    ///    bound, and for the next 15 minutes a sibling row resolving through
+    ///    the proxy branch would read it as an album cache hit, render from
+    ///    it, lose its artist bio to the absent `discogsArtistId`, and —
+    ///    because ``fetchAlbumAndStreamingUncoalesced(for:)`` writes the
+    ///    album side only when nothing was cached — never persist the real
+    ///    answer the proxy had just returned. The repair path has no business
+    ///    manufacturing that entry; the proxy branch is where a cold album
+    ///    key gets filled.
     func cacheRepairedAlbum(_ repaired: AlbumMetadata, for playcut: Playcut) async {
         let albumCacheKey = MetadataCacheKey.album(
             artistName: playcut.artistName,
@@ -398,6 +427,9 @@ public actor PlaycutMetadataService {
         let merged = repaired.coalescing(over: cachedAlbum ?? .empty)
 
         if let cachedAlbum, merged == cachedAlbum {
+            return
+        }
+        if cachedAlbum == nil, merged.isSparse {
             return
         }
 
@@ -518,15 +550,23 @@ public actor PlaycutMetadataService {
 
     /// Fetches `/proxy/metadata/album`, retrying a transient failure (5xx,
     /// networking blip) with bounded backoff, and treating a permanent
-    /// failure (404, or any other non-retryable error) as a definitive "no
-    /// match" rather than an error.
+    /// absence (404) as a definitive "no match" rather than an error.
     ///
-    /// A permanent failure resolves to `WXYCAPIModels.AlbumMetadataResponse()`
+    /// A permanent absence resolves to `WXYCAPIModels.AlbumMetadataResponse()`
     /// — the same all-nil shape a literal 200-with-empty-body response
     /// decodes to — so the caller's existing ``AlbumMetadata/isSparse``/
     /// mid-enrichment TTL gate (#812) is the only place that decides how long
     /// either answer is trusted, with no second negative-cache code path to
     /// keep in sync.
+    ///
+    /// The three outcomes are not a partition of two: an error that is
+    /// neither a definitive absence nor a known-transient condition — a 401
+    /// that outlived `authedData`'s reauthenticate-and-retry, a 400, a JSON
+    /// decode failure on a malformed payload — is rethrown, keeping the
+    /// pre-#284 behavior of taking `timedOperation`'s fallback and writing
+    /// nothing. Folding those into the permanent bucket would turn each of
+    /// them into a label-only album pinned for the full seven-day TTL, which
+    /// is the negative-cache poisoning this ticket exists to remove.
     ///
     /// Never retries cancellation: if the caller's own `Task` is cancelled
     /// (e.g. the detail card was dismissed mid-fetch), that must propagate
@@ -536,8 +576,9 @@ public actor PlaycutMetadataService {
     /// - Throws: the last transient error, once ``albumFetchRetryDelays`` is
     ///   exhausted, so the caller's existing uncached fallback path is taken
     ///   rather than pinning a negative verdict for a condition that might
-    ///   clear on the very next poll; or a cancellation error, immediately
-    ///   and without retrying.
+    ///   clear on the very next poll; any error that is neither a definitive
+    ///   absence nor transient, unretried; or a cancellation error,
+    ///   immediately and without retrying.
     private func fetchAlbumWithRetry(
         query: [URLQueryItem],
         remainingDelays: ArraySlice<Duration> = PlaycutMetadataService.albumFetchRetryDelays[...]
@@ -548,9 +589,15 @@ public actor PlaycutMetadataService {
             if isCancellation(error) {
                 throw error
             }
-            guard Self.isTransient(error) else {
-                // Permanent: no match, not a retry candidate.
+            if Self.isPermanentAbsence(error) {
+                // Backend answered definitively: no match. Not a retry
+                // candidate, and cacheable exactly like an empty 200.
                 return WXYCAPIModels.AlbumMetadataResponse()
+            }
+            guard Self.isTransient(error) else {
+                // Neither definitively absent nor known-transient — say
+                // nothing about this album rather than caching a guess.
+                throw error
             }
             guard let delay = remainingDelays.first else {
                 // Retries exhausted and still transient — propagate uncached.
@@ -560,6 +607,23 @@ public actor PlaycutMetadataService {
             try? await Task.sleep(for: delay)
             return try await fetchAlbumWithRetry(query: query, remainingDelays: remainingDelays.dropFirst())
         }
+    }
+
+    /// Whether `error` is Backend answering *definitively* that it has
+    /// nothing for this query — the only failure class #284 converts into a
+    /// cacheable negative answer.
+    ///
+    /// Deliberately just 404, rather than "everything ``isTransient(_:)``
+    /// rejected". That complement also holds a 401 that survived
+    /// `URLSession.authedData(for:tokenProvider:)`'s reauthenticate-and-retry,
+    /// a 400 from a malformed query, `WXYCProxyClient.ProxyError.invalidURL`,
+    /// and a `DecodingError` on a payload BS shipped wrong. None of those
+    /// mean "this album does not exist", and every one of them would land a
+    /// label-only record on the seven-day album TTL if it resolved to an
+    /// empty response — an auth outage would blank a week of cards. They are
+    /// rethrown instead, which is exactly what they did before #284.
+    private static func isPermanentAbsence(_ error: any Error) -> Bool {
+        (error as? HTTPStatusError)?.statusCode == 404
     }
 
     /// Whether `error` represents a transient condition worth retrying,
