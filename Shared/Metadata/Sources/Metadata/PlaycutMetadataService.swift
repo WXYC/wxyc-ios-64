@@ -92,6 +92,18 @@ public actor PlaycutMetadataService {
     private let cache: CacheCoordinator
     private let errorReporter: any ErrorReporter
 
+    /// In-flight `/proxy/metadata/album` fetches, keyed by the exact query
+    /// they share (#282). See ``fetchAlbumAndStreaming(for:)`` for the
+    /// coalescing contract and ``pendingAlbumFetchKey(for:)`` for why the key
+    /// must be as specific as the query itself.
+    private var pendingAlbumAndStreamingFetches: [String: Task<(AlbumMetadata, StreamingLinks), Never>] = [:]
+
+    /// In-flight `/proxy/metadata/artist` fetches, keyed by Discogs artist ID
+    /// (#282). Safe to coalesce purely on the artist ID — unlike the album
+    /// fetch, this endpoint's answer depends on nothing else the caller
+    /// supplies.
+    private var pendingArtistFetches: [Int: Task<ArtistMetadata, Never>] = [:]
+
     public init(
         baseURL: URL = URL(string: "https://api.wxyc.org")!,
         tokenProvider: SessionTokenProvider? = nil,
@@ -229,11 +241,36 @@ public actor PlaycutMetadataService {
     // MARK: - Granular Caching Methods
 
     /// Fetches artist metadata, caching by Discogs artist ID.
+    ///
+    /// Coalesces concurrent calls for the same `artistId` (#282): the first
+    /// caller starts the work, a concurrent caller for the same ID awaits
+    /// that same in-flight `Task` instead of issuing its own request. See
+    /// ``fetchAlbumAndStreaming(for:)`` for the shared correctness argument
+    /// (actor-isolated dict access, independent unstructured `Task`, `defer`
+    /// clears the entry so the coalescing window is the in-flight duration
+    /// only).
     private func fetchArtistMetadata(discogsArtistId: Int?) async -> ArtistMetadata {
         guard let artistId = discogsArtistId else {
             return .empty
         }
 
+        if let existingTask = pendingArtistFetches[artistId] {
+            return await existingTask.value
+        }
+
+        let task = Task<ArtistMetadata, Never> {
+            defer { Task { await self.clearPendingArtistFetch(for: artistId) } }
+            return await self.fetchArtistMetadataUncoalesced(artistId: artistId)
+        }
+        pendingArtistFetches[artistId] = task
+        return await task.value
+    }
+
+    private func clearPendingArtistFetch(for artistId: Int) {
+        pendingArtistFetches[artistId] = nil
+    }
+
+    private func fetchArtistMetadataUncoalesced(artistId: Int) async -> ArtistMetadata {
         let cacheKey = MetadataCacheKey.artist(discogsId: artistId)
 
         return (try? await cachedFetch(
@@ -258,6 +295,62 @@ public actor PlaycutMetadataService {
         )) ?? .empty
     }
 
+    /// Coalesces concurrent `/proxy/metadata/album` fetches for the same
+    /// exact query (#282): the first caller for a key starts the work,
+    /// concurrent callers for the same key await that same in-flight `Task`
+    /// instead of issuing their own request.
+    ///
+    /// Correctness relies on actor isolation, not manual locking: the
+    /// dict-check-then-store below has no `await` between the check and the
+    /// write, so two calls that look "concurrent" from the caller's
+    /// perspective are strictly serialized onto this actor — the second can
+    /// never run its own check until the first has either returned (an
+    /// existing task was found) or stored its new `Task` in the dict.
+    ///
+    /// The shared `Task` is created independently of any caller's own `Task`
+    /// (a plain `Task { }`, not a structured child), so cancelling one
+    /// caller's enclosing `Task` has no effect on the shared fetch or on any
+    /// other caller awaiting it. The `defer` inside the `Task` clears the
+    /// dict entry the moment the fetch finishes — success or failure — so
+    /// the coalescing window is the in-flight duration only: a call that
+    /// arrives after completion always re-enters ``fetchAlbumAndStreamingUncoalesced(for:)``,
+    /// which re-checks the (possibly now-populated) TTL cache, rather than
+    /// reusing a stale finished `Task` forever.
+    private func fetchAlbumAndStreaming(for playcut: Playcut) async -> (AlbumMetadata, StreamingLinks) {
+        let pendingKey = Self.pendingAlbumFetchKey(for: playcut)
+
+        if let existingTask = pendingAlbumAndStreamingFetches[pendingKey] {
+            return await existingTask.value
+        }
+
+        let task = Task<(AlbumMetadata, StreamingLinks), Never> {
+            defer { Task { await self.clearPendingAlbumFetch(for: pendingKey) } }
+            return await self.fetchAlbumAndStreamingUncoalesced(for: playcut)
+        }
+        pendingAlbumAndStreamingFetches[pendingKey] = task
+        return await task.value
+    }
+
+    private func clearPendingAlbumFetch(for key: String) {
+        pendingAlbumAndStreamingFetches[key] = nil
+    }
+
+    /// The coalescing key for ``fetchAlbumAndStreaming(for:)`` — the
+    /// concatenation of the two cache keys a single fetch populates.
+    ///
+    /// Deliberately as specific as the query itself (artist + release +
+    /// **track**), not merely artist + release: the streaming-link fields
+    /// are resolved per track (`trackTitle` is a query parameter precisely
+    /// because streaming URLs differ per song), so two different songs on
+    /// the same album are different requests and must not share one answer —
+    /// coalescing on album alone would risk handing one track's streaming
+    /// links to a different track's cache entry.
+    private static func pendingAlbumFetchKey(for playcut: Playcut) -> String {
+        MetadataCacheKey.album(artistName: playcut.artistName, releaseTitle: playcut.releaseTitle ?? "")
+            + "|"
+            + MetadataCacheKey.streaming(artistName: playcut.artistName, songTitle: playcut.songTitle)
+    }
+
     /// Fetches album metadata and streaming links from the backend proxy in a single call.
     ///
     /// Deliberately not refactored onto `cachedFetch`: one network response feeds two
@@ -265,7 +358,7 @@ public actor PlaycutMetadataService {
     /// and a partial cache hit on either side must still issue the fetch but only write the
     /// missing side. The existing single-key `cachedFetch` overloads can't model that without
     /// a bespoke 2-cache variant, and this is the only caller that would need it. See #192.
-    private func fetchAlbumAndStreaming(for playcut: Playcut) async -> (AlbumMetadata, StreamingLinks) {
+    private func fetchAlbumAndStreamingUncoalesced(for playcut: Playcut) async -> (AlbumMetadata, StreamingLinks) {
         let albumCacheKey = MetadataCacheKey.album(
             artistName: playcut.artistName,
             releaseTitle: playcut.releaseTitle ?? ""
