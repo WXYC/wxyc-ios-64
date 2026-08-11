@@ -1,6 +1,6 @@
 # CoreTesting
 
-Shared test doubles consumed across the app's test suites (`AppServices`, `Concerts`, `LikedSongs`, `Metadata`, `MusicShareKit`, `Playlist`, and `Core` itself). This is an inventory, not an API reference — each type's own doc comment covers its API; this file exists so nobody writes an eighth `URLProtocol` double without knowing three already exist here (`#786` took the `URLProtocol` subclass count in this codebase from 6 to 3 by consolidating into this package).
+Shared test doubles consumed across the app's test suites (`AppServices`, `Concerts`, `LikedSongs`, `Metadata`, `MusicShareKit`, `Playlist`, and `Core` itself). This is an inventory, not an API reference — each type's own doc comment covers its API; this file exists so nobody writes an eighth double without knowing the seven below already exist. `#786` took the codebase's `URLProtocol` subclass count from 6 to 3 by consolidating into this package; three entries below (`FailFastURLProtocol`, `QueuedStubURLProtocol`, `PatternRoutingWebSession`) cover URL-session stubbing between them.
 
 Add a one-line entry here whenever a new type lands in this target. If you're about to write a test double and one of these looks close, read its doc comment before reaching for `NSObject` — the "reach for this when" column is a triage aid, not the full story.
 
@@ -13,6 +13,8 @@ Add a one-line entry here whenever a new type lands in this target. If you're ab
 | `RecordingTokenProvider` | you need a `SessionTokenProvider` double — fixed `token()`, a distinct `reauthenticate(previousToken:)` result (so a same-token-retry regression can't pass unnoticed), and call-count/last-argument recording. Pass `gateReauthentication: true` for concurrency-ordering tests that need to cancel a caller mid-reauthentication. |
 | `ProviderBox` | you're standing in for a provider that starts `nil` and gets set later (e.g. `MusicShareKit.authService` before/after `configure`) and need a thread-safe mutable holder — not an actor, because the resolver closure it backs is synchronous. |
 | `waitUntil(timeout:_:)` | you need to poll an async condition until it becomes true instead of guessing a fixed `Task.sleep`. Callers **must** assert on the returned `Bool` — discarding a `false` silently turns a timeout into a swallowed flake. (Playback keeps its own `PlaybackTestUtilities.pollUntil` for a synchronous `@MainActor` predicate; the two are deliberately identical in timeout mechanics and differ only in isolation/return shape.) |
+
+One `URLProtocol` double deliberately stays outside this package: `PlaylistTests`' `CapturingURLProtocol` keys its state by request URL, so several suites can each stub a distinct URL and run concurrently — something `QueuedStubURLProtocol`'s single global queue can't offer. Reach for that shape only when you need several concurrent adopters in one bundle; its header doc explains why it wasn't folded in.
 
 ## Why this lives here and not in `docs/`
 
