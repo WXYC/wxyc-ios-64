@@ -98,7 +98,8 @@ public final class RadioPlayerController: PlaybackController {
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         remoteCommandCenter: MPRemoteCommandCenter = .shared(),
         backoffTimer: ExponentialBackoff = .default,
-        heartbeatInterval: Duration = .seconds(60)
+        heartbeatInterval: Duration = .seconds(60),
+        heartbeatSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.radioPlayer = radioPlayer
         self.audioSession = audioSession
@@ -106,6 +107,7 @@ public final class RadioPlayerController: PlaybackController {
         self.analytics = analytics
         self.backoffTimer = backoffTimer
         self.heartbeatInterval = heartbeatInterval
+        self.heartbeatSleep = heartbeatSleep
 
         setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: remoteCommandCenter)
         setUpPlayerStateObservation()
@@ -117,13 +119,15 @@ public final class RadioPlayerController: PlaybackController {
         notificationCenter: NotificationCenter = .default,
         analytics: AnalyticsService = StructuredPostHogAnalytics.shared,
         backoffTimer: ExponentialBackoff = .default,
-        heartbeatInterval: Duration = .seconds(60)
+        heartbeatInterval: Duration = .seconds(60),
+        heartbeatSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     ) {
         self.radioPlayer = radioPlayer
         self.notificationCenter = notificationCenter
         self.analytics = analytics
         self.backoffTimer = backoffTimer
         self.heartbeatInterval = heartbeatInterval
+        self.heartbeatSleep = heartbeatSleep
 
         setUpObservations(notificationCenter: notificationCenter, remoteCommandCenter: nil)
         setUpPlayerStateObservation()
@@ -360,6 +364,10 @@ public final class RadioPlayerController: PlaybackController {
     /// `AudioPlayerController.heartbeatInterval` for the interval choice and
     /// budget rationale, which applies identically here.
     private let heartbeatInterval: Duration
+    /// The sleep behind each `playback_heartbeat` tick. See
+    /// `AudioPlayerController.heartbeatSleep` for the rationale, which
+    /// applies identically here (#815).
+    private let heartbeatSleep: @Sendable (Duration) async throws -> Void
     /// Owns the `playback_heartbeat` cancel-then-loop-sleep-emit task shape
     /// (#666), extracted into `PlaybackCore` so both this controller and
     /// `AudioPlayerController` compose the same implementation instead of
@@ -536,7 +544,7 @@ private extension RadioPlayerController {
     /// `init` because its `onTick` closure captures `self` weakly, which
     /// Swift only permits once every stored property already has a value.
     func setUpHeartbeat() {
-        heartbeat = PlaybackHeartbeat(interval: heartbeatInterval) { [weak self] in
+        heartbeat = PlaybackHeartbeat(interval: heartbeatInterval, sleep: heartbeatSleep) { [weak self] in
             self?.emitHeartbeat()
         }
     }

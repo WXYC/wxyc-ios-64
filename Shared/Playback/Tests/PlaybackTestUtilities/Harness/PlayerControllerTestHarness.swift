@@ -181,6 +181,12 @@ public final class PlayerControllerTestHarness {
     ///   - heartbeatInterval: Cadence for the `playback_heartbeat` timer (#666).
     ///     Defaults to the 60s production value; tests exercising the cadence
     ///     itself inject a short interval so several ticks happen quickly.
+    ///   - heartbeatSleep: The sleep behind each heartbeat tick (#666).
+    ///     Defaults to the real wall clock; tests that must be immune to a
+    ///     process stall inject a `StartupWatchdogGate.sleep` so ticks are
+    ///     driven by an explicit `release()` instead of racing a deadline
+    ///     against however long the test process actually gets scheduled
+    ///     (#807, #815).
     ///   - sessionActivationRetryDelay: Spacing of the bounded `'!int'`
     ///     activation retries (#514). Defaults to the 250ms production value;
     ///     tests that must outlast the whole budget inject a short delay.
@@ -189,6 +195,7 @@ public final class PlayerControllerTestHarness {
         for testCase: PlayerControllerTestCase,
         backoffTimer: ExponentialBackoff = .default,
         heartbeatInterval: Duration = .seconds(60),
+        heartbeatSleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
         sessionActivationRetryDelay: Duration = .milliseconds(250)
     ) -> PlayerControllerTestHarness {
         let streamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
@@ -212,7 +219,8 @@ public final class PlayerControllerTestHarness {
                 backoffTimer: backoffTimer,
                 heartbeatInterval: heartbeatInterval,
                 sessionActivationRetryDelay: sessionActivationRetryDelay,
-                backgroundTasks: mockBackgroundTasks
+                backgroundTasks: mockBackgroundTasks,
+                heartbeatSleep: heartbeatSleep
             )
 
             return PlayerControllerTestHarness(
@@ -237,7 +245,8 @@ public final class PlayerControllerTestHarness {
                 analytics: mockAnalytics,
                 remoteCommandCenter: .shared(),
                 backoffTimer: backoffTimer,
-                heartbeatInterval: heartbeatInterval
+                heartbeatInterval: heartbeatInterval,
+                heartbeatSleep: heartbeatSleep
             )
 
             return PlayerControllerTestHarness(
@@ -257,7 +266,8 @@ public final class PlayerControllerTestHarness {
                 notificationCenter: notificationCenter,
                 analytics: mockAnalytics,
                 backoffTimer: backoffTimer,
-                heartbeatInterval: heartbeatInterval
+                heartbeatInterval: heartbeatInterval,
+                heartbeatSleep: heartbeatSleep
             )
 
             return PlayerControllerTestHarness(
