@@ -127,9 +127,6 @@ struct WXYCApp: App {
                     RootTabView()
                         .environment(appState)
                         .environment(\.playlistService, appState.playlistService)
-                        .environment(\.artworkService, appState.artworkService)
-                        .environment(\.playbackController, AudioPlayerController.shared)
-                        .environment(\.reviewRequestService, appState.reviewRequestService)
                         .forceLightStatusBar()
                         .crossfadeColorSchemeTransitions()
                         .modifier(AppLifecycleModifier(appState: appState))
@@ -434,8 +431,6 @@ struct WXYCApp: App {
         RootTabView()
             .environment(Singletonia.shared)
             .environment(\.playlistService, .preview)
-            .environment(\.artworkService, .preview)
-            .environment(\.playbackController, AudioPlayerController.shared)
             .preferredColorScheme(.light)
     }
 }

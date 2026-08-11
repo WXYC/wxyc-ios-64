@@ -65,7 +65,6 @@ struct PlaylistPage: View {
     
     @MainActor
     private func observePlaylist() async {
-        guard let playlistService else { return }
         for await playlist in playlistService.updates() {
             self.timelineItems = playlist.timelineItems
         }

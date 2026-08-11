@@ -182,7 +182,7 @@ public struct VisualizerDebugView: View {
                                 newValue.persist()
                             }
                             Task {
-                                await playlistService?.switchAPIVersion(to: newValue)
+                                await playlistService.switchAPIVersion(to: newValue)
                             }
                         }
                         Button("Use Feature Flag") {

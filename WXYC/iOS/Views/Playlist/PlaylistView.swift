@@ -69,7 +69,6 @@ struct PlaylistView: View {
 
     @State private var timelineItems: [TimelineItem] = []
     @State private var onAir: OnAir = .unknown
-    @Environment(\.playlistService) private var playlistService
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
     /// The banner's visual theme. Reads ``OnAirBannerTheme/default`` in Release;
@@ -254,8 +253,7 @@ struct PlaylistView: View {
             showingThemeTip = !showTicketCTA && appState.themePickerState.persistence.shouldShowTip
         }
         .task {
-            guard let playlistService else { return }
-            for await playlist in playlistService.updates() {
+            for await playlist in appState.playlistService.updates() {
                 withAnimation {
                     self.onAir = playlist.onAir
                     self.timelineItems = playlist.timelineItems
