@@ -8,20 +8,28 @@
 //  Copyright © 2025 WXYC. All rights reserved.
 //
 //  #761: `PlaycutMetadataService` dropped its dual `WebSession`/`URLSession`
-//  fields in favor of a single `Core.WXYCProxyClient`, so `MetadataMockWebSession`
-//  below is backed by a stub `URLProtocol` instead of `WebSession` conformance.
-//  Its state is static (URLProtocol registration is by class, not instance),
-//  so this file's `@Suite` carries `.serialized` and no other suite may
-//  reference this exact class — `PlaycutMetadataServiceV2FallbackTests.swift`
-//  (which shared this type before the refactor) now owns its own
-//  `MetadataV2MockWebSession` for the same reason. See
-//  `CoreTesting.QueuedStubURLProtocol`'s header doc for the underlying
-//  one-static-adopter-per-class constraint.
+//  fields in favor of a single `Core.WXYCProxyClient`, so the mock session
+//  these tests inject is backed by a stub `URLProtocol` instead of
+//  `WebSession` conformance.
+//
+//  #786: that stub used to be a private `MetadataMockWebSession` type
+//  hand-rolled in this file (and a near-identical `MetadataV2MockWebSession`
+//  in `PlaycutMetadataServiceV2FallbackTests.swift`, forked only because each
+//  needed its own static `URLProtocol`-registration state). Both are gone —
+//  these tests now construct `CoreTesting.PatternRoutingWebSession` directly,
+//  and this file joins `PlaycutMetadataServiceHTTPTests` as an `extension`
+//  rather than its own `@Suite`: `PatternRoutingWebSession` delegates to
+//  `CoreTesting.QueuedStubURLProtocol`'s single registered class, so it
+//  inherits that type's one-adopter-per-bundle constraint (see both types'
+//  header docs, and `DiscogsAPIEntityResolverCachingTests.swift` /
+//  `PlaycutMetadataResolverTests.swift` for the same arrangement already
+//  established elsewhere in this package). `.serialized` is inherited from
+//  `PlaycutMetadataServiceHTTPTests`'s own `@Suite` declaration.
 
 import Testing
 import Foundation
-import os
 import Core
+import CoreTesting
 import Playlist
 import PlaylistTesting
 import WXYCAPIModels
@@ -29,91 +37,9 @@ import WXYCAPIModels
 import CachingTesting
 @testable import Metadata
 
-// MARK: - Mock WebSession replacement for Metadata Service
-
-/// A stub `URLProtocol`-backed double for `PlaycutMetadataService`'s single
-/// `urlSession` field. Keeps the same test-facing shape the retired
-/// `WebSession`-conforming version had (`responses[pattern] = data`,
-/// `.reset()`, `.requestCount`, `.requestedURLs`) so this file's test bodies
-/// didn't need to change beyond how the service is constructed
-/// (`urlSession: mockSession.urlSession` instead of `session: mockSession`).
-///
-/// State lives in a `static` lock because `URLProtocol` registration is by
-/// class, not instance — every `MetadataMockWebSession()` call resets that
-/// shared state in `init()`, which is safe only because this file's suite is
-/// `.serialized` (see the file header doc).
-final class MetadataMockWebSession: @unchecked Sendable {
-    private struct State {
-        var responses: [String: Data] = [:]
-        var requestedURLs: [URL] = []
-        var requestCount = 0
-    }
-
-    private final class StubProtocol: URLProtocol, @unchecked Sendable {
-        override class func canInit(with request: URLRequest) -> Bool { true }
-        override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-
-        override func startLoading() {
-            guard let url = request.url else {
-                client?.urlProtocol(self, didFailWithError: URLError(.badURL))
-                return
-            }
-
-            let matchedData: Data? = MetadataMockWebSession.lock.withLock { state in
-                state.requestCount += 1
-                state.requestedURLs.append(url)
-                let urlString = url.absoluteString
-                return state.responses.first { urlString.contains($0.key) }?.value
-            }
-
-            guard let matchedData, let response = HTTPURLResponse(
-                url: url,
-                statusCode: 200,
-                httpVersion: "HTTP/1.1",
-                headerFields: ["Content-Type": "application/json"]
-            ) else {
-                client?.urlProtocol(self, didFailWithError: URLError(.resourceUnavailable))
-                return
-            }
-
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            client?.urlProtocol(self, didLoad: matchedData)
-            client?.urlProtocolDidFinishLoading(self)
-        }
-
-        override func stopLoading() {}
-    }
-
-    private static let lock = OSAllocatedUnfairLock(initialState: State())
-
-    /// The `URLSession` to inject as `PlaycutMetadataService`'s `urlSession`.
-    let urlSession: URLSession = {
-        let config = URLSessionConfiguration.ephemeral
-        config.protocolClasses = [StubProtocol.self]
-        return URLSession(configuration: config)
-    }()
-
-    var responses: [String: Data] {
-        get { Self.lock.withLock { $0.responses } }
-        set { Self.lock.withLock { $0.responses = newValue } }
-    }
-
-    var requestedURLs: [URL] { Self.lock.withLock { $0.requestedURLs } }
-    var requestCount: Int { Self.lock.withLock { $0.requestCount } }
-
-    init() {
-        reset()
-    }
-
-    func reset() {
-        Self.lock.withLock { $0 = State() }
-    }
-}
-
 // MARK: - PlaycutMetadataService Caching Tests
 
-@Suite("PlaycutMetadataService Caching Tests", .serialized)
-struct PlaycutMetadataServiceCachingTests {
+extension PlaycutMetadataServiceHTTPTests {
 
     /// The complete set of proxy endpoints `PlaycutMetadataService` is allowed
     /// to reach. Deliberately does NOT include `/proxy/entity/resolve`: that
@@ -141,7 +67,7 @@ struct PlaycutMetadataServiceCachingTests {
     @Test("Requests the exact proxy endpoint paths, not merely paths containing them")
     func requestsExactProxyEndpointPaths() async throws {
         let mockCache = CountingCache()
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(
             urlSession: mockSession.urlSession,
             cache: CacheCoordinator(cache: mockCache)
@@ -184,7 +110,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(id: 12345, labelName: "Test Label")
@@ -236,7 +162,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -281,7 +207,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(id: 42, artistName: "Artist Name", releaseTitle: "Album Title")
@@ -319,7 +245,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -362,7 +288,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -448,7 +374,7 @@ struct PlaycutMetadataServiceCachingTests {
         // And - the service maps that same payload into the domain AlbumMetadata/StreamingLinks.
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -510,7 +436,7 @@ struct PlaycutMetadataServiceCachingTests {
         // unknown-type token via compactMap(ResolvedBioToken.init) rather than failing the fetch.
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -569,7 +495,7 @@ struct PlaycutMetadataServiceCachingTests {
         // keeping the rest of the artist metadata intact.
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -598,7 +524,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -646,7 +572,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -684,7 +610,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -721,7 +647,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         let playcut = Playcut.stub(
@@ -759,7 +685,7 @@ struct PlaycutMetadataServiceCachingTests {
         // Given
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
-        let mockSession = MetadataMockWebSession()
+        let mockSession = PatternRoutingWebSession()
         let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
 
         // Pre-populate artist cache
