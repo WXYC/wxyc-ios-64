@@ -271,11 +271,33 @@ public final class Logger: Sendable {
         return formatter.string(from: Date())
     }
 
-    /// True when running under `swift test` or an `xctest` host process.
-    /// `.cachesDirectory` resolves to the unsandboxed, machine-global
-    /// `~/Library/Caches` for these hosts, so every concurrent test process
-    /// on the machine would otherwise share one `logs/<date>.log` file and
-    /// race to write it — see `logsDirectory`.
+    /// True when the host process is a test runner: `swift test`'s
+    /// `swiftpm-testing-helper`, or an `xctest` bundle.
+    ///
+    /// This is deliberate process sniffing, and it is a stopgap. The shape
+    /// this codebase prefers is an injected storage location — the rule
+    /// `docs/swift-style.md` states for `DefaultsStorage` and `FileStorage`
+    /// — but Logger's file plumbing is a chain of `static let`s
+    /// (`logsDirectory` → `todaysLogFile` → `fileHandle`) sitting behind a
+    /// global `public let Log`, so injecting a directory is a redesign of the
+    /// type rather than an edit to it.
+    ///
+    /// A settable `logsDirectoryOverride` static was considered as the cheaper
+    /// intermediate step and rejected: those `static let`s are realized by the
+    /// first log statement anywhere in the process, which inside a test bundle
+    /// is routinely code-under-test running before any test body, so an
+    /// override assigned in test setup would lose the race and silently do
+    /// nothing. Sniffing has no such ordering hazard — the branch is decided
+    /// before the process can log at all.
+    ///
+    /// The conventional `XCTestConfigurationFilePath` environment probe is not
+    /// an alternative here: SwiftPM's swift-testing host does not set it
+    /// (verified nil under `swiftpm-testing-helper`), which is the exact host
+    /// this needs to catch.
+    ///
+    /// No shipping WXYC executable (`WXYC`, `WatchXYC`, the widget and share
+    /// extensions, the UI-test runner) has a process name matching either
+    /// predicate, so the production branch below is what users always get.
     private static let isRunningInTestHost: Bool = {
         let name = ProcessInfo.processInfo.processName.lowercased()
         return name == "swiftpm-testing-helper" || name.contains("xctest")
@@ -284,23 +306,35 @@ public final class Logger: Sendable {
     /// Root directory for log storage. Internal (not `private`) so tests can
     /// assert on it via `@testable import Logger` — see
     /// `LoggerFileWriteTests.logStorageIsIsolatedFromMachineGlobalPath`.
+    ///
+    /// Production stores under `<caches>/logs/`, stable across app launches.
+    /// A test host instead gets `<temporary>/logs-test-<pid>/`, for two
+    /// reasons. `.cachesDirectory` resolves to the unsandboxed, machine-global
+    /// `~/Library/Caches` for a host-side `swift test`, so without the per-pid
+    /// component every concurrent test process on the machine shares one
+    /// `logs/<date>.log` and races to write it. And nothing prunes those
+    /// per-process directories — `cleanupOldLogs()` only ages out files
+    /// *within* one — so they belong in the system temporary directory, which
+    /// the OS reclaims, rather than accumulating in the user's caches.
+    ///
+    /// Computed once, lazily, on first access in the process: whichever test
+    /// touches Logger first fixes the directory for the whole run, so no
+    /// cross-test coordination is needed.
     static let logsDirectory: URL? = {
-        let urls = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
-        guard let cachesDirectory = urls.first else {
-            print("[Logger INIT] Could not find caches directory")
-            return nil
+        let logsDir: URL
+
+        if isRunningInTestHost {
+            logsDir = FileManager.default.temporaryDirectory
+                .appendingPathComponent("logs-test-\(ProcessInfo.processInfo.processIdentifier)/")
+        } else {
+            let urls = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
+            guard let cachesDirectory = urls.first else {
+                print("[Logger INIT] Could not find caches directory")
+                return nil
+            }
+            logsDir = cachesDirectory.appendingPathComponent("logs/")
         }
 
-        // Scope test-host runs to a directory unique to this process instead
-        // of the shared production `logs/` directory. This is computed once,
-        // lazily, on first access to `logsDirectory` in the process — so
-        // whichever test touches Logger first fixes the isolated directory
-        // for the whole run; no cross-test coordination is needed.
-        let subdirectoryName = isRunningInTestHost
-            ? "logs-test-\(ProcessInfo.processInfo.processIdentifier)/"
-            : "logs/"
-
-        let logsDir = cachesDirectory.appendingPathComponent(subdirectoryName)
         do {
             try FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
             return logsDir

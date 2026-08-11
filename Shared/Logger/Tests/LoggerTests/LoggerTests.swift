@@ -91,6 +91,14 @@ struct LoggerFileWriteTests {
         // `logs/<date>.log` file, producing torn cross-process writes.
         #expect(logsDir != sharedProductionDirectory)
         #expect(logsDir.path.contains("\(ProcessInfo.processInfo.processIdentifier)"))
+
+        // Nothing prunes the per-process directories, so they must not pile up
+        // in the user's caches — they belong in the OS-reclaimed temporary
+        // directory.
+        let cachesDirectory = try #require(
+            FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+        )
+        #expect(!logsDir.path.hasPrefix(cachesDirectory.path))
     }
 }
 
