@@ -107,11 +107,11 @@ Each log entry includes:
 
 ## Thread Safety
 
-Logger is fully thread-safe and `Sendable`-compliant. File writes are isolated to a dedicated `@globalActor` to avoid blocking the caller.
+Logger is fully thread-safe and `Sendable`-compliant. File writes happen **synchronously**, under `fileLock`, on the calling thread. That is deliberate and load-bearing: an earlier design hopped file I/O onto a dedicated global actor, and unstructured `Task`s spawned from `@MainActor` contexts could be torn down before the write landed, silently losing log lines. Do not reintroduce an async hop here. `LoggerConfiguration` and the destinations list take separate locks so level lookups and destination dispatch never contend with file I/O.
 
 ## Requirements
 
 - iOS 18.0+
-- watchOS 8.0+
+- watchOS 11.0+
 - macOS 15.0+
 - Swift 6.2+
