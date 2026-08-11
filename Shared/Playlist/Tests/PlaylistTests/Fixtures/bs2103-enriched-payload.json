@@ -157,7 +157,6 @@
       "rotation": "false",
       "request": "false",
       "artistId": 7000,
-      "metadataStatus": "enriched_match",
       "discogsUnavailable": false
     },
     {
@@ -172,7 +171,6 @@
       "rotation": "false",
       "request": "false",
       "artistId": 7000,
-      "metadataStatus": "enriched_match",
       "discogsUnavailable": false
     },
     {
@@ -235,7 +233,6 @@
       "rotation": "false",
       "request": "false",
       "artistId": 7000,
-      "metadataStatus": "enriched_match",
       "discogsUnavailable": false
     },
     {
@@ -248,8 +245,44 @@
       "releaseTitle": "BS2103 Unenriched Album",
       "labelName": "BS2103 Probe Records",
       "rotation": "false",
+      "request": "false"
+    },
+    {
+      "id": 9013,
+      "chronOrderID": 9013,
+      "hour": 1786471200000,
+      "timeCreated": 1786471213000,
+      "songTitle": "Tres Hermanos",
+      "artistName": "Hermanos Gutiérrez",
+      "releaseTitle": "El Bueno Y El Malo",
+      "labelName": "BS2103 Probe Records",
+      "rotation": "false",
       "request": "false",
-      "metadataStatus": "pending"
+      "genres": [
+        "Rock"
+      ],
+      "artistId": 7000,
+      "metadataStatus": "enriched_match",
+      "discogsUnavailable": false
+    },
+    {
+      "id": 9014,
+      "chronOrderID": 9014,
+      "hour": 1786471200000,
+      "timeCreated": 1786471214000,
+      "songTitle": "Cross Bones Style",
+      "artistName": "Cat Power",
+      "releaseTitle": "Moon Pix",
+      "labelName": "BS2103 Probe Records",
+      "rotation": "false",
+      "request": "false",
+      "genres": [
+        "Rock",
+        "Folk Rock"
+      ],
+      "artistId": 7000,
+      "metadataStatus": "enriched_match",
+      "discogsUnavailable": true
     }
   ],
   "talksets": [],
