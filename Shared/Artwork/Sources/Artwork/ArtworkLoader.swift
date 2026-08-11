@@ -23,10 +23,9 @@ import Playlist
 /// - The loader is constructed once at app launch and lives for the app's lifetime.
 /// - `load(_:)` is idempotent and safe to call repeatedly; it coalesces concurrent
 ///   requests for the same playcut and short-circuits when state is `.loaded`.
-/// - `reset(_:)` drops a single playcut's state; `retryFailures()` re-fetches every
-///   `.failed` entry (used after the artwork service's fetcher chain or negative
-///   cache changes); `prune(keepingKeys:)` bounds memory by dropping entries no
-///   longer in the visible playlist.
+/// - `retryFailures()` re-fetches every `.failed` entry (used after the artwork
+///   service's fetcher chain or negative cache changes); `prune(keepingKeys:)`
+///   bounds memory by dropping entries no longer in the visible playlist.
 @MainActor
 @Observable
 public final class ArtworkLoader {
@@ -84,7 +83,24 @@ public final class ArtworkLoader {
     }
 
     /// Drop a single playcut's state so the next `load(_:)` re-fetches.
-    public func reset(_ playcut: Playcut) {
+    ///
+    /// Deliberately `internal` rather than `public`: nothing outside this module
+    /// calls it. `retryFailures()` and `prune(keepingKeys:)` cover the two live
+    /// use cases (fetcher-chain upgrade, playlist scroll eviction). It is kept
+    /// rather than deleted because it is the only primitive that drops exactly
+    /// one entry — `prune(keepingKeys:)` takes a keep-set a caller cannot build,
+    /// since `entries` is private, and `retryFailures()` only touches `.failed`.
+    /// Coverage is asymmetric, so be precise about it: `LoaderEvent.reset` — the
+    /// state-machine case this dispatches — is covered by `LoaderTransitionTests`,
+    /// which is ungated and runs on the host and in CI. This wrapper's own test,
+    /// `resetClearsLoadedEntry`, is developer-only: its file is entirely inside
+    /// `#if canImport(UIKit)` so it vanishes from a host `swift test`, and on the
+    /// simulator its suite is `.ciHang`-disabled, which CI sets. Treat a local
+    /// simulator run as the only thing that exercises this method.
+    ///
+    /// Promote back to `public` when a caller (e.g. a per-row "force refresh
+    /// artwork" action) actually appears.
+    func reset(_ playcut: Playcut) {
         dispatch(.reset(key: playcut.artworkCacheKey))
     }
 
