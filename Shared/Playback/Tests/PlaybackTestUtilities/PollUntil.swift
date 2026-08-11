@@ -89,20 +89,45 @@ public func pollUntil(_ condition: @MainActor () -> Bool, timeout: Duration = st
 /// quiescence. The 250ms default is far above the sub-millisecond inter-buffer
 /// gap of the MP3 decode path this was written for, while still costing less
 /// than the 300ms blind sleep it replaced there.
+///
+/// Elapsed time alone is deliberately **not** sufficient to declare quiescence,
+/// which is why `requiredStableSamples` exists. `stallTolerantTimeout` above
+/// documents this process being descheduled for ~10.5s at a stretch (#807), and
+/// a deschedule freezes the producer and this sampler alike while
+/// `ContinuousClock` keeps running. A purely time-based dwell would therefore
+/// resume from any pause longer than `dwell`, observe the one unchanged value
+/// that a frozen producer guarantees, and call a mid-drain pipeline quiescent —
+/// turning the exact hazard `stallTolerantTimeout` was raised to absorb into a
+/// false positive. Requiring N *consecutive observations* costs real scheduled
+/// time that a descheduled process cannot fake: a pause of any length yields
+/// exactly one sample, not N.
+///
+/// The sampled value should come from something that only accumulates while the
+/// pipeline runs. A source that can be reset concurrently (a mock's buffer list
+/// cleared by a teardown, say) can read as "changed" and restart the dwell, or
+/// settle at zero for reasons that have nothing to do with the drain.
 @MainActor
 public func pollUntilStable(
     dwell: Duration = .milliseconds(250),
     timeout: Duration = stallTolerantTimeout,
     _ sample: @MainActor () -> Int
 ) async {
+    let pollInterval: Duration = .milliseconds(5)
+    /// Consecutive unchanged observations required alongside `dwell`. Ten at
+    /// `pollInterval` is ~50ms of time this task was actually scheduled for —
+    /// small next to `dwell` when things are healthy, and unreachable in a
+    /// single scheduling gap.
+    let requiredStableSamples = 10
+
     let clock = ContinuousClock()
     let deadline = clock.now + timeout
     var lastValue = sample()
     var lastChange = clock.now
+    var stableSamples = 0
 
     while clock.now < deadline {
         do {
-            try await Task.sleep(for: .milliseconds(5))
+            try await Task.sleep(for: pollInterval)
         } catch {
             // Cancelled — same reasoning as `pollUntil`: return rather than spin.
             return
@@ -111,8 +136,12 @@ public func pollUntilStable(
         if value != lastValue {
             lastValue = value
             lastChange = clock.now
-        } else if clock.now - lastChange >= dwell {
-            return
+            stableSamples = 0
+        } else {
+            stableSamples += 1
+            if stableSamples >= requiredStableSamples, clock.now - lastChange >= dwell {
+                return
+            }
         }
     }
 }
