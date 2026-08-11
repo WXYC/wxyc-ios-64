@@ -26,6 +26,7 @@ public struct VisualizerDebugView: View {
     @State private var skipNextPlayerTypePersist = false
     @State private var selectedHLSEnvironment: HLSEnvironment = .loadActive()
     @State private var cachePurged = false
+    @State private var fetchErrorCount: Int?
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
     private var themeDebugState = ThemeDebugState.shared
@@ -52,6 +53,26 @@ public struct VisualizerDebugView: View {
         } else {
             "Unavailable for the current player. Switch to the MP3 streamer in the Player section and relaunch to enable a stream boost."
         }
+    }
+
+    /// Footer for the Playlist API section: the selected version's own blurb,
+    /// plus what the fetch-error row means and the two ways it can mislead.
+    ///
+    /// The reset caveat is not incidental — the version picker directly above
+    /// this row is what triggers it, so a reader who flips the picker and sees
+    /// `0` needs to know that is a fresh fetcher, not a healthy one
+    /// (WXYC/wxyc-ios-64#267).
+    private var playlistAPIFooter: String {
+        selectedAPIVersion.shortDescription
+            + " Fetch Errors counts playlist fetches that threw and fell back to an empty playlist — the failures the UI hides by keeping the last good data on screen. Cancellations are excluded. The count is per-fetcher and per-launch, so it resets when the API version changes."
+    }
+
+    /// The fetch-error count, or an em dash before the first sample lands (or
+    /// when no `PlaylistService` is in the environment — previews, and any
+    /// surface that presents this panel without the app's service graph).
+    private var fetchErrorCountText: String {
+        guard let fetchErrorCount else { return "—" }
+        return "\(fetchErrorCount)"
     }
 
     private var processorFooter: String {
@@ -144,7 +165,7 @@ public struct VisualizerDebugView: View {
                     // Playlist API Version
                     DebugSection(
                         header: "Playlist API",
-                        footer: selectedAPIVersion.shortDescription
+                        footer: playlistAPIFooter
                     ) {
                         LabeledContent("API Version") {
                             Picker("API Version", selection: $selectedAPIVersion) {
@@ -170,6 +191,19 @@ public struct VisualizerDebugView: View {
                             selectedAPIVersion = .loadActive()
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        LabeledContent("Fetch Errors", value: fetchErrorCountText)
+                            .task {
+                                // Polled rather than observed: the count lives
+                                // behind the `PlaylistService` actor on a plain
+                                // `Mutex`, not `@Observable` state, so there is
+                                // nothing for SwiftUI to subscribe to. One hop a
+                                // second is far cheaper than making the counter
+                                // observable, and this panel is DEBUG-only.
+                                while !Task.isCancelled {
+                                    fetchErrorCount = await playlistService?.fetchErrorCount()
+                                    try? await Task.sleep(for: .seconds(1))
+                                }
+                            }
                     }
 
                     // Player Controller
