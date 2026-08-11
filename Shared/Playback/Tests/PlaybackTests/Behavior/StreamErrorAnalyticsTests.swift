@@ -25,10 +25,21 @@ import Core
 
 /// Tests verifying that stream errors are properly captured to analytics.
 /// These tests ensure consistent error reporting across all controller implementations.
-@Suite(
-    "Stream Error Analytics Tests",
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1", "Known flaky on CI — tracked in #371")
-)
+///
+/// The five `backoffExhaustion*`/`streamError*` tests below (parameterized over
+/// `PlayerControllerTestCase.allCases`) used to wait only 2 seconds for a
+/// `StreamErrorEvent` to land, which was never a race — it failed the
+/// `.audioPlayerController` argument deterministically, 100% of runs (#371).
+/// `AudioPlayerController`'s reconnect attempt calls
+/// `waitForPlayingOrError(timeout: .seconds(3))` before conceding the attempt
+/// failed and re-entering `attemptReconnectWithExponentialBackoff()` to emit
+/// `backoffExhausted` — a deliberate ~3s cold-connect grace window (see that
+/// function's comment) so a still-connecting stream isn't torn down early.
+/// `RadioPlayerController`'s equivalent path has no such grace window, which is
+/// why only the `AudioPlayerController` argument ever failed. Waiting the
+/// package-wide `stallTolerantTimeout` (30s, comfortably past the 3s floor)
+/// instead of a bespoke 2s budget fixes this without weakening the assertion.
+@Suite("Stream Error Analytics Tests")
 @MainActor
 struct StreamErrorAnalyticsTests {
 
@@ -52,7 +63,7 @@ struct StreamErrorAnalyticsTests {
         harness.simulateStall()
 
         // Wait for backoff to exhaust (needs time for async processing)
-        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty }, timeout: .seconds(2))
+        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty })
 
         // Verify stream error was captured
         let streamErrors = harness.streamErrorEvents
@@ -79,7 +90,7 @@ struct StreamErrorAnalyticsTests {
 
         // Trigger backoff exhaustion
         harness.simulateStall()
-        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty }, timeout: .seconds(2))
+        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty })
 
         // Verify player type matches test case
         let streamErrors = harness.streamErrorEvents
@@ -114,7 +125,7 @@ struct StreamErrorAnalyticsTests {
 
         // Trigger backoff exhaustion
         harness.simulateStall()
-        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty }, timeout: .seconds(2))
+        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty })
 
         // Verify session duration is present
         let streamErrors = harness.streamErrorEvents
@@ -142,7 +153,7 @@ struct StreamErrorAnalyticsTests {
         harness.simulateStall()
 
         // Wait for backoff to exhaust
-        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty }, timeout: .seconds(2))
+        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty })
 
         // Verify stall duration is present
         let streamErrors = harness.streamErrorEvents
@@ -173,7 +184,7 @@ struct StreamErrorAnalyticsTests {
 
         // Trigger backoff exhaustion
         harness.simulateStall()
-        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty }, timeout: .seconds(2))
+        await harness.waitUntil({ !harness.streamErrorEvents.isEmpty })
 
         // Verify reconnect attempts count
         let streamErrors = harness.streamErrorEvents
