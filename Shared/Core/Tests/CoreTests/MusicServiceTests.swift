@@ -153,6 +153,57 @@ struct MusicServiceTests {
         #expect(!service.matchesHost(of: url))
     }
 
+    // `URL.host` preserves the case the host was written in, so the `.lowercased()`
+    // in `matchesHost(of:)` is load-bearing rather than cosmetic — without these
+    // cases, dropping it leaves the rest of this suite green.
+    @Test(
+        "Host matching is case-insensitive, since the host component is case-insensitive",
+        arguments: [
+            (MusicService.spotify, "https://OPEN.SPOTIFY.COM/track/4iV5W9uYEdYUVa79Axb7Rh"),
+            (MusicService.spotify, "https://Open.Spotify.Com/track/4iV5W9uYEdYUVa79Axb7Rh"),
+            (MusicService.appleMusic, "https://Music.Apple.com/us/album/123"),
+            (MusicService.bandcamp, "https://JuanaMolina.Bandcamp.COM/track/la-paradoja"),
+            (MusicService.youtubeMusic, "https://YOUTU.BE/abc123"),
+        ]
+    )
+    func matchesHostCaseInsensitively(service: MusicService, urlString: String) throws {
+        let url = try #require(URL(string: urlString))
+        #expect(url.host != url.host?.lowercased(), "fixture must actually carry an uppercase host")
+        #expect(service.matchesHost(of: url))
+    }
+
+    // The spoof called out in the issue body: matching anywhere in the URL string
+    // rather than in the host component would accept these.
+    @Test(
+        "An apex domain appearing in the path or query — not the host — never matches",
+        arguments: [
+            (MusicService.spotify, "https://evil.example/spotify.com/track/123"),
+            (MusicService.spotify, "https://evil.example/?u=https://open.spotify.com/track/123"),
+            (MusicService.bandcamp, "https://evil.example/juanamolina.bandcamp.com/track/123"),
+        ]
+    )
+    func doesNotMatchApexInPathOrQuery(service: MusicService, urlString: String) throws {
+        let url = try #require(URL(string: urlString))
+        #expect(!service.matchesHost(of: url))
+    }
+
+    // The classic authority-confusion bypass: everything before `@` is userinfo,
+    // so the real host is `evil.example`. Pinned because the gate's correctness
+    // rests on `URL.host` reading the authority rather than the raw string.
+    @Test(
+        "A host-shaped userinfo component never matches — the authority host wins",
+        arguments: [
+            "https://spotify.com@evil.example/track/123",
+            "https://open.spotify.com@evil.example/track/123",
+            "https://user:open.spotify.com@evil.example/track/123",
+        ]
+    )
+    func doesNotMatchUserinfoSpoof(urlString: String) throws {
+        let url = try #require(URL(string: urlString))
+        #expect(url.host == "evil.example")
+        #expect(!MusicService.spotify.matchesHost(of: url))
+    }
+
     @Test("A nil URL never matches, for every service", arguments: MusicService.allCases)
     func doesNotMatchNilURL(service: MusicService) {
         #expect(!service.matchesHost(of: nil))
