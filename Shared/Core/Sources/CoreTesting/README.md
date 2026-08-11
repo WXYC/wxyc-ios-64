@@ -1,6 +1,6 @@
 # CoreTesting
 
-Shared test doubles consumed across the app's test suites (`AppServices`, `Concerts`, `LikedSongs`, `Metadata`, `MusicShareKit`, `Playlist`, and `Core` itself). This is an inventory, not an API reference — each type's own doc comment covers its API; this file exists so nobody writes an eighth double without knowing the seven below already exist. `#786` took the codebase's `URLProtocol` subclass count from 6 to 3 by consolidating into this package; three entries below (`FailFastURLProtocol`, `QueuedStubURLProtocol`, `PatternRoutingWebSession`) cover URL-session stubbing between them.
+Shared test doubles consumed across the app's test suites (`AppServices`, `Concerts`, `LikedSongs`, `Metadata`, `MusicShareKit`, `Playlist`, and `Core` itself). This is an inventory, not an API reference — each type's own doc comment covers its API; this file exists so nobody writes an eighth double without knowing the seven below already exist. Three of them — `FailFastURLProtocol`, `QueuedStubURLProtocol`, and the `PatternRoutingWebSession` facade over the latter — cover URL-session stubbing between them, which is where the duplication was worst: `#786` cut the codebase's `URLProtocol` subclass count from 6 to 2 here plus the one deliberate holdout described below.
 
 Add a one-line entry here whenever a new type lands in this target. If you're about to write a test double and one of these looks close, read its doc comment before reaching for `NSObject` — the "reach for this when" column is a triage aid, not the full story.
 
