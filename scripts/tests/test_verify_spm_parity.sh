@@ -3,10 +3,10 @@
 #  test_verify_spm_parity.sh
 #  scripts
 #
-#  Unit tests for verify-spm-parity.sh's crash-detection guard. Mocks
-#  swift/xcodebuild/xcrun on PATH so no real build or test run happens —
-#  these tests exercise the count-parsing and verdict logic only, feeding
-#  it canned xcresult JSON and host output.
+#  Unit tests for verify-spm-parity.sh's crash-detection guard and its
+#  build-artifact paths. Mocks swift/xcodebuild/xcrun on PATH so no real
+#  build or test run happens — these tests exercise the count-parsing and
+#  verdict logic only, feeding it canned xcresult JSON and host output.
 #
 #  Created by Jake on 08/11/26.
 #  Copyright © 2026 WXYC. All rights reserved.
@@ -334,6 +334,37 @@ test_non_kill_signal_crash_also_fails() {
 }
 
 # ============================================================================
+# Tests: an absolute --derived-data must be honoured as given, not
+# concatenated onto the repo root. "$REPO_ROOT/$DERIVED_DATA" against an
+# already-absolute value yields "<repo>//var/folders/.../dd", so every run
+# writes its .xcresult bundles into a shadow /var tree inside the working
+# copy. `git status` never reports that — .gitignore ignores *.xcresult and
+# git says nothing about a directory whose whole contents are ignored — so
+# the litter is invisible and accumulates one temp dir per run. This test is
+# what keeps the path normalization in place.
+# ============================================================================
+
+test_absolute_derived_data_stays_out_of_the_repo() {
+    export MOCK_HOST_TOTAL=5
+    export MOCK_XCODEBUILD_EXIT=0
+    export MOCK_XCRESULT_JSON='{"totalTestCount": 5, "result": "Passed", "testFailures": []}'
+
+    local repo_root
+    repo_root="$(dirname "$PROJECT_DIR")"
+    rm -rf "${repo_root}/var"
+
+    run_parity WXUI > /dev/null 2>&1 || true
+
+    local stray="absent"
+    [[ -e "${repo_root}/var" ]] && stray="present"
+
+    assert_contains "$stray" "absent" \
+        "an absolute --derived-data must not be re-rooted at the repo, which creates <repo>/var/folders/..." && \
+    assert_contains "$(ls "${TEST_TMP_DIR}/dd-results" 2>&1)" "WXUI.xcresult" \
+        "the result bundle must land under the absolute --derived-data the caller asked for"
+}
+
+# ============================================================================
 # Run All Tests
 # ============================================================================
 
@@ -352,6 +383,10 @@ run_test "crash signature fails despite matching counts" test_crash_signature_fa
 run_test "ordinary failure without crash still passes" test_ordinary_failure_without_crash_still_passes
 run_test "count gap without crash still fails" test_count_gap_without_crash_still_fails
 run_test "non-kill signal crash also fails" test_non_kill_signal_crash_also_fails
+
+echo ""
+echo "Artifact Paths:"
+run_test "absolute --derived-data stays out of the repo" test_absolute_derived_data_stays_out_of_the_repo
 
 echo ""
 echo "========================================"
