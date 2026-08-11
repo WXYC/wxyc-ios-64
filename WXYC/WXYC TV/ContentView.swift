@@ -35,5 +35,5 @@ struct ContentView: View {
     // `PlayerPage`, below this view, reads the non-optional `\.playlistService`
     // and asserts on a missed injection as of #768.
     ContentView(playbackController: AudioPlayerController.shared)
-        .environment(\.playlistService, PlaylistService())
+        .environment(\.playlistService, .preview)
 }

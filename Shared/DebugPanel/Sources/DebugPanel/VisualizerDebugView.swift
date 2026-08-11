@@ -67,9 +67,7 @@ public struct VisualizerDebugView: View {
             + " Fetch Errors counts playlist fetches that threw and fell back to an empty playlist — the failures the UI hides by keeping the last good data on screen. Cancellations are excluded. The count is per-fetcher and per-launch, so it resets when the API version changes."
     }
 
-    /// The fetch-error count, or an em dash before the first sample lands (or
-    /// when no `PlaylistService` is in the environment — previews, and any
-    /// surface that presents this panel without the app's service graph).
+    /// The fetch-error count, or an em dash before the first sample lands.
     private var fetchErrorCountText: String {
         guard let fetchErrorCount else { return "—" }
         return "\(fetchErrorCount)"
@@ -200,7 +198,7 @@ public struct VisualizerDebugView: View {
                                 // second is far cheaper than making the counter
                                 // observable, and this panel is DEBUG-only.
                                 while !Task.isCancelled {
-                                    fetchErrorCount = await playlistService?.fetchErrorCount()
+                                    fetchErrorCount = await playlistService.fetchErrorCount()
                                     try? await Task.sleep(for: .seconds(1))
                                 }
                             }

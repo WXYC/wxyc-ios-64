@@ -231,5 +231,5 @@ extension SwiftUI.Image {
     // injection trips `assertionFailure` on first read instead of quietly
     // rendering an empty page.
     PlayerPage(playbackController: RadioPlayerController.shared)
-        .environment(\.playlistService, PlaylistService())
+        .environment(\.playlistService, .preview)
 }
