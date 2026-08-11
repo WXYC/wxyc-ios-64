@@ -71,6 +71,23 @@ struct LoggerFileWriteTests {
         let content = try fetchLogContent()
         #expect(content.contains("MainActor-\(marker)"))
     }
+
+    @Test("Log storage is isolated to a directory scoped to this test process, not the machine-global caches path")
+    func logStorageIsIsolatedFromMachineGlobalPath() throws {
+        let logsDir = try #require(Logger.logsDirectory)
+
+        let sharedProductionDirectory = FileManager.default
+            .urls(for: .cachesDirectory, in: .userDomainMask)
+            .first?
+            .appendingPathComponent("logs/")
+
+        // Every concurrent `swift test` / `xctest` process on this machine
+        // resolves `.cachesDirectory` to the same unsandboxed `~/Library/Caches`
+        // — without isolation, every test process races to write the same
+        // `logs/<date>.log` file, producing torn cross-process writes.
+        #expect(logsDir != sharedProductionDirectory)
+        #expect(logsDir.path.contains("\(ProcessInfo.processInfo.processIdentifier)"))
+    }
 }
 
 // MARK: - Log Level Filtering Tests

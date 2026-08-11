@@ -271,14 +271,36 @@ public final class Logger: Sendable {
         return formatter.string(from: Date())
     }
 
-    private static let logsDirectory: URL? = {
+    /// True when running under `swift test` or an `xctest` host process.
+    /// `.cachesDirectory` resolves to the unsandboxed, machine-global
+    /// `~/Library/Caches` for these hosts, so every concurrent test process
+    /// on the machine would otherwise share one `logs/<date>.log` file and
+    /// race to write it — see `logsDirectory`.
+    private static let isRunningInTestHost: Bool = {
+        let name = ProcessInfo.processInfo.processName.lowercased()
+        return name == "swiftpm-testing-helper" || name.contains("xctest")
+    }()
+
+    /// Root directory for log storage. Internal (not `private`) so tests can
+    /// assert on it via `@testable import Logger` — see
+    /// `LoggerFileWriteTests.logStorageIsIsolatedFromMachineGlobalPath`.
+    static let logsDirectory: URL? = {
         let urls = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
         guard let cachesDirectory = urls.first else {
             print("[Logger INIT] Could not find caches directory")
             return nil
         }
 
-        let logsDir = cachesDirectory.appendingPathComponent("logs/")
+        // Scope test-host runs to a directory unique to this process instead
+        // of the shared production `logs/` directory. This is computed once,
+        // lazily, on first access to `logsDirectory` in the process — so
+        // whichever test touches Logger first fixes the isolated directory
+        // for the whole run; no cross-test coordination is needed.
+        let subdirectoryName = isRunningInTestHost
+            ? "logs-test-\(ProcessInfo.processInfo.processIdentifier)/"
+            : "logs/"
+
+        let logsDir = cachesDirectory.appendingPathComponent(subdirectoryName)
         do {
             try FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)
             return logsDir
