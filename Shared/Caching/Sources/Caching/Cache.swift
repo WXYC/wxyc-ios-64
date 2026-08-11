@@ -19,7 +19,9 @@ import Foundation
 /// (re)written or purged as legacy, while an unreadable one must be left alone —
 /// treating a transient I/O or permission failure as absence would let callers
 /// truncate or delete intact data. ``CacheCoordinator`` maps ``unreadable`` to
-/// ``CacheCoordinator/Error/readFailed``.
+/// ``CacheCoordinator/Error/readFailed``, which lets a read-merge-write caller
+/// (e.g. `PlaycutHistoryStore`, #465) skip the write instead of truncating an
+/// intact entry after a transient read failure.
 public enum MetadataReadResult: Sendable {
     /// The entry exists and its metadata was decoded.
     case present(CacheMetadata)
@@ -106,7 +108,9 @@ public protocol Cache: Sendable {
     /// Implementations must return keys verbatim as they were stored: each
     /// returned key, passed back to ``data(for:)`` or ``metadata(for:)``, must
     /// resolve to the same entry. Callers rely on this round-trip to enumerate
-    /// structured key schemes (e.g. prefix-matched day buckets).
+    /// structured key schemes (e.g. prefix-matched day buckets — infrastructure
+    /// for `PlaycutHistoryStore`, #465, which prefixes its day buckets and
+    /// filters this list by prefix).
     ///
     /// - Returns: An array of tuples containing the key and metadata for each entry.
     func allMetadata() -> [(key: String, metadata: CacheMetadata)]

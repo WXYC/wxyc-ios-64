@@ -27,7 +27,8 @@ import Logger
 /// - **Shared**: The App Group container (`group.wxyc.iphone/Library/Caches`)
 /// - **Application Support**: A named subdirectory of the app's Application
 ///   Support directory — never purged by the system and included in backups,
-///   the home of irreplaceable data like the playcut history
+///   the home of irreplaceable data like the playcut history. Infrastructure
+///   for `PlaycutHistoryStore` (#465).
 ///
 /// Use the shared container when data needs to be accessible from widgets
 /// or extensions.
