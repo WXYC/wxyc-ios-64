@@ -289,11 +289,27 @@ struct AlternativeURLFormatTests {
     func youtubeHandlesShortURL() {
         let service = YouTubeMusicService()
         let shortURL = URL(string: "https://youtu.be/7SKorvPNRDI")!
-        
+
         #expect(service.canHandle(url: shortURL))
-        
+
         let track = service.parse(url: shortURL)
         #expect(track?.identifier == "7SKorvPNRDI")
+    }
+
+    /// Bare `youtube.com` is the one host that deliberately stays out of `YouTubeMusicService.hosts`:
+    /// the domain serves far more than tracks, so only its `/watch` path counts. Without this
+    /// negative case nothing would notice if that path condition were dropped and `youtube.com`
+    /// were folded into the plain host list — every other YouTube test uses a `/watch` URL.
+    @Test("YouTube does not handle non-/watch youtube.com URLs", arguments: [
+        "https://www.youtube.com/feed/subscriptions",
+        "https://www.youtube.com/@wxyc",
+        "https://www.youtube.com/",
+    ])
+    func youtubeRejectsNonWatchPaths(urlString: String) throws {
+        let service = YouTubeMusicService()
+        let url = try #require(URL(string: urlString))
+
+        #expect(service.canHandle(url: url) == false)
     }
 }
 
