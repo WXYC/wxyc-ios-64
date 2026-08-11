@@ -12,12 +12,30 @@ import Foundation
 import Core
 import Logger
 import Analytics
+import Synchronization
 
 // MARK: - Protocols
 
 /// Protocol for fetching playlists (non-throwing, returns empty on error).
 public protocol PlaylistFetcherProtocol: Sendable {
     func fetchPlaylist() async -> Playlist
+
+    /// Cumulative count of `fetchPlaylist()` calls that failed (network error,
+    /// HTTP error, or decode failure) and fell back to an empty playlist,
+    /// since this fetcher instance was created. Cancellation is excluded,
+    /// matching the exclusion already applied to the error-reporter and
+    /// analytics paths in `PlaylistFetcher.fetchPlaylist()`.
+    ///
+    /// For observability only (see WXYC/wxyc-ios-64#267): `fetchPlaylist()`'s
+    /// return value and the caller's behavior are unchanged by this count.
+    /// Defaults to zero for conformers that don't track failures — test
+    /// doubles in particular, which return a configured playlist rather than
+    /// modeling a real network round trip.
+    var fetchErrorCount: Int { get }
+}
+
+extension PlaylistFetcherProtocol {
+    public var fetchErrorCount: Int { 0 }
 }
 
 /// Protocol for raw playlist data fetching (throws on error).
@@ -55,6 +73,14 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     private let analytics: any AnalyticsService
     private let apiVersion: PlaylistAPIVersion
     private let healthySuccessSampler: @Sendable () -> Bool
+
+    /// Backing store for ``fetchErrorCount``. A `Mutex`, not a plain `Int`,
+    /// because `fetchPlaylist()` can genuinely run concurrently — the polling
+    /// loop in `PlaylistService.startFetching()` and an SSE `.refetch` handler
+    /// can both be in flight against the same fetcher at once — and a plain
+    /// increment would be a data race under real parallelism, not just actor
+    /// reentrancy.
+    private let failureCount = Mutex(0)
 
     /// Creates a new PlaylistFetcher.
     ///
@@ -126,6 +152,8 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
                 return .empty
             }
 
+            failureCount.withLock { $0 += 1 }
+
             let duration = timer.duration()
             errorReporter.report(
                 error,
@@ -139,6 +167,11 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             captureFetchEvent(playlist: .empty, succeeded: false, duration: duration)
             return .empty
         }
+    }
+
+    /// See ``PlaylistFetcherProtocol/fetchErrorCount``.
+    public var fetchErrorCount: Int {
+        failureCount.withLock { $0 }
     }
 
     /// Emits a `FetchPlaylistEvent` for a terminal fetch outcome.
