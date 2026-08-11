@@ -105,6 +105,8 @@ Each log entry includes:
 - Previous days' logs are automatically compressed to `.log.zip`
 - Logs older than 7 days are deleted
 
+Under a test host — `swift test`'s `swiftpm-testing-helper`, or an `xctest` bundle — storage moves to `<TemporaryDirectory>/logs-test-<pid>/` instead. A host-side `swift test` resolves `<CachesDirectory>` to the unsandboxed, machine-global `~/Library/Caches`, so without a per-process directory every concurrent test process on the machine appends to one `logs/<date>.log` and tears it. See `Logger.isRunningInTestHost`, which documents why this is a stopgap for an injected storage location.
+
 ## Thread Safety
 
 Logger is fully thread-safe and `Sendable`-compliant. File writes happen **synchronously**, under `fileLock`, on the calling thread. That is deliberate and load-bearing: an earlier design hopped file I/O onto a dedicated global actor, and unstructured `Task`s spawned from `@MainActor` contexts could be torn down before the write landed, silently losing log lines. Do not reintroduce an async hop here. `LoggerConfiguration` and the destinations list take separate locks so level lookups and destination dispatch never contend with file I/O.

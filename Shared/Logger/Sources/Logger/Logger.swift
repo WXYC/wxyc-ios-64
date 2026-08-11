@@ -290,14 +290,20 @@ public final class Logger: Sendable {
     /// nothing. Sniffing has no such ordering hazard — the branch is decided
     /// before the process can log at all.
     ///
-    /// The conventional `XCTestConfigurationFilePath` environment probe is not
-    /// an alternative here: SwiftPM's swift-testing host does not set it
-    /// (verified nil under `swiftpm-testing-helper`), which is the exact host
-    /// this needs to catch.
+    /// The conventional `XCTestConfigurationFilePath` environment probe is the
+    /// complement of this predicate, not a replacement for it: it is set for a
+    /// host-application XCTest bundle and is nil under SwiftPM's swift-testing
+    /// host (verified) — and the SwiftPM host is the one that needs catching,
+    /// for the reason in `logsDirectory`.
     ///
-    /// No shipping WXYC executable (`WXYC`, `WatchXYC`, the widget and share
-    /// extensions, the UI-test runner) has a process name matching either
-    /// predicate, so the production branch below is what users always get.
+    /// So this predicate deliberately does not fire for the app-hosted
+    /// `WXYCTests` bundle: that bundle is injected into the host app, so its
+    /// process is named `WXYC`, and it runs inside an app sandbox where
+    /// `.cachesDirectory` is a per-app container rather than the machine-global
+    /// `~/Library/Caches`. There is no cross-process race there to isolate
+    /// from. Users are on the production branch for the same reason — no
+    /// shipping executable (`WXYC`, `WatchXYC`, the widget and share
+    /// extensions, the UI-test runner) matches either name.
     private static let isRunningInTestHost: Bool = {
         let name = ProcessInfo.processInfo.processName.lowercased()
         return name == "swiftpm-testing-helper" || name.contains("xctest")
@@ -325,13 +331,18 @@ public final class Logger: Sendable {
 
         if isRunningInTestHost {
             logsDir = FileManager.default.temporaryDirectory
-                .appendingPathComponent("logs-test-\(ProcessInfo.processInfo.processIdentifier)/")
+                .appending(path: "logs-test-\(ProcessInfo.processInfo.processIdentifier)/")
         } else {
             let urls = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
             guard let cachesDirectory = urls.first else {
                 print("[Logger INIT] Could not find caches directory")
                 return nil
             }
+            // Kept as `appendingPathComponent` rather than `appending(path:)`:
+            // `logStorageIsIsolatedFromMachineGlobalPath` builds the expected
+            // production URL the same way and compares the two for inequality,
+            // so changing only one side would make that comparison pass for a
+            // spurious reason.
             logsDir = cachesDirectory.appendingPathComponent("logs/")
         }
 
