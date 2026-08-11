@@ -10,6 +10,7 @@
 
 import Testing
 import Foundation
+import os
 import Core
 import CoreTesting
 import Playlist
@@ -392,5 +393,183 @@ struct PlaycutMetadataServiceHTTPTests {
         #expect(capturedAuthorizationHeaders.count == 2)
         #expect(capturedAuthorizationHeaders[0] == "Bearer stale-token")
         #expect(capturedAuthorizationHeaders[1] == "Bearer fresh-token")
+    }
+
+    // MARK: - Transient-vs-permanent classification (#284)
+
+    @Test("Retries a transient 503 with backoff, then succeeds")
+    func retriesTransientServerErrorThenSucceeds() async throws {
+        // Given — the first two attempts hit a transient 5xx; the third
+        // (bounded — #284 caps this service at 3 total attempts) succeeds.
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        QueuedStubURLProtocol.setResponses([
+            (503, Data(#"{"error": "Service Unavailable"}"#.utf8)),
+            (503, Data(#"{"error": "Service Unavailable"}"#.utf8)),
+            (200, Data("""
+            {
+                "discogsReleaseId": 12345,
+                "label": "Warp Records",
+                "releaseYear": 2001,
+                "spotifyUrl": null,
+                "appleMusicUrl": null,
+                "youtubeMusicUrl": null,
+                "bandcampUrl": null,
+                "soundcloudUrl": null
+            }
+            """.utf8)),
+        ])
+
+        let playcut = Playcut.stub(
+            songTitle: "VI Scose Poise",
+            labelName: "Warp",
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then — the third attempt's answer wins, and all three were spent.
+        #expect(result.album.label == "Warp Records")
+        #expect(result.album.releaseYear == 2001)
+        #expect(QueuedStubURLProtocol.capturedRequests().count == 3)
+    }
+
+    @Test("Retries a transient networking blip (URLError) with backoff, then succeeds")
+    func retriesTransientNetworkErrorThenSucceeds() async throws {
+        // Given — a handler that throws a transient URLError twice, then serves 200.
+        let attemptCount = OSAllocatedUnfairLock(initialState: 0)
+        let mockURLSession = QueuedStubURLProtocol.session { request in
+            let attempt = attemptCount.withLock { count -> Int in
+                count += 1
+                return count
+            }
+            if attempt < 3 {
+                throw URLError(.networkConnectionLost)
+            }
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            let body = Data("""
+            {
+                "discogsReleaseId": 54321,
+                "label": "Drag City Records",
+                "releaseYear": 2015,
+                "spotifyUrl": null,
+                "appleMusicUrl": null,
+                "youtubeMusicUrl": null,
+                "bandcampUrl": null,
+                "soundcloudUrl": null
+            }
+            """.utf8)
+            return (body, response)
+        }
+
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        let playcut = Playcut.stub(
+            songTitle: "Back, Baby",
+            labelName: "Drag City",
+            artistName: "Jessica Pratt",
+            releaseTitle: "On Your Own Love Again"
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then
+        #expect(result.album.label == "Drag City Records")
+        #expect(attemptCount.withLock { $0 } == 3)
+    }
+
+    @Test("Gives up after exhausting retries on a persistent transient error, without poisoning the cache")
+    func givesUpAfterExhaustingRetriesOnPersistentTransientError() async throws {
+        // Given — every attempt 5xxs.
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        QueuedStubURLProtocol.setResponse(statusCode: 503, body: Data(#"{"error": "Service Unavailable"}"#.utf8))
+
+        let playcut = Playcut.stub(
+            songTitle: "VI Scose Poise",
+            labelName: "Warp",
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        )
+
+        // When
+        let timer = Core.Timer.start()
+        let result = await service.fetchMetadata(for: playcut)
+        let elapsed = timer.duration()
+
+        // Then — falls back to the flowsheet label, spends exactly the bounded
+        // number of attempts, stays under the ≤3s aggregate retry budget, and
+        // never writes a negative cache entry for a condition that might clear
+        // on the very next poll.
+        #expect(result.album.label == "Warp", "Should fall back to playcut label once retries are exhausted")
+        #expect(QueuedStubURLProtocol.capturedRequests().count == 3, "Bounded to 3 total attempts")
+        #expect(elapsed < 3.0, "Total retry budget must stay under the ~3s UI-tap latency budget")
+        #expect(mockCache.setKeys.isEmpty, "A persistently-transient failure must not poison the negative cache")
+    }
+
+    @Test("A 404 stores a negative cache entry immediately, without retrying")
+    func permanentNotFoundCachesNegativeEntryImmediatelyWithoutRetrying() async throws {
+        // Given
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
+        let mockCache = PlaycutMetadataMockCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        QueuedStubURLProtocol.setResponse(statusCode: 404, body: Data(#"{"error": "Not Found"}"#.utf8))
+
+        // Not mid-enrichment, so the existing isSparse/midEnrichment TTL gate
+        // (#812) puts this negative entry on the long TTL — a 404 is exactly
+        // as durable an answer as a permanently-unmatched free-text play.
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            metadataStatus: nil
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then — a single attempt (permanent failures are not retried), and
+        // the negative answer is cached immediately rather than left unwritten.
+        #expect(result.album.label == "Sonamos")
+        #expect(QueuedStubURLProtocol.capturedRequests().count == 1, "A 404 must not be retried")
+
+        let albumKey = MetadataCacheKey.album(artistName: "Juana Molina", releaseTitle: "DOGA")
+        #expect(mockCache.setKeys.contains(albumKey), "A 404 should store a negative album cache entry immediately")
+        #expect(mockCache.metadata(for: albumKey)?.lifespan == .sevenDays)
     }
 }

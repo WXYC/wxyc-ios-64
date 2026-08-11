@@ -78,6 +78,16 @@ public actor PlaycutMetadataService {
     /// unmatched row must not land here.
     static let sparseAlbumLifespan: TimeInterval = 15 * 60
 
+    /// Bounded backoff delays between `/proxy/metadata/album` retry attempts
+    /// on a transient failure (#284) — 3 total attempts (the initial try plus
+    /// these 2 delays), not the 4-attempt/100ms-500ms-2.5s schedule the
+    /// ticket sketches: a 3-attempt budget only has 2 gaps to fill, and
+    /// spending all 3 delays (3.1s of sleeping before the request latency
+    /// itself) would breach the ticket's own "≤3s aggregate" UI-tap-latency
+    /// acceptance criterion. 100ms + 500ms = 600ms of sleeping stays
+    /// comfortably inside that budget.
+    private static let albumFetchRetryDelays: [Duration] = [.milliseconds(100), .milliseconds(500)]
+
     private let client: WXYCProxyClient
     private let cache: CacheCoordinator
     private let errorReporter: any ErrorReporter
@@ -290,10 +300,7 @@ public actor PlaycutMetadataService {
             }
             queryItems.append(URLQueryItem(name: "trackTitle", value: playcut.songTitle))
 
-            let apiResult: WXYCAPIModels.AlbumMetadataResponse = try await client.get(
-                "proxy/metadata/album",
-                query: queryItems
-            )
+            let apiResult = try await fetchAlbumWithRetry(query: queryItems)
 
             // BS emits `discogsUnavailable`/`discogsUnavailableNote` on this
             // response (BS#1901), and `WXYCAPIModels.AlbumMetadataResponse`
@@ -355,6 +362,93 @@ public actor PlaycutMetadataService {
             }
 
             return (album, streaming)
+        }
+    }
+
+    // MARK: - Transient-vs-permanent classification (#284)
+
+    /// Fetches `/proxy/metadata/album`, retrying a transient failure (5xx,
+    /// networking blip) with bounded backoff, and treating a permanent
+    /// failure (404, or any other non-retryable error) as a definitive "no
+    /// match" rather than an error.
+    ///
+    /// A permanent failure resolves to `WXYCAPIModels.AlbumMetadataResponse()`
+    /// — the same all-nil shape a literal 200-with-empty-body response
+    /// decodes to — so the caller's existing ``AlbumMetadata/isSparse``/
+    /// mid-enrichment TTL gate (#812) is the only place that decides how long
+    /// either answer is trusted, with no second negative-cache code path to
+    /// keep in sync.
+    ///
+    /// Never retries cancellation: if the caller's own `Task` is cancelled
+    /// (e.g. the detail card was dismissed mid-fetch), that must propagate
+    /// immediately so `timedOperation`'s cancellation handling — not this
+    /// retry loop — decides what happens next.
+    ///
+    /// - Throws: the last transient error, once ``albumFetchRetryDelays`` is
+    ///   exhausted, so the caller's existing uncached fallback path is taken
+    ///   rather than pinning a negative verdict for a condition that might
+    ///   clear on the very next poll; or a cancellation error, immediately
+    ///   and without retrying.
+    private func fetchAlbumWithRetry(
+        query: [URLQueryItem],
+        remainingDelays: ArraySlice<Duration> = PlaycutMetadataService.albumFetchRetryDelays[...]
+    ) async throws -> WXYCAPIModels.AlbumMetadataResponse {
+        do {
+            return try await client.get("proxy/metadata/album", query: query)
+        } catch {
+            if isCancellation(error) {
+                throw error
+            }
+            guard Self.isTransient(error) else {
+                // Permanent: no match, not a retry candidate.
+                return WXYCAPIModels.AlbumMetadataResponse()
+            }
+            guard let delay = remainingDelays.first else {
+                // Retries exhausted and still transient — propagate uncached.
+                throw error
+            }
+            Log(.warning, category: .network, "Transient /proxy/metadata/album failure, retrying in \(delay): \(error)")
+            try? await Task.sleep(for: delay)
+            return try await fetchAlbumWithRetry(query: query, remainingDelays: remainingDelays.dropFirst())
+        }
+    }
+
+    /// Whether `error` represents a transient condition worth retrying,
+    /// rather than a definitive answer.
+    ///
+    /// Mirrors `Artwork.MultisourceArtworkService.isTransient` (#207) — same
+    /// concept, same name, deliberately not a parallel taxonomy — applied
+    /// here to decide whether to retry rather than whether to skip a
+    /// negative-cache write (this fetch's existing `timedOperation` fallback
+    /// path already never writes to cache on any thrown error; see
+    /// ``fetchAlbumWithRetry(query:remainingDelays:)``).
+    ///
+    /// Deliberately excludes `URLError.cancelled`, unlike the artwork
+    /// classifier: a cancelled request must propagate immediately so the
+    /// caller's own cancellation handling runs, not be treated as "retry
+    /// me" — `fetchAlbumWithRetry` checks for cancellation before this
+    /// predicate is ever consulted.
+    private static func isTransient(_ error: any Error) -> Bool {
+        if let httpError = error as? HTTPStatusError {
+            return (500...599).contains(httpError.statusCode)
+        }
+        guard let urlError = error as? URLError else { return false }
+        return switch urlError.code {
+        case .badServerResponse,
+             .timedOut,
+             .networkConnectionLost,
+             .notConnectedToInternet,
+             .dnsLookupFailed,
+             .cannotConnectToHost,
+             .cannotFindHost,
+             .resourceUnavailable,
+             .internationalRoamingOff,
+             .callIsActive,
+             .dataNotAllowed,
+             .secureConnectionFailed:
+            true
+        default:
+            false
         }
     }
 }
