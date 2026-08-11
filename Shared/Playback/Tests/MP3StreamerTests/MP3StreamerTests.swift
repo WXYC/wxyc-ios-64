@@ -464,31 +464,70 @@ struct MP3StreamerStuckStateRecoveryTests {
             audioPlayer: mockPlayer
         )
 
-        // Get to playing state
+        // Record every state transition as it happens, so a `.stalled` that is
+        // recovered again in the very next MainActor turn is still visible.
+        // Sampling `streamingState` alone cannot tell "the stall never
+        // surfaced" apart from "the stall surfaced and the decode backlog
+        // recovered it immediately", and this test has to distinguish them: the
+        // second means the quiescence wait below came up short. Same technique
+        // #860 used in testStallRecoveryRequiresMinimumBuffers.
+        var sawStalled = false
+        let observer = Task { @MainActor in
+            for await state in streamer.stateStreamInternal {
+                if state == .stalled { sawStalled = true }
+            }
+        }
+        defer { observer.cancel() }
+
+        // Get to playing state. No vacuous-pass path: a streamer that never
+        // warms up must fail loudly here via #expect, not silently skip the
+        // stall/reconnect assertions below the way the old guard-and-return
+        // did (same shape #860 fixed in testStallRecoveryRequiresMinimumBuffers).
         streamer.play()
-        for _ in 0..<20 {
-            try await Task.sleep(for: .milliseconds(100))
-            if case .playing = streamer.streamingState { break }
-        }
+        await pollUntil { streamer.streamingState == .playing }
+        #expect(streamer.streamingState == .playing,
+                "Streamer must warm up to .playing before stall/reconnect can be exercised")
+        guard case .playing = streamer.streamingState else { return }
 
-        guard case .playing = streamer.streamingState else {
-            // Skip if we couldn't reach playing state in this environment
-            return
-        }
+        // Let the decode pipeline run dry before stalling. This is the
+        // load-bearing wait in the test and it has to be a quiescence wait, not
+        // a fixed sleep: `handleDecodedBuffer`'s `.stalled` branch flips the
+        // streamer straight back to `.playing` as soon as
+        // `minimumBuffersBeforePlayback` further buffers land, so a stall raised
+        // over a pipeline that is still draining does not persist and the
+        // play()-from-stalled path below never gets exercised. The whole ~400KB
+        // fixture is yielded into the HTTP event stream in one go, so under load
+        // the decoder is still working long past any fixed duration — the 300ms
+        // sleep that used to sit here is precisely what made this test flaky.
+        // In `.playing` every decoded buffer is scheduled straight through to
+        // the player, so a scheduled-buffer count that has stopped moving is the
+        // observable proxy for "nothing left in flight".
+        await pollUntilStable { mockPlayer.scheduledBuffers.count }
 
-        // Wait for decoder to finish all pending data so no new buffers auto-recover
-        try await Task.sleep(for: .milliseconds(300))
-
-        // Simulate stall — with no pending data, the stall state should persist
+        // Simulate stall — with the pipeline drained, the stall state should
+        // persist until play() is called again.
         mockPlayer.simulateStall()
-        try await Task.sleep(for: .milliseconds(50))
-        #expect(streamer.streamingState == .stalled)
+        await pollUntil { sawStalled }
+        #expect(sawStalled,
+                "simulateStall() must surface as .stalled at least momentarily")
+        #expect(streamer.streamingState == .stalled,
+                """
+                The stall must still be in effect when play() is called. A stall that has already \
+                auto-recovered means the decode pipeline had not drained, so the play()-from-stalled \
+                path this test exists to cover was never reached.
+                """)
+
+        // A stall that did not persist makes the rest of the test meaningless:
+        // play() short-circuits when the state is already .playing, so the
+        // reconnect wait below would burn its whole deadline only to re-report
+        // the failure already recorded above.
+        guard case .stalled = streamer.streamingState else { return }
 
         let connectCountBeforeRetry = mockHTTP.connectCallCount
 
         // Call play() again - should reset and reconnect
         streamer.play()
-        try await Task.sleep(for: .milliseconds(100))
+        await pollUntil { mockHTTP.connectCallCount > connectCountBeforeRetry }
 
         #expect(streamer.streamingState != .stalled,
                 "play() from stalled state should reset and attempt reconnection")

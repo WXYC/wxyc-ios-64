@@ -66,3 +66,53 @@ public func pollUntil(_ condition: @MainActor () -> Bool, timeout: Duration = st
         }
     }
 }
+
+/// Polls `sample` on the main actor until its value has stopped changing for
+/// `dwell`, or `timeout` expires. Returns silently on timeout, same contract as
+/// ``pollUntil``: pair it with an assertion on whatever the quiescence was
+/// supposed to establish.
+///
+/// The quiescence counterpart to ``pollUntil``. Use it when what you are waiting
+/// for is "some background pipeline has run dry" rather than a condition that
+/// latches true. ``pollUntil`` cannot express that: there is no instant at which
+/// "nothing more is coming" becomes observably true, so there is no predicate to
+/// poll.
+///
+/// What it replaces is a fixed `Task.sleep`, picked long enough to cover the
+/// pipeline on an unloaded machine. That is a silent failure mode under load —
+/// the sleep elapses, the pipeline is still draining, and the test proceeds to
+/// race whatever the leftover work does next. This waits as long as the machine
+/// actually needs and is bounded only by the cap.
+///
+/// `dwell` must be comfortably longer than the gap between two consecutive items
+/// the pipeline emits, or a scheduling hiccup part-way through a drain reads as
+/// quiescence. The 250ms default is far above the sub-millisecond inter-buffer
+/// gap of the MP3 decode path this was written for, while still costing less
+/// than the 300ms blind sleep it replaced there.
+@MainActor
+public func pollUntilStable(
+    dwell: Duration = .milliseconds(250),
+    timeout: Duration = stallTolerantTimeout,
+    _ sample: @MainActor () -> Int
+) async {
+    let clock = ContinuousClock()
+    let deadline = clock.now + timeout
+    var lastValue = sample()
+    var lastChange = clock.now
+
+    while clock.now < deadline {
+        do {
+            try await Task.sleep(for: .milliseconds(5))
+        } catch {
+            // Cancelled — same reasoning as `pollUntil`: return rather than spin.
+            return
+        }
+        let value = sample()
+        if value != lastValue {
+            lastValue = value
+            lastChange = clock.now
+        } else if clock.now - lastChange >= dwell {
+            return
+        }
+    }
+}
