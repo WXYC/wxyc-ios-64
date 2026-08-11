@@ -43,6 +43,24 @@ struct WaitUntilTests {
         #expect(succeeded == false)
     }
 
+    @Test("A cancelled wait gives up immediately instead of spinning out its deadline")
+    func cancellationEndsTheWaitEarly() async {
+        // Swift Testing's `.timeLimit` enforces itself by cancelling the task.
+        // A `Task.yield()` spin neither throws on cancellation nor checks
+        // `Task.isCancelled`, so under a spin this helper would pin a
+        // cooperative thread for the full ten seconds and the time limit would
+        // be decorative. Sleeping between polls is what makes the wait
+        // cancellable — this test is the guard on that (#766, mechanic per #807).
+        let start = ContinuousClock.now
+        let task = Task { await waitUntil(timeout: .seconds(10)) { false } }
+        task.cancel()
+        let succeeded = await task.value
+        let elapsed = ContinuousClock.now - start
+
+        #expect(succeeded == false)
+        #expect(elapsed < .seconds(2), "Cancelled wait took \(elapsed); it should abandon the deadline, not run it out")
+    }
+
     @Test("Supports async conditions that need to await other work")
     func supportsAsyncConditions() async {
         actor Counter {
