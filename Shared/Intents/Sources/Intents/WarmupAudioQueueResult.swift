@@ -13,9 +13,10 @@
 //
 
 #if compiler(>=6.4)
+#if !os(watchOS) && !os(tvOS)
 import AppIntents
 
-@available(iOS 27.0, *)
+@available(iOS 27.0, macOS 27.0, visionOS 27.0, *)
 @AppEntity(schema: .audio.warmupAudioQueueResult)
 struct WarmupAudioQueueResult: TransientAppEntity {
     init() { }
@@ -24,4 +25,5 @@ struct WarmupAudioQueueResult: TransientAppEntity {
         DisplayRepresentation(title: "Queue")
     }
 }
+#endif
 #endif
