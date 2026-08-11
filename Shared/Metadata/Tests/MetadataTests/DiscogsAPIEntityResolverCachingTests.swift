@@ -31,6 +31,16 @@
 //  `.serialized` and don't contend for that type's one-adopter-per-bundle
 //  slot.
 //
+//  On `FailFastURLProtocol` alone NOT being load-bearing for the three
+//  cache-hit tests below: `cachedFetch` (Caching) returns straight from a
+//  cache hit without ever calling `fetch`, so `urlSession` is never touched
+//  in a passing run — mutating `FailFastURLProtocol` to succeed instead of
+//  fail changes nothing observable. Each test now also asserts
+//  `mockCache.setCallCount == 0`, since `cachedFetch` only calls `cache.set`
+//  on its fetch-and-recache path, never on a hit — that is what actually
+//  proves the fetch closure never ran, independent of what the injected
+//  session would have done had it been reached.
+//
 
 import Testing
 import Foundation
@@ -59,8 +69,15 @@ struct DiscogsAPIEntityResolverCachingTests {
         // When
         let result = try await resolver.resolveArtist(id: 12345)
 
-        // Then — a network attempt would have thrown via FailFastURLProtocol.
+        // Then — FailFastURLProtocol backs `urlSession` so a network attempt
+        // would throw, but that alone isn't load-bearing here: a cache hit
+        // never reaches `urlSession` at all, so this assertion would pass
+        // identically whether the injected session failed or silently
+        // succeeded. `setCallCount` is what actually proves no fetch-and-
+        // recache happened — `cachedFetch` only calls `cache.set` on its
+        // fetch path, never on a hit.
         #expect(result == "Cached Artist Name")
+        #expect(mockCache.setCallCount == 0, "A cache hit must not fetch and recache")
     }
 
     @Test("resolveRelease returns cached title without API call")
@@ -77,8 +94,10 @@ struct DiscogsAPIEntityResolverCachingTests {
         // When
         let result = try await resolver.resolveRelease(id: 54321)
 
-        // Then
+        // Then — see resolveArtistReturnsCached for why setCallCount, not
+        // FailFastURLProtocol, is what actually proves no fetch happened.
         #expect(result == "Cached Album Title")
+        #expect(mockCache.setCallCount == 0, "A cache hit must not fetch and recache")
     }
 
     @Test("resolveMaster returns cached title without API call")
@@ -95,8 +114,10 @@ struct DiscogsAPIEntityResolverCachingTests {
         // When
         let result = try await resolver.resolveMaster(id: 11111)
 
-        // Then
+        // Then — see resolveArtistReturnsCached for why setCallCount, not
+        // FailFastURLProtocol, is what actually proves no fetch happened.
         #expect(result == "Cached Master Title")
+        #expect(mockCache.setCallCount == 0, "A cache hit must not fetch and recache")
     }
 }
 
