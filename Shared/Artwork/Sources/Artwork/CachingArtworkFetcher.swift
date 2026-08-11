@@ -37,7 +37,7 @@ extension CacheCoordinator: ArtworkService {
     func set(artwork: CGImage, for id: String, lifespan: TimeInterval) async {
         let trimmedArtwork = trimWhiteBorder(from: artwork)
         let scaledArtwork = scaleCGImage(trimmedArtwork, toWidth: ArtworkCacheConfiguration.targetWidth)
-        let artworkData = encodeCGImageAsHEIF(scaledArtwork, compressionQuality: ArtworkCacheConfiguration.heifCompressionQuality)
+        let artworkData = scaledArtwork.heifData(compressionQuality: ArtworkCacheConfiguration.heifCompressionQuality)
             ?? encodeCGImageAsPNG(scaledArtwork)
         await self.setData(artworkData, for: id, lifespan: lifespan)
     }
@@ -70,25 +70,6 @@ private func scaleCGImage(_ image: CGImage, toWidth targetWidth: CGFloat) -> CGI
     context.draw(image, in: CGRect(origin: .zero, size: targetSize))
 
     return context.makeImage() ?? image
-}
-
-private func encodeCGImageAsHEIF(_ image: CGImage, compressionQuality: CGFloat) -> Data? {
-    let data = NSMutableData()
-    guard let destination = CGImageDestinationCreateWithData(
-        data as CFMutableData,
-        UTType.heic.identifier as CFString,
-        1,
-        nil
-    ) else {
-        return nil
-    }
-
-    CGImageDestinationAddImage(destination, image, [
-        kCGImageDestinationLossyCompressionQuality: compressionQuality
-    ] as CFDictionary)
-
-    guard CGImageDestinationFinalize(destination) else { return nil }
-    return data as Data
 }
 
 private func encodeCGImageAsPNG(_ image: CGImage) -> Data? {
