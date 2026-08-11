@@ -481,6 +481,13 @@ struct HLSPlayerTests {
         return (player, mock, nc)
     }
 
+    /// Posts a rate change with a `nil` subject, which reaches only players
+    /// whose `underlyingAVPlayer` is `nil` — the `MockHLSAVPlayer` default.
+    /// It also relies on that `nil` object to make `HLSRateDidChangeMessage`
+    /// fall through to `userInfo["rate"]`; had the subject been a real
+    /// `AVPlayer`, the message would read `player.rate` instead and ignore the
+    /// `rate` argument. Giving the mock a real `AVPlayer` therefore breaks
+    /// every caller of this helper, not just the scoping.
     private func simulateRateChange(rate: Float, on nc: NotificationCenter) {
         nc.post(
             name: AVPlayer.rateDidChangeNotification,
