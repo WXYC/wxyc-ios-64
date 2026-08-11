@@ -74,6 +74,21 @@ struct MusicServiceURLHandlingTests {
             "\(serviceId.displayName) should\(shouldHandle ? "" : " not") handle \(urlOwner.displayName) URL"
         )
     }
+
+    /// A `canHandle` default that matches too eagerly (e.g. always `true`, or short-circuiting
+    /// on a non-empty `hosts` list without actually checking it) is the dangerous failure mode —
+    /// the cross-product test above only ever throws known-service URLs at each service, so it
+    /// can't catch "matches everything." This exercises a host with no service affiliation at all.
+    @Test(
+        "canHandle rejects a URL whose host doesn't belong to any known service",
+        arguments: testableServices
+    )
+    func canHandleRejectsUnrelatedHost(serviceId: MusicService) {
+        let service = makeService(for: serviceId)
+        let unrelatedURL = URL(string: "https://example.com/totally-unrelated")!
+
+        #expect(service.canHandle(url: unrelatedURL) == false)
+    }
 }
 
 // MARK: - Cross-Product Artwork Fetching Tests

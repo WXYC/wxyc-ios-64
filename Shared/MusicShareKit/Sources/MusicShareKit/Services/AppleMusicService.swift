@@ -13,16 +13,11 @@ import Foundation
 
 final class AppleMusicService: MusicServiceProvider {
     let identifier: MusicService = .appleMusic
-    
+    static let hosts = ["music.apple.com"]
+    static let schemes = ["music"]
+
     init() {}
-    
-    func canHandle(url: URL) -> Bool {
-        let host = url.host?.lowercased() ?? ""
-        let scheme = url.scheme?.lowercased() ?? ""
-        
-        return host.contains("music.apple.com") || scheme == "music"
-    }
-    
+
     func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         

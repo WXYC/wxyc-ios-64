@@ -13,14 +13,10 @@ import Foundation
 
 final class BandcampService: MusicServiceProvider {
     let identifier: MusicService = .bandcamp
-    
+    static let hosts = ["bandcamp.com"]
+
     init() {}
-    
-    func canHandle(url: URL) -> Bool {
-        let host = url.host?.lowercased() ?? ""
-        return host.contains("bandcamp.com")
-    }
-    
+
     func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         

@@ -13,14 +13,10 @@ import Foundation
 
 final class SoundCloudService: MusicServiceProvider {
     let identifier: MusicService = .soundcloud
-    
+    static let hosts = ["soundcloud.com"]
+
     init() {}
-    
-    func canHandle(url: URL) -> Bool {
-        let host = url.host?.lowercased() ?? ""
-        return host.contains("soundcloud.com")
-    }
-    
+
     func parse(url: URL) -> MusicTrack? {
         guard canHandle(url: url) else { return nil }
         
