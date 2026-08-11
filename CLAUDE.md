@@ -9,7 +9,7 @@ WXYC is the iOS app for WXYC 89.3 FM, the student-run radio station at UNC Chape
 CLAUDE.md is a router for the always-loaded reference card. Topic depth lives in `docs/`:
 
 - **[`docs/architecture.md`](docs/architecture.md)** — Modular Swift packages in `Shared/`, the `Singletonia` app entry point, DI/`@Observable`/async-await/MainActor patterns, and a map of the most important files in the codebase
-- **[`docs/swift-style.md`](docs/swift-style.md)** — Swift 6.2 conventions: `Observations`/AsyncStream over closures, modern Foundation API, no GCD, no force-unwraps, `Mutex`/`Atomic` over `NSLock`, `DefaultsStorage` injection for persistence
+- **[`docs/swift-style.md`](docs/swift-style.md)** — Swift 6.2 conventions: `Observations`/AsyncStream over closures, modern Foundation API, no GCD, no force-unwraps, actor isolation first and then `Mutex`/`Atomic` over `NSLock`, `DefaultsStorage` injection for persistence
 - **[`docs/swiftui.md`](docs/swiftui.md)** — SwiftUI conventions: `foregroundStyle`/`clipShape(.rect)`/`Tab`/`@Observable`/`NavigationStack`, no `ObservableObject`/`onTapGesture`/`GeometryReader`/`Task.sleep(nanoseconds:)`, view-logic into view models
 - **[`docs/build-test.md`](docs/build-test.md)** — `xcodebuild` invocations for device/simulator builds, running `WXYC.xctestplan`, opt-in E2E tests via `RUN_E2E=1`, and the UI-test entry point
 - **[`docs/configuration.md`](docs/configuration.md)** — `AppConfiguration` (PostHog/API/request-o-matic), code-signing (team `92V374HC38`, automatic), extension targets (Share/Widget/CarPlay), widget refresh budget, App Store previews, minimum iOS version
