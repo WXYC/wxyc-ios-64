@@ -72,6 +72,32 @@ struct CountingCacheTests {
         #expect(cache.data(for: "cat-power") == Data("Moon Pix".utf8))
     }
 
+    @Test("Concurrent access tallies every call exactly once")
+    func concurrentAccessIsRaceFree() async {
+        // `CountingCache` is `@unchecked Sendable`, so the tallies have to be
+        // genuinely lock-guarded rather than merely asserted to be safe — an
+        // unsynchronized `[String]` append from many tasks loses writes and
+        // corrupts the buffer. Concurrent metadata/set traffic is realistic:
+        // CacheCoordinator fans out per-key work.
+        let cache = CountingCache()
+        let metadata = CacheMetadata(lifespan: 3600)
+        let iterations = 200
+
+        await withTaskGroup(of: Void.self) { group in
+            for i in 0..<iterations {
+                group.addTask {
+                    cache.set(Data("v\(i)".utf8), metadata: metadata, for: "key-\(i)")
+                    _ = cache.metadata(for: "key-\(i)")
+                }
+            }
+        }
+
+        #expect(cache.setCallCount == iterations)
+        #expect(cache.getCallCount == iterations)
+        #expect(Set(cache.setKeys).count == iterations)
+        #expect(Set(cache.accessedKeys).count == iterations)
+    }
+
     @Test("remove(for:), clearAll(), allMetadata(), and totalSize() delegate to the inner cache")
     func passthroughOperationsDelegate() {
         let cache = CountingCache()
