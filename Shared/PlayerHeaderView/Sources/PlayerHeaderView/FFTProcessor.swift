@@ -15,10 +15,10 @@ import Synchronization
 /// Fast Fourier Transform processor for frequency domain visualization
 /// Note: @unchecked Sendable because it's primarily accessed from the single-threaded audio processing context.
 /// The normalizer property is protected with Mutex for thread-safe access when normalization mode changes from MainActor.
-final class FFTProcessor: @unchecked Sendable, AudioProcessor {
+final class FFTProcessor: @unchecked Sendable, SignalProcessor {
     private let bufferSize = 2048  // Larger buffer for better frequency resolution
     private var fftSetup: OpaquePointer?
-    private let normalizerMutex: Mutex<any Normalizer>
+    let normalizerMutex: Mutex<any Normalizer>
     
     /// Pre-computed Hann window to reduce spectral leakage
     private let hannWindow: [Float]
@@ -178,18 +178,6 @@ final class FFTProcessor: @unchecked Sendable, AudioProcessor {
         }
         
         return magnitudes
-    }
-    
-    func reset() {
-        normalizerMutex.withLock { normalizer in
-            normalizer.reset()
-        }
-    }
-    
-    func setNormalizationMode(_ mode: NormalizationMode) {
-        normalizerMutex.withLock { normalizer in
-            normalizer = mode.createNormalizer()
-        }
     }
     
     /// Update the frequency weighting exponent
