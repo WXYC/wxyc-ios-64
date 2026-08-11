@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "Logger",
     platforms: [
-        .iOS("18.4"), .watchOS(.v11), .macOS(.v15)
+        .iOS("18.4"), .watchOS(.v11), .macOS(.v15), .tvOS("18.4")
     ],
     products: [
         .library(name: "Logger", targets: ["Logger"]),
