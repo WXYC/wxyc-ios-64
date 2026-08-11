@@ -14,7 +14,13 @@ import Foundation
 import Logger
 
 /// Subject for RequestSentMessage notifications.
-public final class RequestServiceSubject: @unchecked Sendable {
+///
+/// Stays a class — unlike the other stateless `.shared` facades #309 converted
+/// to structs — because `AsyncNotificationMessage`'s post/observe surface is
+/// constrained `where M.Subject: AnyObject` (`Core/Observation/AsyncMessage.swift`)
+/// so `NotificationCenter` can filter by subject identity. It has no stored
+/// state, though, so `Sendable` is compiler-checked rather than `@unchecked`.
+public final class RequestServiceSubject: Sendable {
     public static let shared = RequestServiceSubject()
     private init() {}
 }

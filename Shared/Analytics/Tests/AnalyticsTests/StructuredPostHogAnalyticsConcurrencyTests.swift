@@ -12,22 +12,15 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Foundation
 import Testing
 @testable import Analytics
 
 @Suite("StructuredPostHogAnalytics concurrency safety")
 struct StructuredPostHogAnalyticsConcurrencyTests {
 
-    private struct ConcurrencyProbeEvent: AnalyticsEvent {
-        static let name = "concurrency_probe_event"
-        let index: Int
-        var properties: [String: Any]? { ["index": index] }
-    }
-
     @Test("N concurrent captures from the same instance all land, correctly stamped")
     func concurrentCapturesAllLand() async {
-        let captured = LockedCapturingPostHogClient()
+        let captured = CapturingPostHogClient()
         let sut = StructuredPostHogAnalytics(client: captured, buildType: "TestFlight")
         let iterations = 1000
 
@@ -50,25 +43,8 @@ struct StructuredPostHogAnalyticsConcurrencyTests {
 
 // MARK: - Test Doubles
 
-/// Thread-safe recording double for `PostHogClientProtocol`, guarded by an
-/// `NSLock` so this test exercises `StructuredPostHogAnalytics`'s own
-/// concurrency safety rather than racing on the recorder itself.
-private final class LockedCapturingPostHogClient: PostHogClientProtocol, @unchecked Sendable {
-    struct Captured {
-        let name: String
-        let properties: [String: Any]?
-    }
-
-    private let lock = NSLock()
-    private var _events: [Captured] = []
-
-    var events: [Captured] {
-        lock.withLock { _events }
-    }
-
-    func capture(_ name: String, properties: [String: Any]?) {
-        lock.withLock {
-            _events.append(Captured(name: name, properties: properties))
-        }
-    }
+private struct ConcurrencyProbeEvent: AnalyticsEvent {
+    static let name = "concurrency_probe_event"
+    let index: Int
+    var properties: [String: Any]? { ["index": index] }
 }
