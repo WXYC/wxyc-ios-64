@@ -293,6 +293,38 @@ struct ArtworkLoaderTests {
         #expect(loader.state(for: kept).isLoaded, "kept playcut should retain its loaded state")
         #expect(loader.state(for: dropped) == .unloaded)
     }
+
+    // MARK: - Prune-mid-flight race (#298)
+    //
+    // The pure LoaderTransition guards fetchSucceeded/fetchFailed on the
+    // entry still being .loading, so a fetch that resolves after its key was
+    // pruned mid-flight must not resurrect it. This is the one integration-
+    // level test the #298 acceptance criteria calls for — the race lives in
+    // the shell's async ordering, not in the pure function alone.
+
+    @Test("a fetch completing after prune does not resurrect the pruned entry")
+    func fetchCompletingAfterPruneDoesNotResurrectEntry() async throws {
+        let service = MockArtworkService()
+        service.artworkToReturn = CGImage.testImageWithColor(.magenta)
+        service.delaySeconds = 0.1
+
+        let loader = ArtworkLoader(service: service)
+        let playcut = uniquePlaycut()
+
+        loader.load(playcut)
+        #expect(loader.state(for: playcut) == .loading)
+
+        // Prune while the fetch is still in flight — mirrors PlaylistView.task
+        // evicting a row before its artwork request resolves.
+        loader.prune(keepingKeys: [])
+        #expect(loader.state(for: playcut) == .unloaded)
+
+        // Let the in-flight fetch resolve after the prune.
+        try await Task.sleep(for: .milliseconds(200))
+
+        #expect(loader.state(for: playcut) == .unloaded, "a late-completing fetch must not resurrect a pruned entry")
+        #expect(service.fetchCount == 1)
+    }
 }
 
 // MARK: - Test Helpers
