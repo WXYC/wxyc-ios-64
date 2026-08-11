@@ -43,7 +43,7 @@ public struct ShareExtensionView: View {
         ZStack {
             Rectangle()
                 .fill(
-                    WXYCBackground()
+                    WXYCGradient()
                         .secondary
                 )
                 .ignoresSafeArea()

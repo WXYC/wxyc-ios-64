@@ -29,7 +29,7 @@ enum DetailPresentation {
     /// use this, so the two covers can't drift apart.
     static var backdrop: some View {
         ZStack {
-            Rectangle().fill(WXYCBackground())
+            Rectangle().fill(WXYCGradient())
             Rectangle().fill(.ultraThinMaterial).brightness(materialBrightness)
         }
     }

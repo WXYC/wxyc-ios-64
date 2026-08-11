@@ -18,7 +18,7 @@ struct PlaceholderArtworkPreview: View {
             shadowYOffset: 2,
             meshGradient: AnimatedMeshGradient()
         )
-        .background(WXYCBackground())
+        .background(WXYCGradient())
     }
 }
 

@@ -413,5 +413,5 @@ struct PlaylistSectionHeader: View {
     PlaylistView(selectedPlaycut: .constant(nil), zoomNamespace: zoomNamespace)
         .environment(Singletonia.shared)
         .environment(\.playlistService, PlaylistService())
-        .background(WXYCBackground())
+        .background(WXYCGradient())
 }

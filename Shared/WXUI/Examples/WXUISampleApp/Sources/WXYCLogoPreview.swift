@@ -14,7 +14,7 @@ import WXUI
 struct WXYCLogoPreview: View {
     var body: some View {
         WXYCLogo()
-            .background(WXYCBackground())
+            .background(WXYCGradient())
     }
 }
 

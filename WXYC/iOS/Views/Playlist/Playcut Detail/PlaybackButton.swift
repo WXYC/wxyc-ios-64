@@ -183,7 +183,7 @@ struct PlaybackButtonExample: View {
                 status = (status == .paused) ? .playing : .paused
             }
         )
-        .background(WXYCBackground())
+        .background(WXYCGradient())
     }
 }
 
