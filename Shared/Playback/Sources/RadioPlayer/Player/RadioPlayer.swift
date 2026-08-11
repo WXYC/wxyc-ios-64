@@ -118,7 +118,7 @@ public final class RadioPlayer: Sendable {
         // Observe rate changes to track playing state
         self.rateObservation = notificationCenter.addMainActorObserver(
             of: player as? AVPlayer,
-            for: PlayerRateDidChangeMessage.self
+            for: RateDidChangeMessage.self
         ) { [weak self] message in
             guard let self else { return }
             Log(.info, category: .playback, "RadioPlayer did receive rate change message: \(message)")

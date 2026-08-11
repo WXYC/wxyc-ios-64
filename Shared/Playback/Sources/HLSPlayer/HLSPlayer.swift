@@ -138,7 +138,7 @@ public final class HLSPlayer: Sendable {
 
         self.rateObservation = notificationCenter.addMainActorObserver(
             of: player.underlyingAVPlayer,
-            for: HLSRateDidChangeMessage.self
+            for: RateDidChangeMessage.self
         ) { [weak self] message in
             guard let self else { return }
             Log(.info, category: .playback, "HLSPlayer did receive rate change: \(message.rate)")
