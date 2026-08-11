@@ -40,6 +40,8 @@ Or, for the main worktree only, symlink in place:
 ln -s ../../scripts/hooks/pre-push .git/hooks/pre-push
 ```
 
+The hook derives its diff base from the ref data git pipes on stdin (the remote's current sha for the ref being updated) rather than hardcoding `origin/master`, so it scopes correctly for a push to a fork, a non-master tracking branch, or a same-ref push. On a brand-new branch (no remote ref yet) it falls back to the local branch's configured upstream, or `scripts/test-affected.sh`'s own `origin/master` default if there is none; a pure branch-delete push skips validation entirely.
+
 Skip a single push with `git push --no-verify`, or globally with `git config wxyc.skipTests true`.
 
 ### Running the full plan directly (mind the two flags)
