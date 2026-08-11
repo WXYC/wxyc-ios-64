@@ -30,7 +30,7 @@
 # None of these three failure modes is visible from a local green run. This
 # script makes all three detectable — the first two by comparing counts
 # instead of trusting exit codes, the third by reading the crash signature
-# counts alone can't surface.
+# that counts alone can't surface.
 #
 # Usage:
 #   scripts/verify-spm-parity.sh [options] [package...]
@@ -450,11 +450,20 @@ if data is None:
     print("NONE")
 else:
     total = data.get("totalTestCount", 0)
-    failures = data.get("testFailures", [])
+    # `or []` rather than a .get default: the default only applies when the key
+    # is ABSENT, so an explicit "testFailures": null would sail past it and make
+    # the loop below raise. An uncaught raise here prints nothing, exits
+    # non-zero, burns all three retries and finally reports count 0 — which the
+    # caller reads as "the simulator executed 0 tests" and fails the package.
+    # That is a false verdict of exactly the kind this script exists to prevent,
+    # so every shape surprise is absorbed rather than propagated.
+    failures = data.get("testFailures") or []
     if isinstance(failures, dict):
         failures = [failures]
     crashed = []
     for f in failures:
+        if not isinstance(f, dict):
+            continue
         text = f.get("failureText") or ""
         if "crashed with signal" in text:
             crashed.append(f.get("testName", "?"))
