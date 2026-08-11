@@ -24,13 +24,13 @@
 #     were SIGKILLed mid-suite (sim exit 65), yet the run still posted 76
 #     as its executed count — a killed case still lands in totalTestCount
 #     — so the gap comparison came out 0 and this script reported PARITY
-#     CHECK PASSED. See crashed_tests_from_xcresult_json below, which
-#     closes this by treating any crash signature as fatal independent of
-#     the count comparison.
-# Neither failure mode is visible from a local green run. This script makes
-# all three detectable — the first two by comparing counts instead of
-# trusting exit codes, the third by reading the crash signature counts
-# alone can't surface.
+#     CHECK PASSED. See count_from_xcresult / crashed_tests_from_xcresult
+#     below, which close this by treating any crash signature as fatal
+#     independent of the count comparison.
+# None of these three failure modes is visible from a local green run. This
+# script makes all three detectable — the first two by comparing counts
+# instead of trusting exit codes, the third by reading the crash signature
+# counts alone can't surface.
 #
 # Usage:
 #   scripts/verify-spm-parity.sh [options] [package...]
@@ -40,7 +40,8 @@
 #                           "platform=iOS Simulator,". Accepts "id=<UUID>" or
 #                           "name=<name>". Default: id=<iPhone 17 UDID>.
 #   --derived-data <path>   Shared -derivedDataPath for the xcodebuild runs.
-#                           Default: .build/dd-verify-parity (repo-relative).
+#                           Absolute, or relative to the repo root.
+#                           Default: .build/dd-verify-parity.
 #   --tolerance <n>         Maximum acceptable (simulator - host) shortfall
 #                           per package before it's flagged. Default: 0 —
 #                           this is the quantity the flag actually gates
@@ -141,10 +142,17 @@
 #     kill" specifically catches the whole family, not just SIGKILL. That
 #     entry still counts toward totalTestCount even though the test body
 #     never ran, so it cannot be caught by comparing counts — the gap can
-#     land on exactly 0. crashed_tests_from_xcresult_json (below
-#     count_from_xcresult) scans the same xcresult summary's testFailures
-#     for this signature and fails the package unconditionally when found,
-#     regardless of what the counts say. An ordinary assertion failure — a
+#     land on exactly 0. count_from_xcresult scans the same xcresult
+#     summary's testFailures for this signature while it is already reading
+#     totalTestCount out of that JSON, and crashed_tests_from_xcresult
+#     (immediately below it) hands the result back to the comparison loop,
+#     which fails the package unconditionally when it is non-empty,
+#     regardless of what the counts say. This is prose matching against a
+#     message Xcode synthesizes, so a future Xcode that rephrases it would
+#     silently reopen this hole — the summary JSON exposes no structured
+#     "this test crashed" flag to key off instead (`result` is only
+#     Passed/Failed/Skipped/Expected Failure). An ordinary assertion
+#     failure — a
 #     test that ran to completion and failed normally, e.g. CachingTests'
 #     one known simulator-only failure below — has different failureText
 #     and does not match, so it is still tolerated by count-only
@@ -186,7 +194,8 @@ Options:
                           "platform=iOS Simulator,". Accepts "id=<UUID>" or
                           "name=<name>". Default: id=<iPhone 17 UDID>.
   --derived-data <path>   Shared -derivedDataPath for the xcodebuild runs.
-                          Default: .build/dd-verify-parity (repo-relative).
+                          Absolute, or relative to the repo root.
+                          Default: .build/dd-verify-parity.
   --tolerance <n>         Maximum acceptable (simulator - host) shortfall
                           per package before it's flagged. Default: 0 — see
                           the file header for why (every package measured
@@ -224,6 +233,19 @@ while (( $# > 0 )); do
 done
 
 DESTINATION="platform=iOS Simulator,${SIMULATOR}"
+
+# --derived-data accepts a repo-relative path (the default) or an absolute
+# one. Normalize to absolute exactly once here, rather than prefixing
+# $REPO_ROOT at each use site: "$REPO_ROOT/$DERIVED_DATA" against an
+# already-absolute value yields "<repo>//var/folders/.../dd", which writes
+# the run's DerivedData and .xcresult bundles INTO the repo working tree as a
+# shadow /var tree at the repo root. `git status` never reports it — the only
+# files down there are .xcresult bundles, .gitignore already ignores those,
+# and git doesn't report a directory whose entire contents are ignored — so
+# the litter accumulates one temp-dir deep per run, invisibly.
+if [[ "$DERIVED_DATA" != /* ]]; then
+    DERIVED_DATA="$REPO_ROOT/$DERIVED_DATA"
+fi
 
 # ---------------------------------------------------------------------------
 # Package → simulator test target(s). Mirrors TEST_TARGETS in
@@ -532,7 +554,7 @@ scheme_for_package() {
 # write into an existing bundle, so callers must rm -rf it first.
 result_bundle_path() {
     local pkg="$1"
-    echo "$REPO_ROOT/$DERIVED_DATA-results/$pkg.xcresult"
+    echo "$DERIVED_DATA-results/$pkg.xcresult"
 }
 
 run_simulator() {
@@ -561,7 +583,7 @@ run_simulator() {
                 -scheme "$scheme" \
                 -destination "$destination" \
                 -skipMacroValidation \
-                -derivedDataPath "$REPO_ROOT/$DERIVED_DATA" \
+                -derivedDataPath "$DERIVED_DATA" \
                 -resultBundlePath "$bundle" \
                 "${skip_args[@]}"
         )
@@ -575,7 +597,7 @@ run_simulator() {
             -only-testing:"$target" \
             -destination "$DESTINATION" \
             -skipMacroValidation \
-            -derivedDataPath "$REPO_ROOT/$DERIVED_DATA" \
+            -derivedDataPath "$DERIVED_DATA" \
             -resultBundlePath "$bundle" \
             "${skip_args[@]}"
     fi
