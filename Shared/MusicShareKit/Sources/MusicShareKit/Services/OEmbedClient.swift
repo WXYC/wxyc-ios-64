@@ -28,8 +28,15 @@ enum OEmbedClient {
     /// body isn't a JSON object — callers treat that the same as "nothing new to merge in".
     /// A malformed JSON body still throws, same as before this was extracted: `JSONSerialization`
     /// itself may throw, and that propagates to the caller uncaught.
+    ///
+    /// `endpoint` is deliberately parsed with a `guard` rather than a force-unwrap: the callers
+    /// this was extracted from force-unwrapped a string *literal*, which was safe by
+    /// construction, but as a parameter it is no longer.
     static func fetch(endpoint: String, trackURL: URL, session: URLSession = .shared) async throws -> Response {
-        var components = URLComponents(string: endpoint)!
+        guard var components = URLComponents(string: endpoint) else {
+            return .empty
+        }
+
         components.queryItems = [
             URLQueryItem(name: "url", value: trackURL.absoluteString),
             URLQueryItem(name: "format", value: "json"),
