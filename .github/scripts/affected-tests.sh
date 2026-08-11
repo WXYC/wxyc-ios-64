@@ -36,10 +36,24 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 
 output() {
-    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-        echo "$1=$2" >> "$GITHUB_OUTPUT"
+    local key="$1" value="$2"
+    # GITHUB_OUTPUT (and the KEY=VALUE tempfile scripts/test-affected.sh reads
+    # via `while IFS='=' read -r key value`) has no multi-line support here —
+    # a value containing a newline would be split across lines and the
+    # continuation would parse as a bare key with no '=', silently truncating
+    # the real value instead of erroring. Fail loudly instead of writing a
+    # line this script's own consumers can't parse correctly. If a future
+    # field genuinely needs a multi-line value, add GitHub's documented
+    # `KEY<<EOF` / `EOF` heredoc form to both this function and the
+    # test-affected.sh parser before lifting this guard.
+    if [[ "$value" == *$'\n'* ]]; then
+        echo "output(): value for '$key' contains a newline; refusing to write it to \$GITHUB_OUTPUT" >&2
+        exit 1
     fi
-    echo "  $1=$2"
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "$key=$value" >> "$GITHUB_OUTPUT"
+    fi
+    echo "  $key=$value"
 }
 
 run_all_and_exit() {
@@ -99,6 +113,17 @@ else
         run_all_and_exit "git diff failed"
     }
 fi
+
+# Normalize: drop blank/whitespace-only lines before the emptiness check
+# below. `[[ -n ]]`/`[[ -z ]]` test byte length, not content, so a caller
+# that sets CHANGED_FILES to e.g. "   " or a stray blank line (non-empty,
+# but no real path in it) would otherwise fall through as if a real file
+# had changed — the while-read loop below matches no case arm for a blank
+# line, populates no packages, and this used to end in a silent no-op
+# (spm_affected empty, xcb_required left "false") that never actually ran
+# a single test while still exiting 0. Treat "nothing but whitespace" the
+# same as "unset".
+changed_files=$(grep -v -E '^[[:space:]]*$' <<< "$changed_files" || true)
 
 if [[ -z "$changed_files" ]]; then
     run_all_and_exit "no changed files"
