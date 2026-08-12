@@ -37,6 +37,7 @@ struct StationView: View {
     @State private var showingMailComposer = false
     @State private var showingBugReport = false
     @State private var showingNoMailFallback = false
+    @State private var showingDonation = false
 
     /// Current audio route, shown in the "Listening" section. Owned here so the
     /// route observation lives exactly as long as the tab is on screen.
@@ -54,6 +55,14 @@ struct StationView: View {
     /// "Talk to the booth" rows are enabled.
     private var requestLine: RequestLine {
         RequestLine(onAir: onAir)
+    }
+
+    /// Whether the Donate row appears, and where it points. Rebuilt from
+    /// `appState.appConfig` on each `body` evaluation so the row appears when
+    /// the launch `/config` fetch lands — before that it reads the compile-time
+    /// defaults, which ship dark.
+    private var donateRow: DonateRowModel {
+        DonateRowModel(config: appState.appConfig)
     }
 
     var body: some View {
@@ -98,6 +107,17 @@ struct StationView: View {
                         iconColor: .purple
                     ) {
                         openURL(RadioStation.WXYC.merchURL)
+                    }
+
+                    if donateRow.isVisible {
+                        StationRow(
+                            title: "Donate",
+                            subtitle: "Keep 89.3 on the air",
+                            systemImage: "heart.fill",
+                            iconColor: .pink
+                        ) {
+                            presentDonation()
+                        }
                     }
                 }
 
@@ -155,6 +175,9 @@ struct StationView: View {
         } message: {
             Text(FeedbackMailRouter.noMailHandlerMessage)
         }
+        .sheet(isPresented: $showingDonation) {
+            SafariView(url: donateRow.destination)
+        }
         .sheet(isPresented: $showingBugReport) {
             BugReportView(
                 submitter: SentryBugReportSubmitter(),
@@ -196,6 +219,22 @@ struct StationView: View {
     /// honestly even to someone who can't perceive the dimming).
     private var callSubtitle: String {
         requestLine.boothIsOpen ? "(919) 962-8989" : "Nobody's at the phone right now"
+    }
+
+    /// Opens the donation page in an `SFSafariViewController` sheet rather than
+    /// handing off to Safari with `openURL`.
+    ///
+    /// Donations must be collected outside the app (App Store Review Guideline
+    /// 3.2.1(vi) — in-app fundraising needs approved-nonprofit status, which SEB
+    /// does not have), so this is a web checkout either way. The sheet keeps the
+    /// listener in the app with a Done button and uninterrupted audio, and
+    /// Apple Pay on the Web is supported in `SFSafariViewController` — the
+    /// restriction is on `WKWebView`, not this. If the payment page's checkout
+    /// turns out to need real Safari (PayPal only renders its Venmo button
+    /// there on iPhone), swapping this for `openURL` is a one-line change.
+    private func presentDonation() {
+        StructuredPostHogAnalytics.shared.capture(DonateTapped(source: "station"))
+        showingDonation = true
     }
 
     /// Dials the request line and records the tap with a `station` source so the
