@@ -46,7 +46,10 @@ struct BS2103EnrichedDecodingTests {
 
     /// Pinned in `Backend-Service tests/unit/services/playlist-proxy-wire-golden.test.ts`
     /// as `GOLDEN_SHA256`. Must match.
-    static let goldenSHA256 = "a789b99b863374b44ba2c8ca0c3393d9659987ff1e403e1be90834c500a49313"
+    ///
+    /// BS#2105 regenerated the golden to add a top-level `onAir` field; see
+    /// `BS2105OnAirDecodingTests` for the iOS half of that contract.
+    static let goldenSHA256 = "46a1064409f65356e076390bd209c198d0a8748ccb23bd51b5fb7ae1409c8f70"
 
     static func fixture(_ name: String, _ ext: String) throws -> URL {
         try #require(
