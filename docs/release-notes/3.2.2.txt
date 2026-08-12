@@ -1,0 +1,54 @@
+WXYC iOS — Release Notes
+Version 3.2.2
+Range: v3.2.1 (2026-08-10) → v3.2.2 (2026-08-11)
+
+Distilled from the 142 commits since 3.2.1, filtered to what a listener actually experiences. Internal refactors, test infrastructure, CI, and documentation are excluded from the listener sections and summarized at the end.
+
+This is a small release with one significant change behind it. 3.2 and 3.2.1 built the live playlist, the richer track details, and the real-time on-air banner on WXYC's own flowsheet service, but every build shipped with the legacy endpoint compiled in as its default — so those features only reached the listeners a server-side flag happened to reach, and the flag could not safely be turned on for everyone. 3.2.2 makes the new API the app's own default, which is what finally delivers 3.2's headline feature to everyone who installs it. Everything else here is repair: track details that arrive faster and stay correct, On Tour text that is legible against its own background, and streaming links that open the service they claim.
+
+
+========================================================================
+WHAT'S NEW IN 3.2.2 (scannable)
+========================================================================
+
+The live playlist, for everyone — The app now reads WXYC's flowsheet service directly instead of the legacy playlist endpoint. That is the only version with a push channel, so this is what turns on the real-time playlist, on-air banner, and mic-break markers 3.2 introduced — previously reachable only by remote configuration. Track details (release year, genres, artwork, streaming links) now arrive with the row rather than being fetched card by card, and the widget reads the same source as the app, so the two no longer disagree.
+
+Faster, steadier track details — Opening the playlist no longer fires duplicate lookups for the same album or artist, so detail cards fill in sooner on a cold launch. A momentary server hiccup is retried instead of being cached as "no such album," and details repaired after a track finishes enriching are now merged into the cache rather than lost.
+
+A more legible On Tour — Every status chip — on sale, sold out, rescheduled, free — now meets the AA contrast standard against its own fill; nine of the eighteen ink-and-fill pairs previously did not, the worst being the Box Office ticket's on-sale button at 1.67:1. The concert detail no longer stacks two identical status chips a few points apart.
+
+Streaming links that go where they say — A Spotify link whose address isn't actually Spotify's no longer renders a green Spotify button that opens somewhere else.
+
+
+========================================================================
+EVERYTHING IN 3.2.2
+========================================================================
+
+IMPROVED
+- The playlist reads api.wxyc.org/flowsheet by default instead of the legacy wxyc.info endpoint. This is the version gate for the rollout: it is compiled into the build rather than configured remotely, because older builds decode the new payload into an empty playlist and no server-side signal can reliably tell them apart. The feature flag keeps its rollback role — it can still pull a build back to the legacy endpoint without shipping a release.
+- Real-time playlist updates, the live on-air banner, and mic-break markers are on by default as a consequence: the legacy endpoint has no push channel, so a five-minute poll was the ceiling on it.
+- Album and artist lookups for the same record are now shared rather than duplicated. Rendering a screenful of playlist rows on launch used to let each row issue its own identical request; concurrent callers now wait on the one already in flight.
+- A failed metadata lookup is now classified before it is trusted. A server error or dropped connection is retried twice, briefly, so a condition that clears on the next poll is never recorded as a permanent answer; only a genuine 404 is treated as "this record has no details."
+- Track details repaired after enrichment lands are written back into the cache, merged over what was already there so a field can only be added, never dropped — and a record still missing its artist link is held for fifteen minutes rather than a week, so a bio-less card repairs itself instead of persisting.
+- Apple Intelligence can now recognize a WXYC DJ as a person and the station as a place, groundwork for richer Siri, Maps, and share behavior on iOS 26.4 and later.
+
+FIXED
+- On Tour status chips are legible. Nine of eighteen ink-and-fill pairs were below the AA contrast threshold; the tinted near-whites that had been hue-matched to their own fills are now plain white, and the three chips with solid light fills keep their dark ink. A contrast floor in the test suite prevents a regression.
+- The concert detail rendered a status chip in its hero and another, saying the same thing, in the Box Office ticket just below it. Only the ticket's remains — it sits with the price, door time, and the button it qualifies.
+- A streaming link is now checked against the service it claims before it becomes a button. Deezer, Apple Music, Bandcamp, Qobuz, and Tidal addresses have all been observed in the Spotify field; a mismatched or malformed link falls back to the empty state instead of a mislabeled one.
+
+
+========================================================================
+UNDER THE HOOD (not listener-visible)
+========================================================================
+
+Roughly nine in ten commits in this range are internal. They are recorded here because the raw commit count otherwise misrepresents the release.
+
+- A codebase-wide refactor and test-infrastructure audit: consolidated test doubles into shared CoreTesting and CachingTesting helpers, replaced wall-clock sleeps in the playback and logger suites with deterministic gates, unified duplicated URL-session mocks, and extracted shared transport and decode paths across the v1/v2 playlist, artwork, and MusicShareKit packages.
+- Presentation seams for the forthcoming native macOS target, plus macOS availability on the six audio-schema intent types so the Intents package builds for the host.
+- A Debug-only launch crash: the playlist service's environment default ran an assertion from its static initializer, which SwiftUI evaluates while processing a correct injection, not only on a miss. It fired on every Debug launch and took every simulator test run with it.
+- The v1 playlist decode is now pinned against Backend-Service's wire golden and 4,911 production URL values. One malformed URL on one row fails the whole array decode and blanks the playlist on that path, so the server-side guard is the only defense; the test records exactly which values would take the feed down.
+- The on-air field the banner reads is pinned by JSON shape across all three of its states. An explicit null decodes silently to "unknown" and hides the banner rather than throwing, which is the quiet failure the pin exists to catch.
+- Test coverage for a class of blank detail card — rows marked enriched server-side with every value withheld — fixed upstream in Backend-Service and now guarded from the client side.
+- CI script hardening: structural-versus-cosmetic project-file classification for affected-test selection, crash detection in the SPM parity check, and derived-data paths kept out of the working tree.
+- A rate-change observer in the HLS player was registering unscoped because a cast through a wrapper always failed. No effect today with one player alive; corrected before a second one makes it real.
