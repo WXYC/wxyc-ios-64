@@ -55,3 +55,7 @@ worklog/
 # rebuilt on demand; the tool appends this entry itself, so ignoring it here
 # keeps `code-audit` from dirtying every tree it runs in.
 .audit/
+
+# Git worktrees. The convention is one checkout per line of development under
+# .worktrees/; they are working state, never content to commit.
+.worktrees/
