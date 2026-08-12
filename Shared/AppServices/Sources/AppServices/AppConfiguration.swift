@@ -20,16 +20,41 @@ public struct AppConfig: Sendable, Codable, Equatable {
     public let requestOMaticUrl: String
     public let apiBaseUrl: String
 
+    /// The canonical hosted donation page, or `nil` when the backend predates
+    /// the field.
+    ///
+    /// Backend-Service serves `""` (not `null`) when `DONATE_URL` is unset on
+    /// Railway, following the established `process.env.X || ''` controller
+    /// shape — so consumers must treat an empty or unparseable value as
+    /// *absent* and fall through to the next rung of the ladder rather than
+    /// letting it silently produce no destination. ``DonateRowModel`` does.
+    public let donateUrl: String?
+
+    /// Whether to show the Donate row at all, or `nil` when the backend
+    /// predates the field.
+    ///
+    /// This is a **deploy-time** switch, not an instant kill switch: `/config`
+    /// is served `Cache-Control: public, max-age=3600`, so a flip takes up to
+    /// an hour to propagate.
+    public let donateEnabled: Bool?
+
+    /// - Note: Both donate parameters are defaulted because this initializer is
+    ///   hand-written rather than synthesized-memberwise — undefaulted
+    ///   parameters would break every existing construction site.
     public init(
         posthogApiKey: String,
         posthogHost: String,
         requestOMaticUrl: String,
-        apiBaseUrl: String
+        apiBaseUrl: String,
+        donateUrl: String? = nil,
+        donateEnabled: Bool? = nil
     ) {
         self.posthogApiKey = posthogApiKey
         self.posthogHost = posthogHost
         self.requestOMaticUrl = requestOMaticUrl
         self.apiBaseUrl = apiBaseUrl
+        self.donateUrl = donateUrl
+        self.donateEnabled = donateEnabled
     }
 }
 
@@ -63,11 +88,21 @@ public actor AppConfiguration {
     public static let keychainAccessGroup = "92V374HC38.group.wxyc.iphone"
 
     /// Hardcoded defaults for when the network is unavailable.
+    ///
+    /// - Important: `donateEnabled` is pinned to `false` **explicitly** rather
+    ///   than left to the initializer's `nil` default. ``config()`` returns this
+    ///   literal on every failure path, so it is what cold launch, airplane
+    ///   mode, and a backend blip render — and `nil` would resolve to
+    ///   ``DonateRowModel``'s `?? true`, showing the row in exactly the release
+    ///   meant to ship dark. Lighting up is two steps: set `DONATE_ENABLED=true`
+    ///   on Railway (no app release), then flip this literal in the next
+    ///   regular release so offline launches show the row too.
     public static let defaults = AppConfig(
         posthogApiKey: "phc_jUWlgO0aQzyPgHqQUEC7VPD1IdN1tytHG3qckb7CLoD",
         posthogHost: "https://us.i.posthog.com",
         requestOMaticUrl: "https://request-o-matic-production.up.railway.app/request",
-        apiBaseUrl: apiBaseUrl
+        apiBaseUrl: apiBaseUrl,
+        donateEnabled: false
     )
 
     private var cached: AppConfig?
