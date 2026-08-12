@@ -2,7 +2,31 @@
 
 ## Configuration
 
-App configuration (PostHog API key, API base URL, request-o-matic URL) is managed by `AppConfiguration` in the AppServices package. Values are hardcoded as defaults and optionally fetched from the backend `/config` endpoint at launch. Confidential API credentials (Discogs, Spotify) are no longer embedded in the app; those calls are proxied through Backend-Service behind anonymous device session auth.
+App configuration (PostHog API key, API base URL, request-o-matic URL, donation destination) is managed by `AppConfiguration` in the AppServices package. Values are hardcoded as defaults and fetched from the backend `/config` endpoint at launch. Confidential API credentials (Discogs, Spotify) are no longer embedded in the app; those calls are proxied through Backend-Service behind anonymous device session auth.
+
+### The launch fetch
+
+`Singletonia.fetchConfiguration()` calls `AppConfiguration.config()` **before** its secrets retry loop and stores the result in `Singletonia.appConfig`, an `@Observable` property views read. Order matters: the loop is 4-attempt exponential backoff for the *authenticated* `/config/secrets` endpoint and returns outright when secrets never arrive, so a `/config` call appended after it would be skipped in exactly the cold-launch/no-auth case that matters most. `/config` is unauthenticated and must not be gated on auth.
+
+The fetch happens once per launch. That is the right cadence for an endpoint served `Cache-Control: public, max-age=3600` — which also means every remote value here is a **deploy-time** switch with up to an hour of propagation delay, not an instant one.
+
+`AppConfiguration.cached` is per-*instance*, and `fetchConfiguration()` builds a local `AppConfiguration()`, so the fetched value must be stored on `Singletonia` rather than read back off the actor.
+
+### Donation fields
+
+| Field | Env var on Railway | Absent value |
+|---|---|---|
+| `donateUrl` | `DONATE_URL` | `""` (not `null`) |
+| `donateEnabled` | `DONATE_ENABLED` | `false` |
+
+Both are **optional** in Swift. Non-optional properties would make `JSONDecoder.decode` throw against any backend that doesn't serve them yet, and `config()` catches a decode error by returning `defaults` wholesale — silently discarding the remote PostHog key and `apiBaseUrl` too. A backend rollback, a stale cached response, or shipping iOS ahead of Backend-Service all trigger that path, so `AppConfigurationTests` pins the missing-field decode.
+
+`DonateRowModel` (`WXYC/iOS/Views/Station/DonateRowModel.swift`) resolves both into what the Station tab's Donate row renders:
+
+- **Visibility** is `donateEnabled ?? true`. `nil` means "the backend predates the field", and the compile-time fallback is a valid destination. The dark-ship case is carried by `AppConfiguration.defaults` pinning `donateEnabled: false` **explicitly** — `defaults` is what `config()` returns on every failure path, so a `nil` there would show the row in exactly the release meant to hide it. Lighting up is two steps: set `DONATE_ENABLED=true` on Railway (no app release), then flip the `defaults` literal in the next regular release so offline launches show the row too.
+- **Destination** walks a ladder — fetched `donateUrl` → `defaults.donateUrl` → `RadioStation.WXYC.donateURL` (`https://wxyc.org/donate`). A rung only wins if it yields an http(s) URL; `""`, a scheme-relative string, and `mailto:`/`javascript:` all count as absent, because `SFSafariViewController` traps on anything that isn't http(s).
+
+The row opens its destination in an `SFSafariViewController` sheet, not `openURL`. Donations must be collected outside the app (App Store Review Guideline 3.2.1(vi) reserves in-app fundraising for approved nonprofits, which requires a Candid Seal that SEB does not have), so this is a web checkout regardless; the sheet keeps the listener in the app with a Done button and uninterrupted audio, and Apple Pay on the Web works in `SFSafariViewController` — the restriction is on `WKWebView`.
 
 ## Code Signing
 
