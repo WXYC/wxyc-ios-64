@@ -714,6 +714,14 @@ final class Singletonia {
 
     // MARK: - Configuration
 
+    /// The app configuration behind remotely-switchable surfaces, seeded with the
+    /// compile-time defaults and replaced once `/config` lands at launch.
+    ///
+    /// Held here rather than read back off `AppConfiguration` because that
+    /// actor's cache is per-*instance* and ``fetchConfiguration()`` builds a
+    /// local one — the fetched value would go out of scope with it.
+    private(set) var appConfig: AppConfig = AppConfiguration.defaults
+
     /// Fetches secrets from the backend and upgrades services that depend on them.
     ///
     /// Call this early in the app lifecycle. The artwork service starts with cache + URL
@@ -725,6 +733,16 @@ final class Singletonia {
     /// all artwork lookups to fail for v1 API entries (which have no inline artworkURL).
     func fetchConfiguration() async {
         let appConfiguration = AppConfiguration()
+
+        // Before the secrets loop, deliberately. That loop is 4-attempt
+        // exponential backoff for *authenticated* secrets and `return`s outright
+        // when they never arrive, so a `/config` call appended after it would be
+        // skipped in exactly the cold-launch/no-auth case that matters most.
+        // `/config` is unauthenticated and must not be gated on auth. Fetched
+        // once per launch, which is right for an endpoint served
+        // `Cache-Control: public, max-age=3600`.
+        appConfig = await appConfiguration.config()
+
         let maxAttempts = 4
         var delay: Duration = .seconds(5)
 

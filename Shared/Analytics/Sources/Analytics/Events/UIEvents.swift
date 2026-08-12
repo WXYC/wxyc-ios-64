@@ -81,6 +81,23 @@ public struct RequestLineCallPlaced {
     }
 }
 
+// MARK: - Support the Station
+
+/// Event fired when the listener taps through to the donation page.
+///
+/// The only donation event the app captures. Conversion belongs to the payment
+/// platform's own reporting and to LGL, both of which see the actual gift — the
+/// app only ever knows about the tap, and `capture()` is a billing decision
+/// against a shared org quota.
+@AnalyticsEvent
+public struct DonateTapped {
+    public let source: String
+
+    public init(source: String) {
+        self.source = source
+    }
+}
+
 // MARK: - Playcut Detail
 
 /// Event fired when a playcut detail view is presented.
