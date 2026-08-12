@@ -48,6 +48,18 @@ struct AppConfigurationTests {
         #expect(AppConfiguration.apiBaseUrl == AppConfiguration.defaults.apiBaseUrl)
     }
 
+    @Test("defaults ships the Donate row dark")
+    func defaultsPinsDonateDisabled() {
+        // The whole dark-ship guarantee rests on this literal. `config()`
+        // returns `defaults` on every failure path — non-200, thrown error —
+        // so this is what cold launch, airplane mode, and a backend blip
+        // render. Leaving `donateEnabled` nil here would resolve `nil ?? true`
+        // in DonateRowModel and show the row in exactly the release that is
+        // supposed to ship dark. Flipping it to `true` later is meant to be a
+        // deliberate two-line change that turns this test red first.
+        #expect(AppConfiguration.defaults.donateEnabled == false)
+    }
+
     @Test("keychainAccessGroup matches the entitlement format")
     func keychainAccessGroupMatchesEntitlement() {
         // Must exactly match the resolved value of
@@ -128,6 +140,74 @@ struct AppConfigurationTests {
         let config = await configuration.config()
 
         #expect(config == AppConfiguration.defaults)
+    }
+
+    // MARK: - Donate Fields
+
+    @Test("config decodes a response that predates the donate fields")
+    func configDecodesResponseMissingDonateFields() async throws {
+        // The cascade guard, and the reason both donate fields are Optional.
+        // Non-optional properties would make `JSONDecoder.decode` throw against
+        // any backend that doesn't serve them yet — and `config()` catches that
+        // by returning `defaults` wholesale, silently discarding the remote
+        // PostHog key and apiBaseUrl along with the fields it was missing. A
+        // backend rollback, a stale 3600s cached response, or simply shipping
+        // iOS before Backend-Service deploys all trigger that path.
+        QueuedStubURLProtocol.setBody(Data("""
+        {
+          "posthogApiKey": "phc_remote",
+          "posthogHost": "https://remote.posthog.com",
+          "requestOMaticUrl": "https://remote.example.com/request",
+          "apiBaseUrl": "https://remote.api.wxyc.org"
+        }
+        """.utf8))
+        let session = QueuedStubURLProtocol.makeSession()
+
+        let config = await AppConfiguration(session: session).config()
+
+        #expect(config.posthogApiKey == "phc_remote")
+        #expect(config.apiBaseUrl == "https://remote.api.wxyc.org")
+        #expect(config.donateUrl == nil)
+        #expect(config.donateEnabled == nil)
+    }
+
+    @Test("config decodes the donate fields when the backend serves them")
+    func configDecodesDonateFields() async throws {
+        QueuedStubURLProtocol.setBody(Data("""
+        {
+          "posthogApiKey": "phc_remote",
+          "posthogHost": "https://remote.posthog.com",
+          "requestOMaticUrl": "https://remote.example.com/request",
+          "apiBaseUrl": "https://remote.api.wxyc.org",
+          "donateUrl": "https://example.littlegreenlight.com/lglforms/donate",
+          "donateEnabled": true
+        }
+        """.utf8))
+        let session = QueuedStubURLProtocol.makeSession()
+
+        let config = await AppConfiguration(session: session).config()
+
+        #expect(config.donateUrl == "https://example.littlegreenlight.com/lglforms/donate")
+        #expect(config.donateEnabled == true)
+    }
+
+    @Test("config decodes donateEnabled false — the deploy-time kill switch")
+    func configDecodesDonateDisabled() async throws {
+        QueuedStubURLProtocol.setBody(Data("""
+        {
+          "posthogApiKey": "phc_remote",
+          "posthogHost": "https://remote.posthog.com",
+          "requestOMaticUrl": "https://remote.example.com/request",
+          "apiBaseUrl": "https://remote.api.wxyc.org",
+          "donateUrl": "https://example.littlegreenlight.com/lglforms/donate",
+          "donateEnabled": false
+        }
+        """.utf8))
+        let session = QueuedStubURLProtocol.makeSession()
+
+        let config = await AppConfiguration(session: session).config()
+
+        #expect(config.donateEnabled == false)
     }
 
     // MARK: - Secrets Fetch
