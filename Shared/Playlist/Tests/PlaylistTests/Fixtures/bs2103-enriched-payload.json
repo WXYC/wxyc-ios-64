@@ -286,5 +286,10 @@
     }
   ],
   "talksets": [],
-  "breakpoints": []
+  "breakpoints": [],
+  "onAir": {
+    "dj": {
+      "_0": "BS2105 Probe DJ"
+    }
+  }
 }
