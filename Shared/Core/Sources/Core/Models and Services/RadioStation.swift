@@ -17,6 +17,14 @@ public struct RadioStation: Sendable {
     public let streamURL: URL
     public let hlsStreamURL: URL
     public let merchURL: URL
+    /// The compile-time donation destination — the bottom rung of the ladder
+    /// `DonateRowModel` walks, and the only one guaranteed to be present.
+    ///
+    /// Points at wxyc.org rather than at a payment vendor on purpose: the page
+    /// can be repointed at whichever platform SEB's board authorizes without an
+    /// App Store release, and it carries the disclosures the App Store requires
+    /// the linked page to show.
+    public let donateURL: URL
     /// The one identifier shared by every media-domain surface that names
     /// this station: the SiriKit media item (`MediaIntentBuilder`, in
     /// `PlaybackCore`) and the App Intents audio-schema entity
@@ -36,6 +44,7 @@ public extension RadioStation {
         streamURL: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!,
         hlsStreamURL: URL(string: "https://hls.wxyc.org/live/live.m3u8")!,
         merchURL: URL(string: "https://merch.wxyc.org")!,
+        donateURL: URL(string: "https://wxyc.org/donate")!,
         identifier: "org.wxyc.live"
     )
 }
