@@ -106,6 +106,15 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// secondary text alongside the placeholder when present.
     public let discogsUnavailableNote: String?
 
+    /// Backend-Service's `label` table id for the catalog record label
+    /// (`WXYCAPIModels.AlbumMetadataResponse.labelId`, off the linked
+    /// flowsheet row's `flowsheet.label_id`). Decode-only (#813): nothing
+    /// renders it yet. It would let a future consumer join to the catalog
+    /// label record instead of string-matching a name — the plausible
+    /// near-term one is a Spotlight `LabelEntity` (#432) — but that consumer
+    /// doesn't exist today, so this field carries no UI behavior.
+    public let labelId: Int?
+
     public init(
         label: String? = nil,
         releaseYear: Int? = nil,
@@ -117,7 +126,8 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
         artworkURL: URL? = nil,
         criticReviews: [CriticReview]? = nil,
         discogsUnavailable: Bool? = nil,
-        discogsUnavailableNote: String? = nil
+        discogsUnavailableNote: String? = nil,
+        labelId: Int? = nil
     ) {
         self.label = label
         self.releaseYear = releaseYear
@@ -130,6 +140,7 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
         self.criticReviews = criticReviews
         self.discogsUnavailable = discogsUnavailable
         self.discogsUnavailableNote = discogsUnavailableNote
+        self.labelId = labelId
     }
 
     public static let empty = AlbumMetadata()
@@ -160,6 +171,11 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// forever. `label` is the one deliberate exclusion — it's a base flowsheet
     /// column, so an album carrying nothing but a label is exactly the
     /// pre-enrichment snapshot rather than a partial success.
+    ///
+    /// `labelId` is excluded for the same reason as `label`: it's the id
+    /// half of the same base flowsheet column (`flowsheet.label_id`), never
+    /// a Discogs/LML read, so its presence says nothing about whether
+    /// enrichment ran.
     ///
     /// The two ``discogsUnavailable`` fields are tested by *value*, not by
     /// presence, because presence carries no information here.
@@ -213,7 +229,8 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
             artworkURL: artworkURL ?? fallback.artworkURL,
             criticReviews: criticReviews ?? fallback.criticReviews,
             discogsUnavailable: discogsUnavailable ?? fallback.discogsUnavailable,
-            discogsUnavailableNote: discogsUnavailableNote ?? fallback.discogsUnavailableNote
+            discogsUnavailableNote: discogsUnavailableNote ?? fallback.discogsUnavailableNote,
+            labelId: labelId ?? fallback.labelId
         )
     }
 }

@@ -642,6 +642,164 @@ extension PlaycutMetadataServiceHTTPTests {
         #expect(result.label == "Matador Records")
     }
 
+    @Test("Falls back to recordLabel when the Discogs release label is absent (#813)")
+    func fallsBackToRecordLabelWhenDiscogsLabelAbsent() async throws {
+        // Given - the production-common case: a pre-#1336 album_metadata row
+        // (WXYC/Backend-Service#1442) has no Discogs `label`, but the linked
+        // flowsheet row supplies BS's local-first `recordLabel`.
+        let mockCache = CountingCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = PatternRoutingWebSession()
+        let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Call Your Name",
+            labelName: "self-released",
+            artistName: "Chuquimamani-Condori",
+            releaseTitle: "Edits"
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": 90210,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "recordLabel": "Chuquimamani-Condori (catalog)",
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then - recordLabel wins over the playcut's own inline label, since
+        // it's the fresher BS-authoritative answer when Discogs has none.
+        #expect(result.label == "Chuquimamani-Condori (catalog)")
+    }
+
+    @Test("Prefers the Discogs release label over recordLabel when both are present (#813)")
+    func prefersDiscogsLabelOverRecordLabel() async throws {
+        // Given - both proxy fields resolved to different values; the
+        // Discogs release label wins per the #813 precedence decision.
+        let mockCache = CountingCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = PatternRoutingWebSession()
+        let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA"
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": 13,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "label": "Sonamos Discogs Pressing",
+            "recordLabel": "Sonamos (catalog)",
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then
+        #expect(result.label == "Sonamos Discogs Pressing")
+    }
+
+    @Test("Falls back to the inline playcut label when the proxy's 1h memo omits both label fields (#813)")
+    func fallsBackToPlaycutLabelOnMemoWindowOmission() async throws {
+        // Given - the documented memo-window shape on `AlbumMetadataResponse`:
+        // for up to an hour after a previously free-text play links to a
+        // catalog album, a cache hit on the handler's 1h memo (WXYC/Backend-
+        // Service#988) can omit `label` AND `recordLabel` entirely, even
+        // though a linked row now exists. The inline V2 feed row is not
+        // subject to that memo, so `playcut.labelName` is the fresher answer
+        // and must not be left blank by the omission.
+        let mockCache = CountingCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = PatternRoutingWebSession()
+        let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "Back, Baby",
+            labelName: "Drag City",
+            artistName: "Jessica Pratt",
+            releaseTitle: "On Your Own Love Again"
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then
+        #expect(result.label == "Drag City")
+    }
+
+    @Test("Decodes labelId onto AlbumMetadata (#813, decode-only — no consumer yet)")
+    func decodesLabelIdOntoAlbumMetadata() async throws {
+        // Given
+        let mockCache = CountingCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let mockSession = PatternRoutingWebSession()
+        let service = PlaycutMetadataService(urlSession: mockSession.urlSession, cache: cache)
+
+        let playcut = Playcut.stub(
+            songTitle: "In a Sentimental Mood",
+            labelName: "Impulse Records",
+            artistName: "Duke Ellington & John Coltrane",
+            releaseTitle: "Duke Ellington & John Coltrane"
+        )
+
+        let albumResponse = """
+        {
+            "discogsReleaseId": null,
+            "discogsUrl": null,
+            "releaseYear": null,
+            "labelId": 4242,
+            "spotifyUrl": null,
+            "appleMusicUrl": null,
+            "youtubeMusicUrl": null,
+            "bandcampUrl": null,
+            "soundcloudUrl": null
+        }
+        """.data(using: .utf8)!
+        mockSession.responses["proxy/metadata/album"] = albumResponse
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then
+        #expect(result.album.labelId == 4242)
+    }
+
     @Test("Enriched fields are nil when absent from API response")
     func enrichedFieldsNilWhenAbsent() async throws {
         // Given

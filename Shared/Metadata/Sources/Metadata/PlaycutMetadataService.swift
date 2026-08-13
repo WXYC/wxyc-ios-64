@@ -489,8 +489,39 @@ public actor PlaycutMetadataService {
             // codegen gap, see docs/code-generation.md "Drift guards-of-
             // record"), so it decodes straight into `apiResult` and flows
             // through here — no parallel hand-decode needed.
+            //
+            // Label precedence (#813, decided in the issue's 2026-08-13
+            // triage comment): prefer the Discogs *release* label
+            // (`apiResult.label`) — closest to pre-#813 behavior, and the
+            // more specific answer for the pressing when Discogs has one —
+            // falling back to Backend-Service's local-first `recordLabel`
+            // (the catalog label off the linked flowsheet row), and only
+            // then to the inline V2 feed's `playcut.labelName`.
+            // `recordLabel` sits inside the proxy handler's 1h memo
+            // (WXYC/Backend-Service#988) and can shadow a librarian's
+            // correction for that window — the "never-blank local-first"
+            // guarantee doesn't hold on the memo path — but that risk is
+            // accepted here because `recordLabel` is only ever a fallback:
+            // `label` wins whenever Discogs has an answer, and when the memo
+            // omits both proxy fields (as it does for up to an hour after a
+            // previously free-text play links to a catalog album) the chain
+            // still lands on `playcut.labelName`, which is always fresh off
+            // the feed.
+            //
+            // `apiResult.metadataStatus` and `apiResult.lastDiscogsRecheckAt`
+            // are deliberately decoded but not consumed here (#813).
+            // `metadataStatus`: the post-#814 `PlaycutMetadataResolver`
+            // already owns enrichment lifecycle off the feed row's own
+            // `metadataStatus`, and a memoized proxy `metadataStatus` is
+            // always one of the terminal states (WXYC/Backend-Service#1893)
+            // and can be up to 1h stale, so it can't be read as "enrichment
+            // finished now" — feeding it into the resolver could mislead
+            // rather than reconcile. Revisit only with a purpose that
+            // survives the memo window. `lastDiscogsRecheckAt`: stamped by
+            // the `library-discogs-unavailable-recheck` cron; no client
+            // consumer exists yet.
             let album = cachedAlbum ?? AlbumMetadata(
-                label: apiResult.label ?? playcut.labelName,
+                label: apiResult.label ?? apiResult.recordLabel ?? playcut.labelName,
                 releaseYear: apiResult.releaseYear,
                 discogsURL: apiResult.discogsUrl.flatMap { URL(string: $0) },
                 discogsArtistId: apiResult.discogsArtistId,
@@ -500,7 +531,8 @@ public actor PlaycutMetadataService {
                 artworkURL: apiResult.artworkUrl.flatMap { URL(string: $0) },
                 criticReviews: Self.mapCriticReviews(apiResult.criticReviews),
                 discogsUnavailable: apiResult.discogsUnavailable,
-                discogsUnavailableNote: apiResult.discogsUnavailableNote
+                discogsUnavailableNote: apiResult.discogsUnavailableNote,
+                labelId: apiResult.labelId
             )
 
             let streaming = cachedStreaming ?? StreamingLinks(
