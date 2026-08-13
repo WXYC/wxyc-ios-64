@@ -2,7 +2,7 @@
 import PackageDescription
 let package = Package(
     name: "WXYCAPIModels",
-    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15)],
+    platforms: [.iOS("18.4"), .tvOS("18.4"), .watchOS(.v11), .macOS(.v15)],
     products: [.library(name: "WXYCAPIModels", targets: ["WXYCAPIModels"])],
     targets: [.target(name: "WXYCAPIModels", path: "Sources/WXYCAPIModels")]
 )

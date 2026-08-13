@@ -13,6 +13,7 @@ import AppServices
 import Core
 import Foundation
 import Testing
+import struct WXYCAPIModels.AppConfig
 @testable import WXYC
 
 @Suite("DonateRowModel")

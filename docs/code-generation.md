@@ -13,7 +13,7 @@ The package holds only `Models/` and `Infrastructure/` from the generator's outp
 import PackageDescription
 let package = Package(
     name: "WXYCAPIModels",
-    platforms: [.iOS("18.4"), .watchOS(.v11), .macOS(.v15)],
+    platforms: [.iOS("18.4"), .tvOS("18.4"), .watchOS(.v11), .macOS(.v15)],
     products: [.library(name: "WXYCAPIModels", targets: ["WXYCAPIModels"])],
     targets: [.target(name: "WXYCAPIModels", path: "Sources/WXYCAPIModels")]
 )
@@ -23,9 +23,10 @@ SwiftPM resolves it as a transitive local-package dependency of any package that
 
 ## Which surfaces actually use it
 
-Standing up the package (Phase 0) doesn't by itself change any runtime behavior. Two things currently consume it, and they take different strategies:
+Standing up the package (Phase 0) doesn't by itself change any runtime behavior. Three things currently consume it, and they take different strategies:
 
 - **Metadata album proxy (runtime).** `PlaycutMetadataService.fetchAlbumAndStreaming` (`Shared/Metadata/Sources/Metadata/PlaycutMetadataService.swift`) decodes the `/proxy/metadata/album` response directly into the generated `WXYCAPIModels.AlbumMetadataResponse`, replacing a hand-maintained private decode struct. This is a flat, non-polymorphic response shape, so a straight swap to the generated type was safe: a field rename/removal upstream now fails the build instead of silently dropping data at decode time.
+- **`/config` bootstrap (runtime).** `AppServices` re-exports the generated type under its historical name — `public typealias AppConfig = WXYCAPIModels.AppConfig` in `AppConfiguration.swift` (#915) — replacing a hand-written twin that had drifted from the contract once already (the d970bd22a era). Same flat-shape rationale as the album proxy; every *type position* compiles unchanged through the typealias, but Swift 6.2's member-import-visibility rule required a one-line `import struct WXYCAPIModels.AppConfig` in each file that touches `AppConfig`'s members (eight files: the app/TV/watch entry points, the widget provider, the share extension, `DonateRowModel`, and both test files). The **scoped** form is load-bearing, not style: a whole-module `import WXYCAPIModels` makes the generated `Playlist` struct shadow the `Playlist` *module* for qualified type lookups (observed breaking `NowPlayingWidget/Provider.swift`), and an `@_exported import` would spill all ~269 generated types into every AppServices importer, colliding with the app's own hand-written `LiveFsEvent` twin. `AppSecrets` stays hand-written: `/config/secrets` was modeled upstream only at api.yaml 1.36.0, after this tree's pin.
 - **V2 flowsheet track entry (test-only parity guard, not a runtime swap).** The flowsheet's runtime decoder stays hand-written; see below.
 
 No other surface imports `WXYCAPIModels` yet. Adopting it elsewhere is a case-by-case call — see "Adding a new consumer."
@@ -85,7 +86,7 @@ Exit code 0 means the committed tree matches a fresh regen from the pinned contr
 
 Two mechanisms, not one, protect against upstream contract drift reaching this app silently:
 
-1. **The compiler**, for the flat, non-polymorphic surfaces that decode straight into a generated type (currently just `AlbumMetadataResponse`). A renamed/removed/retyped field is a build error at the call site, not a silent runtime miss.
+1. **The compiler**, for the flat, non-polymorphic surfaces that decode straight into a generated type (`AlbumMetadataResponse`, and `AppConfig` since #915). A renamed/removed/retyped field is a build error at the call site, not a silent runtime miss.
 2. **`FlowsheetContractParityTests`** (`Shared/Playlist/Tests/PlaylistTests/FlowsheetContractParityTests.swift`), for the flowsheet, where the runtime decoder is intentionally *not* the generated type (see below). This is the guard-of-record for that surface.
 
 ## Why the V2 flowsheet decoder is hand-written, not generated

@@ -12,51 +12,32 @@
 import Foundation
 import Core
 import Logger
+import WXYCAPIModels
 
 /// App configuration values returned by the public `/config` endpoint.
-public struct AppConfig: Sendable, Codable, Equatable {
-    public let posthogApiKey: String
-    public let posthogHost: String
-    public let requestOMaticUrl: String
-    public let apiBaseUrl: String
-
-    /// The canonical hosted donation page, or `nil` when the backend predates
-    /// the field.
-    ///
-    /// Backend-Service serves `""` (not `null`) when `DONATE_URL` is unset on
-    /// Railway, following the established `process.env.X || ''` controller
-    /// shape — so consumers must treat an empty or unparseable value as
-    /// *absent* and fall through to the next rung of the ladder rather than
-    /// letting it silently produce no destination. ``DonateRowModel`` does.
-    public let donateUrl: String?
-
-    /// Whether to show the Donate row at all, or `nil` when the backend
-    /// predates the field.
-    ///
-    /// This is a **deploy-time** switch, not an instant kill switch: `/config`
-    /// is served `Cache-Control: public, max-age=3600`, so a flip takes up to
-    /// an hour to propagate.
-    public let donateEnabled: Bool?
-
-    /// - Note: Both donate parameters are defaulted because this initializer is
-    ///   hand-written rather than synthesized-memberwise — undefaulted
-    ///   parameters would break every existing construction site.
-    public init(
-        posthogApiKey: String,
-        posthogHost: String,
-        requestOMaticUrl: String,
-        apiBaseUrl: String,
-        donateUrl: String? = nil,
-        donateEnabled: Bool? = nil
-    ) {
-        self.posthogApiKey = posthogApiKey
-        self.posthogHost = posthogHost
-        self.requestOMaticUrl = requestOMaticUrl
-        self.apiBaseUrl = apiBaseUrl
-        self.donateUrl = donateUrl
-        self.donateEnabled = donateEnabled
-    }
-}
+///
+/// This is the generated contract type (`WXYCAPIModels.AppConfig`),
+/// re-exported under its historical name. `/config` is a flat,
+/// non-polymorphic response, so it decodes straight into the generated
+/// model per `docs/code-generation.md`'s adoption policy — a field rename
+/// or retype in `api.yaml` is now a build error at the `defaults` literal
+/// or a consumer property access (drift-guard class 1), instead of the
+/// silent skew a hand-maintained twin allowed (#915). The wire semantics —
+/// empty-string-when-unset `donateUrl`, absence-is-not-a-kill-switch
+/// `donateEnabled`, the 3600s cache window — ride along as doc comments
+/// generated from the contract itself; consumers like ``DonateRowModel``
+/// treat an empty or unparseable `donateUrl` as absent per those semantics.
+///
+/// Note for consumers: the typealias keeps every *type position* compiling
+/// unchanged, but Swift 6.2's member-import-visibility rule means a file
+/// that accesses `AppConfig`'s *members* (properties, the initializer)
+/// needs its own `import struct WXYCAPIModels.AppConfig` — the typealias
+/// alone doesn't carry member visibility across the module boundary. Use
+/// the scoped form, not a whole-module import: the generated package
+/// declares ~269 types including a `Playlist` struct that shadows the
+/// `Playlist` *module* for qualified type lookups in any file importing
+/// both.
+public typealias AppConfig = WXYCAPIModels.AppConfig
 
 /// Third-party API credentials returned by the authenticated `/config/secrets` endpoint.
 public struct AppSecrets: Sendable, Codable, Equatable {
@@ -95,8 +76,9 @@ public actor AppConfiguration {
     ///   mode, and a backend blip render — and `nil` would resolve to
     ///   ``DonateRowModel``'s `?? true`, showing the row in exactly the release
     ///   meant to ship dark. Lighting up is two steps: set `DONATE_ENABLED=true`
-    ///   on Railway (no app release), then flip this literal in the next
-    ///   regular release so offline launches show the row too.
+    ///   (lowercase) via Backend-Service's `set-ec2-env-var.yml` workflow — the
+    ///   light-up platform is EC2, not Railway — then flip this literal in the
+    ///   next regular release so offline launches show the row too.
     public static let defaults = AppConfig(
         posthogApiKey: "phc_jUWlgO0aQzyPgHqQUEC7VPD1IdN1tytHG3qckb7CLoD",
         posthogHost: "https://us.i.posthog.com",

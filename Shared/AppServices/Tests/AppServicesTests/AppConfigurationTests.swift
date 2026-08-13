@@ -12,6 +12,7 @@ import Core
 import CoreTesting
 import Foundation
 import Testing
+import struct WXYCAPIModels.AppConfig
 @testable import AppServices
 
 // `.serialized` because the network-fetch tests share `QueuedStubURLProtocol`'s

@@ -13,6 +13,7 @@ import Playback
 import Playlist
 import AppServices
 import SwiftUI
+import struct WXYCAPIModels.AppConfig
 
 @main
 struct WXYCTVApp: App {

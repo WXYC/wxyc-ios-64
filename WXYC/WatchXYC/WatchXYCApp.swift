@@ -15,6 +15,7 @@ import PlaybackWatchOS
 import Playlist
 import AppServices
 import SwiftUI
+import struct WXYCAPIModels.AppConfig
 
 @main
 struct WatchXYC: App {
