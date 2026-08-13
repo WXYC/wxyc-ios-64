@@ -61,6 +61,28 @@ struct OnAirIndicator: View {
     static let pulseDuration: Double = 1.1
 
     var body: some View {
+        #if canImport(UIKit)
+        // CoreAnimation drives the pulse — see ``OnAirPulseView`` for why.
+        OnAirPulseView(
+            size: size,
+            color: color,
+            blurRadius: Self.glowRadius(blurRadius: blurRadius, isPulsing: isPulsing),
+            reduceMotion: reduceMotion
+        )
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+        #else
+        swiftUIPulse
+        #endif
+    }
+
+    /// The SwiftUI pulse, used where UIKit isn't available.
+    ///
+    /// Costs a whole-tree render pass per frame (SwiftUI steps `repeatForever` on
+    /// the CPU), which is exactly why the UIKit path exists. Kept so the native
+    /// macOS target has something correct to fall back to rather than a dot that
+    /// silently stops pulsing.
+    private var swiftUIPulse: some View {
         Circle()
             .fill(color)
             .frame(width: size, height: size)
