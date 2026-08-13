@@ -506,7 +506,11 @@ public actor PlaycutMetadataService {
             // omits both proxy fields (as it does for up to an hour after a
             // previously free-text play links to a catalog album) the chain
             // still lands on `playcut.labelName`, which is always fresh off
-            // the feed.
+            // the feed. When the memo instead serves a stale `recordLabel`
+            // with no `label`, the memoized value IS rendered over the
+            // fresher feed value until the memo expires — that shadowing is
+            // the present-but-stale half of the tradeoff, pinned by the
+            // memo-window test in PlaycutMetadataServiceCachingTests.
             //
             // `apiResult.metadataStatus` and `apiResult.lastDiscogsRecheckAt`
             // are deliberately decoded but not consumed here (#813).

@@ -110,9 +110,13 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// (`WXYCAPIModels.AlbumMetadataResponse.labelId`, off the linked
     /// flowsheet row's `flowsheet.label_id`). Decode-only (#813): nothing
     /// renders it yet. It would let a future consumer join to the catalog
-    /// label record instead of string-matching a name — the plausible
-    /// near-term one is a Spotlight `LabelEntity` (#432) — but that consumer
-    /// doesn't exist today, so this field carries no UI behavior.
+    /// label record instead of string-matching a name — concretely,
+    /// `LabelEntity`/`LabelEntityQuery` already ship in `Shared/Intents`,
+    /// keyed off the normalized `Playcut.labelName` string; re-keying them
+    /// onto this stable id is the actual work #432 scopes (see also #292,
+    /// the librarian-filing vs Discogs-canonical-name reconciliation
+    /// recorded in `LabelEntity.swift`'s header). No consumer reads it yet,
+    /// so this field carries no UI behavior.
     public let labelId: Int?
 
     public init(
