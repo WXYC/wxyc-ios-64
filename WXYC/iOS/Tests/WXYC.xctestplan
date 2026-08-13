@@ -97,6 +97,14 @@
     {
       "parallelizable" : true,
       "target" : {
+        "containerPath" : "container:Shared\/DebugPanel",
+        "identifier" : "DebugPanelTests",
+        "name" : "DebugPanelTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
         "containerPath" : "container:Shared\/Metadata",
         "identifier" : "MetadataTests",
         "name" : "MetadataTests"

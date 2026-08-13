@@ -2,7 +2,9 @@
 //  DebugMetricsProvider.swift
 //  DebugPanel
 //
-//  Protocol for providing debug metrics to the HUD.
+//  Real-time performance metrics for the debug HUD, and the display-link source
+//  that feeds them. Both only run while the HUD is on screen — see
+//  DebugMetricsProvider.start() and DisplayLinkSource.
 //
 //  Created by Jake Bromberg on 12/23/25.
 //  Copyright © 2025 WXYC. All rights reserved.
@@ -24,6 +26,12 @@ final class DebugMetricsProvider {
     private(set) var memoryMB: Double = 0
     private(set) var thermalState: ProcessInfo.ThermalState = .nominal
 
+    /// Whether the sampling sources are attached.
+    ///
+    /// Sampling costs a display-rate run-loop wakeup plus two timers, so it runs
+    /// only while the HUD is actually on screen — see ``start()``.
+    private(set) var isRunning = false
+
     // MARK: - Private State
 
     private var displayLinkTask: Task<Void, Never>?
@@ -38,18 +46,61 @@ final class DebugMetricsProvider {
 
     // MARK: - Initialization
 
+    /// Construction is deliberately inert — no display link, no timers.
+    ///
+    /// ``DebugHUD`` holds this in `@State`, and a `@State` initializer expression
+    /// is re-evaluated every time the view struct is created even though SwiftUI
+    /// keeps only the first instance. An `init` that attached a display link
+    /// therefore stranded one per discarded copy, each still waking the app at
+    /// display rate. Sampling begins at ``start()`` instead.
     init() {
         self.metalDevice = MTLCreateSystemDefaultDevice()
+    }
+
+    // MARK: - Lifecycle
+
+    /// Attaches the display link and the metric timers. Idempotent.
+    func start() {
+        guard !isRunning else { return }
+        isRunning = true
         setUpDisplayLink()
         setUpTimers()
+    }
+
+    /// Detaches everything ``start()`` attached. Idempotent.
+    ///
+    /// Cancelling `displayLinkTask` ends its `for await`, which terminates the
+    /// stream, which is what invalidates the underlying `CADisplayLink` — see
+    /// ``DisplayLinkSource``.
+    func stop() {
+        guard isRunning else { return }
+        isRunning = false
+
+        displayLinkTask?.cancel()
+        displayLinkTask = nil
+
+        metricsTimer?.invalidate()
+        metricsTimer = nil
+        thermalTimer?.invalidate()
+        thermalTimer = nil
+
+        // Reset the FPS accumulator so the next `start()` measures a fresh
+        // window rather than folding in the gap while the HUD was hidden.
+        lastTimestamp = 0
+        frameCount = 0
+        fpsAccumulator = 0
     }
 
     // MARK: - Setup
 
     private func setUpDisplayLink() {
         displayLinkTask = Task { @MainActor [weak self] in
-            for await timestamp in DisplayLinkSequence() {
-                self?.handleDisplayLinkTick(timestamp)
+            for await timestamp in DisplayLinkSource.timestamps() {
+                // Breaking (rather than skipping) on a released provider ends the
+                // stream, which releases the link. A `self?.` call here would
+                // leave the loop — and the link — running forever.
+                guard let self else { break }
+                self.handleDisplayLinkTick(timestamp)
             }
         }
     }
@@ -168,41 +219,74 @@ final class DebugMetricsProvider {
     }
 }
 
-// MARK: - Display Link Sequence
+// MARK: - Display Link Source
 
-/// An AsyncSequence that emits timestamps from a CADisplayLink.
-private struct DisplayLinkSequence: AsyncSequence {
-    typealias Element = CFTimeInterval
+/// Vends display-refresh timestamps as an `AsyncStream`, and owns the teardown
+/// the run loop won't do for you.
+///
+/// `CADisplayLink` retains its target, and adding it to a run loop hands the run
+/// loop a strong reference to the link. Nothing here may therefore *target* an
+/// object whose lifetime is meant to gate the link: the earlier version made the
+/// async iterator its own target, so the link kept the iterator alive, `deinit`
+/// never ran, and `invalidate()` — which only `deinit` called — never fired. The
+/// app kept a display-rate wakeup for every iterator it had ever created.
+///
+/// Instead the target is a standalone ``Proxy`` holding only the stream's
+/// continuation, and the link is released from `onTermination`, which fires when
+/// the consuming task is cancelled or its `for await` loop breaks.
+@MainActor
+enum DisplayLinkSource {
+    private static var links: [Int: CADisplayLink] = [:]
+    private static var nextToken = 0
 
-    func makeAsyncIterator() -> AsyncIterator {
-        AsyncIterator()
+    /// Links currently attached to the run loop and not yet released.
+    ///
+    /// A diagnostic seam in the spirit of `AudioPlayerController.debugStateSnapshot`:
+    /// teardown is the part that regresses, and it is otherwise unobservable from
+    /// a test.
+    static var activeLinkCount: Int { links.count }
+
+    /// Display-refresh timestamps, delivered until the consuming task ends.
+    ///
+    /// Buffers only the newest timestamp — a consumer that falls behind wants the
+    /// current frame, not a backlog of stale ones.
+    static func timestamps() -> AsyncStream<CFTimeInterval> {
+        let (stream, continuation) = AsyncStream<CFTimeInterval>.makeStream(
+            bufferingPolicy: .bufferingNewest(1)
+        )
+
+        let token = nextToken
+        nextToken += 1
+
+        let proxy = Proxy(continuation: continuation)
+        let link = CADisplayLink(target: proxy, selector: #selector(Proxy.tick(_:)))
+        link.add(to: .main, forMode: .common)
+        links[token] = link
+
+        // Only the token — an `Int` — crosses into the `@Sendable` termination
+        // handler. The link itself stays main-actor-confined in `links`.
+        continuation.onTermination = { _ in
+            Task { @MainActor in DisplayLinkSource.release(token) }
+        }
+
+        return stream
     }
 
-    final class AsyncIterator: AsyncIteratorProtocol {
-        private var displayLink: CADisplayLink?
-        private var continuation: CheckedContinuation<CFTimeInterval?, Never>?
+    private static func release(_ token: Int) {
+        links.removeValue(forKey: token)?.invalidate()
+    }
 
-        init() {
-            let displayLink = CADisplayLink(target: self, selector: #selector(tick(_:)))
-            displayLink.add(to: .main, forMode: .common)
-            self.displayLink = displayLink
+    /// The `CADisplayLink` target. Holds the continuation rather than the
+    /// consumer, so the link can never pin its own owner alive.
+    private final class Proxy: NSObject {
+        private let continuation: AsyncStream<CFTimeInterval>.Continuation
+
+        init(continuation: AsyncStream<CFTimeInterval>.Continuation) {
+            self.continuation = continuation
         }
 
-        deinit {
-            displayLink?.invalidate()
-        }
-
-        func next() async -> CFTimeInterval? {
-            guard displayLink != nil else { return nil }
-
-            return await withCheckedContinuation { continuation in
-                self.continuation = continuation
-            }
-        }
-
-        @objc private func tick(_ link: CADisplayLink) {
-            continuation?.resume(returning: link.timestamp)
-            continuation = nil
+        @objc func tick(_ link: CADisplayLink) {
+            continuation.yield(link.timestamp)
         }
     }
 }
