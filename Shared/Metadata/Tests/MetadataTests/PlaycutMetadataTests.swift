@@ -96,6 +96,29 @@ struct PlaycutMetadataTests {
         #expect(empty.genres == nil)
         #expect(empty.styles == nil)
         #expect(empty.fullReleaseDate == nil)
+        #expect(empty.labelId == nil)
+    }
+
+    // MARK: - labelId (#813, decode-only)
+
+    @Test("AlbumMetadata.labelId encodes and decodes correctly")
+    func albumMetadataLabelIdEncodesAndDecodes() throws {
+        let album = AlbumMetadata(label: "Impulse Records", labelId: 4242)
+
+        let encoded = try JSONEncoder().encode(album)
+        let decoded = try JSONDecoder().decode(AlbumMetadata.self, from: encoded)
+
+        #expect(decoded == album)
+        #expect(decoded.labelId == 4242)
+    }
+
+    @Test("AlbumMetadata.coalescing(over:) prefers this record's labelId, falling back to the other side's")
+    func albumMetadataCoalescingLabelId() {
+        let withLabelId = AlbumMetadata(labelId: 111)
+        let withoutLabelId = AlbumMetadata(releaseYear: 2024)
+
+        #expect(withLabelId.coalescing(over: withoutLabelId).labelId == 111)
+        #expect(withoutLabelId.coalescing(over: withLabelId).labelId == 111)
     }
 
     @Test("AlbumMetadata without enriched fields decodes with nil defaults")
@@ -289,6 +312,8 @@ struct PlaycutMetadataTests {
         // carrying only a label is exactly the poisoned pre-enrichment shape.
         #expect(AlbumMetadata.empty.isSparse)
         #expect(AlbumMetadata(label: "Houndstooth").isSparse)
+        #expect(AlbumMetadata(labelId: 111).isSparse)
+        #expect(AlbumMetadata(label: "Houndstooth", labelId: 111).isSparse)
 
         #expect(AlbumMetadata(releaseYear: 2024).isSparse == false)
         #expect(AlbumMetadata(discogsURL: URL(string: "https://www.discogs.com/release/1")).isSparse == false)
