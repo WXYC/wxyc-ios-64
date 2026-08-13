@@ -79,7 +79,7 @@ scripts/verify-api-types.sh
 scripts/verify-api-types.sh --remote git@github.com:someone/wxyc-shared.git
 ```
 
-Exit code 0 means the committed tree matches a fresh regen from the pinned contract. This is enforced in CI: `.github/workflows/verify-api-types.yml` runs it on every PR touching `Shared/WXYCAPIModels/**`, on `ubuntu-latest` with no repository secrets (`wxyc-shared` is public), and fails the PR with the diff in the log on any drift. Still worth running locally after touching `contract-version.json`, to catch drift before pushing rather than in CI.
+Exit code 0 means the committed tree matches a fresh regen from the pinned contract. This is enforced in CI: `.github/workflows/verify-api-types.yml` runs it on every PR touching `Shared/WXYCAPIModels/**` — or either of the two scripts that constitute the check (`scripts/verify-api-types.sh`, `scripts/regenerate-api-types.sh`), so an edit to the gate itself can't merge ungated — and again on every qualifying push to `master`, catching the case where two individually-green PRs merge into a drifted tree (a base-branch advance never re-fires a PR's own run). Runs on `ubuntu-latest` with no repository secrets (`wxyc-shared` is public) and a read-only token, and fails with the diff in the log on any drift. Still worth running locally after touching `contract-version.json`, to catch drift before pushing rather than in CI.
 
 ## Drift guards-of-record
 
