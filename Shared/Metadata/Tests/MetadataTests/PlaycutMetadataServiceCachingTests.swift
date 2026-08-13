@@ -677,8 +677,12 @@ extension PlaycutMetadataServiceHTTPTests {
         // When
         let result = await service.fetchMetadata(for: playcut)
 
-        // Then - recordLabel wins over the playcut's own inline label, since
-        // it's the fresher BS-authoritative answer when Discogs has none.
+        // Then - recordLabel wins over the playcut's own inline label: the
+        // more authoritative catalog answer, though strictly LESS fresh —
+        // it sits inside the proxy's 1h memo while `playcut.labelName` is
+        // always fresh off the feed (the accepted #813 tradeoff; the
+        // stale-shadowing case is pinned by
+        // `staleRecordLabelShadowsFresherFeedLabelInMemoWindow`).
         #expect(result.label == "Chuquimamani-Condori (catalog)")
     }
 
@@ -721,15 +725,18 @@ extension PlaycutMetadataServiceHTTPTests {
         #expect(result.label == "Sonamos Discogs Pressing")
     }
 
-    @Test("Falls back to the inline playcut label when the proxy's 1h memo omits both label fields (#813)")
-    func fallsBackToPlaycutLabelOnMemoWindowOmission() async throws {
-        // Given - the documented memo-window shape on `AlbumMetadataResponse`:
-        // for up to an hour after a previously free-text play links to a
-        // catalog album, a cache hit on the handler's 1h memo (WXYC/Backend-
-        // Service#988) can omit `label` AND `recordLabel` entirely, even
-        // though a linked row now exists. The inline V2 feed row is not
-        // subject to that memo, so `playcut.labelName` is the fresher answer
-        // and must not be left blank by the omission.
+    @Test("Inside the 1h memo window, a stale recordLabel shadows the fresher feed-row label (#813 accepted tradeoff)")
+    func staleRecordLabelShadowsFresherFeedLabelInMemoWindow() async throws {
+        // Given - the present-but-stale memo shape: the feed row carries a
+        // librarian's fresh correction (`playcut.labelName`), while the
+        // proxy's 1h memo (WXYC/Backend-Service#988) still serves the
+        // pre-correction `recordLabel` and Discogs has no `label`. The #813
+        // precedence renders the memoized proxy value for up to an hour —
+        // the accepted cost of triage option 1. (The omission variant of
+        // the window, where the memo drops both proxy fields, is covered by
+        // `fallsBackToPlaycutLabelWhenAPILabelAbsent`.) Pre-#813 code
+        // rendered the feed row's corrected value in this scenario, so this
+        // test pins the divergence deliberately.
         let mockCache = CountingCache()
         let cache = CacheCoordinator(cache: mockCache)
         let mockSession = PatternRoutingWebSession()
@@ -737,16 +744,17 @@ extension PlaycutMetadataServiceHTTPTests {
 
         let playcut = Playcut.stub(
             songTitle: "Back, Baby",
-            labelName: "Drag City",
+            labelName: "Drag City (corrected filing)",
             artistName: "Jessica Pratt",
             releaseTitle: "On Your Own Love Again"
         )
 
         let albumResponse = """
         {
-            "discogsReleaseId": null,
+            "discogsReleaseId": 90211,
             "discogsUrl": null,
             "releaseYear": null,
+            "recordLabel": "Drag City",
             "spotifyUrl": null,
             "appleMusicUrl": null,
             "youtubeMusicUrl": null,
@@ -759,7 +767,8 @@ extension PlaycutMetadataServiceHTTPTests {
         // When
         let result = await service.fetchMetadata(for: playcut)
 
-        // Then
+        // Then - the memoized catalog value wins for the window, not the
+        // fresher feed-row correction.
         #expect(result.label == "Drag City")
     }
 
