@@ -1,0 +1,50 @@
+name: Verify API Types
+
+# Drift check for the vendored Shared/WXYCAPIModels tree: fails a PR whose
+# committed Sources/WXYCAPIModels does not match a fresh regen from the
+# wxyc-shared commit pinned in Shared/WXYCAPIModels/contract-version.json.
+# Runs on ubuntu-latest, not macos-latest, because it needs none of the
+# things that keep other workflows on macOS or manual -- no Xcode, no
+# simulator, no submodule deploy key -- and wxyc-shared is public, so the
+# clone in scripts/regenerate-api-types.sh needs no credentials either
+# (overridden below to the https remote so an unauthenticated ubuntu runner
+# can clone it; the script's default remote is SSH).
+#
+# Path-filtered to the vendored tree plus the pin file plus this workflow's
+# own path, so unrelated PRs don't spend a runner-minute on a check that
+# could not have caught anything. This workflow's own path is in the filter
+# on purpose, matching the self-inclusion rule shell-script-tests.yml
+# documents: a self-excluding workflow can be broken by an edit that never
+# triggers it.
+
+on:
+  pull_request:
+    paths:
+      - "Shared/WXYCAPIModels/**"
+      - ".github/workflows/verify-api-types.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: verify-api-types-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify-api-types:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install zsh
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: verify-api-types.sh
+        run: zsh scripts/verify-api-types.sh --remote https://github.com/WXYC/wxyc-shared.git
