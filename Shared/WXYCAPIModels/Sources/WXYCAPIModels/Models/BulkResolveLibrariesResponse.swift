@@ -7,18 +7,26 @@
 
 import Foundation
 
-/** Response to &#x60;POST /api/v1/identity/bulk-resolve-libraries&#x60;. Order of &#x60;results&#x60; matches the order of the request&#39;s &#x60;inputs&#x60;.  */
+/** Response to &#x60;POST /api/v1/identity/bulk-resolve-libraries&#x60;. Order of &#x60;results&#x60; matches the order of the request&#39;s &#x60;inputs&#x60;. The example below is the &#x60;include_tracks: true&#x60; shape; with the flag false or omitted, every result&#39;s &#x60;tracks&#x60; and &#x60;tracks_attempted&#x60; are the absent/NULL state (LML spells both &#x60;null&#x60;). Per-source &#x60;method&#x60;/&#x60;confidence&#x60; pairs in the example sit inside &#x60;IdentityMethod&#x60;&#39;s locked bands — Backend&#39;s writer rejects rows that don&#39;t, so an example that violated them would hand LML#1021 an unwritable row to copy. The example also carries &#x60;tracks_contract_version: 1&#x60;, echoing that the producer that emitted it understood &#x60;include_tracks&#x60;; see that field for the rollout-window ambiguity it exists to resolve.  */
 public struct BulkResolveLibrariesResponse: Sendable, Codable, Hashable {
 
+    public enum TracksContractVersion: Int, Sendable, Codable, CaseIterable, CaseIterableDefaultsLast {
+        case _1 = 1
+        case unknownDefaultOpenApi = 11184809
+    }
+    /** Present and equal to 1 only when the request set `include_tracks: true`, the producer understands the flag, AND the producer has emitted `tracks_attempted` for both `kind: single_artist` and `kind: compilation` results — see `BulkResolveResult.tracks_attempted`. The two producer arms ship independently (LML#1138, LML#1021); setting the marker with one arm unimplemented tells a consumer to trust `tracks_attempted` on rows where it is still meaningless.  Absent or NULL otherwise: both when `include_tracks` was false or omitted, and when the producer predates this field entirely, or has implemented only one of the two arms above. LML does not set this field anywhere yet and serves this endpoint without `response_model_exclude_none`, so it ships `null` — never an omitted key — on every response in production today (WXYC/wxyc-shared#310); `nullable: true` documents that wire instead of describing one nobody emits, the same treatment as `tracks` / `tracks_attempted` above.  Because of that, a consumer MUST test for the value `1` and must never test for key presence — `!== undefined` against the generated TypeScript reads TRUE for a producer that implements none of this, the inverse of what the marker exists to signal. Absent, `null`, and a producer that predates this field must all read \"not supported\", and only the literal value `1` reads \"supported\" — which keeps the check immune to whether any given producer omits or nulls its unset optionals. Same precedent as `LookupResponse.api_version` (`LookupRequest.include_identity`): a producer-echoed capability marker that lets a consumer distinguish \"the producer understood my flag and the answer is genuinely nothing\" from \"the producer predates my flag\" — a distinction `tracks_attempted`/`tracks` cannot make alone, because both are spelled `null` in either case (WXYC/wxyc-shared#303). No schema-level `default`, for the same `openapi-typescript` `defaultNonNullable` reason documented on `BulkResolveLibrariesRequest.include_tracks`.  */
+    public var tracksContractVersion: TracksContractVersion?
     public var results: [BulkResolveResult]
     public var cacheStats: CacheStats?
 
-    public init(results: [BulkResolveResult], cacheStats: CacheStats? = nil) {
+    public init(tracksContractVersion: TracksContractVersion? = nil, results: [BulkResolveResult], cacheStats: CacheStats? = nil) {
+        self.tracksContractVersion = tracksContractVersion
         self.results = results
         self.cacheStats = cacheStats
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
+        case tracksContractVersion = "tracks_contract_version"
         case results
         case cacheStats = "cache_stats"
     }
@@ -27,8 +35,16 @@ public struct BulkResolveLibrariesResponse: Sendable, Codable, Hashable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(tracksContractVersion, forKey: .tracksContractVersion)
         try container.encode(results, forKey: .results)
         try container.encodeIfPresent(cacheStats, forKey: .cacheStats)
     }
 }
 
+
+extension BulkResolveLibrariesResponse: UnknownCaseCheckable {
+    public var containsUnknownDefaultOpenApiCase: Bool {
+        if tracksContractVersion == .unknownDefaultOpenApi { return true }
+        return false
+    }
+}

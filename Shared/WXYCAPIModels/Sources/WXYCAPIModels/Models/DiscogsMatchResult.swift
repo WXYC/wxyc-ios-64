@@ -41,6 +41,8 @@ public struct DiscogsMatchResult: Sendable, Codable, Hashable {
     public var bandcampUrl: String?
     /** SoundCloud search URL */
     public var soundcloudUrl: String?
+    /** Per-service streaming resolution status (verified / absent / unresolved) for this result, disambiguating WHY a sibling `*_url` field is null. A service marked `unresolved` timed out, had its enrichment tail shed, or was a cold cache miss — its null url is transient and MAY resolve on a later retry; `absent` means the service was consulted and genuinely has no match — its null url is terminal and must NOT be re-probed (re-asking `absent` is the per-play LML-call amplifier BS#1747 killed). A service whose key is OMITTED from this object was never consulted (e.g. Bandcamp on the `/lookup/bulk` path, or the library.db override skipped for a non-library row) and must not be treated as `absent`. Additive and optional: null/omitted on responses from an LML predating the producer rollout, or on paths that resolve no per-service status. Does not change the meaning of the `*_url` fields — it only annotates them. Emitted identically on `/lookup` and `/lookup/bulk` (the LML#681 parity rule). Mirrors the per-service verdict vocabulary of `/api/v1/streaming-check` (LML#376). See LML#1053 / BS#1819.  */
+    public var streamingStatus: StreamingResolution?
     /** Discogs artist ID for this release. Populated only when the originating `LookupRequest.extended` is true. Lets a caller key an artist-metadata cache without a follow-up release fetch.  */
     public var discogsArtistId: Int?
     /** Release tracklist with per-track artist credits where available. Populated only when `extended` is true.  */
@@ -59,7 +61,7 @@ public struct DiscogsMatchResult: Sendable, Codable, Hashable {
     public var profileTokens: [DiscogsResolvedToken]?
     public var writerCredits: DiscogsWriterCredits?
 
-    public init(album: String? = nil, artist: String? = nil, releaseId: Int, masterId: Int? = nil, releaseUrl: String, artworkUrl: String? = nil, confidence: Double? = 0, releaseYear: Int? = nil, artistBio: String? = nil, wikipediaUrl: String? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil, discogsArtistId: Int? = nil, tracklist: [DiscogsTrackItem]? = nil, genres: [String]? = nil, styles: [String]? = nil, label: String? = nil, fullReleaseDate: String? = nil, artistImageUrl: String? = nil, profileTokens: [DiscogsResolvedToken]? = nil, writerCredits: DiscogsWriterCredits? = nil) {
+    public init(album: String? = nil, artist: String? = nil, releaseId: Int, masterId: Int? = nil, releaseUrl: String, artworkUrl: String? = nil, confidence: Double? = 0, releaseYear: Int? = nil, artistBio: String? = nil, wikipediaUrl: String? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil, streamingStatus: StreamingResolution? = nil, discogsArtistId: Int? = nil, tracklist: [DiscogsTrackItem]? = nil, genres: [String]? = nil, styles: [String]? = nil, label: String? = nil, fullReleaseDate: String? = nil, artistImageUrl: String? = nil, profileTokens: [DiscogsResolvedToken]? = nil, writerCredits: DiscogsWriterCredits? = nil) {
         self.album = album
         self.artist = artist
         self.releaseId = releaseId
@@ -75,6 +77,7 @@ public struct DiscogsMatchResult: Sendable, Codable, Hashable {
         self.youtubeMusicUrl = youtubeMusicUrl
         self.bandcampUrl = bandcampUrl
         self.soundcloudUrl = soundcloudUrl
+        self.streamingStatus = streamingStatus
         self.discogsArtistId = discogsArtistId
         self.tracklist = tracklist
         self.genres = genres
@@ -102,6 +105,7 @@ public struct DiscogsMatchResult: Sendable, Codable, Hashable {
         case youtubeMusicUrl = "youtube_music_url"
         case bandcampUrl = "bandcamp_url"
         case soundcloudUrl = "soundcloud_url"
+        case streamingStatus = "streaming_status"
         case discogsArtistId = "discogs_artist_id"
         case tracklist
         case genres
@@ -132,6 +136,7 @@ public struct DiscogsMatchResult: Sendable, Codable, Hashable {
         try container.encodeIfPresent(youtubeMusicUrl, forKey: .youtubeMusicUrl)
         try container.encodeIfPresent(bandcampUrl, forKey: .bandcampUrl)
         try container.encodeIfPresent(soundcloudUrl, forKey: .soundcloudUrl)
+        try container.encodeIfPresent(streamingStatus, forKey: .streamingStatus)
         try container.encodeIfPresent(discogsArtistId, forKey: .discogsArtistId)
         try container.encodeIfPresent(tracklist, forKey: .tracklist)
         try container.encodeIfPresent(genres, forKey: .genres)

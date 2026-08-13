@@ -90,12 +90,14 @@ struct FlowsheetContractParityTests {
     /// - `on_streaming` / `track_position`: plausible future-adoption candidates
     ///   (a "library exclusive" badge, a track-position line) that simply aren't
     ///   built yet.
-    /// - `discogsUnavailable` / `discogsUnavailableNote` (#731): reserved
-    ///   camelCase fields on the contract (`FlowsheetEntryResponse`) so the
-    ///   generated struct decodes them, but Backend doesn't emit them on the V2
-    ///   flowsheet feed yet — WXYC/Backend-Service#1908 is the BS-emit piece.
-    ///   The render gate for "Not on Discogs" is fed via `AlbumMetadataResponse`
-    ///   (`PlaycutMetadataService`) for now, not this embed.
+    ///
+    /// `discogsUnavailable` / `discogsUnavailableNote` (#731) dropped off
+    /// `FlowsheetV2TrackEntry` in the 1.27.0 → 1.35.0 regen (#914) — Backend never
+    /// emitted them on the V2 flowsheet feed (WXYC/Backend-Service#1908 is still
+    /// the BS-emit piece), and upstream stopped declaring them on this
+    /// track-entry variant, so they're no longer part of the generated struct to
+    /// acknowledge here. The render gate for "Not on Discogs" continues to be fed
+    /// via `AlbumMetadataResponse` (`PlaycutMetadataService`), not this embed.
     ///
     /// Revisit — and move into `consumedWireFields` by wiring the field into
     /// ``FlowsheetEntry`` / `FlowsheetConverter` — if a feature needs one of these.
@@ -104,8 +106,6 @@ struct FlowsheetContractParityTests {
         "rotation_bin",
         "on_streaming",
         "track_position",
-        "discogsUnavailable",
-        "discogsUnavailableNote",
     ]
 
     /// The primary drift guard. `FlowsheetV2TrackEntry.CodingKeys` is
@@ -152,8 +152,6 @@ struct FlowsheetContractParityTests {
         #expect(generated.rotationBin == .h)
         #expect(generated.upcomingShow?.headliningArtistRaw == "Jessica Pratt")
         #expect(generated.criticReviews?.first?.source == "The Quietus")
-        #expect(generated.discogsUnavailable == true)
-        #expect(generated.discogsUnavailableNote == "embargoed promo")
 
         // App struct — the tolerant runtime decoder, unchanged.
         let appEntry = try JSONDecoder().decode(FlowsheetEntry.self, from: rowData)

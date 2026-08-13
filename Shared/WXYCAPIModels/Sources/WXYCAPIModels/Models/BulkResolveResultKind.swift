@@ -7,7 +7,7 @@
 
 import Foundation
 
-/** Discriminator for &#x60;BulkResolveResult&#x60;. &#x60;single_artist&#x60; carries a composed &#x60;main&#x60; identity. &#x60;compilation&#x60; carries &#x60;tracks&#x60; (empty array if LML has no per-track data for the V/A row yet). &#x60;unresolved&#x60; is a first-class outcome — caching it (with TTL) prevents repeated re-asking for unresolvable rows.  */
+/** Discriminator for &#x60;BulkResolveResult&#x60;. &#x60;single_artist&#x60; carries a composed &#x60;main&#x60; identity; &#x60;compilation&#x60; carries none (a V/A row has no album-level artist anchor). Either may carry &#x60;tracks&#x60; and &#x60;tracks_attempted&#x60; — per-track identity is gated by the request&#39;s &#x60;include_tracks&#x60; flag, not by &#x60;kind&#x60; (#297). &#x60;unresolved&#x60; is a first-class outcome — caching it (with TTL) prevents repeated re-asking for unresolvable rows — and never carries &#x60;main&#x60;, &#x60;tracks&#x60;, or &#x60;tracks_attempted&#x60;.  */
 public enum BulkResolveResultKind: String, Sendable, Codable, CaseIterable, CaseIterableDefaultsLast {
     case singleArtist = "single_artist"
     case compilation = "compilation"

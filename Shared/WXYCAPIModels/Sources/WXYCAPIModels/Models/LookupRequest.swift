@@ -17,22 +17,19 @@ public struct LookupRequest: Sendable, Codable, Hashable {
     public var album: String?
     /** Original request message (used for ambiguous format detection). Optional when structured fields (artist, album, song) are provided.  */
     public var rawMessage: String?
-    /** Per cross-cache-identity plan §3.2.2 (E2-LML write contract). When true, the response carries an additional `identity` block (the §3.2.5 cascade's per-source resolution detail), and `api_version` is set to 2. When false (the default), the response is byte-identical to v0.5.0 — `identity` is absent and `api_version` is omitted. Backend's `library-identity-writer.ts` (E2-BS) sets this to true on every call; other consumers (catalog search, dj-site proxy, iOS apps) leave it false.  */
+    /** Per cross-cache-identity plan §3.2.2 (E2-LML write contract). When true, the response is meant to carry an additional `identity` block (the §3.2.5 cascade's per-source resolution detail) with `api_version` set to 2 — see `LookupResponse.api_version` and `LookupResponse.identity`. Neither side of that is implemented yet: no `LookupResponse(...)` construction site in the producer ever sets `api_version` or `identity`, not even when this flag is true, so both fields ship `null` — never an omitted key — on every `/lookup` response in production today, regardless of what this flag is set to (WXYC/wxyc-shared#316). A consumer MUST test `api_version === 2` to detect support, never presence of either key: absent, `null`, and a producer that hasn't implemented this at all must all read \"not supported\".  No current caller sets this to true. A source read of Backend-Service (re-verified for this fix at `67d6d7b`, the same SHA the original WXYC/wxyc-shared#309 read used — Backend-Service has not moved since) finds no `library-identity-writer.ts` file and no `include_identity` reference anywhere in its TypeScript; the only occurrence in that repo is prose in `plans/library-hook-canonicalization/architecture-pivot-2026-05-09.md` describing the planned E2-BS writer, which has not been built. request-o-matic constructs `LookupRequest` without setting this field, which serializes as the `false` default; dj-site and tubafrenzy do not call `/lookup` with this field at all.  */
     public var includeIdentity: Bool? = false
-    /** Per the comprehensive multi-location union (LML#1018/#1022). When true, the response carries an additional `also_available_on` array — every other WXYC library shelf location that carries the same track (V/A compilations, soundtracks), ranked by LML, so a DJ can find a backup copy when the primary is missing or checked-out. When false (the default), the response is byte-identical to today — `also_available_on` is omitted. DJ-facing callers (dj-site catalog, request-o-matic) set this; Backend enrichment does not.  */
-    public var includeLocations: Bool? = false
     /** When true, the top-1 result's `artwork` block is populated with additional fields LML already fetches during enrichment but normally discards: `discogs_artist_id`, `tracklist`, `genres`, `styles`, `label`, `full_release_date`, `artist_image_url`, and `profile_tokens` (cache-only deep parse of the artist's profile markup). Lets a caller obtain a full playcut metadata payload in a single `/lookup` call instead of following up with separate `/discogs/release/{id}` and `/discogs/artist/{id}` requests. Absent or false leaves the response shape unchanged.  */
     public var extended: Bool?
     /** When true, LML schedules a fire-and-forget background task after the response is built that runs a *deep* async parse of the top-1 artist's bio. The task resolves all `[a…]`/`[r…]`/`[m…]` references against the Discogs API where the local cache misses, warming the PG cache so subsequent reads of the same artist render richer bio tokens. Intended for write-path callers (e.g. Backend-Service's flowsheet-linkage service committing a new DJ entry); read-path callers should leave this absent/false to avoid doubling the Discogs-API load per request.  */
     public var warmCache: Bool?
 
-    public init(artist: String? = nil, song: String? = nil, album: String? = nil, rawMessage: String? = nil, includeIdentity: Bool? = false, includeLocations: Bool? = false, extended: Bool? = nil, warmCache: Bool? = nil) {
+    public init(artist: String? = nil, song: String? = nil, album: String? = nil, rawMessage: String? = nil, includeIdentity: Bool? = false, extended: Bool? = nil, warmCache: Bool? = nil) {
         self.artist = artist
         self.song = song
         self.album = album
         self.rawMessage = rawMessage
         self.includeIdentity = includeIdentity
-        self.includeLocations = includeLocations
         self.extended = extended
         self.warmCache = warmCache
     }
@@ -43,7 +40,6 @@ public struct LookupRequest: Sendable, Codable, Hashable {
         case album
         case rawMessage = "raw_message"
         case includeIdentity = "include_identity"
-        case includeLocations = "include_locations"
         case extended
         case warmCache = "warm_cache"
     }
@@ -57,7 +53,6 @@ public struct LookupRequest: Sendable, Codable, Hashable {
         try container.encodeIfPresent(album, forKey: .album)
         try container.encodeIfPresent(rawMessage, forKey: .rawMessage)
         try container.encodeIfPresent(includeIdentity, forKey: .includeIdentity)
-        try container.encodeIfPresent(includeLocations, forKey: .includeLocations)
         try container.encodeIfPresent(extended, forKey: .extended)
         try container.encodeIfPresent(warmCache, forKey: .warmCache)
     }

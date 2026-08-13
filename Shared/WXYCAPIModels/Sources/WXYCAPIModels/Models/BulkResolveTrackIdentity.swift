@@ -7,21 +7,43 @@
 
 import Foundation
 
-/** Per-track resolution for a V/A library row. One entry per (library_id, track_position) the request resolved. Sources reflect the per-source rows LML composed the track identity from; the chosen identifiers are not lifted into a per-track &#x60;external_ids&#x60; block at this contract version — Backend writes the per-source rows verbatim into &#x60;library_track_identity_source&#x60; per WXYC/library-metadata-lookup#271&#39;s design.  */
+/** Per-track resolution for one library row — V/A or not. Returned only when the request set &#x60;include_tracks: true&#x60;; one entry per track LML&#39;s per-track matcher visited. &#x60;sources&#x60; reflects the per-source rows LML composed the track identity from — audit provenance, not a storage instruction: LML&#39;s per-track store is the per-source system of record, and consumers persist only the composed verdict fields on this entry. &#x60;1.29.0&#x60; said instead that Backend writes these rows verbatim into &#x60;library_track_identity_source&#x60;; that table was never built. WXYC/Backend-Service#792 — the Backend-side ticket that would have created it — closed as a design decision and the schema half never happened, confirmed against prod and all 136 migrations in https://github.com/WXYC/Backend-Service/issues/801#issuecomment-5187348795. (&#x60;1.29.0&#x60; attributed that instruction to WXYC/library-metadata-lookup#271, which is open and scopes LML&#39;s own per-track identity work, not Backend storage.) The chosen identifiers are not lifted into a per-track &#x60;external_ids&#x60; block at this contract version.  The entry is addressable without &#x60;track_position&#x60;: 78% of Backend&#39;s &#x60;compilation_track_artist&#x60; rows carry a NULL position (WXYC/Backend-Service#1989), so &#x60;artist_name&#x60; + &#x60;track_title&#x60; are the join-back key a consumer can actually use. &#x60;1.29.0&#x60; shipped &#x60;track_position&#x60; as the only row identifier plus per-source legs, with no composed verdict and no canonical artist — unconsumable for WXYC/Backend-Service#1991, which went unnoticed because the array has only ever shipped empty. The four added fields below close that gap.  */
 public struct BulkResolveTrackIdentity: Sendable, Codable, Hashable {
 
-    /** Track position; matches the request input. */
-    public var trackPosition: String
-    /** One per-source row per source LML composed the track from. Empty array means LML attempted resolution at track grain and found no matches.  */
+    public static let artistNameRule = StringRule(minLength: 1, maxLength: nil, pattern: nil)
+    public static let confidenceRule = NumericRule<Double>(minimum: 0, exclusiveMinimum: false, maximum: 1, exclusiveMaximum: false, multipleOf: nil)
+    /** Track position as the source has it (\"A1\", \"3\", …). Required-but-nullable: the key is always present, and NULL says \"no position is recoverable for this track\" rather than \"not echoed\". Not a usable row identifier on its own — most of Backend's compilation-track rows are position-NULL (WXYC/Backend-Service#1989); join on `artist_name` + `track_title` instead.  */
+    public var trackPosition: String?
+    /** Join-back echo of the per-track credit, verbatim, and the load-bearing half of the join key — never NULL, and never the empty string (`minLength: 1`, matching `CatalogCompilationTrackRow.artist_name`, since an empty join key is indistinguishable from a missing one). No `maxLength` here, unlike the CTA read/write shapes: those bound one physical `varchar(255)` column, while this field is dual-mode and the `kind: single_artist` arm carries a source credit that no WXYC column bounds. A cap the sources don't respect would turn a long credit into a decode failure. Dual-mode: for `kind: compilation` it echoes the `compilation_track_artist` row as exported in library.db, so a consumer can match it to its own CTA row; for `kind: single_artist` there is no CTA row and it carries the credit as LML's source has it.  */
+    public var artistName: String
+    /** Join-back echo of the track title, completing the join key. Dual-mode in the same way as `artist_name` — the library.db CTA row's title for `kind: compilation`, the source's track title for `kind: single_artist`. NULL when that row or source carries no title (the underlying CTA column is nullable).  */
+    public var trackTitle: String?
+    /** The composed canonical artist for this track — the per-track analogue of `BulkResolveResult.main`, carried as a name because LML does not know Backend's artist ids; consumers map it to their own artist tables locally. NULL when the matcher visited this track and resolved nothing: the entry is still returned so consumers see the leg ran (same convention as `BulkResolveProvenanceEntry.external_id`), and `confidence` and `method` are NULL alongside it.  */
+    public var resolvedArtistName: String?
+    /** Composed track-level confidence in [0, 1] — where LML#1021's per-track composition lands (cross-source agreement boost, MIN-of-confidences fallback), applied at track grain exactly as `BulkResolveResult.confidence` applies at album grain. NULL when `resolved_artist_name` is NULL — the matcher ran and produced no verdict, so confidence is undefined (not zero).  */
+    public var confidence: Double?
+    /** The composed track-level method — typically the strongest leg's method, or `cross_source_agreement` when LML#1021's boost fired. NULL when `resolved_artist_name` is NULL.  */
+    public var method: IdentityMethod?
+    /** One per-source row per source LML composed the track from — audit detail, and the track-grain analogue of `BulkResolveResult.provenance`. Empty array means no source produced a row at track grain at all. That is a different statement from a populated array whose entries carry NULL `external_id`: there, the legs ran and reported no candidate. Read the verdict off `resolved_artist_name`, not off this array's length — an empty `sources` and a `sources` full of NULL-`external_id` legs both accompany a NULL `resolved_artist_name`.  */
     public var sources: [BulkResolveProvenanceEntry]
 
-    public init(trackPosition: String, sources: [BulkResolveProvenanceEntry]) {
+    public init(trackPosition: String?, artistName: String, trackTitle: String?, resolvedArtistName: String?, confidence: Double?, method: IdentityMethod?, sources: [BulkResolveProvenanceEntry]) {
         self.trackPosition = trackPosition
+        self.artistName = artistName
+        self.trackTitle = trackTitle
+        self.resolvedArtistName = resolvedArtistName
+        self.confidence = confidence
+        self.method = method
         self.sources = sources
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case trackPosition = "track_position"
+        case artistName = "artist_name"
+        case trackTitle = "track_title"
+        case resolvedArtistName = "resolved_artist_name"
+        case confidence
+        case method
         case sources
     }
 
@@ -30,7 +52,19 @@ public struct BulkResolveTrackIdentity: Sendable, Codable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(trackPosition, forKey: .trackPosition)
+        try container.encode(artistName, forKey: .artistName)
+        try container.encode(trackTitle, forKey: .trackTitle)
+        try container.encode(resolvedArtistName, forKey: .resolvedArtistName)
+        try container.encode(confidence, forKey: .confidence)
+        try container.encode(method, forKey: .method)
         try container.encode(sources, forKey: .sources)
     }
 }
 
+
+extension BulkResolveTrackIdentity: UnknownCaseCheckable {
+    public var containsUnknownDefaultOpenApiCase: Bool {
+        if method == .unknownDefaultOpenApi { return true }
+        return false
+    }
+}
