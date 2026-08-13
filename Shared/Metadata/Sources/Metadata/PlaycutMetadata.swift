@@ -96,9 +96,10 @@ public struct AlbumMetadata: Sendable, Equatable, Codable {
     /// (`WXYCAPIModels.AlbumMetadataResponse.discogsUnavailable`, combined in
     /// `PlaycutMetadataService.fetchMetadata(for:inline:)` via
     /// ``coalescing(over:)``, proxy preferred — #731). Backend emits the field on
-    /// both paths, including the flowsheet embed
-    /// (`FlowsheetV2TrackEntry.discogsUnavailable`, WXYC/Backend-Service#1908),
-    /// so either source can populate it.
+    /// the proxy path today; the V2 flowsheet embed does not carry it — the
+    /// contract has never declared it on `FlowsheetV2TrackEntry`, and
+    /// Backend-side embed emission remains pending (WXYC/Backend-Service#1908) —
+    /// so in production the proxy decode is what populates this.
     public let discogsUnavailable: Bool?
 
     /// Optional free-text reason for ``discogsUnavailable``, surfaced as

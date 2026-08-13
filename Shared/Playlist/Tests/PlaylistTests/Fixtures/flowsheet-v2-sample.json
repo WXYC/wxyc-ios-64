@@ -92,8 +92,6 @@
             "metadata_status": "enriched_match",
             "genres": ["Rock"],
             "styles": ["Folk, World, & Country"],
-            "discogsUnavailable": true,
-            "discogsUnavailableNote": "embargoed promo",
             "upcoming_show": {
                 "id": 4055,
                 "venue": {
