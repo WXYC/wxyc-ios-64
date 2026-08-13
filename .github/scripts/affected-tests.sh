@@ -385,6 +385,7 @@ TEST_TARGETS[Wallpaper]="WallpaperTests"
 TEST_TARGETS[Metadata]="MetadataTests"
 TEST_TARGETS[MusicShareKit]="MusicShareKitTests"
 TEST_TARGETS[PlayerHeaderView]="PlayerHeaderViewTests"
+TEST_TARGETS[DebugPanel]="DebugPanelTests"
 TEST_TARGETS[AppServices]="AppServicesTests"
 TEST_TARGETS[Intents]="WXYCIntentsTests"
 TEST_TARGETS[PartyHorn]="PartyHornTests"
@@ -479,6 +480,12 @@ TEST_TARGETS[WXUI]="WXUITests"
 #       - PartyHorn         — Vortex / Bundle.module not host-portable
 #       - PlayerHeaderView  — depends on Wallpaper (a git submodule)
 #       - Wallpaper         — submodule
+#       - DebugPanel        — depends on Wallpaper (a git submodule), and is
+#                             iOS-only in practice regardless: it builds
+#                             `CADisplayLink(target:selector:)` and
+#                             `.textInputAutocapitalization`, both unavailable
+#                             on macOS, so the host can't compile the target at
+#                             all. Simulator-only via WXYC.xctestplan.
 # ---------------------------------------------------------------------------
 
 local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit Concerts WXUI)
@@ -545,6 +552,7 @@ local all_test_plan_targets=(
     CachingTests
     MusicShareKitTests
     PlayerHeaderViewTests
+    DebugPanelTests
     MetadataTests
     CoreTests
     AppServicesTests

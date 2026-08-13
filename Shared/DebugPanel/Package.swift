@@ -46,5 +46,9 @@ let package = Package(
                 "WXUI",
             ],
         ),
+        .testTarget(
+            name: "DebugPanelTests",
+            dependencies: ["DebugPanel"]
+        ),
     ]
 )

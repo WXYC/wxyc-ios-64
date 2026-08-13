@@ -45,6 +45,16 @@ public struct DebugHUD: View {
                 .allowsHitTesting(false)
             }
         }
+        // Sampling is only worth its display-rate wakeup while the HUD is on
+        // screen. The HUD ships hidden, so without this the metrics ran for the
+        // whole session to render nothing.
+        .onChange(of: hudState.isVisible, initial: true) { _, isVisible in
+            if isVisible {
+                metrics.start()
+            } else {
+                metrics.stop()
+            }
+        }
     }
 }
 
