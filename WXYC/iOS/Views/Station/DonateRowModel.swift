@@ -12,6 +12,7 @@
 import AppServices
 import Core
 import Foundation
+import struct WXYCAPIModels.AppConfig
 
 /// Visibility and destination for the Station tab's Donate row.
 ///

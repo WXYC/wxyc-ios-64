@@ -18,6 +18,7 @@ import Playlist
 import PostHog
 import SwiftUI
 import WidgetKit
+import struct WXYCAPIModels.AppConfig
 
 final class Provider: AppIntentTimelineProvider, Sendable {
     typealias Entry = NowPlayingTimelineEntry

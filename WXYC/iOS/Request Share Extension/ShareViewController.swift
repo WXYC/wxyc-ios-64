@@ -14,6 +14,7 @@ import UIKit
 import SwiftUI
 import MusicShareKit
 import Logger
+import struct WXYCAPIModels.AppConfig
 
 @objc(ShareViewController)
 class ShareViewController: UIViewController {

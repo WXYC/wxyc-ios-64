@@ -15,6 +15,7 @@ let package = Package(
         .package(name: "Analytics", path: "../Analytics"),
         .package(name: "Logger", path: "../Logger"),
         .package(name: "WXYCIntents", path: "../Intents"),
+        .package(name: "WXYCAPIModels", path: "../WXYCAPIModels"),
     ],
     targets: [
         .target(
@@ -27,6 +28,11 @@ let package = Package(
                 "Caching",
                 "Analytics",
                 "Logger",
+                // Unconditioned: AppConfiguration.swift's `AppConfig`
+                // typealias re-exports the generated contract type on every
+                // platform this package builds for (WXYCAPIModels declares
+                // the same four platforms).
+                "WXYCAPIModels",
                 // WXYCIntents' PlaycutEntity/ConcertEntity conform to
                 // `IndexedEntity` and use `CSSearchableItemAttributeSet` (both
                 // @available(tvOS, unavailable), CoreSpotlight is
