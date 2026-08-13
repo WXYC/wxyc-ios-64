@@ -91,13 +91,16 @@ struct FlowsheetContractParityTests {
     ///   (a "library exclusive" badge, a track-position line) that simply aren't
     ///   built yet.
     ///
-    /// `discogsUnavailable` / `discogsUnavailableNote` (#731) dropped off
-    /// `FlowsheetV2TrackEntry` in the 1.27.0 → 1.35.0 regen (#914) — Backend never
-    /// emitted them on the V2 flowsheet feed (WXYC/Backend-Service#1908 is still
-    /// the BS-emit piece), and upstream stopped declaring them on this
-    /// track-entry variant, so they're no longer part of the generated struct to
-    /// acknowledge here. The render gate for "Not on Discogs" continues to be fed
-    /// via `AlbumMetadataResponse` (`PlaycutMetadataService`), not this embed.
+    /// `discogsUnavailable` / `discogsUnavailableNote` (#731) left this ledger in
+    /// the #914 regen because they were never contract-backed on this variant:
+    /// api.yaml declares them on `FlowsheetEntryResponse` (v1) and the album DTOs,
+    /// never on `FlowsheetV2TrackEntry` — the vendored struct only carried them
+    /// because d970bd22a hand-edited the generated file, drifting the tree from
+    /// its own pin (the #914 regen erased that undeclared drift). If Backend ever
+    /// emits them on the V2 embed (WXYC/Backend-Service#1908), this guard stays
+    /// silent until the contract declares them on this variant. The render gate
+    /// for "Not on Discogs" is fed via `AlbumMetadataResponse`
+    /// (`PlaycutMetadataService`), not this embed.
     ///
     /// Revisit — and move into `consumedWireFields` by wiring the field into
     /// ``FlowsheetEntry`` / `FlowsheetConverter` — if a feature needs one of these.
