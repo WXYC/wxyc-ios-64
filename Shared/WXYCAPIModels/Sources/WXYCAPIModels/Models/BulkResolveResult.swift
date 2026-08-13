@@ -22,16 +22,19 @@ public struct BulkResolveResult: Sendable, Codable, Hashable {
     public var confidence: Double?
     /** Per-source rows feeding LML's composition. Always present; empty array means LML attempted the cascade and no source produced a row above the §3.4.1.1 Rule 6 floor.  */
     public var provenance: [BulkResolveProvenanceEntry]
-    /** Set only for `kind: compilation`; absent for every other `kind`. Empty array when LML has no per-track data for the V/A row yet. Two states (present-array or absent), not three.  */
+    /** Whether LML's per-track matcher has visited this row — `true` once it has run, **regardless of how many tracks it resolved**, including none. This is the resolved signal for per-track identity; `tracks.length` is not (WXYC/Backend-Service#1991).  Read it with `tracks` as a pair, four states in total: **absent or NULL** — the caller did not ask (`include_tracks` false or omitted), or the result is `kind: unresolved`, and `tracks` is in the same state; **`false` with an empty `tracks`** — the caller asked and the matcher has not reached this row; **`true` with an empty `tracks`** — the matcher ran and resolved nothing; **`true` with a populated `tracks`** — the matcher ran and produced entries. `false` alongside a populated `tracks` is not a state; producers must not emit it. A consumer that observes `tracks_attempted: false` alongside a populated `tracks` anyway MUST read it as `true` — the populated array is stronger evidence of what happened than the flag that disagrees with it, and reading the row as unattempted would either drop already-resolved tracks or re-ask a row that already has an answer (WXYC/wxyc-shared#303).  The middle two are what this field exists for. They are byte-identical in `tracks`, they are not rare — a `kind: single_artist` release LML holds no tracklist for is the ordinary case, and extending the gate to that kind is the whole point of #297 — and a consumer that reads emptiness as \"not yet visited\" re-asks every one of them on every pass, forever. That is the re-asking pathology `kind: unresolved` was made a first-class outcome to prevent, reintroduced at track grain. A consumer cannot repair it locally, because the two states are indistinguishable on the wire without this field.  Absent and NULL are one state, for the same producer reason as `tracks` below.  */
+    public var tracksAttempted: Bool?
+    /** Per-track identity, returned only when the request set `include_tracks: true`. That flag — not `kind` — gates the field, and it gates it on both `kind: single_artist` and `kind: compilation` (#297); `kind: unresolved` never carries tracks. The array carries the entries; **it does not carry the state** — an empty array means the matcher found nothing *or* has not run, and only `tracks_attempted` separates those. See that field for the four states of the pair. Entries whose `resolved_artist_name` is NULL are tracks the matcher tried and failed on (\"the leg ran\", the same convention as `BulkResolveProvenanceEntry.external_id`), so a populated array is per-track detail rather than a per-track guarantee.  Absent and NULL are the same state, deliberately. LML builds every non-track result with `tracks=None` and serves the endpoint through FastAPI's `response_model` without `response_model_exclude_none`, so the wire has always carried `\"tracks\": null` rather than omitting the key. `nullable: true` documents the shipped producer instead of describing a wire nobody emits; consumers must accept both spellings.  */
     public var tracks: [BulkResolveTrackIdentity]?
 
-    public init(kind: BulkResolveResultKind, libraryId: Int, main: ReconciledIdentity? = nil, method: IdentityMethod? = nil, confidence: Double? = nil, provenance: [BulkResolveProvenanceEntry], tracks: [BulkResolveTrackIdentity]? = nil) {
+    public init(kind: BulkResolveResultKind, libraryId: Int, main: ReconciledIdentity? = nil, method: IdentityMethod? = nil, confidence: Double? = nil, provenance: [BulkResolveProvenanceEntry], tracksAttempted: Bool? = nil, tracks: [BulkResolveTrackIdentity]? = nil) {
         self.kind = kind
         self.libraryId = libraryId
         self.main = main
         self.method = method
         self.confidence = confidence
         self.provenance = provenance
+        self.tracksAttempted = tracksAttempted
         self.tracks = tracks
     }
 
@@ -42,6 +45,7 @@ public struct BulkResolveResult: Sendable, Codable, Hashable {
         case method
         case confidence
         case provenance
+        case tracksAttempted = "tracks_attempted"
         case tracks
     }
 
@@ -55,6 +59,7 @@ public struct BulkResolveResult: Sendable, Codable, Hashable {
         try container.encodeIfPresent(method, forKey: .method)
         try container.encodeIfPresent(confidence, forKey: .confidence)
         try container.encode(provenance, forKey: .provenance)
+        try container.encodeIfPresent(tracksAttempted, forKey: .tracksAttempted)
         try container.encodeIfPresent(tracks, forKey: .tracks)
     }
 }

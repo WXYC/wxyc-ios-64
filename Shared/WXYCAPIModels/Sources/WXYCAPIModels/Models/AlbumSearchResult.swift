@@ -9,6 +9,7 @@ import Foundation
 
 public struct AlbumSearchResult: Sendable, Codable, Hashable {
 
+    public static let discogsUnavailableNoteRule = StringRule(minLength: nil, maxLength: 500, pattern: nil)
     public var id: Int
     public var addDate: Date
     public var albumTitle: String
@@ -35,12 +36,18 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
     public var dateFound: Date?
     /** Album cover artwork URL from Discogs. Null if artwork has not been fetched yet or is unavailable. */
     public var artworkUrl: String?
+    /** MD-set marker indicating this release is intentionally not on Discogs (embargoed promo, audience-segment release, etc.). When true, the LML runtime-lookup chokepoint does not attempt Discogs resolution for this release. See WXYC/wiki plans/rotation-discogs-unavailable.md.  */
+    public var discogsUnavailable: Bool?
+    /** Optional free-text reason for `discogsUnavailable`. */
+    public var discogsUnavailableNote: String?
+    /** Stamped on every recheck attempt by the `library-discogs-unavailable-recheck` cron. Read-only from the client side.  */
+    public var lastDiscogsRecheckAt: Date?
     /** Populated by Backend's catalog `/library/` search when a track-title match (CTA or LML proxy fallback) drove this release into the results, per catalog-track-search plan §5.1. Empty or absent on normal artist/album hits. Backward-compatible — existing consumers ignore the field.  */
     public var matchedVia: [TrackMatchHint]?
     /** Populated by Backend's catalog search when an artist-alias match (from `artist_search_alias`) drove this release into the results, per artist-search-alias plan PR 5. Sibling field to `matched_via` (which is track-title provenance). Empty or absent on normal artist/album hits. Backward-compatible — existing consumers ignore the field.  */
     public var matchedViaAlias: [ArtistMatchHint]?
 
-    public init(id: Int, addDate: Date, albumTitle: String, artistName: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, formatName: String, genreName: String, label: String, labelId: Int? = nil, albumDist: Double? = nil, artistDist: Double? = nil, rotationBin: RotationBin? = nil, rotationId: Int? = nil, plays: Int? = nil, onStreaming: Bool? = nil, albumArtist: String? = nil, dateLost: Date? = nil, dateFound: Date? = nil, artworkUrl: String? = nil, matchedVia: [TrackMatchHint]? = nil, matchedViaAlias: [ArtistMatchHint]? = nil) {
+    public init(id: Int, addDate: Date, albumTitle: String, artistName: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, formatName: String, genreName: String, label: String, labelId: Int? = nil, albumDist: Double? = nil, artistDist: Double? = nil, rotationBin: RotationBin? = nil, rotationId: Int? = nil, plays: Int? = nil, onStreaming: Bool? = nil, albumArtist: String? = nil, dateLost: Date? = nil, dateFound: Date? = nil, artworkUrl: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil, lastDiscogsRecheckAt: Date? = nil, matchedVia: [TrackMatchHint]? = nil, matchedViaAlias: [ArtistMatchHint]? = nil) {
         self.id = id
         self.addDate = addDate
         self.albumTitle = albumTitle
@@ -62,6 +69,9 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         self.dateLost = dateLost
         self.dateFound = dateFound
         self.artworkUrl = artworkUrl
+        self.discogsUnavailable = discogsUnavailable
+        self.discogsUnavailableNote = discogsUnavailableNote
+        self.lastDiscogsRecheckAt = lastDiscogsRecheckAt
         self.matchedVia = matchedVia
         self.matchedViaAlias = matchedViaAlias
     }
@@ -88,6 +98,9 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         case dateLost = "date_lost"
         case dateFound = "date_found"
         case artworkUrl = "artwork_url"
+        case discogsUnavailable
+        case discogsUnavailableNote
+        case lastDiscogsRecheckAt
         case matchedVia = "matched_via"
         case matchedViaAlias = "matched_via_alias"
     }
@@ -117,6 +130,9 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         try container.encodeIfPresent(dateLost, forKey: .dateLost)
         try container.encodeIfPresent(dateFound, forKey: .dateFound)
         try container.encodeIfPresent(artworkUrl, forKey: .artworkUrl)
+        try container.encodeIfPresent(discogsUnavailable, forKey: .discogsUnavailable)
+        try container.encodeIfPresent(discogsUnavailableNote, forKey: .discogsUnavailableNote)
+        try container.encodeIfPresent(lastDiscogsRecheckAt, forKey: .lastDiscogsRecheckAt)
         try container.encodeIfPresent(matchedVia, forKey: .matchedVia)
         try container.encodeIfPresent(matchedViaAlias, forKey: .matchedViaAlias)
     }

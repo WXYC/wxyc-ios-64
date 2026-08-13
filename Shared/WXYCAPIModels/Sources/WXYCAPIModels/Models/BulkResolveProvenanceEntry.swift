@@ -13,7 +13,7 @@ public struct BulkResolveProvenanceEntry: Sendable, Codable, Hashable {
     public static let confidenceRule = NumericRule<Double>(minimum: 0, exclusiveMinimum: false, maximum: 1, exclusiveMaximum: false, multipleOf: nil)
     public var source: IdentitySource
     public var method: IdentityMethod
-    /** Per-source confidence in [0, 1], within the source's locked method range from §3.4.1. NULL when `external_id` is NULL — the source ran but produced no candidate, so confidence is undefined (not zero). When non-null, equal to or greater than the top-level `confidence` (composition rules either MIN or boost, never lower a per-source row).  */
+    /** Per-source confidence in [0, 1], within the source's locked method range from §3.4.1. NULL when `external_id` is NULL — the source ran but produced no candidate, so confidence is undefined (not zero). When non-null, equal to or greater than the `confidence` of the object this entry hangs off — the composition rules either MIN or boost, and never lower a per-source row. That referent is grain-relative, because this schema is reused at two grains: under `BulkResolveResult.provenance` it is the result's own `confidence`, and under `BulkResolveTrackIdentity.sources` it is that track's `confidence`, not the result's. The two are unrelated — a `kind: compilation` result has no result-level `confidence` at all, while its tracks each have their own.  */
     public var confidence: Double?
     /** The external identifier this source resolved to (Discogs release ID, MusicBrainz MBID, Wikidata QID, Spotify URI suffix, etc.). NULL when the source ran but found no match (the row is still surfaced so consumers see the leg ran); `confidence` is also NULL in that case.  */
     public var externalId: String?

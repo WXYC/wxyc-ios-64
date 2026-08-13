@@ -12,19 +12,23 @@ public struct BulkResolveInput: Sendable, Codable, Hashable {
 
     /** Backend `wxyc_schema.library.id` (FK target). */
     public var libraryId: Int
+    /** The row's legacy MySQL `LIBRARY_RELEASE_ID` — Backend's `library.legacy_release_id` column, total and NOT NULL since the WXYC/Backend-Service#1963 mint + NULL-legacy backfill (migration 0137). This is the id space library.db (and therefore LML's per-track store, `lml_cache.compilation_track_identity`) is keyed by; `library_id` above is Backend's own serial and is NOT in this space, so without this field LML cannot join a row to its per-track data at all (WXYC/library-metadata-lookup#1021, WXYC/Backend-Service#1991). Optional and nullable for wire compatibility only: absent or NULL means the caller predates this field. Because Backend's column is total, an upgraded emitter always has a value to send — a NULL from an upgraded emitter is a projection defect worth surfacing, not routine data. LML answers bridge-less `include_tracks: true` rows of the resolved kinds with the not-yet-visited state (`tracks_attempted: false`, empty `tracks`) so consumers keep re-asking rather than mis-reading anything as resolved (`kind: unresolved` carries neither field, as ever). Meaningful only alongside `include_tracks: true`; harmless otherwise. Backend-authored catalog adds mint `legacy_release_id` from a sequence floored at 1,000,000 (WXYC/Backend-Service#1963), which the Backend-sourced library.db producer (discogs-etl#351) will emit AS library.db's `id` — joining the spaces for post-tubafrenzy rows once that source cutover (discogs-etl#346) lands; until then a Backend-minted id matches no library.db row and simply reads as not-yet-visited.  */
+    public var legacyReleaseId: Int?
     /** Hint — Backend's denormalized artist name for the row. */
     public var artistName: String
     /** Hint — Backend's denormalized album title for the row. */
     public var albumTitle: String
 
-    public init(libraryId: Int, artistName: String, albumTitle: String) {
+    public init(libraryId: Int, legacyReleaseId: Int? = nil, artistName: String, albumTitle: String) {
         self.libraryId = libraryId
+        self.legacyReleaseId = legacyReleaseId
         self.artistName = artistName
         self.albumTitle = albumTitle
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case libraryId = "library_id"
+        case legacyReleaseId = "legacy_release_id"
         case artistName = "artist_name"
         case albumTitle = "album_title"
     }
@@ -34,6 +38,7 @@ public struct BulkResolveInput: Sendable, Codable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(libraryId, forKey: .libraryId)
+        try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
         try container.encode(artistName, forKey: .artistName)
         try container.encode(albumTitle, forKey: .albumTitle)
     }

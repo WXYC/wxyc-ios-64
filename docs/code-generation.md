@@ -36,9 +36,9 @@ No other surface imports `WXYCAPIModels` yet. Adopting it elsewhere is a case-by
 
 ```json
 {
-  "wxycSharedTag": "52644722abd3b32c6e7acd3b82323d681a506bf0",
-  "wxycSharedSha": "52644722abd3b32c6e7acd3b82323d681a506bf0",
-  "apiYamlVersion": "1.21.0"
+  "wxycSharedTag": "main",
+  "wxycSharedSha": "da93c79820dbb9e7305d157e169639f087727a91",
+  "apiYamlVersion": "1.35.0"
 }
 ```
 

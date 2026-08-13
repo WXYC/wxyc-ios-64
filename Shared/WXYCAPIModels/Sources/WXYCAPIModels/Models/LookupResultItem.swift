@@ -13,7 +13,7 @@ public struct LookupResultItem: Sendable, Codable, Hashable {
     public var libraryItem: LibraryCatalogItem
     public var artwork: DiscogsMatchResult?
     public var reconciledIdentity: ReconciledIdentity?
-    /** Populated when a track-title match (LML's new SONG_AS_TRACK strategy) drove this release into the results, per catalog-track-search plan §5.1. Empty or absent when the release matched via artist/album strategies. Backward-compatible — existing consumers ignore the field.  */
+    /** Populated when a track-title match drove this release into the results. Two producers: LML's SONG_AS_TRACK strategy (per catalog-track-search plan §5.1) for the primary match, and the comprehensive multi-location union (LML#1018/#1019/#1022) for every other WXYC shelf location carrying the same track (V/A compilations, soundtracks) — those rows are folded directly into `results` alongside the primary, tagged with `source: discogs_release` since the recall index is Discogs-release-derived. Empty or absent when the release matched via artist/album strategies. Backward-compatible — existing consumers ignore the field.  */
     public var matchedVia: [TrackMatchHint]?
     /** Sibling to `matched_via`. Reserved for the day LML composes artist-alias hits itself; not produced in v1 of the artist-search-alias plan (BS-local cache only). Optional and backward-compatible.  */
     public var matchedViaAlias: [ArtistMatchHint]?

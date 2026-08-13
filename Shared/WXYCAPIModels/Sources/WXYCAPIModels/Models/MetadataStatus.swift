@@ -7,7 +7,7 @@
 
 import Foundation
 
-/** Enrichment lifecycle for a track row in the V2 flowsheet response. Source-of-truth is the &#x60;metadata_status_enum&#x60; Postgres type in Backend-Service (see WXYC/Backend-Service#891). Set to &#x60;pending&#x60; on insert; the enrichment worker (WXYC/Backend-Service#892) flips it to &#x60;enriching&#x60; while a Discogs lookup is in flight, then to one of the three terminal states. iOS branches on this to decide whether to render inline metadata or fall back to the proxy-fetch path (WXYC/wxyc-ios-64#270). Only emitted on track entries.  */
+/** Enrichment lifecycle for a track row in the V2 flowsheet response. Source-of-truth is the &#x60;metadata_status_enum&#x60; Postgres type in Backend-Service (see WXYC/Backend-Service#891). Set to &#x60;pending&#x60; on insert; the enrichment worker (WXYC/Backend-Service#892) flips it to &#x60;enriching&#x60; while a Discogs lookup is in flight, then to one of the three terminal states. iOS branches on this to decide whether to render inline metadata or fall back to the proxy-fetch path (WXYC/wxyc-ios-64#270). Only emitted on track entries. Two surfaces reference this schema and must move together: the V2 flowsheet track entry&#39;s &#x60;metadata_status&#x60;, and &#x60;AlbumMetadataResponse.metadataStatus&#x60; — the latter a local-first echo of the same column off the linked flowsheet row (wxyc-shared#318, WXYC/Backend-Service#1827), so a client can reconcile a proxy response against the feed row it came from. Add a value here, not in a copy of the list.  */
 public enum MetadataStatus: String, Sendable, Codable, CaseIterable, CaseIterableDefaultsLast {
     case pending = "pending"
     case enriching = "enriching"

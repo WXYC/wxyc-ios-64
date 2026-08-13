@@ -9,6 +9,7 @@ import Foundation
 
 /** Discriminated union of events emitted on the &#x60;live-fs-topic&#x60;. Every event has the same &#x60;{ type, payload, timestamp }&#x60; envelope — pinned by &#x60;CONTRACTS.LIVE_FS_EVENT_ENVELOPE_SHAPE&#x60;.  */
 public enum LiveFsEvent: Sendable, Codable, Hashable {
+    case typeLiveFsInsertEvent(LiveFsInsertEvent)
     case typeLiveFsRefetchEvent(LiveFsRefetchEvent)
     case typeLiveFsUpdateEvent(LiveFsUpdateEvent)
     case unknownDefaultOpenApi
@@ -16,6 +17,8 @@ public enum LiveFsEvent: Sendable, Codable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
+        case .typeLiveFsInsertEvent(let value):
+            try container.encode(value)
         case .typeLiveFsRefetchEvent(let value):
             try container.encode(value)
         case .typeLiveFsUpdateEvent(let value):
@@ -34,6 +37,8 @@ public enum LiveFsEvent: Sendable, Codable, Hashable {
         let discriminatorValue = try keyedContainer.decode(String.self, forKey: .type)
 
         switch discriminatorValue {
+        case "insert":
+            self = .typeLiveFsInsertEvent(try LiveFsInsertEvent(from: decoder))
         case "refetch":
             self = .typeLiveFsRefetchEvent(try LiveFsRefetchEvent(from: decoder))
         case "update":

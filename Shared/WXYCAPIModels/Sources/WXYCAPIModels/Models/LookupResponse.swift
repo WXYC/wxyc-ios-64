@@ -7,7 +7,7 @@
 
 import Foundation
 
-/** Response from the lookup service containing library search results and metadata. When the request set &#x60;include_identity: true&#x60;, the response additionally carries &#x60;api_version: 2&#x60; and the &#x60;identity&#x60; block (per cross-cache-identity plan §3.2.2). When false or absent, the response is byte-identical to v0.5.0 — both &#x60;api_version&#x60; and &#x60;identity&#x60; are omitted.  */
+/** Response from the lookup service containing library search results and metadata. When the request sets &#x60;include_identity: true&#x60; and the producer understands the flag, the response is meant to additionally carry &#x60;api_version: 2&#x60; and the &#x60;identity&#x60; block (per cross-cache-identity plan §3.2.2). Neither side is implemented in the producer yet, so in production today both fields ship &#x60;null&#x60; — never an omitted key — on every response, regardless of what the request set &#x60;include_identity&#x60; to (WXYC/wxyc-shared#316). A consumer MUST test &#x60;api_version &#x3D;&#x3D;&#x3D; 2&#x60;, never key presence: absent, &#x60;null&#x60;, and a producer that hasn&#39;t implemented this at all must all read \&quot;not supported\&quot;, and only the literal value &#x60;2&#x60; reads \&quot;supported\&quot;. See &#x60;api_version&#x60; below for the full rule, and &#x60;LookupIdentityBlock&#x60; for &#x60;identity&#x60;&#39;s.  */
 public struct LookupResponse: Sendable, Codable, Hashable {
 
     public enum ApiVersion: Int, Sendable, Codable, CaseIterable, CaseIterableDefaultsLast {
@@ -29,7 +29,7 @@ public struct LookupResponse: Sendable, Codable, Hashable {
         case upstreamUnavailable = "upstream_unavailable"
         case unknownDefaultOpenApi = "unknown_default_open_api"
     }
-    /** Present and equal to 2 only when the request set `include_identity: true`. Absent for the v1-compatible shape so existing consumers see byte-identical responses.  */
+    /** Present and equal to 2 only when the request set `include_identity: true` and the producer understands the flag. No `LookupResponse(...)` construction site in the producer sets this field anywhere yet — not even when the request sets `include_identity: true` — and the endpoint is served through FastAPI's `response_model` without `response_model_exclude_none`, so it ships `null` — never an omitted key — on every `/lookup` response in production today (WXYC/wxyc-shared#316); `nullable: true` documents that wire instead of describing one nobody emits.  Because of that, a consumer MUST test for the value `2` and must never test for key presence — `!== undefined` against the generated TypeScript reads TRUE for a producer that implements none of this, the inverse of what the marker exists to signal. Absent, `null`, and a producer that hasn't implemented `include_identity` at all must all read \"not supported\", and only the literal value `2` reads \"supported\" — which keeps the check immune to whether any given producer omits or nulls its unset optionals.  */
     public var apiVersion: ApiVersion?
     public var results: [LookupResultItem]?
     /** The search strategy that produced results: direct, fallback, alternative, compilation, song_as_artist, or none  */
@@ -46,14 +46,12 @@ public struct LookupResponse: Sendable, Codable, Hashable {
     public var identity: LookupIdentityBlock?
     /** True when LML's server-side hard cap fired and the search pipeline was abandoned mid-execution (LML#370). `results` may be partial or empty in that case. Callers can use this to distinguish \"no match\" (empty `results`, `timeout: false`) from \"ran out of time\" (`results` may be empty, `timeout: true`). The hard cap is an internal LML safety floor independent of the caller's `X-Caller-Budget-Ms` header; see LML#338 / LML#340 / LML#370 for the cascade-budget design. Backend also forwards two sibling informal headers on the same `/lookup` and `/lookup/bulk` requests, both prose-referenced here rather than formal parameters (matching `X-Caller-Budget-Ms`'s own precedent): `X-Caller-Class` (the resolved BS→LML traffic class, an integer 1-5 per Backend-Service's per-caller policy, BS#1826) and `X-Caller-Reason` (the `caller` label string itself, e.g. `proxy-library-search` or `catalog-popularity-freetext-resolve`). Both are sent only when Backend has a registered caller for the request and are otherwise omitted; sending them is inert until LML reads them (LML#928 for `X-Caller-Class`-driven lane routing, LML#931 for `X-Caller-Reason` caller telemetry) — see BS#1843.  */
     public var timeout: Bool? = false
-    /** Every other WXYC library shelf location that carries the same track (V/A compilations, soundtracks), ranked by LML so consumers can render in order. Present only when the request set `include_locations: true`; absent otherwise (empty when the flag is set but no other location carries the track) so existing consumers see a byte-identical response (LML#1018/#1022).  */
-    public var alsoAvailableOn: [LibraryLocation]?
     /** True when LML returned partial or cache-only data because it intentionally shed the enrichment tail — under a caller deadline, admission-control pressure, or an unavailable upstream (LML#930). Distinguishes a degraded/cache-only result from a full success (`degraded: false`) and from a genuine no-match (empty `results`, `degraded: false`, `timeout: false`). Distinct from `timeout`, which signals the internal hard cap fired and the pipeline was abandoned mid-execution; `degraded` is a deliberate shed-the-tail outcome where the returned data is trustworthy but incomplete. Default false, so existing consumers see a byte-identical response.  */
     public var degraded: Bool? = false
     /** Why the response was degraded. Present only when `degraded: true`; omitted otherwise. Non-exhaustive — LML may add reasons in a later minor version. The Swift and Kotlin codegen decode an unknown value into an `unknownDefault` case and TypeScript consumers see a widened string-literal union, but the Python (datamodel-codegen → pydantic) consumers use strict enums and must regenerate against the new `@wxyc/shared` minor before LML emits a newly added reason. `deadline_exceeded` — the caller's budget or LML's spine deadline elapsed and the enrichment tail was skipped; `cache_only` — LML served cached data without refreshing from upstream; `upstream_unavailable` — an upstream (Discogs, streaming providers) was rate limited or down and its contribution was omitted. Set by LML#930's caller-deadline / admission path; read by LML#931 (`degraded-mode-result` telemetry) and wxyc-canary#82.  */
     public var degradedReason: DegradedReason?
 
-    public init(apiVersion: ApiVersion? = nil, results: [LookupResultItem]? = nil, searchType: SearchType? = .`none`, songNotFound: Bool? = false, foundOnCompilation: Bool? = false, contextMessage: String? = nil, correctedArtist: String? = nil, cacheStats: CacheStats? = nil, identity: LookupIdentityBlock? = nil, timeout: Bool? = false, alsoAvailableOn: [LibraryLocation]? = nil, degraded: Bool? = false, degradedReason: DegradedReason? = nil) {
+    public init(apiVersion: ApiVersion? = nil, results: [LookupResultItem]? = nil, searchType: SearchType? = .`none`, songNotFound: Bool? = false, foundOnCompilation: Bool? = false, contextMessage: String? = nil, correctedArtist: String? = nil, cacheStats: CacheStats? = nil, identity: LookupIdentityBlock? = nil, timeout: Bool? = false, degraded: Bool? = false, degradedReason: DegradedReason? = nil) {
         self.apiVersion = apiVersion
         self.results = results
         self.searchType = searchType
@@ -64,7 +62,6 @@ public struct LookupResponse: Sendable, Codable, Hashable {
         self.cacheStats = cacheStats
         self.identity = identity
         self.timeout = timeout
-        self.alsoAvailableOn = alsoAvailableOn
         self.degraded = degraded
         self.degradedReason = degradedReason
     }
@@ -80,7 +77,6 @@ public struct LookupResponse: Sendable, Codable, Hashable {
         case cacheStats = "cache_stats"
         case identity
         case timeout
-        case alsoAvailableOn = "also_available_on"
         case degraded
         case degradedReason = "degraded_reason"
     }
@@ -99,7 +95,6 @@ public struct LookupResponse: Sendable, Codable, Hashable {
         try container.encodeIfPresent(cacheStats, forKey: .cacheStats)
         try container.encodeIfPresent(identity, forKey: .identity)
         try container.encodeIfPresent(timeout, forKey: .timeout)
-        try container.encodeIfPresent(alsoAvailableOn, forKey: .alsoAvailableOn)
         try container.encodeIfPresent(degraded, forKey: .degraded)
         try container.encodeIfPresent(degradedReason, forKey: .degradedReason)
     }

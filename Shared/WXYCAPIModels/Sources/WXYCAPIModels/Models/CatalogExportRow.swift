@@ -7,12 +7,21 @@
 
 import Foundation
 
-/** One row of the WXYC library catalog as served by GET /library/catalog for offline cloning (BS#1468, Epic F #1466). A query-independent snapshot of the core catalog row. Deliberately NOT AlbumSearchResult: it drops the search-only decoration (matched_via, matched_via_alias, album_dist, artist_dist) and the fields the export omits (add_date, label_id, rotation_id, album_artist, date_lost, date_found), and instead ships rotation RAW (rotation_bin + rotation_kill_date) so the client evaluates rotation expiry against its own clock. See the rotation_bin description for the load-bearing semantic difference from AlbumSearchResult.  */
+/** One row of the WXYC library catalog as served by GET /library/catalog for offline cloning (BS#1468, Epic F #1466). A query-independent snapshot of the core catalog row. Deliberately NOT AlbumSearchResult: it drops the search-only decoration (matched_via, matched_via_alias, album_dist, artist_dist) and the fields the export omits (add_date, label_id, rotation_id, date_lost, date_found), and instead ships rotation RAW (rotation_bin + rotation_kill_date) so the client evaluates rotation expiry against its own clock. See the rotation_bin description for the load-bearing semantic difference from AlbumSearchResult. BS#1965 adds the fields the Backend-sourced library.db producer (discogs-etl#351) needs to build a library.db over HTTP instead of a direct Postgres read: legacy_release_id (the producer emits it AS the library.db id, since BS serials collide with the tubafrenzy id space), album_artist, alternate_artist_name, and cross_reference_names. All four are producer-facing and OPTIONAL on the wire — none is in &#x60;required&#x60;, so the pre-BS#1965 15-field body still decodes cleanly against a client generated from this spec. That leniency is deliberate and load-bearing: this row is also the iOS Spotlight clone&#39;s shape, and wxyc-ios-64 regenerates from this SSOT on its own cadence. A required key the server does not yet emit would not degrade one field — it would fail EVERY NDJSON line and take the whole on-device clone with it. Same reasoning as &#x60;popularity&#x60; (BS#1486 Phase-2 Track 3). Note that oasdiff does NOT flag adding a required response property, so a green &#x60;check:breaking&#x60; is not evidence of safety here.  */
 public struct CatalogExportRow: Sendable, Codable, Hashable {
 
+    /** BS serial library.id — the existing on-device clone key for the iOS Spotlight consumer. NOT the library.db id: the library.db producer uses legacy_release_id instead (see below), so BS serials never leak into the tubafrenzy id space.  */
     public var id: Int
+    /** The library row's surrogate key (BS#1963), total in the database since the mint + NULL-legacy backfill. The Backend-sourced library.db producer (discogs-etl#351) emits this AS library.db's library.id. Server-side totality does NOT make it a required wire key: it is optional + nullable here so a client regenerated from this spec before BS#1965 ships still decodes the current 15-field body (see the schema description). The producer may treat a null/absent value as \"this Backend does not implement BS#1965 yet\" and fail loudly rather than emitting a library.db row with a null id.  */
+    public var legacyReleaseId: Int?
     /** Authoritative artist name. The server COALESCEs the denormalized library.artist_name to artists.artist_name (NOT NULL), so this never ships as null even before the denormalization backfill completes.  */
     public var artistName: String
+    /** Secondary artist name curated by the librarians (library.alternate_artist_name); null when unset. Maps to library.db's alternate_artist_name column.  */
+    public var alternateArtistName: String?
+    /** Album-level artist (library.album_artist), distinct from the shelf-filing artist_name; null when unset. Maps to library.db's album_artist column. (Previously omitted from this export; re-added for the library.db producer.)  */
+    public var albumArtist: String?
+    /** Names of the artists cataloger-cross-referenced to this row's artist, in either FK direction, via artist_crossreference (discogs-etl#334) — e.g. a band filed under its name carries a member's personal name. Empty array when the artist has no cross-references. An ARRAY, not the pipe-joined string library.db stores: the producer does the `\" | \"` join when it writes the SQLite column. The wire must not carry the delimiter, because nothing constrains artists.artist_name from containing \"|\" or \" | \" — a joined string would silently split into phantom aliases on the consumer side (library-metadata-lookup splits this field on the pipe) with no escaping rule to recover from, and the legacy MySQL source has the same latent bug plus GROUP_CONCAT's silent group_concat_max_len truncation. Array-on-the-wire retires both. Derivation (pinned, because the legacy query it replaces is load-bearing for the producer — LIBRARY_CODE_CROSS_REFERENCE in discogs-etl/scripts/sync-library.sh):   * BOTH FK directions — an artist_crossreference row matching on     either source_artist_id or target_artist_id contributes its     OTHER side.   * EXCLUDES the row's own artist (the legacy query's     `AND xlc.ID != lc.ID`). A self-referencing crossreference row     must not produce a self-alias — LML would match the artist     against itself.   * Deduplicated.   * Ordered by Unicode code point (Postgres `COLLATE \"C\"`), NOT the     database's default collation. en_US.UTF-8 ignores punctuation     and case at the primary level, so it orders the diacritic- and     punctuation-bearing names most likely to carry aliases (Nilüfer     Yanya, Csillagrablók, Hermanos Gutiérrez, \"C. Spencer Yeh\")     unstably across locales. The legacy GROUP_CONCAT has no ORDER BY     at all, so there is no legacy order to match — pick the     deterministic one.  FRESHNESS: this endpoint's conditional GET rides library_watermark. Migration 0105 fanned the watermark trigger out to library, artists, genres, format, genre_artist_crossreference, and rotation; artist_crossreference was left uncovered until migration 0138 added touch_library_watermark_from_artist_crossreference (AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ... FOR EACH STATEMENT). A cross-reference write now advances the watermark, the per-watermark gzip cache rebuilds, and the producer's next fetch carries the new alias. Before 0138 this was silent and unbounded rather than a bounded lag — a write to an uncovered source table changed nothing observable until an unrelated write on a covered table happened to bump the watermark, which is why every table a field on this row is derived from must carry the trigger.  */
+    public var crossReferenceNames: [String]?
     public var albumTitle: String
     /** Shelf call-number letters (e.g. \"AU\"). */
     public var codeLetters: String
@@ -20,6 +29,7 @@ public struct CatalogExportRow: Sendable, Codable, Hashable {
     public var codeNumber: Int
     /** Shelf call-number artist number (genre-scoped). */
     public var codeArtistNumber: Int
+    /** Record label (library.label), projected as its real value — null only when the row genuinely has none. The library.db producer ignores it (the legacy MySQL export it must match has no label column), but every other consumer of this export should treat it as live data.  */
     public var label: String?
     public var genreName: String
     public var formatName: String
@@ -36,9 +46,13 @@ public struct CatalogExportRow: Sendable, Codable, Hashable {
     /** Date (YYYY-MM-DD; server ::text cast) the current rotation record expires, or null if it has none. Used with rotation_bin to evaluate live rotation client-side. Absent from AlbumSearchResult — a client that reuses AlbumSearchResult for this endpoint silently loses it.  */
     public var rotationKillDate: Date?
 
-    public init(id: Int, artistName: String, albumTitle: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, label: String? = nil, genreName: String, formatName: String, onStreaming: Bool? = nil, plays: Int? = nil, popularity: Int? = nil, artworkUrl: String? = nil, rotationBin: String? = nil, rotationKillDate: Date? = nil) {
+    public init(id: Int, legacyReleaseId: Int? = nil, artistName: String, alternateArtistName: String? = nil, albumArtist: String? = nil, crossReferenceNames: [String]? = nil, albumTitle: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, label: String? = nil, genreName: String, formatName: String, onStreaming: Bool? = nil, plays: Int? = nil, popularity: Int? = nil, artworkUrl: String? = nil, rotationBin: String? = nil, rotationKillDate: Date? = nil) {
         self.id = id
+        self.legacyReleaseId = legacyReleaseId
         self.artistName = artistName
+        self.alternateArtistName = alternateArtistName
+        self.albumArtist = albumArtist
+        self.crossReferenceNames = crossReferenceNames
         self.albumTitle = albumTitle
         self.codeLetters = codeLetters
         self.codeNumber = codeNumber
@@ -56,7 +70,11 @@ public struct CatalogExportRow: Sendable, Codable, Hashable {
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case id
+        case legacyReleaseId = "legacy_release_id"
         case artistName = "artist_name"
+        case alternateArtistName = "alternate_artist_name"
+        case albumArtist = "album_artist"
+        case crossReferenceNames = "cross_reference_names"
         case albumTitle = "album_title"
         case codeLetters = "code_letters"
         case codeNumber = "code_number"
@@ -77,7 +95,11 @@ public struct CatalogExportRow: Sendable, Codable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
         try container.encode(artistName, forKey: .artistName)
+        try container.encodeIfPresent(alternateArtistName, forKey: .alternateArtistName)
+        try container.encodeIfPresent(albumArtist, forKey: .albumArtist)
+        try container.encodeIfPresent(crossReferenceNames, forKey: .crossReferenceNames)
         try container.encode(albumTitle, forKey: .albumTitle)
         try container.encode(codeLetters, forKey: .codeLetters)
         try container.encode(codeNumber, forKey: .codeNumber)

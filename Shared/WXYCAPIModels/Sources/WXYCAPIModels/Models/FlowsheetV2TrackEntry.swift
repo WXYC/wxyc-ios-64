@@ -53,12 +53,8 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
     public var upcomingShow: Concert?
     /** An optional array of attributed external critic-review snippets for this track's resolved album, attached server-side at feed-assembly time so the iOS Reviews card can render inline for enriched playcuts with no second round-trip — iOS skips the `/proxy/metadata/album` fetch for terminal rows (wxyc-ios-64#685/#691).  Populated only on `track` entries whose linked `album_id` has rows in Backend-Service's `album_critic_reviews` table; attached via one batched query per page (no per-row lookups). Capped at 5 items (`CRITIC_REVIEWS_LIMIT`), ordered `published_at DESC NULLS LAST`. Absent — never `null` or empty — when the track has no matching album, when the attach is skipped, or on servers where Backend's `CRITIC_REVIEWS_ENABLED` env flag (ADR 0012) is off, including older servers that predate this field. Reuses the `CriticReviewItem` schema verbatim — the same shape `AlbumMetadataResponse.criticReviews` already serves — so clients decode one type across both surfaces.  */
     public var criticReviews: [CriticReviewItem]?
-    /** Rides the same MD-set "not on Discogs" flag as the Album surfaces (see `Album.discogsUnavailable`), non-nullable to match them. Deliberately camelCase — unlike its snake_case siblings in this block — to match Backend's `withDiscogsUnavailableCamelCase` serializer. Contract-first: the V2 flowsheet album embed will carry this field once the BS-emit piece (WXYC/Backend-Service#1908) lands; it is not emitted there yet. */
-    public var discogsUnavailable: Bool?
-    /** Optional free-text reason for `discogsUnavailable`. */
-    public var discogsUnavailableNote: String?
 
-    public init(id: Int, showId: Int?, playOrder: Int, addTime: Date, entryType: EntryType, albumId: Int? = nil, rotationId: Int? = nil, artistId: Int? = nil, artistName: String? = nil, albumTitle: String? = nil, trackTitle: String? = nil, trackPosition: String? = nil, recordLabel: String? = nil, requestFlag: Bool, segue: Bool? = nil, rotationBin: RotationBin? = nil, artworkUrl: String? = nil, discogsUrl: String? = nil, releaseYear: Int? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil, artistBio: String? = nil, artistWikipediaUrl: String? = nil, onStreaming: Bool? = nil, metadataStatus: MetadataStatus? = nil, genres: [String]? = nil, styles: [String]? = nil, upcomingShow: Concert? = nil, criticReviews: [CriticReviewItem]? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil) {
+    public init(id: Int, showId: Int?, playOrder: Int, addTime: Date, entryType: EntryType, albumId: Int? = nil, rotationId: Int? = nil, artistId: Int? = nil, artistName: String? = nil, albumTitle: String? = nil, trackTitle: String? = nil, trackPosition: String? = nil, recordLabel: String? = nil, requestFlag: Bool, segue: Bool? = nil, rotationBin: RotationBin? = nil, artworkUrl: String? = nil, discogsUrl: String? = nil, releaseYear: Int? = nil, spotifyUrl: String? = nil, appleMusicUrl: String? = nil, youtubeMusicUrl: String? = nil, bandcampUrl: String? = nil, soundcloudUrl: String? = nil, artistBio: String? = nil, artistWikipediaUrl: String? = nil, onStreaming: Bool? = nil, metadataStatus: MetadataStatus? = nil, genres: [String]? = nil, styles: [String]? = nil, upcomingShow: Concert? = nil, criticReviews: [CriticReviewItem]? = nil) {
         self.id = id
         self.showId = showId
         self.playOrder = playOrder
@@ -91,8 +87,6 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
         self.styles = styles
         self.upcomingShow = upcomingShow
         self.criticReviews = criticReviews
-        self.discogsUnavailable = discogsUnavailable
-        self.discogsUnavailableNote = discogsUnavailableNote
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -128,8 +122,6 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
         case styles
         case upcomingShow = "upcoming_show"
         case criticReviews = "critic_reviews"
-        case discogsUnavailable
-        case discogsUnavailableNote
     }
 
     // Encodable protocol methods
@@ -168,8 +160,6 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
         try container.encodeIfPresent(styles, forKey: .styles)
         try container.encodeIfPresent(upcomingShow, forKey: .upcomingShow)
         try container.encodeIfPresent(criticReviews, forKey: .criticReviews)
-        try container.encodeIfPresent(discogsUnavailable, forKey: .discogsUnavailable)
-        try container.encodeIfPresent(discogsUnavailableNote, forKey: .discogsUnavailableNote)
     }
 }
 

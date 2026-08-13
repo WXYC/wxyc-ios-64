@@ -13,13 +13,17 @@ public struct BulkResolveLibrariesRequest: Sendable, Codable, Hashable {
     public static let inputsRule = ArrayRule(minItems: 1, maxItems: 1000, uniqueItems: false)
     /** Inputs to resolve. Order preserved in `BulkResolveLibrariesResponse.results`.  */
     public var inputs: [BulkResolveInput]
+    /** Opt in to per-track identity, for every input in the batch (the flag is batch-level, not per-input). Omitting the field means `false`; it carries no schema-level `default` on purpose, because `openapi-typescript` emits a default-bearing property as non-optional even when it is absent from `required`, which would force every TypeScript caller to pass the one field whose whole contract is that you need not. When `false` or omitted — the default, and what an un-upgraded caller sends — `BulkResolveResult.tracks` is absent from every result, so an album-identity drain pays nothing for track composition it would discard. When `true`, LML composes per-track identity for both `kind: single_artist` and `kind: compilation` results and sets `tracks_attempted` on each of them; `kind: unresolved` never carries either field. See `BulkResolveResult.tracks_attempted` for the four states the pair distinguishes, and why the array's length is not one of them.  The flag is batch-level by design, and the payload it admits is not bounded by the schema — `inputs` still caps at 1,000 either way. A caller that can classify its own rows should partition its drains rather than send a mixed page: Backend holds both signals LML auto-detects on (`library.code_volume_letters LIKE 'Z%'`, `EXISTS compilation_track_artist`), so WXYC/Backend-Service#1991 runs a small-paged V/A drain separately from a full-width non-V/A one. A per-input flag was considered and rejected as mechanism for a problem the one consumer can solve locally.  */
+    public var includeTracks: Bool?
 
-    public init(inputs: [BulkResolveInput]) {
+    public init(inputs: [BulkResolveInput], includeTracks: Bool? = nil) {
         self.inputs = inputs
+        self.includeTracks = includeTracks
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case inputs
+        case includeTracks = "include_tracks"
     }
 
     // Encodable protocol methods
@@ -27,6 +31,7 @@ public struct BulkResolveLibrariesRequest: Sendable, Codable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(inputs, forKey: .inputs)
+        try container.encodeIfPresent(includeTracks, forKey: .includeTracks)
     }
 }
 
