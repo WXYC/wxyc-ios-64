@@ -12,7 +12,7 @@
 import Foundation
 import Core
 import Logger
-import WXYCAPIModels
+import struct WXYCAPIModels.AppConfig
 
 /// App configuration values returned by the public `/config` endpoint.
 ///
@@ -22,7 +22,8 @@ import WXYCAPIModels
 /// model per `docs/code-generation.md`'s adoption policy — a field rename
 /// or retype in `api.yaml` is now a build error at the `defaults` literal
 /// or a consumer property access (drift-guard class 1), instead of the
-/// silent skew a hand-maintained twin allowed (#915). The wire semantics —
+/// silent skew a hand-maintained twin would never surface (#915 — the
+/// hazard class that d970bd22a realized on other DTOs). The wire semantics —
 /// empty-string-when-unset `donateUrl`, absence-is-not-a-kill-switch
 /// `donateEnabled`, the 3600s cache window — ride along as doc comments
 /// generated from the contract itself; consumers like ``DonateRowModel``
@@ -34,9 +35,12 @@ import WXYCAPIModels
 /// needs its own `import struct WXYCAPIModels.AppConfig` — the typealias
 /// alone doesn't carry member visibility across the module boundary. Use
 /// the scoped form, not a whole-module import: the generated package
-/// declares ~269 types including a `Playlist` struct that shadows the
-/// `Playlist` *module* for qualified type lookups in any file importing
-/// both.
+/// declares hundreds of types, including a `Playlist` struct and a
+/// `LiveFsEvent` enum whose bare names collide with declarations in the
+/// `Playlist` package — with both modules whole-imported, any unqualified
+/// use of a colliding name is ambiguous (this file uses the scoped form
+/// itself for the same reason: the AppServices target depends on
+/// `Playlist`).
 public typealias AppConfig = WXYCAPIModels.AppConfig
 
 /// Third-party API credentials returned by the authenticated `/config/secrets` endpoint.
@@ -75,10 +79,11 @@ public actor AppConfiguration {
     ///   literal on every failure path, so it is what cold launch, airplane
     ///   mode, and a backend blip render — and `nil` would resolve to
     ///   ``DonateRowModel``'s `?? true`, showing the row in exactly the release
-    ///   meant to ship dark. Lighting up is two steps: set `DONATE_ENABLED=true`
-    ///   (lowercase) via Backend-Service's `set-ec2-env-var.yml` workflow — the
-    ///   light-up platform is EC2, not Railway — then flip this literal in the
-    ///   next regular release so offline launches show the row too.
+    ///   meant to ship dark. Lighting up is two steps: set `DONATE_ENABLED` to
+    ///   lowercase `true` (the reader compares strictly) via Backend-Service's
+    ///   `set-ec2-env-var.yml` workflow — the light-up platform is EC2, not
+    ///   Railway — then flip this literal in the next regular release so
+    ///   offline launches show the row too.
     public static let defaults = AppConfig(
         posthogApiKey: "phc_jUWlgO0aQzyPgHqQUEC7VPD1IdN1tytHG3qckb7CLoD",
         posthogHost: "https://us.i.posthog.com",

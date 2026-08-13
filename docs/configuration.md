@@ -14,7 +14,7 @@ The fetch happens once per launch. That is the right cadence for an endpoint ser
 
 ### Donation fields
 
-| Field | Env var on Railway | Absent value |
+| Field | Backend-Service env var (EC2) | Absent value |
 |---|---|---|
 | `donateUrl` | `DONATE_URL` | `""` (not `null`) |
 | `donateEnabled` | `DONATE_ENABLED` | `false` |
@@ -23,7 +23,7 @@ Both are **optional** in Swift. Non-optional properties would make `JSONDecoder.
 
 `DonateRowModel` (`WXYC/iOS/Views/Station/DonateRowModel.swift`) resolves both into what the Station tab's Donate row renders:
 
-- **Visibility** is `donateEnabled ?? true`. `nil` means "the backend predates the field", and the compile-time fallback is a valid destination. The dark-ship case is carried by `AppConfiguration.defaults` pinning `donateEnabled: false` **explicitly** — `defaults` is what `config()` returns on every failure path, so a `nil` there would show the row in exactly the release meant to hide it. Lighting up is two steps: set `DONATE_ENABLED=true` (lowercase) via Backend-Service's `set-ec2-env-var.yml` workflow — the light-up platform is EC2, not Railway — then flip the `defaults` literal in the next regular release so offline launches show the row too.
+- **Visibility** is `donateEnabled ?? true`. `nil` means "the backend predates the field", and the compile-time fallback is a valid destination. The dark-ship case is carried by `AppConfiguration.defaults` pinning `donateEnabled: false` **explicitly** — `defaults` is what `config()` returns on every failure path, so a `nil` there would show the row in exactly the release meant to hide it. Lighting up is two steps: set `DONATE_ENABLED` to lowercase `true` — the reader compares strictly — via Backend-Service's `set-ec2-env-var.yml` workflow — the light-up platform is EC2, not Railway — then flip the `defaults` literal in the next regular release so offline launches show the row too.
 - **Destination** walks a ladder — fetched `donateUrl` → `defaults.donateUrl` → `RadioStation.WXYC.donateURL` (`https://wxyc.org/donate`). A rung only wins if it yields an http(s) URL; `""`, a scheme-relative string, and `mailto:`/`javascript:` all count as absent, because `SFSafariViewController` traps on anything that isn't http(s).
 
 The row opens its destination in an `SFSafariViewController` sheet, not `openURL`. Donations must be collected outside the app (App Store Review Guideline 3.2.1(vi) reserves in-app fundraising for approved nonprofits, which requires a Candid Seal that SEB does not have), so this is a web checkout regardless; the sheet keeps the listener in the app with a Done button and uninterrupted audio, and Apple Pay on the Web works in `SFSafariViewController` — the restriction is on `WKWebView`.
