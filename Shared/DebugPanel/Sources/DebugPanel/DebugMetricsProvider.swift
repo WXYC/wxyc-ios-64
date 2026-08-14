@@ -94,8 +94,13 @@ final class DebugMetricsProvider {
     // MARK: - Setup
 
     private func setUpDisplayLink() {
+        // Attach before the task, not inside it: the link's existence is then
+        // synchronous with `start()`, which is what lets a test assert that a
+        // provider attached nothing without racing the task's first resumption.
+        let timestamps = DisplayLinkSource.timestamps()
+
         displayLinkTask = Task { @MainActor [weak self] in
-            for await timestamp in DisplayLinkSource.timestamps() {
+            for await timestamp in timestamps {
                 // Breaking (rather than skipping) on a released provider ends the
                 // stream, which releases the link. A `self?.` call here would
                 // leave the loop — and the link — running forever.
