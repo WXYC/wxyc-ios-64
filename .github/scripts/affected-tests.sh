@@ -539,7 +539,7 @@ echo "Affected test targets: ${(k)affected_targets}"
 
 # ---------------------------------------------------------------------------
 # 9. Determine which test plan targets to skip in the xcodebuild step.
-#    These are the 19 targets listed below — the plan's 20 minus WXYCUITests,
+#    These are the 20 targets listed below — the plan's 21 minus WXYCUITests,
 #    which is always skipped. CoreTests runs via `swift test --package-path Shared/Core`
 #    (host) instead of xcodebuild, bypassing Swift Testing's parallel-scheduler
 #    hang under load — so it's always in skip_flags here, and the workflow's
