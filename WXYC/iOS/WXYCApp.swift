@@ -30,7 +30,6 @@ import StoreKit
 import SwiftUI
 import Wallpaper
 import WXUI
-import struct WXYCAPIModels.AppConfig
 #if DEBUG
 import DebugPanel
 #endif

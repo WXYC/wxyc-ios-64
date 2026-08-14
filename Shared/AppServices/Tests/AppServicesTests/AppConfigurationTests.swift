@@ -12,7 +12,6 @@ import Core
 import CoreTesting
 import Foundation
 import Testing
-import struct WXYCAPIModels.AppConfig
 @testable import AppServices
 
 // `.serialized` because the network-fetch tests share `QueuedStubURLProtocol`'s
@@ -51,13 +50,12 @@ struct AppConfigurationTests {
 
     @Test("defaults ships the Donate row dark")
     func defaultsPinsDonateDisabled() {
-        // The whole dark-ship guarantee rests on this literal. `config()`
-        // returns `defaults` on every failure path — non-200, thrown error —
-        // so this is what cold launch, airplane mode, and a backend blip
-        // render. Leaving `donateEnabled` nil here would resolve `nil ?? true`
-        // in DonateRowModel and show the row in exactly the release that is
-        // supposed to ship dark. Flipping it to `true` later is meant to be a
-        // deliberate two-line change that turns this test red first.
+        // `config()` returns `defaults` on every failure path — non-200,
+        // thrown error — so this is what cold launch, airplane mode, and a
+        // backend blip render. DonateRowModel also resolves nil to hidden, so
+        // this pin is defense-in-depth rather than the sole guarantee — but it
+        // keeps lighting up a deliberate change that turns this test red
+        // first.
         #expect(AppConfiguration.defaults.donateEnabled == false)
     }
 

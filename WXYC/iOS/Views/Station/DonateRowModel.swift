@@ -12,7 +12,6 @@
 import AppServices
 import Core
 import Foundation
-import struct WXYCAPIModels.AppConfig
 
 /// Visibility and destination for the Station tab's Donate row.
 ///
@@ -32,28 +31,22 @@ struct DonateRowModel {
 
     /// Whether to show the row at all.
     ///
-    /// `nil` resolves to `true` because on a *fetched* config it means the
-    /// backend predates the field, and the compile-time fallback is a perfectly
-    /// good destination. The dark-ship case is carried by
-    /// ``AppConfiguration/defaults`` pinning `false` explicitly rather than by
-    /// this expression — `defaults` is what `config()` returns on every failure
-    /// path, so a `nil` there would show the row in exactly the release meant
-    /// to hide it.
+    /// `nil` resolves to `false`: on a *fetched* config it means the backend
+    /// doesn't serve the field — the live state until Backend-Service PR#2115
+    /// deploys, not a legacy edge case — and the row is a solicitation, so
+    /// absence resolves dark. It renders only when the backend says `true`
+    /// explicitly. ``AppConfiguration/defaults`` pins `false` too, so every
+    /// failure path agrees with this default rather than depending on it.
     var isVisible: Bool {
-        config.donateEnabled ?? true
+        config.donateEnabled ?? false
     }
 
-    /// Where the row sends the listener, resolved down the ladder: the fetched
-    /// `donateUrl`, then the bootstrap literal's, then the compile-time
-    /// ``RadioStation/donateURL``. A rung only wins if it yields a URL that can
-    /// actually be opened.
+    /// Where the row sends the listener: the fetched `donateUrl` when it
+    /// yields a URL that can actually be opened, else the compile-time
+    /// ``RadioStation/donateURL``. (``AppConfiguration/defaults`` carries no
+    /// `donateUrl`, so there is no middle rung.)
     var destination: URL {
-        for candidate in [config.donateUrl, AppConfiguration.defaults.donateUrl] {
-            if let url = Self.browsableURL(candidate) {
-                return url
-            }
-        }
-        return RadioStation.WXYC.donateURL
+        Self.browsableURL(config.donateUrl) ?? RadioStation.WXYC.donateURL
     }
 
     /// `SFSafariViewController` requires an http(s) URL and traps on anything

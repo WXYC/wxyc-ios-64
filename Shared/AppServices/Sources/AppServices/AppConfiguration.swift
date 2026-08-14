@@ -12,36 +12,33 @@
 import Foundation
 import Core
 import Logger
-import struct WXYCAPIModels.AppConfig
 
-/// App configuration values returned by the public `/config` endpoint.
-///
-/// This is the generated contract type (`WXYCAPIModels.AppConfig`),
-/// re-exported under its historical name. `/config` is a flat,
-/// non-polymorphic response, so it decodes straight into the generated
-/// model per `docs/code-generation.md`'s adoption policy — a field rename
-/// or retype in `api.yaml` is now a build error at the `defaults` literal
-/// or a consumer property access (drift-guard class 1), instead of the
-/// silent skew a hand-maintained twin would never surface (#915 — the
-/// hazard class that d970bd22a realized on other DTOs). The wire semantics —
-/// empty-string-when-unset `donateUrl`, absence-is-not-a-kill-switch
-/// `donateEnabled`, the 3600s cache window — ride along as doc comments
-/// generated from the contract itself; consumers like ``DonateRowModel``
-/// treat an empty or unparseable `donateUrl` as absent per those semantics.
-///
-/// Note for consumers: the typealias keeps every *type position* compiling
-/// unchanged, but Swift 6.2's member-import-visibility rule means a file
-/// that accesses `AppConfig`'s *members* (properties, the initializer)
-/// needs its own `import struct WXYCAPIModels.AppConfig` — the typealias
-/// alone doesn't carry member visibility across the module boundary. Use
-/// the scoped form, not a whole-module import: the generated package
-/// declares hundreds of types, including a `Playlist` struct and a
-/// `LiveFsEvent` enum whose bare names collide with declarations in the
-/// `Playlist` package — with both modules whole-imported, any unqualified
-/// use of a colliding name is ambiguous (this file uses the scoped form
-/// itself for the same reason: the AppServices target depends on
-/// `Playlist`).
-public typealias AppConfig = WXYCAPIModels.AppConfig
+// `AppConfig` — the `/config` contract type — is the generated
+// `WXYCAPIModels.AppConfig`, re-exported *scoped* (the `Intents.swift`
+// idiom) so that `import AppServices` alone gives every consumer both the
+// name and, under Swift 6.2's member-import-visibility rule, its members:
+// no per-file `import struct WXYCAPIModels.AppConfig`, and no direct
+// `project.pbxproj` package dependency in any app target. Scoped is
+// load-bearing, not style: the generated package declares hundreds of
+// types, including a `Playlist` struct and a `LiveFsEvent` enum whose bare
+// names collide with the `Playlist` package, so re-exporting (or
+// whole-importing) the full module makes unqualified uses of those names
+// ambiguous in any file seeing both.
+//
+// The re-export replaced a hand-written twin (#915): `/config` is a flat,
+// non-polymorphic response, so it decodes straight into the generated model
+// per `docs/code-generation.md`'s adoption policy — a field rename or
+// retype in `api.yaml` is now a build error at the `defaults` literal or a
+// consumer property access, instead of the silent skew the d970bd22a hazard
+// class realized on other DTOs. One semantic trade rode along: the
+// generated struct has public `var` members and is Hashable where the
+// deleted struct was `let`-immutable and Equatable, so config held outside
+// the actor (e.g. `Singletonia.appConfig`) is immutable by convention now,
+// not by the compiler. Wire semantics (empty-string-when-unset `donateUrl`,
+// the 3600s cache window) ride along as doc comments generated from the
+// contract itself; consumers like `DonateRowModel` treat an empty or
+// unparseable `donateUrl` as absent per those semantics.
+@_exported import struct WXYCAPIModels.AppConfig
 
 /// Third-party API credentials returned by the authenticated `/config/secrets` endpoint.
 public struct AppSecrets: Sendable, Codable, Equatable {
@@ -75,14 +72,18 @@ public actor AppConfiguration {
     /// Hardcoded defaults for when the network is unavailable.
     ///
     /// - Important: `donateEnabled` is pinned to `false` **explicitly** rather
-    ///   than left to the initializer's `nil` default. ``config()`` returns this
-    ///   literal on every failure path, so it is what cold launch, airplane
-    ///   mode, and a backend blip render — and `nil` would resolve to
-    ///   ``DonateRowModel``'s `?? true`, showing the row in exactly the release
-    ///   meant to ship dark. Lighting up is two steps: set `DONATE_ENABLED` to
-    ///   lowercase `true` (the reader compares strictly) via Backend-Service's
-    ///   `set-ec2-env-var.yml` workflow — the light-up platform is EC2, not
-    ///   Railway — then flip this literal in the next regular release so
+    ///   than left to the initializer's `nil` default. ``config()`` returns
+    ///   this literal on every failure path, so it is what cold launch,
+    ///   airplane mode, and a backend blip render. `DonateRowModel` also
+    ///   resolves `nil` to hidden, so the pin is defense-in-depth rather than
+    ///   the sole dark-ship guarantee — and it keeps lighting up a deliberate
+    ///   change that reddens `AppConfigurationTests` first. Lighting up is
+    ///   three steps, in order: merge + deploy Backend-Service PR#2115 (it
+    ///   emits both donate fields and registers `DONATE_ENABLED` in
+    ///   `set-ec2-env-var.yml`'s allowlist — until then the runbook variable
+    ///   doesn't exist), set `DONATE_ENABLED` to lowercase `true` (the reader
+    ///   compares strictly) via that workflow — the light-up platform is EC2,
+    ///   not Railway — then flip this literal in the next regular release so
     ///   offline launches show the row too.
     public static let defaults = AppConfig(
         posthogApiKey: "phc_jUWlgO0aQzyPgHqQUEC7VPD1IdN1tytHG3qckb7CLoD",
