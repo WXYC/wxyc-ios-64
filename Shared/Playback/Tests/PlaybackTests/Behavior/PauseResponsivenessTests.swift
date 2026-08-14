@@ -254,6 +254,12 @@ struct PauseResponsivenessTests {
         // failed deactivation from a successful one.
         harness.mockSession.shouldThrowOnDeactivate = false
         let callsBeforeRetry = harness.mockSession.setActiveCallCount
+        // The retrying stop arrives with no standing intent and an idle player,
+        // which is exactly what #933's idempotency guard short-circuits. That
+        // is why `scheduleAudioSessionDeactivation()` sits outside the guard —
+        // and this test is the reason it has to. Recorded here rather than in a
+        // second copy of this setup over in `RedundantStopIdempotencyTests`.
+        let teardownsBeforeRetry = harness.mockPlayer.stopCallCount
 
         harness.controller.stop()
 
@@ -261,6 +267,10 @@ struct PauseResponsivenessTests {
         #expect(
             harness.mockSession.setActiveCallCount > callsBeforeRetry,
             "a failed deactivation abandoned the session — it is never handed back and other apps can't resume"
+        )
+        #expect(
+            harness.mockPlayer.stopCallCount == teardownsBeforeRetry,
+            "retrying the handback dragged a whole teardown along with it — a fresh MP3StreamDecoder for a player that is already stopped (#933)"
         )
     }
 
