@@ -34,7 +34,8 @@ extension Color {
 ///   re-emit every frame.
 /// - **The blur radius is constant.** A blur radius can't be handed off as a
 ///   detached animation, so animating it forces a per-frame re-render by
-///   construction — see ``glowRadius(blurRadius:isPulsing:)``.
+///   construction. ``glowRadius(blurRadius:)`` takes no phase, which makes a
+///   phase-dependent radius unrepresentable rather than merely discouraged.
 struct OnAirIndicator: View {
     var size: CGFloat = 9
     var color: Color = .onAirSignal
@@ -61,12 +62,12 @@ struct OnAirIndicator: View {
     static let pulseDuration: Double = 1.1
 
     var body: some View {
-        #if canImport(UIKit)
+        #if canImport(UIKit) && !os(watchOS)
         // CoreAnimation drives the pulse — see ``OnAirPulseView`` for why.
         OnAirPulseView(
             size: size,
             color: color,
-            blurRadius: Self.glowRadius(blurRadius: blurRadius, isPulsing: isPulsing),
+            blurRadius: Self.glowRadius(blurRadius: blurRadius),
             reduceMotion: reduceMotion
         )
         .frame(width: size, height: size)
@@ -90,7 +91,7 @@ struct OnAirIndicator: View {
             .animation(Self.pulseAnimation(reduceMotion: reduceMotion), value: isPulsing)
             .shadow(
                 color: color.opacity(0.9),
-                radius: Self.glowRadius(blurRadius: blurRadius, isPulsing: isPulsing)
+                radius: Self.glowRadius(blurRadius: blurRadius)
             )
             .onAppear { isPulsing = true }
             .accessibilityHidden(true)
@@ -112,12 +113,12 @@ struct OnAirIndicator: View {
 
     /// The glow's blur radius.
     ///
-    /// Takes `isPulsing` and deliberately ignores it: the phase-invariance is
-    /// the point, and a test asserts it directly rather than trusting a reader
-    /// to notice the absence of a parameter. Animating a blur radius can't be
-    /// detached to Core Animation, so a phase-dependent radius would put the
-    /// whole view tree back into a per-frame render pass.
-    static func glowRadius(blurRadius: CGFloat?, isPulsing: Bool) -> CGFloat {
+    /// Takes no pulse phase, and that absence is the design: animating a blur
+    /// radius can't be detached to Core Animation, so a phase-dependent radius
+    /// would put the whole view tree back into a per-frame render pass. Not
+    /// having the parameter is a stronger guarantee than having one a test
+    /// asserts is ignored.
+    static func glowRadius(blurRadius: CGFloat?) -> CGFloat {
         blurRadius ?? defaultGlowRadius
     }
 }
