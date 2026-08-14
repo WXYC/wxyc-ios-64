@@ -55,6 +55,13 @@ public struct DebugHUD: View {
                 metrics.stop()
             }
         }
+        // `onChange` never fires for the HUD going away entirely, and the two
+        // sampling timers are retained by the main run loop rather than by the
+        // provider — so without this they outlive it, waking the app at 1Hz and
+        // 5Hz to update a HUD that no longer exists.
+        .onDisappear {
+            metrics.stop()
+        }
     }
 }
 

@@ -34,29 +34,20 @@ struct DisplayLinkLifecycleTests {
         return DisplayLinkSource.activeLinkCount
     }
 
-    /// The count after any *already-scheduled* work has had a chance to run.
-    ///
-    /// Load-bearing for the "nothing attached" assertions. `setUpDisplayLink()`
-    /// attaches from inside a `Task`, so a synchronous read happens before the
-    /// link exists and passes even when the regression is present — verified by
-    /// injecting that exact regression and watching the synchronous version of
-    /// these tests stay green. Waiting real time, then yielding, is what makes
-    /// them able to fail.
-    private func countAfterPendingWork() async -> Int {
-        try? await Task.sleep(for: .milliseconds(100))
-        for _ in 0..<50 { await Task.yield() }
-        return DisplayLinkSource.activeLinkCount
-    }
-
     @Test("constructing a provider attaches no display link")
-    func initIsInert() async {
+    func initIsInert() {
         let baseline = DisplayLinkSource.activeLinkCount
         let provider = DebugMetricsProvider()
 
-        #expect(await countAfterPendingWork() == baseline)
+        #expect(DisplayLinkSource.activeLinkCount == baseline)
         #expect(provider.isRunning == false)
     }
 
+    /// Attachment is synchronous with `start()`, which is what lets the
+    /// "nothing attached" assertions here be plain synchronous reads. Attaching
+    /// from inside the consuming `Task` instead would make every such assertion
+    /// a race the test wins by default — it would pass with the regression
+    /// present, on a fast machine, forever.
     @Test("start attaches one link, stop releases it")
     func startThenStopReleasesTheLink() async {
         let baseline = DisplayLinkSource.activeLinkCount
@@ -64,7 +55,7 @@ struct DisplayLinkLifecycleTests {
 
         provider.start()
         #expect(provider.isRunning)
-        #expect(await settle(to: baseline + 1) == baseline + 1)
+        #expect(DisplayLinkSource.activeLinkCount == baseline + 1)
 
         provider.stop()
         #expect(provider.isRunning == false)
@@ -78,7 +69,7 @@ struct DisplayLinkLifecycleTests {
 
         provider.start()
         provider.start()
-        #expect(await settle(to: baseline + 1) == baseline + 1)
+        #expect(DisplayLinkSource.activeLinkCount == baseline + 1)
 
         provider.stop()
         #expect(await settle(to: baseline) == baseline)
@@ -90,14 +81,29 @@ struct DisplayLinkLifecycleTests {
     /// therefore cost nothing — otherwise each re-render of the enclosing
     /// `WindowGroup` body strands another 60fps run-loop source.
     @Test("providers that are constructed and discarded strand nothing")
-    func discardedProvidersStrandNothing() async {
+    func discardedProvidersStrandNothing() {
         let baseline = DisplayLinkSource.activeLinkCount
 
         for _ in 0..<5 {
             _ = DebugMetricsProvider()
         }
 
-        #expect(await countAfterPendingWork() == baseline)
+        #expect(DisplayLinkSource.activeLinkCount == baseline)
+    }
+
+    /// A stream that's never iterated still has to release its link. `AsyncStream`
+    /// terminates on the sequence's own deallocation — not on the continuation's,
+    /// which a ``DisplayLinkSource`` proxy holds — so this is the one teardown
+    /// path with no consumer to cancel. Pinned because it's a stdlib guarantee
+    /// the design leans on, and swapping in any other `AsyncSequence` could
+    /// quietly drop it.
+    @Test("a stream that is never iterated releases its link")
+    func discardedStreamReleasesTheLink() async {
+        let baseline = DisplayLinkSource.activeLinkCount
+
+        _ = DisplayLinkSource.timestamps()
+
+        #expect(await settle(to: baseline) == baseline)
     }
 
     /// The regression that made this suite necessary: `CADisplayLink` retains
