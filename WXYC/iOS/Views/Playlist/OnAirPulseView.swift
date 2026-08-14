@@ -9,7 +9,9 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-#if canImport(UIKit)
+// `UIViewRepresentable` and `UIView` are UIKit, but watchOS imports a UIKit that
+// has neither — so `canImport` alone would send the watch target down this path.
+#if canImport(UIKit) && !os(watchOS)
 import SwiftUI
 import UIKit
 
@@ -55,9 +57,11 @@ struct OnAirPulseView: UIViewRepresentable {
 /// The animation targets `layer.opacity`, which fades the shadow along with the
 /// fill — matching the SwiftUI original, where `.opacity` wrapped `.shadow`.
 final class OnAirPulseDotView: UIView {
-    /// Key the pulse is installed under. Re-adding under the same key replaces
-    /// rather than stacks, which is what keeps ``configure(size:color:blurRadius:reduceMotion:)``
-    /// idempotent across SwiftUI's repeated `updateUIView` calls.
+    /// Key the pulse is installed under.
+    ///
+    /// Fixed rather than varying, so it doubles as the question "is a pulse
+    /// already running?" — which is how ``installPulseIfNeeded()`` avoids both
+    /// stacking animations and restarting the one in flight.
     static let animationKey = "onAirPulse"
 
     /// Opacity of the glow, matching the SwiftUI `.shadow(color: color.opacity(0.9))`.
@@ -66,18 +70,34 @@ final class OnAirPulseDotView: UIView {
     private var dotSize: CGFloat = 9
     private var reduceMotion = false
 
+    /// Whether a trip through the background has invalidated the pulse.
+    ///
+    /// CoreAnimation strips a layer's animations when the app backgrounds, so
+    /// the pulse has to go back on the way in or the dot returns lit but still.
+    /// `didBecomeActive` is the wrong signal for that on its own: it also fires
+    /// for every transient interruption that leaves the app visible — Control
+    /// Center, Notification Center, the app switcher, a call banner — none of
+    /// which strip anything. Reinstalling on those would restart the fade from
+    /// full brightness in front of the user several times a session. This flag
+    /// is what tells the two apart.
+    private var animationsWereStripped = false
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = false
         clipsToBounds = false
         isAccessibilityElement = false
 
-        // CoreAnimation strips a layer's animations when the app backgrounds, so
-        // the pulse has to be reinstalled on the way back in or the dot returns
-        // frozen at whatever opacity it was interrupted at.
-        NotificationCenter.default.addObserver(
+        let center = NotificationCenter.default
+        center.addObserver(
             self,
-            selector: #selector(applyPulse),
+            selector: #selector(noteAnimationsStripped),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        center.addObserver(
+            self,
+            selector: #selector(restorePulseAfterBackground),
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
@@ -100,12 +120,13 @@ final class OnAirPulseDotView: UIView {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        // Re-entering the hierarchy also drops animations.
-        if window != nil { applyPulse() }
+        // Leaving the hierarchy also drops animations.
+        if window != nil { installPulseIfNeeded() }
     }
 
-    /// Applies the dot's appearance and (re)installs the pulse. Idempotent —
-    /// SwiftUI calls `updateUIView` freely.
+    /// Applies the dot's appearance and starts the pulse if it isn't already
+    /// running. Idempotent, down to the pulse's phase — SwiftUI calls
+    /// `updateUIView` freely.
     func configure(size: CGFloat, color: UIColor, blurRadius: CGFloat, reduceMotion: Bool) {
         self.reduceMotion = reduceMotion
 
@@ -120,7 +141,7 @@ final class OnAirPulseDotView: UIView {
         layer.shadowRadius = blurRadius
         layer.shadowOffset = .zero
 
-        applyPulse()
+        installPulseIfNeeded()
     }
 
     /// Builds the pulse. Static and side-effect free so the shape can be asserted
@@ -137,12 +158,44 @@ final class OnAirPulseDotView: UIView {
         return animation
     }
 
-    @objc private func applyPulse() {
-        layer.removeAnimation(forKey: Self.animationKey)
-        layer.opacity = Float(OnAirIndicator.peakOpacity)
+    /// Installs the pulse unless one is already running, and takes it down under
+    /// Reduce Motion.
+    ///
+    /// Deliberately not a restart. `updateUIView` runs on every SwiftUI update
+    /// that reaches the representable — a DJ sign-on changing the headline, the
+    /// banner scrolling back into view, an environment change anywhere above it
+    /// — and re-adding an animation re-seeds its `beginTime`, so an
+    /// unconditional install would visibly snap the dot back to full brightness
+    /// each time.
+    private func installPulseIfNeeded() {
+        guard !reduceMotion else {
+            layer.removeAnimation(forKey: Self.animationKey)
+            layer.opacity = Float(OnAirIndicator.peakOpacity)
+            return
+        }
 
-        guard !reduceMotion else { return }
+        guard layer.animation(forKey: Self.animationKey) == nil else { return }
+
+        layer.opacity = Float(OnAirIndicator.peakOpacity)
         layer.add(Self.makePulseAnimation(), forKey: Self.animationKey)
+    }
+
+    @objc private func noteAnimationsStripped() {
+        animationsWereStripped = true
+    }
+
+    /// Restarts the pulse after a real trip through the background, and only
+    /// then — see ``animationsWereStripped``.
+    ///
+    /// Unconditional rather than `installPulseIfNeeded()` alone, because the
+    /// animation can come back as a live object that is no longer running, and
+    /// a presence check can't tell that from a healthy pulse.
+    @objc private func restorePulseAfterBackground() {
+        guard animationsWereStripped else { return }
+        animationsWereStripped = false
+
+        layer.removeAnimation(forKey: Self.animationKey)
+        installPulseIfNeeded()
     }
 }
 #endif
