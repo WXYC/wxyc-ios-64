@@ -312,7 +312,10 @@ DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
 # here. #805 is the demonstration: renaming Intents' reindexer protocols breaks
 # AppServices' conformances to them, yet without this edge a WXYCIntents-only
 # change selects WXYCIntentsTests and never AppServicesTests.
-DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger Intents Concerts"
+# `WXYCAPIModels` is #915's AppConfig re-export: a contract regen that renames
+# or retypes an AppConfig field must select AppServicesTests, where the break
+# surfaces at the `defaults` literal.
+DEPS[AppServices]="Core Playback Playlist Artwork Caching Analytics Logger Intents Concerts WXYCAPIModels"
 # `Caching` is #751's addition (the widget bootstrap's in-memory
 # PlaycutHistoryStore default).
 DEPS[Intents]="Analytics Caching Concerts Core Logger Playback Playlist"
@@ -320,10 +323,11 @@ DEPS[Concerts]="Core Logger"
 # Packages without test targets (included as dependency intermediaries)
 DEPS[DebugPanel]="AppServices Caching ColorPalette Playback Playlist Wallpaper PlayerHeaderView WXUI"
 DEPS[PartyHorn]=""
-# Vendored generated DTOs (no test target). A Metadata (runtime) dep and a
-# PlaylistTests-target dep; listed on both above so a change to it marks
-# MetadataTests + PlaylistTests affected. As a non-SPM-runnable package with no
-# test target, a direct change to it also conservatively forces the xcb net.
+# Vendored generated DTOs (no test target). Metadata and AppServices (runtime)
+# deps and a PlaylistTests-target dep; listed on all three above so a change to
+# it marks MetadataTests + AppServicesTests + PlaylistTests affected. As a
+# non-SPM-runnable package with no test target, a direct change to it also
+# conservatively forces the xcb net.
 DEPS[WXYCAPIModels]=""
 
 # ---------------------------------------------------------------------------

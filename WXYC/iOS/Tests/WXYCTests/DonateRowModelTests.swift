@@ -13,7 +13,6 @@ import AppServices
 import Core
 import Foundation
 import Testing
-import struct WXYCAPIModels.AppConfig
 @testable import WXYC
 
 @Suite("DonateRowModel")
@@ -45,15 +44,16 @@ struct DonateRowModelTests {
         #expect(model.isVisible == false)
     }
 
-    @Test("visible when a fetched config predates the field")
-    func visibleWhenFetchedFieldAbsent() {
-        // nil from a *fetched* response means the backend doesn't know about
-        // the field yet — not "off". The compile-time fallback is a valid
-        // destination, so the row is useful. The dark case is carried by
-        // `defaults` pinning false, not by this branch.
+    @Test("hidden when a fetched config predates the field")
+    func hiddenWhenFetchedFieldAbsent() {
+        // nil from a *fetched* response means the backend doesn't serve the
+        // field — the live state until Backend-Service PR#2115 deploys, not a
+        // legacy edge case. The row is a solicitation, so absence resolves
+        // dark on every path; it renders only when the backend says `true`
+        // explicitly.
         let model = DonateRowModel(config: .fetched(donateEnabled: nil))
 
-        #expect(model.isVisible == true)
+        #expect(model.isVisible == false)
     }
 
     // MARK: - URL ladder
@@ -70,8 +70,8 @@ struct DonateRowModelTests {
     @Test(
         "an unusable fetched donateUrl falls through to the compile-time fallback",
         arguments: [
-            // What Backend-Service actually serves when DONATE_URL is unset on
-            // Railway: `process.env.X || ''`, not null. URL(string: "") is nil.
+            // What Backend-Service actually serves when DONATE_URL is unset:
+            // `process.env.X || ''`, not null. URL(string: "") is nil.
             "",
             "   ",
             // Parses, but as a scheme-relative reference — SFSafariViewController
