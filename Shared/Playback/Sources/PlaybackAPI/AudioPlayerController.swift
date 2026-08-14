@@ -128,6 +128,49 @@ public final class AudioPlayerController {
         playbackIntended && !playerState.isError
     }
 
+    /// Whether a `stop(reason:)` has any playback left to tear down (#933).
+    ///
+    /// Standing intent **or** a non-idle mirror, and deliberately neither one
+    /// on its own:
+    ///
+    /// - `isPlaying` would be flatly wrong. It is `playerState == .playing`,
+    ///   so it skips a stop arriving during a connect or a buffer — precisely
+    ///   the window in which a listener cancels a start that never produced
+    ///   sound. `toggle(reason:)` already carries this reasoning
+    ///   (Sentry IOS-4K/4M/4N); the same trap is here.
+    /// - Intent alone is not enough. The mirror is fed by an async stream, so
+    ///   a state emitted before a stop can be delivered after it, leaving
+    ///   intent cleared while the player is demonstrably not idle.
+    /// - The mirror alone is not enough. `play()` sets the intent and then
+    ///   returns early at `guard activateAudioSession() else`, before
+    ///   `startPlayerAfterActivation(reason:)` ever calls `player.play()` —
+    ///   so a session activation that fails, or that defers behind an
+    ///   in-flight handback (#514), leaves a standing play request over a
+    ///   player that was never started and a mirror still reading `.idle`.
+    ///   A stop there is the listener cancelling a start that produced no
+    ///   sound, and it has to land. A stop mid-connect, by contrast, is caught
+    ///   by the mirror half: `play()` sets `streamingState = .connecting`
+    ///   synchronously and that surfaces as `.loading`.
+    ///
+    /// Note what is deliberately *absent*: the audio session and the
+    /// auto-resume state. Both are separate contracts that outlive a single
+    /// teardown, and `stop()` honours both even when this reads `false` — see
+    /// the note there.
+    ///
+    /// One known gap, inherited rather than introduced: `MP3Streamer`'s
+    /// `handleHTTPEvent` `.error` arm has no staleness switch, so an error
+    /// buffered before `stop()` latches this back to `true` for one further
+    /// stop, costing one redundant teardown and one zero-duration
+    /// `PlaybackStoppedEvent`. The fix belongs in `MP3Streamer`, whose larger
+    /// half is that the same stale event re-enters `attemptReconnect()` and
+    /// resurrects a stopped stream.
+    ///
+    /// Read by `stop(reason:)` and by `stopWithAnalytics(reason:)`, which
+    /// needs the answer *before* `stop()` clears the intent it reads.
+    private var hasPlaybackToTearDown: Bool {
+        playbackIntended || !playerState.isIdle
+    }
+
     /// Single-line snapshot of internal state, intended for diagnostics (e.g.
     /// `Issue.record` on a test timeout). Captures the otherwise-private fields
     /// that distinguish "audio session activation failed" from "stream took
@@ -649,11 +692,35 @@ public final class AudioPlayerController {
     /// knows its `PlaybackReason` even when it doesn't want to surface the
     /// free-text string. Shared by `toggle(reason:)`'s stop branch and the
     /// remote pause command target in `setUpRemoteCommandCenter()` so both
-    /// paths — one directly testable, one gated behind a real
-    /// `MPRemoteCommandEvent` a unit test can't construct — stay identical.
+    /// paths stay identical.
+    ///
+    /// The event is captured only when there is a listen to end (#933). The
+    /// predicate has to be read *here*, hoisted out of `stop()`, for two
+    /// reasons: the capture happens before the delegation, so a guard living
+    /// only inside `stop()` would suppress the teardown and still emit the
+    /// event; and `stop()` clears the very intent the predicate reads, so
+    /// asking afterwards always answers "nothing to do". Sentry IOS-5F is what
+    /// this costs otherwise — seven pause events for one listen, on the same
+    /// duration series #663 is trying to make trustworthy.
     private func stopWithAnalytics(reason: PlaybackReason) {
-        analytics.capture(PlaybackStoppedEvent(source: reason.playbackSource, duration: playbackDuration, sessionID: sessionID))
+        if hasPlaybackToTearDown {
+            analytics.capture(PlaybackStoppedEvent(source: reason.playbackSource, duration: playbackDuration, sessionID: sessionID))
+        }
         stop(reason: reason)
+    }
+
+    /// The body of the remote command centre's pause target.
+    ///
+    /// Named rather than inlined into the target closure, and `package` rather
+    /// than `private`, for one reason: `MPRemoteCommandEvent` cannot be
+    /// constructed outside MediaPlayer (`init` raises
+    /// "MPRemoteCommandEvents cannot be initialized externally"), so the target
+    /// closure itself is unreachable from a unit test. Everything else in this
+    /// class routes a remote pause through here, so a test that calls it is
+    /// exercising the real lock-screen path rather than an approximation of it.
+    /// Mirrors `RadioPlayerController.remotePauseOrStopCommand(_:)`.
+    package func handleRemotePauseCommand() {
+        stopWithAnalytics(reason: .remotePauseCommand)
     }
 
     /// Start playback
@@ -739,8 +806,57 @@ public final class AudioPlayerController {
     }
 
     /// Stop playback and disconnect from stream
+    ///
+    /// Idempotent (#933). A stop against a player with no standing intent and
+    /// an idle mirror has nothing to tear down and returns without doing it a
+    /// second time — no `player.stop()` (and so no fresh `MP3StreamDecoder`),
+    /// no re-run of `PlaybackStopTeardown`, and, via
+    /// `stopWithAnalytics(reason:)`, no duplicate `PlaybackStoppedEvent`.
+    /// Sentry IOS-5F caught seven of these in four seconds against an
+    /// already-idle player; each one allocated a decoder and inflated the #663
+    /// duration series.
+    ///
+    /// "Nothing to tear down" is not "nothing to do", and two things
+    /// deliberately run on the short-circuited path.
+    ///
+    /// `PlaybackStopTeardown.retireAutoResumeState(…)` is the first. A route
+    /// disconnect and an interruption both leave precisely the state this
+    /// guard short-circuits, so this branch is the only one a subsequent stop
+    /// can reach — skip the survival rule here and
+    /// `wasPlayingBeforeRouteDisconnect` and the #665 session id become
+    /// permanently unclearable, which is a worse bug than the one being fixed:
+    /// a listener who pauses after their AirPods disconnect gets audio back
+    /// the moment they reinsert them. That call's own doc carries the rule and
+    /// why the reason alone discriminates an echo from a new decision.
+    ///
+    /// The audio-session handback is the second, and it has to be:
+    /// `audioSessionActivated` stays set when a deactivation fails precisely
+    /// so the next `stop()` retries it
+    /// (`failedDeactivationStaysRetryable`), and that next stop arrives with no
+    /// intent and an idle mirror. `scheduleAudioSessionDeactivation()` carries
+    /// its own guard — it returns immediately unless the session is actually
+    /// activated — so on the common redundant stop, where the handback already
+    /// completed, this is a no-op, and on the uncommon one it is the only
+    /// thing standing between a failed handback and a session no other audio
+    /// app can take back.
+    ///
     /// - Parameter reason: Why playback was stopped (for analytics)
     public func stop(reason: PlaybackReason) {
+        guard hasPlaybackToTearDown else {
+            Log(.info, category: .playback, "Stop ignored, nothing to tear down (reason: \(reason.rawValue))")
+            // Both of these outlive the teardown and so must outlive the guard;
+            // the reasoning is on this method's doc comment above.
+            PlaybackStopTeardown.retireAutoResumeState(
+                reason: reason,
+                wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
+                sessionID: &sessionID
+            )
+            #if os(iOS) || os(tvOS)
+            scheduleAudioSessionDeactivation()
+            #endif
+            return
+        }
+
         Log(.info, category: .playback, "Stop requested (reason: \(reason.rawValue))")
         cpuAggregator?.endSession(reason: .userStopped)
 
@@ -1482,7 +1598,7 @@ public final class AudioPlayerController {
         let pauseTarget = commandCenter.pauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
-                self.stopWithAnalytics(reason: .remotePauseCommand)
+                self.handleRemotePauseCommand()
             }
             return .success
         }

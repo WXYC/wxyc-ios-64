@@ -46,6 +46,43 @@ public enum PlaybackStopTeardown {
         stopHeartbeat()
 
         playbackIntended = false
+        retireAutoResumeState(
+            reason: reason,
+            wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
+            sessionID: &sessionID
+        )
+    }
+
+    /// The auto-resume-survival half of `run(…)`, callable on its own.
+    ///
+    /// Split out for `AudioPlayerController`'s idempotency guard (#933), which
+    /// short-circuits the rest of the teardown for a stop that has nothing left
+    /// to tear down. That guard's short-circuit is reached in exactly the state
+    /// a route disconnect or an interruption leaves behind — no standing intent,
+    /// idle player — so if the survival state were not retired here it could
+    /// never be retired at all: the flag would outlive the listen and the next
+    /// route reconnect would start audio with no user action. This is the one
+    /// rule for both paths rather than a second copy on the guard, because two
+    /// rules over the same two fields drift.
+    ///
+    /// Why the reason is a sufficient discriminator: the duplicate-dispatch bug
+    /// behind #933 (#932) redelivers *the same command*, so a stray stop always
+    /// arrives under the same reason as the stop it echoes — and the rule below
+    /// already preserves precisely for the reasons that set the state. An echo
+    /// of a route-disconnect stop therefore preserves; a Lock Screen pause on
+    /// top of one does not, because it is a new listener decision rather than a
+    /// repeat. Repeats of a non-survival reason stay harmless by being
+    /// idempotent: the first already cleared both fields.
+    ///
+    /// - Parameters:
+    ///   - reason: Why playback was stopped.
+    ///   - wasPlayingBeforeRouteDisconnect: Cleared unless this stop is itself the route-disconnect stop.
+    ///   - sessionID: Cleared unless the sessionID-survival rule below applies.
+    public static func retireAutoResumeState(
+        reason: PlaybackReason,
+        wasPlayingBeforeRouteDisconnect: inout Bool,
+        sessionID: inout String?
+    ) {
         if reason != .routeDisconnected {
             wasPlayingBeforeRouteDisconnect = false
         }

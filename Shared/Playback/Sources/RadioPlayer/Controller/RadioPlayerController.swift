@@ -259,6 +259,27 @@ public final class RadioPlayerController: PlaybackController {
 
     /// Stops playback without capturing analytics.
     /// Call sites should capture analytics BEFORE calling this method.
+    ///
+    /// Deliberately *not* carrying `AudioPlayerController`'s idempotency guard
+    /// (#933) — see `AudioPlayerController.hasPlaybackToTearDown` for what that
+    /// guard prevents. Two of its three costs cannot arise here as a matter of
+    /// structure: this controller drives an `AVPlayer`, so there is no decoder
+    /// to churn, and its `stop(reason:)` touches the audio session not at all
+    /// (#778).
+    ///
+    /// The third — double-counting `PlaybackStoppedEvent` — is contingent, not
+    /// structural, and that distinction is the whole reason this note exists.
+    /// `remotePauseOrStopCommand` reaches `stopWithAnalytics(reason:)` with no
+    /// intent check ahead of it, and the iOS/tvOS initializers default
+    /// `remoteCommandCenter` to `MPRemoteCommandCenter.shared()` — so that path
+    /// is compiled and armed on iOS. It is harmless only because no iOS
+    /// consumer exists today: `.shared` is a lazy `static let` and nothing
+    /// outside `WXYC/WatchXYC/` references this type, while watchOS builds it
+    /// with no command centre at all, leaving `toggle(reason:)` (already gated
+    /// on `isPlaybackRequested`) as the only route in. The first iOS consumer —
+    /// a preview or a test harness counts — re-opens the double-count, so add
+    /// the guard then rather than trusting this paragraph.
+    ///
     /// - Parameter reason: Why playback was stopped (for analytics)
     public func stop(reason: PlaybackReason) {
         // Shared six-step teardown (#755): cancels the reconnect, resets
