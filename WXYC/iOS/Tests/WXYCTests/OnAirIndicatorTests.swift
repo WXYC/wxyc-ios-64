@@ -8,7 +8,9 @@
 //  SwiftUI's ViewGraph display link open for the whole session — every frame it
 //  animates costs a render pass over the entire view tree, not just the 9pt dot.
 //
-//  Two rules follow, and both are asserted here:
+//  Two rules follow. The first is asserted here; the second is now structural —
+//  `glowRadius` takes no pulse phase, so a phase-dependent blur radius can't be
+//  written rather than merely failing a test:
 //
 //  1. Reduce Motion yields no animation at all — the pulse is decorative.
 //  2. The glow's blur radius never varies with the pulse phase. A blur radius
@@ -19,6 +21,11 @@
 //  The rendered cost itself isn't unit-testable; it was verified by sampling the
 //  running app before and after. These tests pin the invariants that make the
 //  cheap path the only path.
+//
+//  Scope worth knowing: on iOS the body renders `OnAirPulseView`, so
+//  `pulseAnimation` and `dotOpacity` are reached only by the non-UIKit fallback
+//  in `swiftUIPulse`. What those tests cover is the macOS path, and the shipping
+//  iOS behavior is covered by `OnAirPulseViewTests` instead.
 //
 //  Created by Jake Bromberg on 08/12/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -65,27 +72,9 @@ struct OnAirIndicatorTests {
         )
     }
 
-    /// The load-bearing one: whatever else changes, the blur radius must not
-    /// depend on the pulse phase. If this fails, the dot is re-rendering the
-    /// whole display-list item 60 times a second again.
-    @Test("the glow radius never varies with the pulse phase", arguments: [
-        Optional<CGFloat>.none,
-        .some(4.5),
-        .some(12),
-    ])
-    func glowRadiusIsPhaseInvariant(blurRadius: CGFloat?) {
-        let pulsing = OnAirIndicator.glowRadius(blurRadius: blurRadius, isPulsing: true)
-        let resting = OnAirIndicator.glowRadius(blurRadius: blurRadius, isPulsing: false)
-
-        #expect(pulsing == resting)
-    }
-
     @Test("an explicit blur radius wins over the default")
     func explicitBlurRadiusWins() {
-        #expect(OnAirIndicator.glowRadius(blurRadius: 12, isPulsing: true) == 12)
-        #expect(
-            OnAirIndicator.glowRadius(blurRadius: nil, isPulsing: true)
-                == OnAirIndicator.defaultGlowRadius
-        )
+        #expect(OnAirIndicator.glowRadius(blurRadius: 12) == 12)
+        #expect(OnAirIndicator.glowRadius(blurRadius: nil) == OnAirIndicator.defaultGlowRadius)
     }
 }
