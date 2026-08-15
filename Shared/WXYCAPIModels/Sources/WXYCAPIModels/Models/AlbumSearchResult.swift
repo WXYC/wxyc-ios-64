@@ -21,6 +21,8 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
     public var genreName: String
     public var label: String
     public var labelId: Int?
+    /** The library row's surrogate key (BS#1963), NOT NULL in the database since migration 0137. Optional here (never required) so the live openapi-compliance deploy gate stays green across the publish -> BS-deploy window, matching the CatalogExportRow and BulkResolveInput precedent.  */
+    public var legacyReleaseId: Int?
     public var albumDist: Double?
     public var artistDist: Double?
     public var rotationBin: RotationBin?
@@ -47,7 +49,7 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
     /** Populated by Backend's catalog search when an artist-alias match (from `artist_search_alias`) drove this release into the results, per artist-search-alias plan PR 5. Sibling field to `matched_via` (which is track-title provenance). Empty or absent on normal artist/album hits. Backward-compatible — existing consumers ignore the field.  */
     public var matchedViaAlias: [ArtistMatchHint]?
 
-    public init(id: Int, addDate: Date, albumTitle: String, artistName: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, formatName: String, genreName: String, label: String, labelId: Int? = nil, albumDist: Double? = nil, artistDist: Double? = nil, rotationBin: RotationBin? = nil, rotationId: Int? = nil, plays: Int? = nil, onStreaming: Bool? = nil, albumArtist: String? = nil, dateLost: Date? = nil, dateFound: Date? = nil, artworkUrl: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil, lastDiscogsRecheckAt: Date? = nil, matchedVia: [TrackMatchHint]? = nil, matchedViaAlias: [ArtistMatchHint]? = nil) {
+    public init(id: Int, addDate: Date, albumTitle: String, artistName: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, formatName: String, genreName: String, label: String, labelId: Int? = nil, legacyReleaseId: Int? = nil, albumDist: Double? = nil, artistDist: Double? = nil, rotationBin: RotationBin? = nil, rotationId: Int? = nil, plays: Int? = nil, onStreaming: Bool? = nil, albumArtist: String? = nil, dateLost: Date? = nil, dateFound: Date? = nil, artworkUrl: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil, lastDiscogsRecheckAt: Date? = nil, matchedVia: [TrackMatchHint]? = nil, matchedViaAlias: [ArtistMatchHint]? = nil) {
         self.id = id
         self.addDate = addDate
         self.albumTitle = albumTitle
@@ -59,6 +61,7 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         self.genreName = genreName
         self.label = label
         self.labelId = labelId
+        self.legacyReleaseId = legacyReleaseId
         self.albumDist = albumDist
         self.artistDist = artistDist
         self.rotationBin = rotationBin
@@ -88,6 +91,7 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         case genreName = "genre_name"
         case label
         case labelId = "label_id"
+        case legacyReleaseId = "legacy_release_id"
         case albumDist = "album_dist"
         case artistDist = "artist_dist"
         case rotationBin = "rotation_bin"
@@ -120,6 +124,7 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         try container.encode(genreName, forKey: .genreName)
         try container.encode(label, forKey: .label)
         try container.encodeIfPresent(labelId, forKey: .labelId)
+        try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
         try container.encodeIfPresent(albumDist, forKey: .albumDist)
         try container.encodeIfPresent(artistDist, forKey: .artistDist)
         try container.encodeIfPresent(rotationBin, forKey: .rotationBin)

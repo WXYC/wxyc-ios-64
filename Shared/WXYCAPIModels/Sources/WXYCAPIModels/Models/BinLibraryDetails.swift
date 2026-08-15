@@ -18,8 +18,10 @@ public struct BinLibraryDetails: Sendable, Codable, Hashable {
     public var codeNumber: Int?
     public var formatName: String?
     public var genreName: String?
+    /** The library row's surrogate key (BS#1963), NOT NULL in the database since migration 0137. Optional here (never required) so the live openapi-compliance deploy gate stays green across the publish -> BS-deploy window, matching the CatalogExportRow and BulkResolveInput precedent.  */
+    public var legacyReleaseId: Int?
 
-    public init(albumId: Int? = nil, albumTitle: String? = nil, artistName: String? = nil, label: String? = nil, codeLetters: String? = nil, codeArtistNumber: Int? = nil, codeNumber: Int? = nil, formatName: String? = nil, genreName: String? = nil) {
+    public init(albumId: Int? = nil, albumTitle: String? = nil, artistName: String? = nil, label: String? = nil, codeLetters: String? = nil, codeArtistNumber: Int? = nil, codeNumber: Int? = nil, formatName: String? = nil, genreName: String? = nil, legacyReleaseId: Int? = nil) {
         self.albumId = albumId
         self.albumTitle = albumTitle
         self.artistName = artistName
@@ -29,6 +31,7 @@ public struct BinLibraryDetails: Sendable, Codable, Hashable {
         self.codeNumber = codeNumber
         self.formatName = formatName
         self.genreName = genreName
+        self.legacyReleaseId = legacyReleaseId
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -41,6 +44,7 @@ public struct BinLibraryDetails: Sendable, Codable, Hashable {
         case codeNumber = "code_number"
         case formatName = "format_name"
         case genreName = "genre_name"
+        case legacyReleaseId = "legacy_release_id"
     }
 
     // Encodable protocol methods
@@ -56,6 +60,7 @@ public struct BinLibraryDetails: Sendable, Codable, Hashable {
         try container.encodeIfPresent(codeNumber, forKey: .codeNumber)
         try container.encodeIfPresent(formatName, forKey: .formatName)
         try container.encodeIfPresent(genreName, forKey: .genreName)
+        try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
     }
 }
 

@@ -7,6 +7,12 @@ DerivedData
 WXYC/WXYC.xcodeproj/xcshareddata/*
 WXYC.xcodeproj/project.xcworkspace/xcshareddata/
 *Secrets.swift
+# Name collision, not an exemption: the rule above is the only thing keeping the
+# real Shared/Secrets/.../Secrets.swift (generated with live values by the
+# pre-build phase) out of the repo, so it stays. AppSecrets.swift is an OpenAPI
+# model — two String field declarations and doc comments, no values — and the
+# vendored tree is machine-owned, so verify-api-types.sh fails if it is missing.
+!Shared/WXYCAPIModels/Sources/WXYCAPIModels/Models/AppSecrets.swift
 **/.build/*
 
 # Swift Package Manager build artifacts

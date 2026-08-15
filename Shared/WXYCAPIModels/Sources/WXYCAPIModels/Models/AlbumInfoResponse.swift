@@ -33,9 +33,11 @@ public struct AlbumInfoResponse: Sendable, Codable, Hashable {
     public var codeLetters: String
     public var formatName: String
     public var genreName: Genre
+    /** The library row's surrogate key (BS#1963), NOT NULL in the database since migration 0137. Optional here (never required) so the live openapi-compliance deploy gate stays green across the publish -> BS-deploy window, matching the CatalogExportRow and BulkResolveInput precedent.  */
+    public var legacyReleaseId: Int?
     public var rotation: AlbumInfoResponseAllOfRotation?
 
-    public init(id: Int, artistId: Int, albumTitle: String, codeNumber: Int, genreId: Int, formatId: Int, label: String? = nil, labelId: Int? = nil, addDate: Date? = nil, discQuantity: Int? = nil, alternateArtistName: String? = nil, albumArtist: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil, lastDiscogsRecheckAt: Date? = nil, artistName: String, codeLetters: String, formatName: String, genreName: Genre, rotation: AlbumInfoResponseAllOfRotation? = nil) {
+    public init(id: Int, artistId: Int, albumTitle: String, codeNumber: Int, genreId: Int, formatId: Int, label: String? = nil, labelId: Int? = nil, addDate: Date? = nil, discQuantity: Int? = nil, alternateArtistName: String? = nil, albumArtist: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil, lastDiscogsRecheckAt: Date? = nil, artistName: String, codeLetters: String, formatName: String, genreName: Genre, legacyReleaseId: Int? = nil, rotation: AlbumInfoResponseAllOfRotation? = nil) {
         self.id = id
         self.artistId = artistId
         self.albumTitle = albumTitle
@@ -55,6 +57,7 @@ public struct AlbumInfoResponse: Sendable, Codable, Hashable {
         self.codeLetters = codeLetters
         self.formatName = formatName
         self.genreName = genreName
+        self.legacyReleaseId = legacyReleaseId
         self.rotation = rotation
     }
 
@@ -78,6 +81,7 @@ public struct AlbumInfoResponse: Sendable, Codable, Hashable {
         case codeLetters = "code_letters"
         case formatName = "format_name"
         case genreName = "genre_name"
+        case legacyReleaseId = "legacy_release_id"
         case rotation
     }
 
@@ -104,6 +108,7 @@ public struct AlbumInfoResponse: Sendable, Codable, Hashable {
         try container.encode(codeLetters, forKey: .codeLetters)
         try container.encode(formatName, forKey: .formatName)
         try container.encode(genreName, forKey: .genreName)
+        try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
         try container.encodeIfPresent(rotation, forKey: .rotation)
     }
 }
