@@ -26,7 +26,7 @@ public struct FlowsheetV2TrackEntry: Sendable, Codable, Hashable {
     public var artistName: String?
     public var albumTitle: String?
     public var trackTitle: String?
-    /** Track position on the release (e.g., \"A1\", \"B2\", \"5\", \"1-12\"). Set by the dj-site flowsheet picker (catalog-track-search plan §5.3 / Track 3) when the DJ selected a track from the resolved release; null when the track_title was entered free-form or the release had no resolvable identity. String-typed to match Discogs's `release_track.position`.  */
+    /** Track position on the release (e.g., \"A1\", \"B2\", \"5\", \"1-12\"). Set by the dj-site flowsheet picker (catalog-track-search plan §5.3 / Track 3) when the DJ selected a track from the resolved release, or supplied directly on a freeform (LML-only) entry; null when the DJ entered a free-text track_title without a tracklist lookup. String-typed to match Discogs's `release_track.position`.  */
     public var trackPosition: String?
     public var recordLabel: String?
     public var requestFlag: Bool

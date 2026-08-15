@@ -18,8 +18,10 @@ public struct FlowsheetCreateSongFreeform: Sendable, Codable, Hashable {
     public var labelId: Int?
     /** Rotation linkage for a track on a rotation album that isn't in the WXYC library catalog (BS#1308). The Backend snapshot/else branch persists `rotation_id` alongside `album_id IS NULL` so the V2 read path can JOIN back to `rotation` for `rotation_bin` and the iOS rotation-artwork resolver can find the entry. `rotation_bin` is derived on read and intentionally not declared here.  */
     public var rotationId: Int?
+    /** Track position on the release (e.g., \"A1\", \"B2\", \"5\", \"1-12\"), for an LML-only row with no library linkage (routed onto this album_id-less branch). Carries the Discogs `release_track.position` straight through — BS's `buildSnapshotFieldsEntry` already persists `body.track_position ?? null` on the same allowlist that sets `album_id: null`. String-typed to match Discogs's `release_track.position` (vinyl side notation, multi-disc prefixes).  */
+    public var trackPosition: String?
 
-    public init(artistName: String, albumTitle: String, trackTitle: String, requestFlag: Bool, segue: Bool? = nil, recordLabel: String? = nil, labelId: Int? = nil, rotationId: Int? = nil) {
+    public init(artistName: String, albumTitle: String, trackTitle: String, requestFlag: Bool, segue: Bool? = nil, recordLabel: String? = nil, labelId: Int? = nil, rotationId: Int? = nil, trackPosition: String? = nil) {
         self.artistName = artistName
         self.albumTitle = albumTitle
         self.trackTitle = trackTitle
@@ -28,6 +30,7 @@ public struct FlowsheetCreateSongFreeform: Sendable, Codable, Hashable {
         self.recordLabel = recordLabel
         self.labelId = labelId
         self.rotationId = rotationId
+        self.trackPosition = trackPosition
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -39,6 +42,7 @@ public struct FlowsheetCreateSongFreeform: Sendable, Codable, Hashable {
         case recordLabel = "record_label"
         case labelId = "label_id"
         case rotationId = "rotation_id"
+        case trackPosition = "track_position"
     }
 
     // Encodable protocol methods
@@ -53,6 +57,7 @@ public struct FlowsheetCreateSongFreeform: Sendable, Codable, Hashable {
         try container.encodeIfPresent(recordLabel, forKey: .recordLabel)
         try container.encodeIfPresent(labelId, forKey: .labelId)
         try container.encodeIfPresent(rotationId, forKey: .rotationId)
+        try container.encodeIfPresent(trackPosition, forKey: .trackPosition)
     }
 }
 

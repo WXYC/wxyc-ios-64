@@ -23,8 +23,10 @@ public struct Rotation: Sendable, Codable, Hashable {
     public var playFreq: RotationBin?
     public var killDate: Date?
     public var plays: Int?
+    /** The library row's surrogate key (BS#1963). Nullable here (unlike AlbumSearchResult/BinLibraryDetails/AlbumInfoResponse): a library-unlinked rotation row has no library row at all, hence no legacy id.  */
+    public var legacyReleaseId: Int?
 
-    public init(id: Int? = nil, codeLetters: String? = nil, codeArtistNumber: Int? = nil, codeNumber: Int? = nil, artistName: String? = nil, albumTitle: String? = nil, recordLabel: String? = nil, genreName: String? = nil, formatName: String? = nil, rotationId: Int? = nil, addDate: Date? = nil, playFreq: RotationBin? = nil, killDate: Date? = nil, plays: Int? = nil) {
+    public init(id: Int? = nil, codeLetters: String? = nil, codeArtistNumber: Int? = nil, codeNumber: Int? = nil, artistName: String? = nil, albumTitle: String? = nil, recordLabel: String? = nil, genreName: String? = nil, formatName: String? = nil, rotationId: Int? = nil, addDate: Date? = nil, playFreq: RotationBin? = nil, killDate: Date? = nil, plays: Int? = nil, legacyReleaseId: Int? = nil) {
         self.id = id
         self.codeLetters = codeLetters
         self.codeArtistNumber = codeArtistNumber
@@ -39,6 +41,7 @@ public struct Rotation: Sendable, Codable, Hashable {
         self.playFreq = playFreq
         self.killDate = killDate
         self.plays = plays
+        self.legacyReleaseId = legacyReleaseId
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -56,6 +59,7 @@ public struct Rotation: Sendable, Codable, Hashable {
         case playFreq = "play_freq"
         case killDate = "kill_date"
         case plays
+        case legacyReleaseId = "legacy_release_id"
     }
 
     // Encodable protocol methods
@@ -76,6 +80,7 @@ public struct Rotation: Sendable, Codable, Hashable {
         try container.encodeIfPresent(playFreq, forKey: .playFreq)
         try container.encodeIfPresent(killDate, forKey: .killDate)
         try container.encodeIfPresent(plays, forKey: .plays)
+        try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
     }
 }
 

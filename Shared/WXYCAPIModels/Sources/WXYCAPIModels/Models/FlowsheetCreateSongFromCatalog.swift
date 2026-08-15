@@ -11,7 +11,7 @@ public struct FlowsheetCreateSongFromCatalog: Sendable, Codable, Hashable {
 
     public var albumId: Int
     public var trackTitle: String
-    /** Track position on the release (e.g., \"A1\", \"B2\", \"5\", \"1-12\"). Written by the dj-site flowsheet picker (catalog-track-search plan §5.3 / Track 3) when the DJ selects a track from the resolved release. Omitted when the DJ enters a free-text track_title without a tracklist lookup or when the release has no resolvable identity. String-typed to match Discogs's `release_track.position` (vinyl side notation, multi-disc prefixes).  */
+    /** Track position on the release (e.g., \"A1\", \"B2\", \"5\", \"1-12\"). Written by the dj-site flowsheet picker (catalog-track-search plan §5.3 / Track 3) when the DJ selects a track from the resolved release. Omitted when the DJ enters a free-text track_title without a tracklist lookup. String-typed to match Discogs's `release_track.position` (vinyl side notation, multi-disc prefixes).  */
     public var trackPosition: String?
     public var rotationId: Int?
     public var requestFlag: Bool
