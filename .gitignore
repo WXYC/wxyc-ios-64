@@ -9,10 +9,15 @@ WXYC.xcodeproj/project.xcworkspace/xcshareddata/
 *Secrets.swift
 # Name collision, not an exemption: the rule above is the only thing keeping the
 # real Shared/Secrets/.../Secrets.swift (generated with live values by the
-# pre-build phase) out of the repo, so it stays. AppSecrets.swift is an OpenAPI
-# model — two String field declarations and doc comments, no values — and the
-# vendored tree is machine-owned, so verify-api-types.sh fails if it is missing.
-!Shared/WXYCAPIModels/Sources/WXYCAPIModels/Models/AppSecrets.swift
+# pre-build phase) out of the repo, so it stays. The directory below is a
+# different animal — machine-owned OpenAPI models, field declarations and doc
+# comments with no values, regenerated wholesale and guarded by
+# verify-api-types.sh, which fails if any of them is missing from the commit.
+# Scoped by glob rather than by exact filename so the next generated model that
+# happens to end in Secrets.swift isn't silently dropped from git add the way
+# AppSecrets.swift was — that failure is invisible locally (verify diffs the
+# filesystem, not the index) and only surfaces as drift on a clean CI checkout.
+!Shared/WXYCAPIModels/Sources/WXYCAPIModels/Models/*Secrets.swift
 **/.build/*
 
 # Swift Package Manager build artifacts
