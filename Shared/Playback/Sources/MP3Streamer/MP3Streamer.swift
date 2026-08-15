@@ -449,13 +449,39 @@ public final class MP3Streamer {
         case .error(let error):
             Log(.error, category: .playback, "HTTP error: \(error)")
             resetOfflineParkTracking()
-            streamingState = .error(error)
-            // Deliberately NOT yielded to the internal event stream (#486): this is
-            // the transient pre-reconnect drop that usually recovers on the next
-            // connect. Emitting a StreamErrorEvent here would count a routine blip
-            // as a failure. The terminal outcome — recovery (.firstAudio/.recovery)
-            // or backoff exhaustion (yielded in attemptReconnect) — is what counts.
-            attemptReconnect()
+            // Same staleness gate as .disconnected above, for the same reason:
+            // an .error that was already in flight when stop() ran must not
+            // clobber .idle back to .error and start an unguarded reconnect
+            // (#936). The admissible set is deliberately NOT identical to
+            // .disconnected's, though: an .error during .connecting or
+            // .reconnecting is a live, meaningful connect failure — the
+            // ordinary connect-failure path — not a stale event, and must
+            // still drive the backoff ramp.
+            //
+            // This gate stays on the .error arm only. It is tempting to
+            // "complete the symmetry" onto .connected too, but .connected's
+            // unconditional un-idling (above) is load-bearing for #937's
+            // stop() guard: a post-stop .connected moves streamingState off
+            // .idle, so the next stop() still runs resetStreamIO() and still
+            // calls httpClient.disconnect(). Gating .connected the same way
+            // would leave a genuinely-connected-but-ignored client with no
+            // future stop() ever disconnecting it — a real leaked connection
+            // traded for today's harmless churn. If .connected or .data need
+            // the same treatment, that's a follow-up ticket with an explicit
+            // disconnect paired to the ignored-connect path, not this one.
+            switch streamingState {
+            case .playing, .buffering, .stalled, .connecting, .reconnecting:
+                streamingState = .error(error)
+                // Deliberately NOT yielded to the internal event stream (#486): this is
+                // the transient pre-reconnect drop that usually recovers on the next
+                // connect. Emitting a StreamErrorEvent here would count a routine blip
+                // as a failure. The terminal outcome — recovery (.firstAudio/.recovery)
+                // or backoff exhaustion (yielded in attemptReconnect) — is what counts.
+                attemptReconnect()
+            default:
+                // Stale: the session this error belongs to is already over.
+                break
+            }
         }
     }
 

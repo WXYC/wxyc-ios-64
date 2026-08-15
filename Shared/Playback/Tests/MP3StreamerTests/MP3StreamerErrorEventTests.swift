@@ -103,7 +103,6 @@ struct MP3StreamerErrorEventTests {
             startupTimeout: 5.0
         )
         let mockHTTP = MockHTTPStreamClient()
-        mockHTTP.shouldSucceed = false
         let mockPlayer = MockAudioEnginePlayer()
 
         // A single-attempt ramp exhausts on the first reconnect failure.
@@ -120,6 +119,25 @@ struct MP3StreamerErrorEventTests {
         let drain = makeDrain(streamer, into: collector)
         defer { drain.cancel() }
 
+        // #936 gates the `.error` HTTP event on `streamingState`, the same way
+        // `.disconnected` already is — an `.error` observed against a
+        // never-played (`.idle`) streamer is now correctly dropped as stale.
+        // Get the streamer into a live `.connecting` state first (holding it
+        // there via `nextConnectDelay`) before flipping the mock to fail, so
+        // the reconnect ramp this test is actually about gets exercised.
+        mockHTTP.nextConnectDelay = .seconds(5)
+        streamer.play()
+        #expect(streamer.streamingState == .connecting)
+
+        // Let the initial connect() from play() actually start and park on
+        // the artificial delay before making failures visible to it —
+        // otherwise flipping shouldSucceed here would fail that ordinary
+        // startup connect too, which isn't what this test is about (and
+        // would emit its own `.error` event via play()'s own catch, over-
+        // counting the collector before the reconnect ramp even starts).
+        await pollUntil { mockHTTP.connectCallCount > 0 }
+        mockHTTP.shouldSucceed = false
+
         // An HTTP error drives the reconnect loop directly (the `.error` case is a
         // deliberately-silent path, so it contributes no `.error` event itself).
         mockHTTP.yield(.error(HTTPStreamError.connectionFailed))
@@ -131,6 +149,10 @@ struct MP3StreamerErrorEventTests {
         try await Task.sleep(for: .milliseconds(100))
 
         #expect(collector.count == 1, "Exactly one error event should fire when the reconnect backoff is exhausted")
+
+        // Tidy up the still-pending delayed connect() so it doesn't run on
+        // into later tests.
+        streamer.stop()
     }
 
     /// Regression for the #509 review: an engine-start `.error` from the buffering
