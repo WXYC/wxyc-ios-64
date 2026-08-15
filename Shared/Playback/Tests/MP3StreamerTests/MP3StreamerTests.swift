@@ -12,7 +12,10 @@ import Testing
 import PlaybackTestUtilities
 import Foundation
 import AVFoundation
+import Analytics
+import AnalyticsTesting
 @testable import MP3StreamerModule
+@testable import PlaybackCore
 import Core
 
 #if !os(watchOS)
@@ -731,6 +734,187 @@ struct MP3StreamerStuckStateRecoveryTests {
 
         #expect(streamer.isPlaying,
                 "Should be playing after recovering from error state via play()")
+    }
+}
+
+// MARK: - Stale HTTP Error Handling (#936)
+
+/// A stale HTTP `.error` — one already in flight when `stop()` ran — must not
+/// resurrect a stream the listener stopped. `stop()` cancels `reconnectTask`
+/// but deliberately does not cancel `httpEventTask` (the streamer is reusable
+/// across play/stop cycles), and `httpClient.disconnect()` does not retract
+/// events already buffered in `httpClient.eventStream`, so a `.error`
+/// produced just before the disconnect is still delivered to
+/// `handleHTTPEvent` afterwards. The `.error` arm now carries the same
+/// state gate its `.disconnected` sibling already has.
+@Suite("MP3Streamer Stale HTTP Error Handling")
+@MainActor
+struct MP3StreamerStaleHTTPErrorTests {
+    static let testStreamURL = URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
+
+    @Test("A stale HTTP error delivered after stop() does not resurrect the stream")
+    func staleHTTPErrorAfterStopDoesNotResurrectTheStream() async throws {
+        let config = MP3StreamerConfiguration(
+            url: Self.testStreamURL,
+            minimumBuffersBeforePlayback: 3
+        )
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+        mockPlayer.immediatelyRequestMoreBuffers = false
+        let mockAnalytics = MockStructuredAnalytics()
+
+        let testData = try TestAudioBufferFactory.loadMP3TestData()
+        mockHTTP.testData = testData
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer,
+            analytics: mockAnalytics
+        )
+
+        streamer.play()
+        await pollUntil { streamer.streamingState == .playing }
+        #expect(streamer.streamingState == .playing,
+                "Streamer must reach .playing before stop() can be exercised meaningfully")
+        guard case .playing = streamer.streamingState else { return }
+
+        streamer.stop()
+        #expect(streamer.streamingState == .idle)
+
+        let connectCountBeforeStaleError = mockHTTP.connectCallCount
+
+        // Simulates the HTTP error that was already in flight when stop() ran,
+        // delivered to the still-live httpEventTask afterwards.
+        mockHTTP.yield(.error(HTTPStreamError.connectionFailed))
+
+        // Negative assertion: give the stale event every chance to be
+        // processed and, if unguarded, to arm a reconnect ramp and re-connect.
+        // This has to be a real poll-with-timeout, not a short fixed sleep —
+        // this suite shares the single MainActor with every other parallel
+        // Swift Testing suite in the process, and a busy run can starve a
+        // fixed 300ms window long enough that the stale event simply hasn't
+        // been drained yet, which reads as "nothing happened" for the wrong
+        // reason (see PollUntil.swift's #807 note). Polling for the violation
+        // itself returns immediately if it appears, and otherwise waits out
+        // the full window before this test's assertions run.
+        await pollUntil({ mockHTTP.connectCallCount > connectCountBeforeStaleError }, timeout: .seconds(3))
+
+        #expect(streamer.streamingState == .idle,
+                "a stale .error after stop() clobbered .idle back to .error")
+        // NOT a primary signal: on the unguarded path the reconnect actually
+        // succeeds (mockHTTP.shouldSucceed defaults true), and a successful
+        // reconnect calls backoffTimer.reset(), so numberOfAttempts reads 0
+        // again by the time this assertion runs even though the bug fired.
+        // The two assertions below — streamingState and connectCallCount —
+        // are what discriminate; this one only confirms the ramp isn't left
+        // armed on the fixed path.
+        #expect(streamer.backoffTimer.numberOfAttempts == 0,
+                "a stale .error after stop() armed the reconnect backoff ramp")
+        #expect(mockHTTP.connectCallCount == connectCountBeforeStaleError,
+                "a stale .error after stop() reconnected — and so resurrected — a stream the listener stopped")
+        #expect(mockAnalytics.typedEvents(ofType: StreamErrorEvent.self).isEmpty,
+                "a dropped stale error must not emit a StreamErrorEvent")
+    }
+
+    /// The non-vacuity control for the test above: the identical `.error`
+    /// delivered while `.playing` must still move state to `.error` and still
+    /// increase `connectCallCount`. Without this, dropping every HTTP `.error`
+    /// on the floor would also pass the stale test.
+    @Test("An HTTP error delivered while playing still arms a reconnect")
+    func liveHTTPErrorWhilePlayingStillArmsReconnect() async throws {
+        let config = MP3StreamerConfiguration(
+            url: Self.testStreamURL,
+            minimumBuffersBeforePlayback: 3
+        )
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+        mockPlayer.immediatelyRequestMoreBuffers = false
+
+        let testData = try TestAudioBufferFactory.loadMP3TestData()
+        mockHTTP.testData = testData
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        streamer.play()
+        await pollUntil { streamer.streamingState == .playing }
+        #expect(streamer.streamingState == .playing,
+                "Streamer must reach .playing before the live-error control can be exercised")
+        guard case .playing = streamer.streamingState else { return }
+
+        let connectCountBeforeError = mockHTTP.connectCallCount
+
+        // Make the reconnect attempt fail rather than succeed. A successful
+        // reconnect both resets backoffTimer (racing numberOfAttempts back to
+        // 0 right after arming) and moves streamingState straight back past
+        // .error to .buffering/.playing, either of which would make the
+        // assertions below flaky depending on exactly when they sample.
+        mockHTTP.shouldSucceed = false
+
+        mockHTTP.yield(.error(HTTPStreamError.connectionFailed))
+
+        await pollUntil { streamer.backoffTimer.numberOfAttempts > 0 }
+        #expect(streamer.backoffTimer.numberOfAttempts > 0,
+                "an HTTP error delivered during live playback did not arm the reconnect backoff ramp")
+
+        if case .error = streamer.streamingState {
+            // Expected: the live error clobbers .playing to .error while the
+            // reconnect ramp is in flight.
+        } else {
+            Issue.record("expected .error state after a live HTTP error but got \(streamer.streamingState)")
+        }
+
+        await pollUntil { mockHTTP.connectCallCount > connectCountBeforeError }
+        #expect(mockHTTP.connectCallCount > connectCountBeforeError,
+                "an HTTP error delivered during live playback did not reconnect")
+
+        streamer.stop()
+    }
+
+    /// The ordinary connect-failure path is unchanged: an `.error` observed
+    /// while `.connecting` is a live, meaningful failure — not a stale event
+    /// racing a stop()/play() cycle — and must still drive the backoff ramp.
+    @Test("An HTTP error delivered during .connecting still drives the backoff ramp")
+    func httpErrorDuringConnectingStillDrivesBackoffRamp() async throws {
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+        // Hold the streamer in .connecting deliberately: connect() will not
+        // emit .connected until this delay elapses.
+        mockHTTP.nextConnectDelay = .seconds(5)
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        streamer.play()
+        #expect(streamer.streamingState == .connecting,
+                "Streamer must be parked in .connecting before this test's HTTP error can be delivered against it")
+        guard case .connecting = streamer.streamingState else { return }
+
+        // Let the initial connect() from play() actually start and park on
+        // the artificial delay, then make the reconnect attempt fail rather
+        // than succeed — a successful reconnect calls backoffTimer.reset(),
+        // which would race numberOfAttempts back to 0 right after arming and
+        // make the assertion below flaky.
+        await pollUntil { mockHTTP.connectCallCount > 0 }
+        mockHTTP.shouldSucceed = false
+
+        mockHTTP.yield(.error(HTTPStreamError.connectionFailed))
+
+        await pollUntil { streamer.backoffTimer.numberOfAttempts > 0 }
+        #expect(streamer.backoffTimer.numberOfAttempts > 0,
+                "an HTTP error delivered during .connecting did not arm the reconnect backoff ramp")
+
+        // Tidy up the still-pending delayed connect() so it doesn't run on
+        // into later tests.
+        streamer.stop()
     }
 }
 
