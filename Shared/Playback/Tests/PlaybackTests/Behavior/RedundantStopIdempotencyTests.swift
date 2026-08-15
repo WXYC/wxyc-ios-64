@@ -4,12 +4,18 @@
 //
 //  Idempotency of `AudioPlayerController.stop(reason:)` (#933). A stop against
 //  a player with no standing intent and an idle mirror must tear nothing down
-//  a second time — no `player.stop()` (and therefore no fresh
-//  `MP3StreamDecoder`), no duplicate `PlaybackStoppedEvent`, and no clobbering
-//  of the #665 sessionID / `wasPlayingBeforeRouteDisconnect` state a pending
-//  auto-resume depends on. The negative half matters just as much: a stop that
-//  arrives mid-connect, mid-buffer, or against a still-active audio session
-//  must still do the whole job.
+//  a second time — at most one `player.stop()` per stop request, no duplicate
+//  `PlaybackStoppedEvent`, and no clobbering of the #665 sessionID /
+//  `wasPlayingBeforeRouteDisconnect` state a pending auto-resume depends on.
+//  The negative half matters just as much: a stop that arrives mid-connect,
+//  mid-buffer, or against a still-active audio session must still do the whole
+//  job.
+//
+//  The contract is stated against `AudioPlayerProtocol`, not against one
+//  conformance: this controller also ships against `RadioPlayer` and
+//  `HLSPlayer`. What a redundant `player.stop()` *costs* is the conformance's
+//  business — today `MP3Streamer` allocates a decoder and spawns a consumer
+//  task per call while its two siblings are free, which is #937.
 //
 //  Created by Jake Bromberg on 08/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -18,8 +24,6 @@
 import Testing
 import AVFoundation
 import PlaybackTestUtilities
-import Analytics
-import AnalyticsTesting
 @testable import Playback
 @testable import PlaybackCore
 
@@ -128,10 +132,7 @@ struct RedundantStopIdempotencyTests {
         )
         let controller = try #require(harness.audioController)
         harness.mockSession.shouldThrowOnSetActive = true
-        harness.mockSession.setActiveError = NSError(
-            domain: "com.apple.coreaudio.avfaudio",
-            code: Int(AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue)
-        )
+        harness.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
 
         harness.controller.play()
 
@@ -386,43 +387,111 @@ struct RedundantStopIdempotencyTests {
             "reinserting the route resumed playback the listener had explicitly paused"
         )
     }
-    #endif
 
-    // MARK: - The audio session must never be stranded
-
-    // The failed-handback retry is pinned by
-    // `PauseResponsivenessTests.failedDeactivationStaysRetryable`, which now
-    // also asserts that the retrying stop tears nothing down. It is not
-    // duplicated here: the setup was identical and two copies of one contract
-    // drift.
-
-    @Test("Redundant stops after a play cancelled an in-flight handback still hand the session back")
-    func redundantStopsAfterACancelledHandbackStillHandTheSessionBack() async throws {
-        // All of these land in one main-actor turn, so the handback the first
-        // stop scheduled has not begun when the middle play() re-activates the
-        // session out from under it: that handback will decline as stale. The
-        // second stop is the only thing that can hand the session back, and
-        // the three redundant stops piled on top of it must neither replace it
-        // nor undo it.
+    @Test("A pause on top of an interruption cancels the interruption's auto-resume")
+    func lockScreenPauseAfterAnInterruptionCancelsTheAutoResume() async throws {
+        // The interruption analogue of the route-disconnect test above, and the
+        // reason `retireAutoResumeState` cannot be the whole rule: it reaches
+        // `wasPlayingBeforeRouteDisconnect` and the #665 session id, but
+        // `wasPlayingBeforeInterruption` is private to
+        // `PlaybackInterruptionRouteHandler` and is cleared only at the end of
+        // `.ended`. Nothing on the stop path could reach it.
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
         harness.controller.play()
-        harness.controller.stop()
-        harness.controller.play()
-        harness.controller.stop()
-        harness.controller.stop()
-        harness.controller.stop()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
 
-        await harness.waitUntil({ harness.sessionDeactivated && harness.sessionDeactivationSettled })
+        // A phone call arrives: the handler stops playback and arms the resume.
+        harness.postInterruptionBegan(shouldResume: true)
+        await harness.waitForAsync()
+        let playsAfterInterruption = harness.playCallCount
+
+        // Mid-call, the listener pauses from the Lock Screen. That stop lands in
+        // exactly the state #933's guard short-circuits — no standing intent,
+        // idle mirror — so it is the *only* stop that will ever be delivered
+        // here. If the armed resume outlives it, nothing else will retire it.
+        harness.controller.stop(reason: .remotePauseCommand)
+        await harness.waitForAsync()
+
+        // The call ends and the system offers a resume.
+        harness.postInterruptionEnded(shouldResume: true)
+        await harness.waitForAsync()
+
         #expect(
-            harness.sessionDeactivated,
-            "the session was never handed back after the play/stop interleaving"
-        )
-        #expect(
-            harness.stopCallCount == 2,
-            "only the two genuine stops should have torn down; got \(harness.stopCallCount)"
+            harness.playCallCount == playsAfterInterruption,
+            "the interruption ending resumed audio the listener had explicitly paused"
         )
     }
+    #endif
+
+    // MARK: - A stop must not leave a reconnect armed behind it
+
+    @Test("A stall delivered after a stop does not arm a reconnect")
+    func staleStallAfterStopDoesNotArmAReconnect() async throws {
+        // `player.eventStream` is an unbounded AsyncStream, so a `.stall`
+        // yielded just before a stop is consumed just after it — the same
+        // stale-delivery the state observer already defends against for
+        // `.playing`. Reconnecting on it resurrects a stream the listener
+        // stopped, and #933's guard means no later stop is guaranteed to cancel
+        // the task: the mirror stays `.idle`, so every subsequent stop
+        // short-circuits past the cancellation.
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        harness.controller.stop()
+        await harness.waitForAsync()
+
+        // Match `harness.simulateStall()`'s own discipline: without this the
+        // mock auto-recovers and a reconnect would reset the counter it just
+        // consumed, hiding the arming behind a zero.
+        harness.mockPlayer.shouldAutoUpdateState = false
+        harness.mockPlayer.simulateLateStall()
+
+        // Wait the way the positive case below has to be waited for — the event
+        // reaches `handleStall()` over an async stream, so a single
+        // `waitForAsync()` returns before delivery and would pass vacuously.
+        // Give the reconnect every chance to arm, then assert it didn't.
+        await harness.waitUntil({ (harness.getBackoffAttempts() ?? 0) > 0 }, timeout: .seconds(1))
+
+        #expect(
+            harness.getBackoffAttempts() == 0,
+            "a stall for playback nobody asked for started the reconnect ramp"
+        )
+    }
+
+    @Test("A stall during playback still arms a reconnect")
+    func liveStallStillArmsAReconnect() async throws {
+        // The non-vacuity control for the test above: the staleness gate must
+        // key on playback intent, not disable stall recovery outright. Without
+        // this, dropping every `.stall` on the floor would pass.
+        let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
+
+        harness.controller.play()
+        harness.simulatePlaybackStarted()
+        await harness.waitForAsync()
+
+        harness.simulateStall()
+        await harness.waitUntil({ (harness.getBackoffAttempts() ?? 0) > 0 }, timeout: .seconds(2))
+
+        #expect(
+            (harness.getBackoffAttempts() ?? 0) > 0,
+            "a genuine stall mid-listen did not start the reconnect ramp"
+        )
+    }
+
+    // MARK: - The audio session must never be stranded
+
+    // Both handback contracts are pinned in `PauseResponsivenessTests`, next to
+    // the interleavings they depend on, rather than in a second copy here:
+    // `failedDeactivationStaysRetryable` now also asserts that the retrying
+    // stop tears nothing down, and `stopDuringInFlightDeactivationStillHandsBack`
+    // now also pins that redundant stops piled on a cancelled handback neither
+    // replace it nor undo it. Both setups are delicate and both would drift if
+    // duplicated.
 }
 
 #endif

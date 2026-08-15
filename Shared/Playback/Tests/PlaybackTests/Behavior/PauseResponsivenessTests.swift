@@ -278,7 +278,7 @@ struct PauseResponsivenessTests {
     func stopDuringInFlightDeactivationStillHandsBack() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
-        // All four calls land in one main-actor turn, so the handback the first
+        // All of these land in one main-actor turn, so the handback the first
         // stop() scheduled has not begun when the second one arrives: the task
         // that runs it cannot start until this turn ends. That makes the
         // interleaving deterministic rather than a race — but it is the same one
@@ -288,16 +288,30 @@ struct PauseResponsivenessTests {
         harness.controller.stop()
         harness.controller.play()
         harness.controller.stop()
+        // #933: echoes of that second stop must neither replace the handback
+        // nor undo it. Recorded here rather than in a second copy of this
+        // setup over in `RedundantStopIdempotencyTests` — the interleaving
+        // above is delicate, and two copies of it drift.
+        harness.controller.stop()
+        harness.controller.stop()
+        harness.controller.stop()
 
         // The first handback correctly declines as stale — the middle play()
         // re-activated the session out from under it. Something still has to
         // hand the session back for the *second* stop(), or the app keeps the
         // session for a pause the user can see took effect, and every other
         // audio app stays suppressed until the next play/stop cycle.
-        await harness.waitUntil({ harness.sessionDeactivated }, timeout: stallTolerantTimeout)
+        await harness.waitUntil(
+            { harness.sessionDeactivated && harness.sessionDeactivationSettled },
+            timeout: stallTolerantTimeout
+        )
         #expect(
             harness.sessionDeactivated,
             "the second stop() was swallowed by the in-flight guard and the session was never handed back"
+        )
+        #expect(
+            harness.stopCallCount == 2,
+            "only the two genuine stops should have torn down; got \(harness.stopCallCount)"
         )
     }
 

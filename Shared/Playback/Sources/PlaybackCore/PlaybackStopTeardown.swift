@@ -32,6 +32,7 @@ public enum PlaybackStopTeardown {
     ///   - playbackIntended: Cleared unconditionally — the caller no longer intends playback.
     ///   - wasPlayingBeforeRouteDisconnect: Cleared unless this stop is itself the route-disconnect stop.
     ///   - sessionID: Cleared unless the sessionID-survival rule below applies.
+    ///   - cancelPendingInterruptionResume: Retires a pending post-interruption resume, under the same rule as `sessionID`.
     public static func run(
         reason: PlaybackReason,
         cancelReconnect: () -> Void,
@@ -39,7 +40,8 @@ public enum PlaybackStopTeardown {
         stopHeartbeat: () -> Void,
         playbackIntended: inout Bool,
         wasPlayingBeforeRouteDisconnect: inout Bool,
-        sessionID: inout String?
+        sessionID: inout String?,
+        cancelPendingInterruptionResume: () -> Void
     ) {
         cancelReconnect()
         resetBackoff()
@@ -49,7 +51,8 @@ public enum PlaybackStopTeardown {
         retireAutoResumeState(
             reason: reason,
             wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
-            sessionID: &sessionID
+            sessionID: &sessionID,
+            cancelPendingInterruptionResume: cancelPendingInterruptionResume
         )
     }
 
@@ -78,10 +81,12 @@ public enum PlaybackStopTeardown {
     ///   - reason: Why playback was stopped.
     ///   - wasPlayingBeforeRouteDisconnect: Cleared unless this stop is itself the route-disconnect stop.
     ///   - sessionID: Cleared unless the sessionID-survival rule below applies.
+    ///   - cancelPendingInterruptionResume: Retires a pending post-interruption resume, under the same rule as `sessionID`. Deliberately has no default: the flag it clears lives in `PlaybackInterruptionRouteHandler`, so a caller that forgets it silently keeps the bug rather than failing to compile.
     public static func retireAutoResumeState(
         reason: PlaybackReason,
         wasPlayingBeforeRouteDisconnect: inout Bool,
-        sessionID: inout String?
+        sessionID: inout String?,
+        cancelPendingInterruptionResume: () -> Void
     ) {
         if reason != .routeDisconnected {
             wasPlayingBeforeRouteDisconnect = false
@@ -90,8 +95,17 @@ public enum PlaybackStopTeardown {
         // "pause, then auto-resume" — the listen itself isn't over, so the
         // session id must survive them. Any other reason is a genuine end of
         // the listen; the next `play()` mints a fresh id. See #665.
+        //
+        // `wasPlayingBeforeInterruption` rides the same rule, and must: it is
+        // the other half of the auto-resume state, and it is the half no stop
+        // could previously reach — it is `private` to
+        // `PlaybackInterruptionRouteHandler` and was cleared only at the end of
+        // `.ended`. So a listener who paused from the Lock Screen mid-call got
+        // audio back the moment the call ended, on both controllers. One rule
+        // over all three fields, rather than two rules that drift.
         if reason != .interruptionBegan && reason != .routeDisconnected {
             sessionID = nil
+            cancelPendingInterruptionResume()
         }
     }
 }

@@ -109,6 +109,24 @@ public final class PlaybackInterruptionRouteHandler {
         if let routeChangeObservation { notificationCenter.removeObserver(routeChangeObservation) }
     }
 
+    /// Retires a pending post-interruption resume, so an interruption that has
+    /// begun but not yet ended will not restart playback when it does.
+    ///
+    /// Called from the controllers' stop path via
+    /// `PlaybackStopTeardown.retireAutoResumeState(…)`, under the same
+    /// reason-bounded rule as the #665 session id: a stop that is *itself* an
+    /// auto-resume-bearing stop preserves the pending resume, and any other
+    /// stop retires it.
+    ///
+    /// Without this the flag was unreachable from outside — it is set on
+    /// `.began` and cleared only at the end of `.ended` — so a listener who
+    /// paused from the Lock Screen during a phone call had playback restart on
+    /// them the moment the call ended. That is the interruption twin of the
+    /// route-disconnect case `wasPlayingBeforeRouteDisconnect` already covers.
+    package func cancelPendingInterruptionResume() {
+        wasPlayingBeforeInterruption = false
+    }
+
     private func handleInterruption(_ message: InterruptionMessage) {
         onInterruptionReceived(message.type)
 

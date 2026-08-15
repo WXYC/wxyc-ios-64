@@ -23,16 +23,6 @@ import AVFoundation
 
 #if os(iOS)
 
-/// Reproduces the `'!int'` `CannotInterruptOthers` NSError observed in the
-/// field so the retry path can be exercised deterministically.
-@MainActor
-private func cannotInterruptOthersError() -> NSError {
-    NSError(
-        domain: "com.apple.coreaudio.avfaudio",
-        code: Int(AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue)
-    )
-}
-
 @Suite("Session Activation Retry Tests")
 @MainActor
 struct SessionActivationRetryTests {
@@ -48,7 +38,7 @@ struct SessionActivationRetryTests {
 
         // Model a transient state: the first activation fails with '!int', then
         // subsequent activations succeed.
-        harness.mockSession.setActiveError = cannotInterruptOthersError()
+        harness.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
         harness.mockSession.failSetActiveCount = 1
 
         harness.controller.play()
@@ -72,7 +62,7 @@ struct SessionActivationRetryTests {
     func retrySuccessResumesPlayback() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
-        harness.mockSession.setActiveError = cannotInterruptOthersError()
+        harness.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
         harness.mockSession.failSetActiveCount = 1
 
         let playsBefore = harness.playCallCount
@@ -91,7 +81,7 @@ struct SessionActivationRetryTests {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
         // Never clears — every activation throws '!int'.
-        harness.mockSession.setActiveError = cannotInterruptOthersError()
+        harness.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
         harness.mockSession.shouldThrowOnSetActive = true
 
         harness.controller.play()
@@ -135,7 +125,7 @@ struct SessionActivationRetryTests {
 
         // Activation keeps failing (as during a live interruption) until the
         // system signals the interruption ended.
-        harness.mockSession.setActiveError = cannotInterruptOthersError()
+        harness.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
         harness.mockSession.shouldThrowOnSetActive = true
 
         harness.controller.play()
@@ -186,7 +176,7 @@ struct SessionActivationRetryTests {
     func stopCancelsPendingRetry() async {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
-        harness.mockSession.setActiveError = cannotInterruptOthersError()
+        harness.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
         harness.mockSession.shouldThrowOnSetActive = true
 
         harness.controller.play()
@@ -212,7 +202,7 @@ struct SessionActivationRetryTests {
         let harness = PlayerControllerTestHarness.make(for: .audioPlayerController)
 
         // Activation keeps failing with '!int' across the whole cycle.
-        harness.mockSession.setActiveError = cannotInterruptOthersError()
+        harness.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
         harness.mockSession.shouldThrowOnSetActive = true
 
         harness.controller.play()
@@ -267,7 +257,7 @@ struct SessionActivationRetryTests {
 
         // As the interruption ends the session still can't activate ('!int'),
         // so the resume must defer via the bounded retry, not die.
-        harness.mockSession.setActiveError = cannotInterruptOthersError()
+        harness.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
         harness.mockSession.shouldThrowOnSetActive = true
 
         let playsBeforeEnd = harness.playCallCount

@@ -102,10 +102,27 @@ public final class MockAudioSession: AudioSessionProtocol, @unchecked Sendable {
 
     /// When non-nil, `setActive(true, …)` throws this error instead of the
     /// generic `MockAudioSessionError.setActiveFailed`. Lets tests reproduce a
-    /// specific `com.apple.coreaudio.avfaudio` `CannotInterruptOthers` failure.
+    /// specific `com.apple.coreaudio.avfaudio` `CannotInterruptOthers` failure —
+    /// build it with `cannotInterruptOthersError()` rather than by hand.
     public var setActiveError: (any Error)? {
         get { state.withLock { $0.setActiveError } }
         set { state.withLock { $0.setActiveError = newValue } }
+    }
+
+    /// The `'!int'` `CannotInterruptOthers` `NSError` observed in the field, for
+    /// assigning to ``setActiveError``.
+    ///
+    /// Canonical because the domain string is load-bearing and drift in it is
+    /// *silent*: `AudioPlayerController.isCannotInterruptOthers(_:)` matches on
+    /// `com.apple.coreaudio.avfaudio` to decide whether to schedule the deferred
+    /// activation retry (#514). A hand-rolled copy that misspells the domain
+    /// still fails activation, so the test goes on passing while no longer
+    /// exercising the retry path it was written for.
+    public static func cannotInterruptOthersError() -> NSError {
+        NSError(
+            domain: "com.apple.coreaudio.avfaudio",
+            code: Int(AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue)
+        )
     }
 
     /// Number of leading `setActive(true, …)` calls that should fail before the
