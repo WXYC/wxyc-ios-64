@@ -25,7 +25,7 @@ public struct PauseWXYC: AudioPlaybackIntent {
     public func perform() async throws -> some IntentResult & ReturnsValue<String> {
         StructuredPostHogAnalytics.shared.capture(PauseWXYCIntent())
         await MainActor.run {
-            AudioPlayerController.shared.stop(reason: .pauseIntent)
+            AudioPlayerController.shared.stopWithAnalytics(reason: .pauseIntent)
         }
         return .result(value: "Now pausing WXYC")
     }

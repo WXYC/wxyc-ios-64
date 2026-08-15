@@ -702,7 +702,16 @@ public final class AudioPlayerController {
     /// asking afterwards always answers "nothing to do". Sentry IOS-5F is what
     /// this costs otherwise — seven pause events for one listen, on the same
     /// duration series #663 is trying to make trustworthy.
-    private func stopWithAnalytics(reason: PlaybackReason) {
+    ///
+    /// `public`, not `private`, so `PauseWXYC` (WXYCIntents) can route a Siri
+    /// pause through the same one-event-per-listen rule instead of
+    /// re-implementing the capture at the call site (#939) — a Siri pause
+    /// calling `stop(reason:)` directly closed the listen with no duration
+    /// ever reaching the #663 series. `package` doesn't reach that caller:
+    /// `Shared/Intents` builds as its own SwiftPM package (`WXYCIntents`),
+    /// a separate package identity from `Playback` even though it depends on
+    /// it, so `package`-level access here would still be invisible there.
+    public func stopWithAnalytics(reason: PlaybackReason) {
         if hasPlaybackToTearDown {
             analytics.capture(PlaybackStoppedEvent(source: reason.playbackSource, duration: playbackDuration, sessionID: sessionID))
         }
