@@ -134,6 +134,22 @@ public final class MockAudioPlayer: AudioPlayerProtocol {
         eventContinuation?.yield(.stall)
     }
 
+    /// Yields `.stall` onto `eventStream` **without** touching the mock's own
+    /// `state`/`isPlaying`, so the event outlives the playback it belonged to.
+    ///
+    /// The event-stream twin of ``simulateLateStateDelivery(_:)``, and needed
+    /// for the same reason: `player.eventStream` is an unbounded `AsyncStream`,
+    /// so a `.stall` yielded just before a `stop()` is consumed just after it.
+    /// The real `MP3Streamer` is not guaranteed to push a matching state change
+    /// alongside it — it "may keep reporting a stale `.playing` state while
+    /// reconnecting" — so the arriving event genuinely can be the only thing
+    /// the controller sees. ``simulateStall()`` cannot express that: it moves
+    /// the mock's state in lockstep, which converges exactly the divergence a
+    /// staleness test needs.
+    public func simulateLateStall() {
+        eventContinuation?.yield(.stall)
+    }
+
     /// Simulate recovery from stall
     public func simulateRecovery() {
         onRecovery?()

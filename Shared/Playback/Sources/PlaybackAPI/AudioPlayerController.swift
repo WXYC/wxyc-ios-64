@@ -843,13 +843,14 @@ public final class AudioPlayerController {
     /// - Parameter reason: Why playback was stopped (for analytics)
     public func stop(reason: PlaybackReason) {
         guard hasPlaybackToTearDown else {
-            Log(.info, category: .playback, "Stop ignored, nothing to tear down (reason: \(reason.rawValue))")
-            // Both of these outlive the teardown and so must outlive the guard;
-            // the reasoning is on this method's doc comment above.
+            Log(.info, category: .playback, "Stop short-circuited (no teardown); retiring auto-resume state, rechecking handback (reason: \(reason.rawValue))")
+            // Not dead code on a dead path: both of these outlive a teardown and
+            // so must outlive the guard. See this method's doc comment.
             PlaybackStopTeardown.retireAutoResumeState(
                 reason: reason,
                 wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
-                sessionID: &sessionID
+                sessionID: &sessionID,
+                cancelPendingInterruptionResume: { interruptionRouteHandler?.cancelPendingInterruptionResume() }
             )
             #if os(iOS) || os(tvOS)
             scheduleAudioSessionDeactivation()
@@ -875,7 +876,8 @@ public final class AudioPlayerController {
             stopHeartbeat: { heartbeat?.stop() },
             playbackIntended: &playbackIntended,
             wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
-            sessionID: &sessionID
+            sessionID: &sessionID,
+            cancelPendingInterruptionResume: { interruptionRouteHandler?.cancelPendingInterruptionResume() }
         )
 
         stallStartTime = nil
@@ -1945,6 +1947,25 @@ extension AudioPlayerController {
     }
 
     private func handleStall() {
+        // A stall with no standing play request is stale by construction.
+        // `player.eventStream` is unbounded, so a `.stall` yielded just before a
+        // stop is consumed just after it — the same lag the state observer
+        // already defends against for a late `.playing` (see
+        // `setUpPlayerObservation()`). Acting on one arms a reconnect that
+        // sleeps, re-activates the audio session, and calls `player.play()`,
+        // resurrecting a stream the listener stopped.
+        //
+        // It also cannot be cleaned up after the fact. `stop()` cancels
+        // `reconnectTask` and nils it *before* the stale event lands, so the
+        // event installs a fresh one; and because the mirror stays `.idle` and
+        // intent stays false, every later stop short-circuits on the #933 guard
+        // without reaching the cancellation. Refusing to arm it is the only
+        // point where this is still fixable.
+        guard playbackIntended else {
+            Log(.info, category: .playback, "Ignoring stall with no standing play request (stale event)")
+            return
+        }
+
         Log(.warning, category: .playback, "Stall detected, starting backoff recovery")
         // Only record the first stall timestamp so repeated stall events don't
         // shorten the reported stall duration.

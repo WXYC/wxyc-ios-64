@@ -26,18 +26,6 @@ import AnalyticsTesting
 
 #if !os(watchOS)
 
-#if os(iOS)
-/// Reproduces the `'!int'` `CannotInterruptOthers` NSError so the deferred-retry
-/// path can be exercised deterministically (mirrors `SessionActivationRetryTests`).
-@MainActor
-private func cannotInterruptOthersError() -> NSError {
-    NSError(
-        domain: "com.apple.coreaudio.avfaudio",
-        code: Int(AVAudioSession.ErrorCode.cannotInterruptOthers.rawValue)
-    )
-}
-#endif
-
 /// Drives a real `AudioPlayerController` with a mock player + session, injecting
 /// a short `startupWatchdogDeadline` so the watchdog fires quickly and
 /// deterministically. Built without the parameterized harness because
@@ -273,7 +261,7 @@ struct StartupWatchdogTests {
         // check — we're asserting the state the watchdog depends on, not its fire.
         let fixture = Self.makeFixture(deadline: .seconds(30))
         fixture.mockSession.shouldThrowOnSetActive = true
-        fixture.mockSession.setActiveError = cannotInterruptOthersError()
+        fixture.mockSession.setActiveError = MockAudioSession.cannotInterruptOthersError()
 
         fixture.controller.play(reason: .test)
 
