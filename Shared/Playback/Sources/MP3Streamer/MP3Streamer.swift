@@ -351,7 +351,16 @@ public final class MP3Streamer {
         reconnectTask?.cancel()
         reconnectTask = nil
 
-        resetStreamIO()
+        // .idle is assigned in exactly one place in this file: below, once a stop()
+        // has run to completion. So streamingState != .idle means precisely "there is
+        // still stream I/O to tear down" — an already-idle streamer has none, and a
+        // redundant stop() must not repeat the decoder allocation and consumer Task
+        // spawn resetStreamIO() does (issue #937). Same predicate, same name, as
+        // play()'s stuck-state teardown check above.
+        let needsTeardown = streamingState != .idle
+        if needsTeardown {
+            resetStreamIO()
+        }
 
         streamingState = .idle
         backoffTimer.reset()

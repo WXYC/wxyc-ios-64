@@ -158,6 +158,70 @@ struct MP3StreamerTests {
         #expect(mockPlayer.stopCallCount == 1)
     }
 
+    /// #937: redundant `stop()` calls against an already-`.idle` streamer must not
+    /// repeat the expensive stream-I/O teardown (decoder allocation + consumer Task
+    /// spawn). `stopCount == 1` is the non-vacuity control — it proves the assertion
+    /// distinguishes "guarded" from "never ran at all" — while `stopCount` 2 and 3
+    /// exercise the guard itself.
+    @Test("Redundant stop() calls do not repeat stream teardown", arguments: [1, 2, 3])
+    func redundantStopCallsAreIdempotent(stopCount: Int) async throws {
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(50))
+
+        for _ in 0..<stopCount {
+            streamer.stop()
+            #expect(streamer.streamingState == .idle)
+        }
+
+        #expect(
+            mockHTTP.disconnectCallCount == 1,
+            "Only the first stop() should run stream-I/O teardown; the remaining \(stopCount - 1) redundant call(s) must be no-ops"
+        )
+    }
+
+    /// #937: the idempotency guard must not permanently disable teardown — a fresh
+    /// `play()` after a `stop()` un-idles the streamer, so the next `stop()` must
+    /// tear down again. Proves the streamer stays reusable across cycles.
+    @Test("A stop-play-stop cycle remains reusable and tears down on each stop")
+    func stopPlayStopCycleTearsDownAgain() async throws {
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer
+        )
+
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(50))
+        streamer.stop()
+
+        #expect(streamer.streamingState == .idle)
+        #expect(mockHTTP.disconnectCallCount == 1)
+
+        streamer.play()
+        try await Task.sleep(for: .milliseconds(50))
+        streamer.stop()
+
+        #expect(streamer.streamingState == .idle)
+        #expect(
+            mockHTTP.disconnectCallCount == 2,
+            "A fresh play() after a stop() must un-idle the streamer, so the following stop() tears down again"
+        )
+    }
+
     @Test("HTTP data feeds to decoder")
     func testHTTPDataFeedsToDecoder() async throws {
         let config = MP3StreamerConfiguration(url: Self.testStreamURL)

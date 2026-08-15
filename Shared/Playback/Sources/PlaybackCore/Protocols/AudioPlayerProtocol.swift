@@ -31,6 +31,13 @@ public protocol AudioPlayerProtocol: AnyObject {
     func play()
 
     /// Stop playback and reset stream
+    ///
+    /// Idempotent: calling `stop()` against a player that is already stopped is a
+    /// no-op. A conformance may implement "stopped" however suits its own state
+    /// machine, but a redundant call must not repeat any teardown work — allocating
+    /// resources, cancelling tasks that are not outstanding, or re-running I/O
+    /// teardown — beyond what settling into the stopped state costs the first time.
+    /// See issue #937.
     func stop()
 
     /// Stream of player state changes
