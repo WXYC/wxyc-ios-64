@@ -272,6 +272,13 @@ struct WXYCApp: App {
     }
 
     private func setUpSentry() {
+        // Stands in for process launch. `init()` runs before any UI exists, so
+        // this is within milliseconds of it, and it is captured by `beforeSend`
+        // below to date every event against the launch it belongs to. A wall
+        // clock deliberately, not a monotonic one: it is compared against
+        // `event.timestamp`, which is also wall clock.
+        let launchedAt = Date()
+
         SentrySDK.start { options in
             options.dsn = AppConfiguration.sentryDsn
 
@@ -314,6 +321,34 @@ struct WXYCApp: App {
             // Structured server-side logs. Forwarded from the Logger via
             // SentryLogsDestination at info-and-above.
             options.experimental.enableLogs = true
+
+            // App-hang tracking V2, reporting only fully-blocking hangs. V2 can
+            // tell a fully-blocking hang (main thread stuck, not a frame
+            // rendered) from a non-fully-blocking one, and the SDK's own header
+            // is explicit that the latter "can have a stacktrace that doesn't
+            // highlight the exact blocking location" — which is precisely the
+            // noise that fragmented these issues. Over 30 days, 1207 hang
+            // events became 68 issues, 40 of them holding a single event.
+            // Dropping the non-fully-blocking half attacks that at the source;
+            // `SentryEventFilters` regroups whatever still arrives.
+            options.enableAppHangTrackingV2 = true
+            options.enableReportNonFullyBlockingAppHangs = false
+
+            // `appHangTimeoutInterval` is deliberately left at its 2.0 default.
+            // Raising it is the obvious way to quieten hang reports and it is
+            // the wrong one here: across those 1207 events the `device.class`
+            // split was high 1115 / medium 91 / low 0. These are flagship
+            // devices, so a >2 s stall is a real defect rather than an
+            // underpowered-hardware artifact, and a higher threshold would hide
+            // exactly the cold-launch regression this is meant to catch.
+
+            // The app's only `beforeSend`. Runs on every event, so it is
+            // written to return anything it does not recognise untouched — see
+            // `SentryEventFilters` for the rules and for where to add the next
+            // filter.
+            options.beforeSend = { event in
+                SentryEventFilters.beforeSend(event, launchedAt: launchedAt)
+            }
 
             #if DEBUG
             options.debug = true
