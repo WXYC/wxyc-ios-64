@@ -3,7 +3,8 @@
 //  WXYC
 //
 //  Command menus for the iOS / Mac Catalyst app: Playback (Space to play/pause),
-//  Themes (Return / arrows for picker), and a Debug menu in non-release builds.
+//  Themes (Return / arrows for the picker, j/k to switch outright), and a Debug
+//  menu in non-release builds.
 //
 //  Created by Jake Bromberg on 05/31/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -33,16 +34,29 @@ struct WXYCCommandMenus: Commands {
             .keyboardShortcut(.return, modifiers: [])
 
             Button("Previous Theme") {
-                navigateToPreviousTheme()
+                cycleTheme(.previous)
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
             .disabled(!appState.themePickerState.isActive)
 
             Button("Next Theme") {
-                navigateToNextTheme()
+                cycleTheme(.next)
             }
             .keyboardShortcut(.rightArrow, modifiers: [])
             .disabled(!appState.themePickerState.isActive)
+
+            // Same step, always available: with the picker closed these swap the
+            // theme outright, so a keyboard user can flip through the set without
+            // going through the picker at all.
+            Button("Switch to Previous Theme") {
+                cycleTheme(.previous)
+            }
+            .keyboardShortcut("k", modifiers: [])
+
+            Button("Switch to Next Theme") {
+                cycleTheme(.next)
+            }
+            .keyboardShortcut("j", modifiers: [])
         }
         #if DEBUG || DEBUG_TESTFLIGHT
         CommandMenu("Debug") {
@@ -71,25 +85,22 @@ struct WXYCCommandMenus: Commands {
         }
     }
 
-    private func navigateToPreviousTheme() {
-        let themes = ThemeRegistry.shared.themes
-        guard themes.count > 1, appState.themePickerState.isActive else { return }
+    private func cycleTheme(_ direction: ThemeCycling.Direction) {
+        // Read before the step: a committed switch is exactly the picker-closed case.
+        let wasPickerActive = appState.themePickerState.isActive
 
-        withAnimation(.spring(duration: 0.3)) {
-            let newIndex = max(0, appState.themePickerState.carouselIndex - 1)
-            appState.themePickerState.carouselIndex = newIndex
-            appState.themePickerState.updateCenteredTheme(forIndex: newIndex)
-        }
-    }
+        guard let destinationID = ThemeCycling.cycle(
+            direction,
+            configuration: appState.themeConfiguration,
+            pickerState: appState.themePickerState
+        ) else { return }
 
-    private func navigateToNextTheme() {
-        let themes = ThemeRegistry.shared.themes
-        guard themes.count > 1, appState.themePickerState.isActive else { return }
+        guard !wasPickerActive else { return }
 
-        withAnimation(.spring(duration: 0.3)) {
-            let newIndex = min(themes.count - 1, appState.themePickerState.carouselIndex + 1)
-            appState.themePickerState.carouselIndex = newIndex
-            appState.themePickerState.updateCenteredTheme(forIndex: newIndex)
-        }
+        Log(.info, category: .general, "Theme switched by keyboard to '\(destinationID)'")
+        // Mirrors the picker-exit hook in `WXYCApp`: the mesh-gradient palette is
+        // cached per theme, and `selectedThemeID`'s `didSet` clears it for any
+        // theme that has never been captured.
+        WallpaperPaletteExtraction.extract(into: appState.themeConfiguration)
     }
 }
