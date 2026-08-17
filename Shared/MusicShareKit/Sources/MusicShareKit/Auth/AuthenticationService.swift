@@ -153,17 +153,11 @@ public actor AuthenticationService: SessionTokenProvider {
         }
 
         // Clear only the in-memory cache; the stored session must survive so
-        // performRefresh() can attempt the identity-preserving mint.
-        //
-        // On a device whose Keychain writes are failing there IS no stored
-        // session to survive — that is the #948 population — so carry the
-        // rejected session forward explicitly rather than letting the clear
-        // below destroy the last copy of it. What the server rejected is the
-        // JWT, not the session token underneath it, so this session is still
-        // exactly what the mint wants; if the session itself is dead too, the
-        // mint's 401/404 arm clears it and falls through to a sign-in as
-        // before. Without this, every 401 on such a device mints a brand-new
-        // anonymous DB user.
+        // performRefresh() can attempt the identity-preserving mint. On a
+        // device whose Keychain writes are failing there is no stored copy,
+        // so hand the rejected session to performRefresh explicitly — what
+        // the server rejected is the JWT, not the ~7-day session token under
+        // it (#948).
         let rejectedSession = cachedSession
         cachedSession = nil
 
@@ -297,22 +291,14 @@ public actor AuthenticationService: SessionTokenProvider {
     ///   device whose Keychain writes are failing (#948).
     private func performRefresh(
         trustStoredJWT: Bool,
-        fallbackSession: AuthSession? = nil
+        fallbackSession: AuthSession?
     ) async throws -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
-        // A Keychain miss (nil) degrades to the in-memory `cachedSession`
-        // rather than escalating straight to a fresh sign-in. Without this,
-        // a transient Keychain write failure (e.g. -34018) that silently
-        // failed to persist the session — see `freshSignIn()`'s and
-        // `mintJWT(for:)`'s non-rethrowing `catch` around `storage.save` —
-        // reads as "no session at all" on the next refresh, even though
-        // `cachedSession` still holds a good one whose *session token* is
-        // valid for ~7 days. Falling through to `freshSignIn()` in that
-        // state resends the still-live session's cookie to
-        // /auth/sign-in/anonymous, which better-auth correctly 400s
-        // ("Anonymous users cannot sign in again anonymously") — and
-        // because the Keychain is still broken, every subsequent refresh
-        // repeats the same wedge (#948).
+        // A Keychain miss is not proof there is no session: `freshSignIn()`
+        // and `mintJWT(for:)` both swallow a failing `storage.save`, so an
+        // in-memory session whose *session token* is good for ~7 days can
+        // outlive a Keychain that never persisted it. Escalating straight to
+        // `freshSignIn()` in that state is what wedges anonymous auth (#948).
         let loaded = loadFromKeychain() ?? fallbackSession ?? cachedSession
 
         // 3a. Keychain hit on a fresh JWT — fast path.

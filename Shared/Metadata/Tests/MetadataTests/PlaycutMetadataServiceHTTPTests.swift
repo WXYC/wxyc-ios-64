@@ -398,9 +398,11 @@ struct PlaycutMetadataServiceHTTPTests {
 
     // MARK: - Transient-vs-permanent classification (#284)
 
-    @Test("Retries a transient 503 with backoff, then succeeds")
-    func retriesTransientServerErrorThenSucceeds() async throws {
-        // Given — the first two attempts hit a transient 5xx; the third
+    /// `isTransient` is `private static`, so both cases are driven through
+    /// the public `fetchMetadata(for:)` — 5xx per #284, 429 per #948.
+    @Test("Retries a transient status with backoff, then succeeds", arguments: [503, 429])
+    func retriesTransientStatusThenSucceeds(statusCode: Int) async throws {
+        // Given — the first two attempts hit a transient status; the third
         // (bounded — #284 caps this service at 3 total attempts) succeeds.
         let mockURLSession = QueuedStubURLProtocol.makeSession()
         let mockCache = CountingCache()
@@ -412,8 +414,8 @@ struct PlaycutMetadataServiceHTTPTests {
         )
 
         QueuedStubURLProtocol.setResponses([
-            (503, Data(#"{"error": "Service Unavailable"}"#.utf8)),
-            (503, Data(#"{"error": "Service Unavailable"}"#.utf8)),
+            (statusCode, Data(#"{"error": "transient"}"#.utf8)),
+            (statusCode, Data(#"{"error": "transient"}"#.utf8)),
             (200, Data("""
             {
                 "discogsReleaseId": 12345,
@@ -442,56 +444,6 @@ struct PlaycutMetadataServiceHTTPTests {
         #expect(result.album.label == "Warp Records")
         #expect(result.album.releaseYear == 2001)
         #expect(QueuedStubURLProtocol.capturedRequests().count == 3)
-    }
-
-    @Test("Retries a 429 (rate limited) with backoff, then succeeds (#948)")
-    func retriesRateLimitedThenSucceeds() async throws {
-        // Given — the proxy 429s once (a wedged anonymous-auth session
-        // hammering /auth/sign-in/anonymous per #948 can burn through
-        // Backend-Service's rate limit), then the retry succeeds. isTransient
-        // is `private static`, so this is driven entirely through the public
-        // fetchMetadata(for:) API — same shape as
-        // retriesTransientServerErrorThenSucceeds above and the 401
-        // reauth-and-retry test, just with a 429 substituted.
-        let mockURLSession = QueuedStubURLProtocol.makeSession()
-        let mockCache = CountingCache()
-        let cache = CacheCoordinator(cache: mockCache)
-        let service = PlaycutMetadataService(
-            baseURL: URL(string: "https://api.wxyc.org")!,
-            urlSession: mockURLSession,
-            cache: cache
-        )
-
-        QueuedStubURLProtocol.setResponses([
-            (429, Data(#"{"error": "Too Many Requests"}"#.utf8)),
-            (200, Data("""
-            {
-                "discogsReleaseId": 12345,
-                "label": "Warp Records",
-                "releaseYear": 2001,
-                "spotifyUrl": null,
-                "appleMusicUrl": null,
-                "youtubeMusicUrl": null,
-                "bandcampUrl": null,
-                "soundcloudUrl": null
-            }
-            """.utf8)),
-        ])
-
-        let playcut = Playcut.stub(
-            songTitle: "VI Scose Poise",
-            labelName: "Warp",
-            artistName: "Autechre",
-            releaseTitle: "Confield"
-        )
-
-        // When
-        let result = await service.fetchMetadata(for: playcut)
-
-        // Then — retried rather than surfaced, and the retry's 200 wins.
-        #expect(result.album.label == "Warp Records")
-        #expect(result.album.releaseYear == 2001)
-        #expect(QueuedStubURLProtocol.capturedRequests().count == 2)
     }
 
     @Test("Retries a transient networking blip (URLError) with backoff, then succeeds")

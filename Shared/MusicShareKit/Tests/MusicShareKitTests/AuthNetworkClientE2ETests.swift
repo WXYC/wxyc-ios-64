@@ -22,9 +22,16 @@ struct AuthNetworkClientE2ETests {
 
     let baseURL = "https://api.wxyc.org"
 
-    /// Creates a client that uses an ephemeral session to avoid cookie contamination between tests.
+    /// Creates a client on the production cookie-free session.
+    ///
+    /// Deliberately takes the `init(session:)` default rather than injecting
+    /// one: this is the only suite that talks to real better-auth, so it is
+    /// the only place the #948 cookie wedge is observable at all. Injecting a
+    /// plain `.ephemeral` session here — as this helper used to, on the same
+    /// false premise the fix corrected — hands it a live in-memory cookie jar
+    /// and reproduces the bug instead of guarding against it.
     func makeClient() -> DefaultAuthNetworkClient {
-        DefaultAuthNetworkClient(session: URLSession(configuration: .ephemeral))
+        DefaultAuthNetworkClient()
     }
 
     @Test("Anonymous sign-in returns a valid session")

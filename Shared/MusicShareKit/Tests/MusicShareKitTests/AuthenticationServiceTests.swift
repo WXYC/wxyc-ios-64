@@ -572,15 +572,11 @@ struct AuthenticationServiceTests {
         // When — the server rejects that JWT and a caller forces a reauth.
         let token = try await service.reauthenticate(reason: .unauthorized)
 
-        // Then — recovery is a one-round-trip /auth/token mint, NOT a second
-        // anonymous sign-in. `reauthenticate(reason:)` deliberately clears
-        // cachedSession before refreshing, so performRefresh's
-        // `?? cachedSession` fallback has nothing left to recover from
-        // unless the rejected session is threaded through explicitly. Without
-        // that, a Keychain-miss device mints a brand-new anonymous DB user on
-        // every single 401 — the orphaned-user leak #948 set out to close,
-        // just relocated from the proactive-refresh path to the forced-reauth
-        // one.
+        // Then — recovery is a one-round-trip /auth/token mint against the
+        // rejected session, not a second anonymous sign-in. Without the
+        // session being threaded past `reauthenticate`'s cache clear, a
+        // Keychain-miss device mints a fresh anonymous DB user on every 401:
+        // #948's orphaned-user leak, relocated to the forced-reauth path.
         #expect(token.contains("."))
         #expect(networkClient.signInCallCount == 1, "must not mint a second anonymous user when the in-memory session is still good")
         #expect(networkClient.fetchJWTCallCount == 2, "one mint from the sign-in, one from the recovered mint path")
@@ -853,15 +849,10 @@ struct AuthenticationServiceTests {
         _ = try await service.ensureAuthenticated()
         #expect(networkClient.signInCallCount == 1)
 
-        // Second call: cachedSession's JWT is already inside the freshness
-        // margin, so ensureAuthenticated() must refresh. Because storage
-        // never actually persisted anything, loadFromKeychain() returns
-        // nil. Before the fix, performRefresh's `if let session = loaded`
-        // branch was skipped entirely and it fell straight to
-        // freshSignIn() — resending session S1's cookie to
-        // /auth/sign-in/anonymous and reproducing IOS-37's 400 loop. Fixed:
-        // `loadFromKeychain() ?? cachedSession` recovers session S1 and
-        // mints via /auth/token instead.
+        // Second call: the cached JWT is inside the freshness margin, and the
+        // Keychain is still empty. The refresh must recover the in-memory
+        // session and mint from it rather than starting a new anonymous
+        // identity — escalating to freshSignIn() here is the #948 wedge.
         let token2 = try await service.ensureAuthenticated()
         #expect(networkClient.signInCallCount == 1, "must not re-sign-in on a Keychain miss when cachedSession still holds a good session")
         #expect(networkClient.fetchJWTCallCount == 2, "one mint from freshSignIn, one from the recovered mint path")
@@ -892,14 +883,10 @@ struct AuthenticationServiceTests {
 
 // MARK: - MockThrowingTokenStorage
 
-/// `TokenStorage` test double whose `load()`/`save()` can each be
-/// independently configured to throw. Used by the D1 migration tests
-/// (`loadError` only) to drive the decode-vs-operational disambiguation in
-/// `ensureAuthenticated()`'s catch, and by the #948 keychain-miss-fallback
-/// test (`saveError` only, `load()` returning nil) to reproduce a Keychain
-/// write that silently fails to persist — without standing up a real
-/// Keychain (which the SPM unit-test bundle can't access on the simulator
-/// due to errSecMissingEntitlement).
+/// `TokenStorage` test double whose `load()` and `save()` can each be
+/// independently configured to throw; `load()` otherwise returns nil.
+/// Avoids standing up a real Keychain, which the SPM unit-test bundle can't
+/// access on the simulator (errSecMissingEntitlement).
 private final class MockThrowingTokenStorage: TokenStorage, @unchecked Sendable {
     let loadError: Error?
     let saveError: Error?

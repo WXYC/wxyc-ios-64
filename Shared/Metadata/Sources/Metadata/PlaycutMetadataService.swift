@@ -678,12 +678,18 @@ public actor PlaycutMetadataService {
     /// me" — `fetchAlbumWithRetry` checks for cancellation before this
     /// predicate is ever consulted.
     ///
-    /// 429 joins the 5xx range as transient (#948): a wedged anonymous-auth
-    /// session hammering `/auth/sign-in/anonymous` can burn through
-    /// Backend-Service's rate limit, and a wedge on one device shouldn't
-    /// turn one rate-limited album lookup into a surfaced failure when the
-    /// existing backoff schedule (``albumFetchRetryDelays``) already spaces
-    /// retries out.
+    /// 429 joins the 5xx range as transient (#948): a rate limit is by
+    /// definition temporary, so it should not surface as a failed lookup.
+    ///
+    /// Known limitation — this retries blind. Backend-Service's proxy
+    /// limiter is a 60s fixed window (`RATE_LIMIT_PROXY_WINDOW_MS`) and says
+    /// so in the response, but `Core.HTTPStatusError` carries only the
+    /// status code; `validateSuccessStatus()` discards the headers, so no
+    /// consumer in this app can read `Retry-After`. ``albumFetchRetryDelays``
+    /// therefore spends its 600ms budget inside a window that is two orders
+    /// of magnitude longer, and the retry usually 429s again. Honoring the
+    /// server's own backoff means widening `HTTPStatusError` in `Core`,
+    /// which is a change for every proxy consumer and not for this fix.
     private static func isTransient(_ error: any Error) -> Bool {
         if let httpError = error as? HTTPStatusError {
             return httpError.statusCode == 429 || (500...599).contains(httpError.statusCode)
