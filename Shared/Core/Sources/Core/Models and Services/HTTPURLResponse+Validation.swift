@@ -14,12 +14,34 @@ import Foundation
 extension HTTPURLResponse {
     /// Validates that the HTTP status code is in the 2xx success range.
     ///
-    /// - Throws: ``HTTPStatusError`` carrying `statusCode` if the status code
-    ///   is outside the 200...299 range.
+    /// - Throws: ``HTTPStatusError`` carrying `statusCode` (and, when the
+    ///   response advertised one, `retryAfter`) if the status code is
+    ///   outside the 200...299 range.
     public func validateSuccessStatus() throws {
         guard (200...299).contains(statusCode) else {
-            throw HTTPStatusError(statusCode: statusCode)
+            throw HTTPStatusError(statusCode: statusCode, retryAfter: retryAfterDelay)
         }
+    }
+
+    /// The server-advertised retry delay from a `Retry-After` header,
+    /// parsed as delta-seconds — RFC 9110 §10.2.3's `delay-seconds` form, a
+    /// non-negative decimal integer of seconds to wait.
+    ///
+    /// The header's other permitted form, an HTTP-date, is deliberately
+    /// **not** parsed. Backend-Service's proxy rate limiter
+    /// (`express-rate-limit` configured with `standardHeaders: true`, in
+    /// `apps/backend/middleware/rateLimiting.ts`) unconditionally emits
+    /// delta-seconds — `Retry-After: <windowSeconds>` — and never an
+    /// HTTP-date, so a date parser here would guard against a format this
+    /// app has never received on the wire. A response carrying an
+    /// HTTP-date `Retry-After` is treated the same as a response with no
+    /// header at all: `nil`.
+    private var retryAfterDelay: TimeInterval? {
+        guard let headerValue = value(forHTTPHeaderField: "Retry-After") else { return nil }
+        guard let seconds = TimeInterval(headerValue.trimmingCharacters(in: .whitespaces)),
+              seconds >= 0
+        else { return nil }
+        return seconds
     }
 }
 
@@ -36,8 +58,17 @@ public struct HTTPStatusError: Error, Equatable {
     /// The non-2xx HTTP status code the server responded with.
     public let statusCode: Int
 
-    public init(statusCode: Int) {
+    /// The server's advertised backoff for this response, parsed from a
+    /// `Retry-After` header when the response carried one in delta-seconds
+    /// form (see ``HTTPURLResponse/validateSuccessStatus()``). `nil` when
+    /// the response had no such header, or the header wasn't in a form this
+    /// app parses. A retrying consumer may prefer this over its own
+    /// hard-coded backoff schedule; nothing requires it to.
+    public let retryAfter: TimeInterval?
+
+    public init(statusCode: Int, retryAfter: TimeInterval? = nil) {
         self.statusCode = statusCode
+        self.retryAfter = retryAfter
     }
 }
 
