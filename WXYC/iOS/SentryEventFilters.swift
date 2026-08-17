@@ -36,6 +36,17 @@ enum SentryEventFilters {
     /// the SDK, and a loose match would start regrouping unrelated events.
     nonisolated static let appHangMechanismType = "AppHang"
 
+    /// Stands in for the in-app function when the sampled stack has none.
+    ///
+    /// Named rather than empty so the bucket describes itself in the Sentry UI.
+    /// This is not a degenerate case to engineer around: Sentry truncates a
+    /// thread at 100 frames and keeps the leaf-most ones, so deep SwiftUI
+    /// render recursion loses every app frame near the root. IOS-23 is exactly
+    /// 100 frames of AttributeGraph → CoreText with no app frame anywhere.
+    /// Those events really are one category — "render stall with no
+    /// attributable app frame" — and collapsing them together is the point.
+    nonisolated static let noInAppFrame = "no-app-frame"
+
     /// The `beforeSend` body, and the place to add the next filter.
     ///
     /// Two rules hold for anything added here, because this runs on *every*
@@ -84,7 +95,10 @@ enum SentryEventFilters {
             // Both sides are wall-clock: `timestamp` is stamped when the hang
             // was *detected*, not when it is sent, which is what makes the
             // fatal case below work.
-            secondsSinceLaunch: event.timestamp?.timeIntervalSince(launchedAt)
+            secondsSinceLaunch: event.timestamp?.timeIntervalSince(launchedAt),
+            // The ANR integration hangs thread 0's stacktrace off the exception
+            // itself, so this is the crashing thread's.
+            innermostInAppFunction: innermostInAppFunction(in: exception?.stacktrace?.frames)
         ) else {
             return
         }
@@ -109,37 +123,88 @@ enum SentryEventFilters {
     /// - The phase is the actionable axis: a stall during first render is a
     ///   different engineering problem from one an hour into a session, and
     ///   nothing else on the event distinguishes them.
+    /// - The in-app function is what keeps the first three from over-collapsing.
+    ///   With non-fully-blocking hangs dropped, only `App Hang Fully Blocked`
+    ///   and its `Fatal` counterpart can ever be created, so the first three
+    ///   components alone have exactly three reachable values for the whole app
+    ///   — a Metal stall, a playlist decode and an artwork decode would share
+    ///   one issue, and resolving it after fixing one cause would re-open it as
+    ///   a regression from an unrelated one.
+    ///
+    /// Measured against 30 days of real events before shipping this: ~97% of
+    /// hang events carry at least one in-app frame and get a specific
+    /// attribution, so the fallback is rare by volume even though it covers
+    /// roughly a third of the *distinct* issues — all of them one- or two-event
+    /// SwiftUI render stalls that genuinely belong together.
     ///
     /// - Parameters:
     ///   - mechanismType: `exceptions.first.mechanism.type`.
     ///   - exceptionType: `exceptions.first.type`.
     ///   - secondsSinceLaunch: Event timestamp minus this process's launch, or
     ///     `nil` when the event carries no timestamp.
+    ///   - innermostInAppFunction: The deepest app frame's function name, or
+    ///     `nil` when the sampled stack has none.
     /// - Returns: The fingerprint, or `nil` to leave grouping alone.
     nonisolated static func appHangFingerprint(
         mechanismType: String?,
         exceptionType: String?,
-        secondsSinceLaunch: TimeInterval?
+        secondsSinceLaunch: TimeInterval?,
+        innermostInAppFunction: String?
     ) -> [String]? {
         guard mechanismType == appHangMechanismType else {
             return nil
         }
 
-        return ["app-hang", exceptionType ?? "unknown", launchPhase(secondsSinceLaunch: secondsSinceLaunch)]
+        return [
+            "app-hang",
+            exceptionType ?? "unknown",
+            launchPhase(secondsSinceLaunch: secondsSinceLaunch),
+            innermostInAppFunction ?? noInAppFrame,
+        ]
+    }
+
+    /// The deepest frame belonging to this app, which is the most specific
+    /// attribution the sampled stack offers.
+    ///
+    /// Sentry orders frames root-first and leaf-last —
+    /// `SentryStacktraceBuilder` reverses them under the comment "The frames
+    /// must be ordered from caller to callee, or oldest to youngest" — so the
+    /// innermost app frame is the *last* one, not the first. That direction is
+    /// the whole value of this: on the real IOS-4C event it picks
+    /// `AudioEnginePlayer.play` over its caller
+    /// `MP3Streamer.handleDecodedBuffer`. Reversing it would silently make
+    /// every fingerprint coarser.
+    ///
+    /// The function name only — never the line number or instruction address,
+    /// which would re-fragment the issue on every edit to an unrelated line in
+    /// the same file. Frames with no symbol are skipped rather than allowed to
+    /// win with an empty name, and an absent `inApp` reads as not-in-app.
+    ///
+    /// - Parameter frames: The crashing thread's frames, root-first.
+    /// - Returns: The deepest named in-app function, or `nil` if there is none.
+    nonisolated static func innermostInAppFunction(in frames: [Frame]?) -> String? {
+        frames?.last { $0.inApp?.boolValue == true && $0.function?.isEmpty == false }?.function
     }
 
     /// Whether the hang happened during launch, later on, or at a time this
     /// process cannot speak to.
     ///
-    /// Negative elapsed time is not a defensive check, it is a real case with a
-    /// real cause. Under tracking V2 the SDK writes the hang event to disk when
-    /// the hang starts and only sends it when the hang *ends*; if the watchdog
-    /// kills the app first, the stored event is replayed on the next launch as
-    /// a `Fatal` hang, still carrying the timestamp of the session that died
-    /// (`SentryANRTrackingIntegration.captureStoredAppHangEvent`). Measured
-    /// against the new process's launch that is negative — often by hours — and
-    /// calling it a launch hang would put the most severe class of hang in the
-    /// wrong bucket. `unknown` says what is actually known.
+    /// Negative elapsed time is not a defensive check, and it is not an edge
+    /// case either — for fatal hangs it is the *only* outcome. Under tracking
+    /// V2 the SDK writes the hang event to disk when the hang starts and only
+    /// sends it when the hang ends; if the watchdog kills the app first, the
+    /// stored event is replayed on the next launch as a `Fatal` hang, still
+    /// carrying the timestamp of the session that died. That replay happens in
+    /// `captureStoredAppHangEvent`, called from the integration's `install`
+    /// — i.e. inside `SentrySDK.start`, strictly before any hang of the current
+    /// session could be stored. So a replayed event's timestamp is always from
+    /// a dead session and always precedes this process's launch.
+    ///
+    /// The practical consequence, worth knowing before reading a dashboard:
+    /// every `Fatal` hang is `unknown`, and no non-fatal hang ever is unless the
+    /// event carries no timestamp at all. Splitting fatal hangs by phase would
+    /// need the stored event's own session start, which is not on the event.
+    /// `unknown` says what is actually known.
     nonisolated private static func launchPhase(secondsSinceLaunch: TimeInterval?) -> String {
         guard let secondsSinceLaunch, secondsSinceLaunch >= 0 else {
             return "unknown"
