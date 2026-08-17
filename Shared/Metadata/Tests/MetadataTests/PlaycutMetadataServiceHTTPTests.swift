@@ -614,4 +614,116 @@ struct PlaycutMetadataServiceHTTPTests {
         #expect(QueuedStubURLProtocol.capturedRequests().count == 1, "A 401 is not transient, so it is not retried")
         #expect(mockCache.setKeys.isEmpty, "An auth failure must not be recorded as 'this album does not exist'")
     }
+
+    // MARK: - Server-advertised Retry-After (#957)
+
+    /// Backend-Service's proxy limiter advertises a 60s `Retry-After` on a
+    /// 429 — two orders of magnitude past ``albumFetchRetryDelays``' ~600ms
+    /// budget. Sleeping 60s inside a card-open fetch is worse for the user
+    /// than failing fast, so a delay that exceeds the remaining retry budget
+    /// abandons the retry immediately rather than spending even the first
+    /// scheduled attempt: exactly one request goes out.
+    @Test("Abandons the retry when the server's Retry-After exceeds the remaining retry budget")
+    func abandonsRetryWhenServerDelayExceedsBudget() async throws {
+        let mockURLSession = QueuedStubURLProtocol.session { request in
+            let response = HTTPURLResponse(
+                url: request.url!,
+                statusCode: 429,
+                httpVersion: nil,
+                headerFields: ["Retry-After": "60"]
+            )!
+            return (Data(#"{"error": "Too Many Requests"}"#.utf8), response)
+        }
+
+        let mockCache = CountingCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        let playcut = Playcut.stub(
+            songTitle: "VI Scose Poise",
+            labelName: "Warp",
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then — a single attempt: the 60s advertised delay dwarfs the
+        // ~600ms schedule budget, so no retry is even scheduled.
+        #expect(result.album.label == "Warp", "Should fall back to playcut label when the retry is abandoned")
+        #expect(QueuedStubURLProtocol.capturedRequests().count == 1, "A Retry-After beyond the retry budget must not be retried")
+        #expect(mockCache.setKeys.isEmpty, "An abandoned transient failure must not be recorded as a negative answer")
+    }
+
+    /// A server-advertised delay that fits inside the remaining retry budget
+    /// is preferred over ``albumFetchRetryDelays``' own hard-coded first
+    /// delay (100ms): the retry sleeps ~200ms (the server's number), not
+    /// ~100ms (the schedule's), which distinguishes "server value honored"
+    /// from "schedule ran unchanged".
+    @Test("Honors a server Retry-After within the remaining retry budget, in place of the schedule's own delay")
+    func honorsServerDelayWithinBudget() async throws {
+        let attemptCount = OSAllocatedUnfairLock(initialState: 0)
+        let mockURLSession = QueuedStubURLProtocol.session { request in
+            let attempt = attemptCount.withLock { count -> Int in
+                count += 1
+                return count
+            }
+            if attempt == 1 {
+                let response = HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 429,
+                    httpVersion: nil,
+                    headerFields: ["Retry-After": "0.2"]
+                )!
+                return (Data(#"{"error": "Too Many Requests"}"#.utf8), response)
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            let body = Data("""
+            {
+                "discogsReleaseId": 12345,
+                "label": "Warp Records",
+                "releaseYear": 2001,
+                "spotifyUrl": null,
+                "appleMusicUrl": null,
+                "youtubeMusicUrl": null,
+                "bandcampUrl": null,
+                "soundcloudUrl": null
+            }
+            """.utf8)
+            return (body, response)
+        }
+
+        let mockCache = CountingCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        let playcut = Playcut.stub(
+            songTitle: "VI Scose Poise",
+            labelName: "Warp",
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        )
+
+        // When
+        let timer = Core.Timer.start()
+        let result = await service.fetchMetadata(for: playcut)
+        let elapsed = timer.duration()
+
+        // Then — the retry succeeds after honoring the server's 200ms delay,
+        // which sits well above the schedule's 100ms first delay and well
+        // below its own 600ms total budget.
+        #expect(result.album.label == "Warp Records")
+        #expect(attemptCount.withLock { $0 } == 2)
+        #expect(elapsed >= 0.18, "Should have slept the server-advertised ~200ms, not the schedule's 100ms")
+        #expect(elapsed < 0.6, "Should not have fallen back to a slower delay from the schedule")
+    }
 }
