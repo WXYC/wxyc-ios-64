@@ -30,6 +30,9 @@ import Foundation
 ///   they differ in which system APIs exist at all. The `BGTaskScheduler` issues
 ///   above are simulator-only in a way no device build can reproduce, so folding
 ///   them together would keep a whole class of non-bug noise in with real ones.
+/// - ``adhoc`` is a release-optimised build a developer put on a device
+///   themselves. Still not a real user, but it does not behave like ``debug``:
+///   it is built `-O`, which is exactly why the Profile action exists.
 /// - ``testflight`` is a beta tester on real hardware: a genuine report, but one
 ///   whose fix does not need a submission to reach the reporter.
 /// - ``production`` is what the name has always claimed and now finally means.
@@ -45,6 +48,9 @@ public enum BuildEnvironment: String, Sendable {
     case simulator
     /// A debug-configured build on real hardware: an Xcode run.
     case debug
+    /// A release-configured build installed outside the store — the Profile
+    /// action, an ad-hoc build, an enterprise install.
+    case adhoc
     /// A release archive installed through TestFlight.
     case testflight
     /// A release archive installed from the App Store. Real users, at last.
@@ -66,22 +72,41 @@ public extension BuildEnvironment {
     /// 2. A debug build that got past the first arm is on real hardware, which
     ///    means someone ran it from Xcode. Both `Debug` and `Debug TestFlight`
     ///    define `DEBUG` and both land here.
-    /// 3. What remains is a release archive, and the receipt is the only thing
+    /// 3. What remains is a release build, and the receipt is the only thing
     ///    that separates a beta tester from a real one. It has to be: the scheme
     ///    archives TestFlight and App Store builds from the same `Release`
     ///    configuration, so no compile-time fact tells them apart.
+    /// 4. A release build with no receipt is still not necessarily a real user.
+    ///    The scheme's *Profile* action builds `Release` too, so profiling a
+    ///    device — the thing you do to chase a hang — used to file as production
+    ///    traffic. Every install that did not come from the store carries
+    ///    `embedded.mobileprovision`; a store build never does.
+    ///
+    /// The receipt is checked before the profile, and the order is deliberate.
+    /// A sandbox receipt is *positive* evidence of TestFlight, whereas a missing
+    /// profile is only indirect evidence about it — and whether TestFlight
+    /// strips `embedded.mobileprovision` is not a thing this code should have to
+    /// be right about. Receipt-first classifies TestFlight correctly either way.
     ///
     /// - Parameters:
     ///   - isDebugBuild: Whether `DEBUG` was defined when this was compiled.
     ///   - isSimulator: Whether the build targets the simulator.
     ///   - hasSandboxReceipt: Whether the App Store receipt is the sandbox one.
-    init(isDebugBuild: Bool, isSimulator: Bool, hasSandboxReceipt: Bool) {
+    ///   - hasProvisioningProfile: Whether `embedded.mobileprovision` is bundled.
+    init(
+        isDebugBuild: Bool,
+        isSimulator: Bool,
+        hasSandboxReceipt: Bool,
+        hasProvisioningProfile: Bool
+    ) {
         if isSimulator {
             self = .simulator
         } else if isDebugBuild {
             self = .debug
         } else if hasSandboxReceipt {
             self = .testflight
+        } else if hasProvisioningProfile {
+            self = .adhoc
         } else {
             self = .production
         }
@@ -110,10 +135,21 @@ public extension BuildEnvironment {
         let isDebugBuild = false
         #endif
 
+        // `appStoreReceiptURL` is deprecated for Swift only, from iOS 18.0
+        // (`NSBundle.h`, under `#if defined(__swift__)`), in favour of
+        // StoreKit's `AppTransaction.shared`. This app's floor is 18.6, so the
+        // call warns unconditionally. It is kept anyway, for now: reading the
+        // receipt's *name* is synchronous and infallible, while
+        // `AppTransaction.shared` is `async throws` and can fail with no
+        // network — and this property is read during `SentrySDK.start`, on the
+        // launch path, where neither suspending nor failing is acceptable.
+        // Revisiting it means giving `current` an async form and a cached
+        // answer, which is its own change.
         return BuildEnvironment(
             isDebugBuild: isDebugBuild,
             isSimulator: isSimulator,
-            hasSandboxReceipt: hasSandboxReceipt(at: Bundle.main.appStoreReceiptURL)
+            hasSandboxReceipt: hasSandboxReceipt(at: Bundle.main.appStoreReceiptURL),
+            hasProvisioningProfile: hasProvisioningProfile(in: .main)
         )
     }
 }
@@ -132,6 +168,20 @@ extension BuildEnvironment {
     /// - Returns: `true` for a sandbox receipt.
     static func hasSandboxReceipt(at receiptURL: URL?) -> Bool {
         receiptURL?.lastPathComponent == sandboxReceiptName
+    }
+
+    /// Whether the bundle carries an embedded provisioning profile, i.e. it was
+    /// installed by some route other than the App Store.
+    ///
+    /// Xcode-installed, ad-hoc and enterprise builds all ship
+    /// `embedded.mobileprovision` inside the app bundle; the store strips it
+    /// during processing. Takes the bundle so a test can point at one that does
+    /// not have it — `Bundle.main` under a test runner is not the app bundle.
+    ///
+    /// - Parameter bundle: The bundle to inspect, normally `.main`.
+    /// - Returns: `true` when a provisioning profile is bundled.
+    static func hasProvisioningProfile(in bundle: Bundle) -> Bool {
+        bundle.url(forResource: "embedded", withExtension: "mobileprovision") != nil
     }
 
     private static let sandboxReceiptName = "sandboxReceipt"
