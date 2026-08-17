@@ -809,22 +809,19 @@
 /* Begin PBXShellScriptBuildPhase section */
 		EE041E6CCD134EE28A57C03B /* Upload Debug Symbols to Sentry */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			inputPaths = (
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+				"${SRCROOT}/scripts/upload-debug-symbols.sh",
 			);
 			name = "Upload Debug Symbols to Sentry";
 			shellPath = /bin/sh;
 			shellScript = (
-				"if which sentry-cli >/dev/null; then",
-				"  export SENTRY_ORG=wxyc",
-				"  export SENTRY_PROJECT=ios",
-				"  ERROR=$(sentry-cli debug-files upload --include-sources \"$DWARF_DSYM_FOLDER_PATH\" 2>&1 >/dev/null)",
-				"  if [ ! $? -eq 0 ]; then",
-				"    echo \"warning: sentry-cli - $ERROR\"",
-				"  fi",
-				"else",
-				"  echo \"warning: sentry-cli not installed, skipping debug symbol upload\"",
-				"fi",
+				"# The logic lives in scripts/upload-debug-symbols.sh so it can be",
+				"# regression-tested (scripts/tests/test-upload-debug-symbols.sh)",
+				"# rather than edited blind inside project.pbxproj. It warns on a",
+				"# dev Mac and fails the build in CI; see the script's header.",
+				"exec \"${SRCROOT}/scripts/upload-debug-symbols.sh\"",
 				"",
 			);
 		};
