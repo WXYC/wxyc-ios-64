@@ -14,15 +14,10 @@ mkdir -p ~/Library/org.swift.swiftpm/security/
 cp "$SCRIPT_DIR/macros.json" ~/Library/org.swift.swiftpm/security/
 echo "   Copied macros.json to Swift security directory"
 
-# Tell the build phases they are on a runner.
-#
-# scripts/upload-debug-symbols.sh is strict on CI and lenient locally, and it
-# used to learn which it was from $CI alone. That variable is set for this
-# script — Xcode Cloud documents its environment as reaching custom build
-# scripts — but a run-script phase nested inside xcodebuild is a further hop,
-# and if $CI doesn't survive it the phase silently reverts to warnings and an
-# unsymbolicated archive ships green. A file in the checkout has no hop to
-# survive. .ci-tools/ is gitignored, and the runner is ephemeral.
+# Tell the build phase it is on a runner. A marker file rather than $CI: see
+# install-sentry-cli.sh's header on why anything a run-script phase nested
+# inside xcodebuild has to read belongs on disk. .ci-tools/ is gitignored and
+# the runner is ephemeral, so this costs a mkdir and a truncate.
 mkdir -p "$REPO_ROOT/.ci-tools"
 : > "$REPO_ROOT/.ci-tools/ci-runner"
 echo "   Marked this checkout as a CI runner"
@@ -30,24 +25,29 @@ echo "   Marked this checkout as a CI runner"
 # Install sentry-cli and its credentials for the "Upload Debug Symbols to
 # Sentry" build phase. Xcode Cloud runners ship neither. (#955)
 #
-# How hard a failure here is depends on what this build is for. An archive
-# that cannot upload its dSYMs ships to TestFlight with no server-side
-# symbolication, so it should die here at minute zero rather than twenty
-# minutes later in the build phase — hence --require-auth and the exit. A
-# build or test workflow uploads nothing (its dSYMs belong to a run that
-# reports no events), and killing it over a transient sentry.io outage would
-# be its own kind of tax, so there the failure is reported and the build
-# carries on. Either way
-# scripts/upload-debug-symbols.sh is the backstop: it errors in CI whenever
-# an actual dSYM goes un-uploaded — which is also what happens if
-# CI_XCODEBUILD_ACTION turns out not to be set this early in the run. The
-# fast-fail is an optimization on top of the guarantee, not the guarantee.
+# How much this run cares depends on what it is for:
+#
+#   An archive that cannot upload its dSYMs ships to TestFlight with no
+#   server-side symbolication, so it dies here at minute zero rather than
+#   twenty minutes on in the build phase. install-sentry-cli.sh prints its own
+#   error: naming the fix, so there is nothing to add on the way out.
+#
+#   A test workflow never uploads at all — upload-debug-symbols.sh skips any CI
+#   build that can't ship — so installing a 27 MiB binary it will never open is
+#   pure tax on every test run. Skipped outright.
+#
+#   Anything else (a plain build, or an action this doesn't recognize) installs
+#   and carries on if it can't: a Release build workflow does need the binary,
+#   and killing an entire run over a transient sentry.io outage would be its
+#   own kind of tax. upload-debug-symbols.sh is the backstop either way — it
+#   errors in CI whenever an actual dSYM goes un-uploaded, including when
+#   CI_XCODEBUILD_ACTION turns out not to be set this early in the run. The
+#   fast-fail is an optimization on top of that guarantee, not the guarantee.
 echo "📋 Installing sentry-cli..."
-if [[ "${CI_XCODEBUILD_ACTION:-}" == "archive" ]]; then
-    if ! "$SCRIPT_DIR/install-sentry-cli.sh" --require-auth; then
-        echo "error: sentry-cli setup failed and this is an archive build, which must upload dSYMs to Sentry"
-        exit 1
-    fi
+if [[ "${CI_XCODEBUILD_ACTION:-}" == "test" ]]; then
+    echo "   Test workflow: skipping (this build won't ship, so the upload phase skips too)"
+elif [[ "${CI_XCODEBUILD_ACTION:-}" == "archive" ]]; then
+    "$SCRIPT_DIR/install-sentry-cli.sh" --require-auth || exit 1
 elif ! "$SCRIPT_DIR/install-sentry-cli.sh"; then
     echo "warning: sentry-cli setup failed; a build that ships — an archive, or any non-Debug configuration — will fail in the upload build phase. A test workflow will not: it skips the upload."
 fi

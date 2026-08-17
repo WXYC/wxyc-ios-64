@@ -44,8 +44,6 @@
 #   SENTRY_CLI_INSTALL_DIR  override the install directory
 #   SENTRY_CLI_INSTALLER    path to an installer script to run instead of
 #                           downloading https://sentry.io/get-cli/ (tests)
-#   SENTRY_CLI_RC_PATH      override the config file written (default
-#                           ~/.sentryclirc)
 #
 # Tested by scripts/tests/test-install-sentry-cli.sh.
 
@@ -64,7 +62,7 @@ PINNED_SENTRY_CLI_VERSION="3.6.2"
 VERSION="${SENTRY_CLI_VERSION:-$PINNED_SENTRY_CLI_VERSION}"
 INSTALL_DIR="${SENTRY_CLI_INSTALL_DIR:-${REPO_ROOT}/.ci-tools/bin}"
 INSTALL_PATH="${INSTALL_DIR}/sentry-cli"
-RC_PATH="${SENTRY_CLI_RC_PATH:-${HOME:-}/.sentryclirc}"
+RC_PATH="${HOME:-}/.sentryclirc"
 
 REQUIRE_AUTH=false
 for arg in "$@"; do
@@ -144,47 +142,40 @@ fi
 # 2. Give it something to authenticate with.
 # ---------------------------------------------------------------------------
 
+# Two things count as a credential: a token= line in $RC_PATH, or
+# SENTRY_AUTH_TOKEN, which sentry-cli reads on its own. The file gets written
+# only when there isn't one already — on a dev Mac that file holds the
+# developer's own token, and this script is meant to be runnable there.
+#
+# Never-clobber is not never-check, though. An empty file, or a stale
+# [defaults]-only section, satisfies "the file exists" while leaving the
+# archive exactly as unable to upload as it was.
 if [[ -f "$RC_PATH" ]]; then
-    # Never clobber one that already exists — on a dev Mac that file is the
-    # developer's own token, and this script is meant to be runnable there.
     echo "   Leaving the existing ${RC_PATH} in place"
-
-    # Never-clobber is not never-check. An rc file with no token in it — an
-    # empty one, a stale [defaults]-only section — satisfies "the file exists"
-    # while leaving the archive exactly as unable to upload as it was, and
-    # --require-auth exists to catch that here rather than twenty minutes on.
-    if grep -q '^[[:space:]]*token[[:space:]]*=' "$RC_PATH"; then
-        exit 0
-    fi
-    if [[ -n "${SENTRY_AUTH_TOKEN:-}" ]]; then
-        echo "   It carries no token, but SENTRY_AUTH_TOKEN is set and takes precedence"
-        exit 0
-    fi
-    if [[ "$REQUIRE_AUTH" == "true" ]]; then
-        echo "error: ${RC_PATH} exists but carries no token= line, and SENTRY_AUTH_TOKEN is not set, so this archive could not upload its dSYMs to Sentry. Add SENTRY_AUTH_TOKEN as a secret environment variable on the Xcode Cloud workflow; see docs/configuration.md."
+    grep -q '^[[:space:]]*token[[:space:]]*=' "$RC_PATH" && exit 0
+    missing="${RC_PATH} carries no token= line"
+elif [[ -n "${SENTRY_AUTH_TOKEN:-}" ]]; then
+    # umask first: the token must never exist, even momentarily, at a mode
+    # other than 600.
+    umask 077
+    if ! printf '[auth]\ntoken=%s\n' "$SENTRY_AUTH_TOKEN" > "$RC_PATH"; then
+        echo "error: could not write ${RC_PATH}"
         exit 1
     fi
-    echo "warning: ${RC_PATH} carries no token= line and SENTRY_AUTH_TOKEN is not set; debug symbols will not be uploaded"
+    chmod 600 "$RC_PATH"
+    echo "   Wrote Sentry credentials to ${RC_PATH} (mode 600)"
     exit 0
+else
+    missing="there is no ${RC_PATH}"
 fi
 
-if [[ -z "${SENTRY_AUTH_TOKEN:-}" ]]; then
-    if [[ "$REQUIRE_AUTH" == "true" ]]; then
-        echo "error: SENTRY_AUTH_TOKEN is not set and there is no ${RC_PATH}, so this archive could not upload its dSYMs to Sentry. Add SENTRY_AUTH_TOKEN as a secret environment variable on the Xcode Cloud workflow; see docs/configuration.md."
-        exit 1
-    fi
-    echo "warning: SENTRY_AUTH_TOKEN is not set and there is no ${RC_PATH}; debug symbols will not be uploaded"
+if [[ -n "${SENTRY_AUTH_TOKEN:-}" ]]; then
+    echo "   ${missing}, but SENTRY_AUTH_TOKEN is set and sentry-cli reads it directly"
     exit 0
 fi
-
-# umask first: the token must never exist, even momentarily, at a mode other
-# than 600.
-umask 077
-if ! printf '[auth]\ntoken=%s\n' "$SENTRY_AUTH_TOKEN" > "$RC_PATH"; then
-    echo "error: could not write ${RC_PATH}"
+if [[ "$REQUIRE_AUTH" == "true" ]]; then
+    echo "error: ${missing} and SENTRY_AUTH_TOKEN is not set, so this archive could not upload its dSYMs to Sentry. Add SENTRY_AUTH_TOKEN as a secret environment variable on the Xcode Cloud workflow; see docs/configuration.md."
     exit 1
 fi
-chmod 600 "$RC_PATH"
-echo "   Wrote Sentry credentials to ${RC_PATH} (mode 600)"
-
+echo "warning: ${missing} and SENTRY_AUTH_TOKEN is not set; debug symbols will not be uploaded"
 exit 0

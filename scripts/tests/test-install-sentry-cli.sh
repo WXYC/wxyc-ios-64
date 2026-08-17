@@ -33,58 +33,7 @@ if [[ ! -f "$REAL_SCRIPT" ]]; then
     exit 2
 fi
 
-typeset -g PASS=0
-typeset -g FAIL=0
-
-ok() {
-    PASS=$((PASS + 1))
-    echo "ok - $1"
-}
-
-fail() {
-    FAIL=$((FAIL + 1))
-    echo "FAIL - $1"
-    shift
-    for line in "$@"; do
-        echo "    $line"
-    done
-}
-
-expect_contains() {
-    local desc="$1" haystack="$2" needle="$3"
-    if [[ "$haystack" == *"$needle"* ]]; then
-        ok "$desc"
-    else
-        fail "$desc" "expected to contain: $needle" "--- actual ---" "${(f)haystack}" "--------------"
-    fi
-}
-
-expect_not_contains() {
-    local desc="$1" haystack="$2" needle="$3"
-    if [[ "$haystack" != *"$needle"* ]]; then
-        ok "$desc"
-    else
-        fail "$desc" "expected NOT to contain: $needle" "--- actual ---" "${(f)haystack}" "--------------"
-    fi
-}
-
-expect_exit() {
-    local desc="$1" actual="$2" expected="$3" out="$4"
-    if [[ "$actual" == "$expected" ]]; then
-        ok "$desc"
-    else
-        fail "$desc" "expected exit $expected, got $actual" "--- actual ---" "${(f)out}" "--------------"
-    fi
-}
-
-expect_eq() {
-    local desc="$1" actual="$2" expected="$3"
-    if [[ "$actual" == "$expected" ]]; then
-        ok "$desc"
-    else
-        fail "$desc" "expected: $expected" "actual:   $actual"
-    fi
-}
+source "${REPO_ROOT}/scripts/tests/harness.zsh"
 
 FIXTURE=$(mktemp -d)
 trap 'rm -rf "$FIXTURE"' EXIT
@@ -129,17 +78,18 @@ chmod +x "$FAILING_INSTALLER"
 PIN="4.2.1"
 
 run_install() {
-    # usage: run_install <home> <repo-root> <token> [extra args...]
-    local home="$1" root="$2" token="$3"
-    shift 3
+    # usage: run_install <token> [extra args...]. HOME and the install dir come
+    # from whichever case new_case just set up.
+    local token="$1"
+    shift
     env -i \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
-        HOME="$home" \
+        HOME="$CASE_HOME" \
         SENTRY_CLI_VERSION="$PIN" \
         SENTRY_CLI_INSTALLER="${INSTALLER_OVERRIDE:-$FAKE_INSTALLER}" \
-        SENTRY_CLI_INSTALL_DIR="$root/.ci-tools/bin" \
+        SENTRY_CLI_INSTALL_DIR="$CASE_ROOT/.ci-tools/bin" \
         SENTRY_AUTH_TOKEN="$token" \
-        FAKE_REPORTED_VERSION="${FAKE_REPORTED_VERSION:-}" \
+        FAKE_REPORTED_VERSION="$FAKE_REPORTED_VERSION" \
         /bin/zsh "$REAL_SCRIPT" "$@" 2>&1
 }
 
@@ -160,7 +110,7 @@ new_case() {
 echo "=== Case 1: clean install with a token ==="
 
 new_case "clean"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_supersecret"); RC=$?
+OUT=$(run_install "sntrys_supersecret"); RC=$?
 expect_exit "a clean install succeeds" "$RC" "0" "$OUT"
 
 if [[ -x "$CASE_ROOT/.ci-tools/bin/sentry-cli" ]]; then
@@ -200,9 +150,9 @@ echo ""
 echo "=== Case 2: second run over an existing install ==="
 
 new_case "idempotent"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_a"); RC=$?
+OUT=$(run_install "sntrys_a"); RC=$?
 expect_exit "first run succeeds" "$RC" "0" "$OUT"
-OUT2=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_a"); RC2=$?
+OUT2=$(run_install "sntrys_a"); RC2=$?
 expect_exit "second run succeeds instead of tripping over the existing binary" "$RC2" "0" "$OUT2"
 expect_not_contains "the second run does not report an installer error" "$OUT2" "already installed."
 
@@ -210,7 +160,7 @@ expect_not_contains "the second run does not report an installer error" "$OUT2" 
 # typo'd pin. A pin nobody verifies is a comment.
 new_case "reports-wrong-version"
 FAKE_REPORTED_VERSION="1.0.0"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_a"); RC=$?
+OUT=$(run_install "sntrys_a"); RC=$?
 expect_exit "an install that reports the wrong version fails loudly" "$RC" "1" "$OUT"
 expect_contains "the version mismatch is an error:" "$OUT" "error:"
 expect_contains "the mismatch names the version it got" "$OUT" "1.0.0"
@@ -227,7 +177,7 @@ if [ "$1" = "--version" ]; then echo "sentry-cli 2.0.0"; exit 0; fi
 exit 0
 STALE
 chmod +x "$CASE_ROOT/.ci-tools/bin/sentry-cli"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_a"); RC=$?
+OUT=$(run_install "sntrys_a"); RC=$?
 expect_exit "a stale cached binary is replaced rather than tripped over" "$RC" "0" "$OUT"
 expect_contains "the replacement names the version it found" "$OUT" "2.0.0"
 expect_not_contains "the installer never sees the existing file" "$OUT" "already installed."
@@ -245,7 +195,7 @@ echo "=== Case 3: pre-existing ~/.sentryclirc ==="
 
 new_case "existing-rc"
 printf '[auth]\ntoken=sntrys_mine\n' > "$CASE_HOME/.sentryclirc"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_from_env"); RC=$?
+OUT=$(run_install "sntrys_from_env"); RC=$?
 expect_exit "the run succeeds with an existing rc file" "$RC" "0" "$OUT"
 expect_contains "the developer's own token is left in place" "$(<"$CASE_HOME/.sentryclirc")" "sntrys_mine"
 expect_not_contains "the environment token did not overwrite it" "$(<"$CASE_HOME/.sentryclirc")" "sntrys_from_env"
@@ -256,14 +206,14 @@ expect_not_contains "the environment token did not overwrite it" "$(<"$CASE_HOME
 # minute zero instead of twenty minutes later in the build phase.
 new_case "existing-rc-without-token"
 printf '[defaults]\norg=wxyc\n' > "$CASE_HOME/.sentryclirc"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "" --require-auth); RC=$?
+OUT=$(run_install "" --require-auth); RC=$?
 expect_exit "a token-less rc file does not satisfy --require-auth" "$RC" "1" "$OUT"
 expect_contains "the token-less rc file is an error:" "$OUT" "error:"
 expect_contains "the developer's file is still left alone" "$(<"$CASE_HOME/.sentryclirc")" "[defaults]"
 
 new_case "existing-rc-without-token-lenient"
 printf '[defaults]\norg=wxyc\n' > "$CASE_HOME/.sentryclirc"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" ""); RC=$?
+OUT=$(run_install ""); RC=$?
 expect_exit "a token-less rc file only warns without --require-auth" "$RC" "0" "$OUT"
 expect_contains "the token-less rc file warns" "$OUT" "warning:"
 
@@ -280,7 +230,7 @@ echo ""
 echo "=== Case 4: missing SENTRY_AUTH_TOKEN ==="
 
 new_case "no-token"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" ""); RC=$?
+OUT=$(run_install ""); RC=$?
 expect_exit "a missing token is not fatal by default" "$RC" "0" "$OUT"
 expect_contains "a missing token warns" "$OUT" "warning:"
 if [[ -f "$CASE_HOME/.sentryclirc" ]]; then
@@ -290,14 +240,14 @@ else
 fi
 
 new_case "no-token-required"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "" --require-auth); RC=$?
+OUT=$(run_install "" --require-auth); RC=$?
 expect_exit "--require-auth turns a missing token into a failure" "$RC" "1" "$OUT"
 expect_contains "the missing token is an error: under --require-auth" "$OUT" "error:"
 expect_contains "the error names the variable to set" "$OUT" "SENTRY_AUTH_TOKEN"
 
 # --require-auth is about credentials, not about breaking a working install.
 new_case "token-required-present"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_present" --require-auth); RC=$?
+OUT=$(run_install "sntrys_present" --require-auth); RC=$?
 expect_exit "--require-auth with a token present succeeds" "$RC" "0" "$OUT"
 
 # =========================================================================
@@ -310,7 +260,7 @@ echo "=== Case 5: the installer itself fails ==="
 
 new_case "installer-fails"
 INSTALLER_OVERRIDE="$FAILING_INSTALLER"
-OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_a"); RC=$?
+OUT=$(run_install "sntrys_a"); RC=$?
 expect_exit "a failed download exits nonzero" "$RC" "1" "$OUT"
 expect_contains "a failed download is an error:" "$OUT" "error:"
 if [[ -e "$CASE_ROOT/.ci-tools/bin/sentry-cli" ]]; then
@@ -323,9 +273,4 @@ fi
 # Summary
 # =========================================================================
 
-echo ""
-echo "=== $PASS passed, $FAIL failed ==="
-if (( FAIL > 0 )); then
-    exit 1
-fi
-exit 0
+summarize

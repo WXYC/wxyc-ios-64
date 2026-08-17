@@ -32,13 +32,9 @@ The row opens its destination in an `SFSafariViewController` sheet, not `openURL
 
 Sentry symbolicates Release stacks **server-side**, from dSYMs uploaded at build time by the `Upload Debug Symbols to Sentry` build phase on the WXYC target. The phase is a one-line `exec` of `scripts/upload-debug-symbols.sh`; the logic lives in the script so it can be regression-tested (`scripts/tests/test-upload-debug-symbols.sh`) instead of edited blind inside `project.pbxproj`.
 
-Without that upload, Sentry has addresses and no function names, and everything downstream of a symbolicated stack — grouping rules, fingerprints, the innermost-in-app-frame heuristics — silently stops working. Nothing in the build says so, which is why the script's failure behavior depends on where it runs:
+Without that upload, Sentry has addresses and no function names, and everything downstream of a symbolicated stack — grouping rules, fingerprints, the innermost-in-app-frame heuristics — silently stops working. Nothing in the build says so, which is why the script's failure behavior depends on where it runs.
 
-| | sentry-cli missing | no credentials | upload rejected |
-|---|---|---|---|
-| **Local** (`CI` unset) | `warning:`, build continues | `warning:`, build continues | `warning:`, build continues |
-| **CI**, shipping build | `error:`, build fails | `error:`, build fails | `error:`, build fails |
-| **CI**, non-shipping build | n/a — never attempted | n/a — never attempted | n/a — never attempted |
+Every failure mode — no `sentry-cli`, no credentials, upload rejected — resolves the same way, and only *where* the build runs changes the resolution. Locally it is a `warning:` and the build continues; on a CI build that ships it is an `error:` and the build stops; on a CI build that can't ship the upload is never attempted at all.
 
 A dev Mac must not be blocked by a tool nobody installed. A CI archive is the opposite case: it ships. Two exemptions sit on top of that:
 
@@ -51,7 +47,7 @@ The second exemption is load-bearing and easy to get wrong twice over.
 
 **And the configuration test is a prefix, not an equality.** This project has five configurations — `Debug`, `Debug TestFlight`, `TestFlight`, `Release`, `Release (Active Arch)` — and the shared scheme's `TestAction` builds `Debug TestFlight`. Any `xcodebuild test -scheme WXYC` without an explicit `-configuration` (that includes `scripts/test-affected.sh`) lands there, so matching only the literal `Debug` would classify every test run as shipping.
 
-CI-ness has two sources. `ci_post_clone.sh` writes `.ci-tools/ci-runner` into the checkout, and that file alone is enough; otherwise `CI` is read from the environment as a tri-state, not a presence check (`false`, `0`, `no`, `off`, and empty all mean local; Xcode Cloud sets `CI=TRUE`). The marker exists because the environment hop this depends on is the same one the token deliberately doesn't rely on — see below — and a `CI` that fails to reach the build phase would silently turn every `error:` above back into the `warning:` this whole section exists to eliminate.
+CI-ness has two sources, checked in that order. `ci_post_clone.sh` writes `.ci-tools/ci-runner` into the checkout, and that file alone is enough; otherwise `CI` is read from the environment as a tri-state, not a presence check (`false`, `0`, `no`, `off`, and empty all mean local; Xcode Cloud sets `CI=TRUE`). The marker exists because the environment hop this depends on is the same one the token deliberately doesn't rely on — see below — and a `CI` that fails to reach the build phase would silently turn every `error:` above back into the `warning:` this whole section exists to eliminate.
 
 ### Local setup
 

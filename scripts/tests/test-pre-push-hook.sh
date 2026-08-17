@@ -28,49 +28,7 @@ if [[ ! -f "$HOOK" ]]; then
     exit 2
 fi
 
-typeset -g PASS=0
-typeset -g FAIL=0
-
-ok() {
-    PASS=$((PASS + 1))
-    echo "ok - $1"
-}
-
-fail() {
-    FAIL=$((FAIL + 1))
-    echo "FAIL - $1"
-    shift
-    for line in "$@"; do
-        echo "    $line"
-    done
-}
-
-expect_contains() {
-    local desc="$1" haystack="$2" needle="$3"
-    if [[ "$haystack" == *"$needle"* ]]; then
-        ok "$desc"
-    else
-        fail "$desc" "expected to contain: $needle" "--- actual ---" "${(f)haystack}" "--------------"
-    fi
-}
-
-expect_not_contains() {
-    local desc="$1" haystack="$2" needle="$3"
-    if [[ "$haystack" != *"$needle"* ]]; then
-        ok "$desc"
-    else
-        fail "$desc" "expected NOT to contain: $needle" "--- actual ---" "${(f)haystack}" "--------------"
-    fi
-}
-
-expect_eq() {
-    local desc="$1" actual="$2" expected="$3"
-    if [[ "$actual" == "$expected" ]]; then
-        ok "$desc"
-    else
-        fail "$desc" "expected: $expected" "actual:   $actual"
-    fi
-}
+source "${REPO_ROOT}/scripts/tests/harness.zsh"
 
 ZERO_SHA="0000000000000000000000000000000000000000"
 
@@ -255,9 +213,4 @@ rm -rf "$TMP_REPO"
 # Summary
 # =========================================================================
 
-echo ""
-echo "=== $PASS passed, $FAIL failed ==="
-if (( FAIL > 0 )); then
-    exit 1
-fi
-exit 0
+summarize

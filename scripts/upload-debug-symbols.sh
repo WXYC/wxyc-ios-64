@@ -27,18 +27,15 @@
 #   stops. (#955)
 #
 #   A CI build that does not ship — a test workflow — skips the upload
-#   entirely. Note that "has dSYMs" is not the discriminator: WXYC builds
-#   Debug with DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an ordinary
-#   simulator build fills DWARF_DSYM_FOLDER_PATH exactly like an archive
-#   does. See is_shipping_build().
+#   entirely. See is_shipping_build() for what "ship" means and why the
+#   presence of dSYMs cannot answer it.
 #
 # Environment (all supplied by Xcode, except where noted):
 #   DWARF_DSYM_FOLDER_PATH  the folder Xcode wrote this build's dSYMs into
 #   CONFIGURATION / ACTION  Release / install for an archive; selects strictness
 #   SRCROOT                 repo root; where .ci-tools and .sentryclirc live
-#   CI / CI_XCODE_CLOUD     set by Xcode Cloud; selects error-vs-warning
+#   CI                      set by Xcode Cloud; selects error-vs-warning
 #   SENTRY_AUTH_TOKEN       optional, read by sentry-cli itself
-#   SENTRY_CLI              optional explicit path to the binary (tests)
 #
 # Plus one file, not an environment variable: $SRCROOT/.ci-tools/ci-runner,
 # written by ci_post_clone.sh. See is_ci().
@@ -47,37 +44,48 @@
 
 set -uo pipefail
 
-readonly SENTRY_ORG_SLUG="wxyc"
-readonly SENTRY_PROJECT_SLUG="ios"
+export SENTRY_ORG="wxyc"
+export SENTRY_PROJECT="ios"
 
 # sentry-cli resolves .sentryclirc relative to the working directory, so pin
 # the working directory to the repo root rather than inheriting whatever
 # Xcode happened to leave it at. This is how every dev Mac authenticates.
-if [[ -n "${SRCROOT:-}" && -d "${SRCROOT}" ]]; then
+if [[ -d "${SRCROOT:-}" ]]; then
     cd "$SRCROOT" || exit 1
 fi
-readonly REPO_ROOT="${SRCROOT:-$PWD}"
+readonly REPO_ROOT="$PWD"
 
-# Am I on a build runner? Two sources, because neither alone is enough.
+# Am I on a build runner? The marker file first — see install-sentry-cli.sh on
+# why a file in the checkout beats an environment variable for anything a
+# nested build phase has to read. Everything strict below hangs off this
+# answer, so if $CI failed to make that hop every error: would quietly become a
+# warning: and #955 would be back with a passing test suite.
 #
-# The marker file comes first. Everything strict in this script hangs off this
-# answer, and $CI reaching a run-script phase nested inside xcodebuild is the
-# same guarantee install-sentry-cli.sh deliberately refuses to bet the token
-# on. If it doesn't make that hop, every error: below silently becomes a
-# warning: and the archive ships unsymbolicated with a green build — #955
-# again, this time with a passing test suite. ci_post_clone.sh writes the
-# marker into the checkout, where nothing has to propagate to find it.
-#
-# Then the environment: Xcode Cloud sets CI=TRUE, GitHub Actions sets CI=true.
-# Some tools set CI=false to mean "not CI", which a bare emptiness test would
-# read backwards.
+# Then the environment. Xcode Cloud sets CI=TRUE, GitHub Actions sets CI=true,
+# and some tools set CI=false to mean "not CI" — which a bare emptiness test
+# would read backwards.
 is_ci() {
     [[ -f "${REPO_ROOT}/.ci-tools/ci-runner" ]] && return 0
-    [[ -n "${CI_XCODE_CLOUD:-}" ]] && return 0
     case "${${CI:-}:l}" in
         "" | false | 0 | no | off) return 1 ;;
         *) return 0 ;;
     esac
+}
+
+# Every failure below has the same shape: on CI it stops the build, locally it
+# does not. Writing that out at each site is how the asymmetry this script
+# exists to establish would end up holding at three of four of them.
+#
+# $1 is the CI diagnostic — long, and it names the fix, because Xcode's issue
+# navigator shows one line and nothing around it. $2 is the whole local line,
+# prefix included, since some of these are a `note:` rather than a `warning:`.
+fail_or_continue() {
+    if is_ci; then
+        echo "error: $1"
+        exit 1
+    fi
+    echo "$2"
+    exit 0
 }
 
 # Can this build reach a user? xcodebuild sets ACTION=install when archiving,
@@ -105,39 +113,36 @@ is_shipping_build() {
     return 0
 }
 
-# Where the binary might be, in order of specificity: an explicit override,
-# the copy ci_scripts/install-sentry-cli.sh vendors into the checkout (Xcode
-# Cloud runners ship no sentry-cli and have no writable PATH entry we can
-# count on), then whatever a developer installed system-wide.
+# Where the binary might be, most specific first: the copy
+# ci_scripts/install-sentry-cli.sh vendors into the checkout (Xcode Cloud
+# runners ship no sentry-cli and have no writable PATH entry we can count on),
+# then whatever a developer installed system-wide.
 resolve_sentry_cli() {
-    if [[ -n "${SENTRY_CLI:-}" && -x "${SENTRY_CLI}" ]]; then
-        print -r -- "${SENTRY_CLI}"
-        return 0
-    fi
-
-    local vendored="${REPO_ROOT}/.ci-tools/bin/sentry-cli"
-    if [[ -x "$vendored" ]]; then
-        print -r -- "$vendored"
-        return 0
-    fi
-
-    local on_path
-    if on_path=$(command -v sentry-cli 2>/dev/null) && [[ -n "$on_path" ]]; then
-        print -r -- "$on_path"
-        return 0
-    fi
-
+    local candidate
+    for candidate in "${REPO_ROOT}/.ci-tools/bin/sentry-cli" "$(command -v sentry-cli 2>/dev/null)"; do
+        if [[ -n "$candidate" && -x "$candidate" ]]; then
+            print -r -- "$candidate"
+            return 0
+        fi
+    done
     return 1
 }
 
-# sentry-cli takes credentials from SENTRY_AUTH_TOKEN or from a .sentryclirc
-# in the working directory or the home directory. Checking first only buys a
+# sentry-cli takes credentials from SENTRY_AUTH_TOKEN or from a .sentryclirc in
+# the working directory or the home directory. Checking first only buys a
 # better diagnostic than the CLI's own — but "no token" and "token rejected"
 # have completely different fixes, and the build log is where that gets read.
+#
+# An rc file counts only when it actually carries a token, the same test
+# install-sentry-cli.sh applies before it declares an existing file good
+# enough: an empty or [defaults]-only file otherwise reaches the upload and
+# dies with sentry-cli's generic message instead of the one naming the fix.
 has_credentials() {
     [[ -n "${SENTRY_AUTH_TOKEN:-}" ]] && return 0
-    [[ -f "${REPO_ROOT}/.sentryclirc" ]] && return 0
-    [[ -n "${HOME:-}" && -f "${HOME}/.sentryclirc" ]] && return 0
+    local rc
+    for rc in "${REPO_ROOT}/.sentryclirc" "${HOME:-}/.sentryclirc"; do
+        [[ -f "$rc" ]] && grep -q '^[[:space:]]*token[[:space:]]*=' "$rc" && return 0
+    done
     return 1
 }
 
@@ -184,12 +189,9 @@ else
 fi
 
 if [[ -n "$missing_dsyms" ]]; then
-    if is_ci; then
-        echo "error: this build ships but produced no debug symbols to upload (${missing_dsyms}), so its Sentry events would arrive unsymbolicated. Every WXYC configuration builds with DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an empty dSYM folder means something upstream of this phase changed."
-        exit 1
-    fi
-    echo "note: ${missing_dsyms}; skipping Sentry debug-symbol upload"
-    exit 0
+    fail_or_continue \
+        "this build ships but produced no debug symbols to upload (${missing_dsyms}), so its Sentry events would arrive unsymbolicated. Every WXYC configuration builds with DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an empty dSYM folder means something upstream of this phase changed." \
+        "note: ${missing_dsyms}; skipping Sentry debug-symbol upload"
 fi
 
 # ---------------------------------------------------------------------------
@@ -197,12 +199,9 @@ fi
 # ---------------------------------------------------------------------------
 
 if ! sentry_cli=$(resolve_sentry_cli); then
-    if is_ci; then
-        echo "error: sentry-cli is not installed on this runner, so this build's dSYMs cannot reach Sentry and its Release events would arrive unsymbolicated. ci_scripts/install-sentry-cli.sh installs it during ci_post_clone — check that it ran and succeeded."
-        exit 1
-    fi
-    echo "warning: sentry-cli not installed, skipping debug symbol upload"
-    exit 0
+    fail_or_continue \
+        "sentry-cli is not installed on this runner, so this build's dSYMs cannot reach Sentry and its Release events would arrive unsymbolicated. ci_scripts/install-sentry-cli.sh installs it during ci_post_clone — check that it ran and succeeded." \
+        "warning: sentry-cli not installed, skipping debug symbol upload"
 fi
 
 # ---------------------------------------------------------------------------
@@ -210,20 +209,14 @@ fi
 # ---------------------------------------------------------------------------
 
 if ! has_credentials; then
-    if is_ci; then
-        echo "error: no Sentry credentials available (neither SENTRY_AUTH_TOKEN nor a .sentryclirc), so this build's dSYMs cannot reach Sentry. Set SENTRY_AUTH_TOKEN as a secret environment variable on the Xcode Cloud workflow; see docs/configuration.md."
-        exit 1
-    fi
-    echo "warning: no Sentry credentials (SENTRY_AUTH_TOKEN or .sentryclirc), skipping debug symbol upload"
-    exit 0
+    fail_or_continue \
+        "no Sentry credentials available (neither SENTRY_AUTH_TOKEN nor a .sentryclirc carrying a token), so this build's dSYMs cannot reach Sentry. Set SENTRY_AUTH_TOKEN as a secret environment variable on the Xcode Cloud workflow; see docs/configuration.md." \
+        "warning: no Sentry credentials (SENTRY_AUTH_TOKEN or .sentryclirc), skipping debug symbol upload"
 fi
 
 # ---------------------------------------------------------------------------
 # 5. Upload.
 # ---------------------------------------------------------------------------
-
-export SENTRY_ORG="$SENTRY_ORG_SLUG"
-export SENTRY_PROJECT="$SENTRY_PROJECT_SLUG"
 
 # Split the streams: sentry-cli's stdout (what it uploaded, which debug IDs)
 # belongs in the build log unconditionally, while its stderr is captured so
@@ -240,16 +233,11 @@ if (( upload_status != 0 )); then
     # Collapse to one line: a multi-line diagnostic only prefixes its first
     # line, so everything after the newline would lose the error: marker.
     summary="${upload_error//$'\n'/ }"
-    if is_ci; then
-        echo "error: sentry-cli - ${summary}"
-        exit 1
-    fi
-    echo "warning: sentry-cli - ${summary}"
-    exit 0
+    fail_or_continue "sentry-cli - ${summary}" "warning: sentry-cli - ${summary}"
 fi
 
 # No count here: sentry-cli walks the whole folder and uploads every debug
 # file it recognizes, not just the .dSYM bundles this script counted to decide
 # whether to run at all. Its own output above is the accurate inventory.
-echo "note: uploaded debug symbols to Sentry (${SENTRY_ORG_SLUG}/${SENTRY_PROJECT_SLUG})"
+echo "note: uploaded debug symbols to Sentry (${SENTRY_ORG}/${SENTRY_PROJECT})"
 exit 0
