@@ -36,13 +36,31 @@ extension HTTPURLResponse {
     /// app has never received on the wire. A response carrying an
     /// HTTP-date `Retry-After` is treated the same as a response with no
     /// header at all: `nil`.
+    ///
+    /// The value is range-checked, not just sign-checked. `Double(String)`
+    /// accepts a good deal more than `delay-seconds` — `"inf"`, `"infinity"`,
+    /// and exponent forms like `"1e30"` all parse — and `Duration.seconds(_:)`
+    /// *traps* on a value it cannot represent. Since this delay comes off the
+    /// wire and a consumer's natural use of it is to build a `Duration` and
+    /// sleep, an unbounded value would hand any intermediary that can set a
+    /// response header a process abort. Anything outside
+    /// `0...maximumRetryAfterSeconds` is treated as unparseable, exactly like
+    /// an HTTP-date.
     private var retryAfterDelay: TimeInterval? {
         guard let headerValue = value(forHTTPHeaderField: "Retry-After") else { return nil }
         guard let seconds = TimeInterval(headerValue.trimmingCharacters(in: .whitespaces)),
-              seconds >= 0
+              (0...HTTPURLResponse.maximumRetryAfterSeconds).contains(seconds)
         else { return nil }
         return seconds
     }
+
+    /// The largest `Retry-After` this app will carry, in seconds: one day.
+    ///
+    /// Chosen to be far above anything a real server advertises — Backend-Service's
+    /// proxy limiter sends `60` — while staying far below the magnitudes that make
+    /// `Duration.seconds(_:)` trap. A client that has been asked to wait longer than
+    /// a day has been told something it will never act on anyway.
+    private static let maximumRetryAfterSeconds: TimeInterval = 86_400
 }
 
 /// An HTTP response outside the 2xx success range.
