@@ -716,18 +716,11 @@ public actor PlaycutMetadataService {
     /// 429 joins the 5xx range as transient (#948): a rate limit is by
     /// definition temporary, so it should not surface as a failed lookup.
     ///
-    /// This only classifies; it does not schedule. `fetchAlbumWithRetry`
-    /// additionally lets a server-advertised `HTTPStatusError.retryAfter`
-    /// (#957) veto the retry when that delay outruns what's left of
-    /// ``albumFetchRetryDelays``' budget — see the doc comment on
-    /// ``fetchAlbumWithRetry(query:remainingDelays:)`` for why every legal
-    /// non-zero `Retry-After` outruns a sub-second budget, making the veto
-    /// the rule for an advertised delay here rather than the exception.
-    ///
-    /// Note that the veto is keyed on the presence of a `Retry-After`, not on
-    /// the status: a 5xx that carries one is vetoed on the same terms as a
-    /// 429. That is the intent — a server that names a wait it wants is
-    /// taken at its word whatever status it used to say so.
+    /// This only classifies; it does not schedule. A server-advertised
+    /// `Retry-After` (#957) can still veto the retry downstream, and that veto
+    /// is keyed on the *presence* of the header rather than on the status, so
+    /// a 5xx carrying one is vetoed on the same terms as a 429 — see
+    /// ``fetchAlbumWithRetry(query:remainingDelays:)``.
     private static func isTransient(_ error: any Error) -> Bool {
         if let httpError = error as? HTTPStatusError {
             return httpError.statusCode == 429 || (500...599).contains(httpError.statusCode)

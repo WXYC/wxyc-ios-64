@@ -60,9 +60,14 @@ struct HTTPURLResponseValidationTests {
     /// `ErrorEvent` (`nsError.code`/`nsError.domain`) and Sentry's event
     /// titles (`localizedDescription`) actually record — without explicit
     /// conformances every status collapses to code 1 with a generic message.
+    ///
+    /// The error carries a non-nil `retryAfter` so this doubles as the guard
+    /// that adding that field perturbs none of `errorCode`/`errorDomain`/
+    /// `localizedDescription`: all three are computed from `statusCode` alone,
+    /// and a change in any of them would re-group existing Sentry issues.
     @Test(arguments: [401, 429, 503])
     func nsErrorBridgeCarriesTheStatusCode(statusCode: Int) throws {
-        let error = HTTPStatusError(statusCode: statusCode)
+        let error = HTTPStatusError(statusCode: statusCode, retryAfter: .seconds(60))
         let nsError = error as NSError
 
         #expect(nsError.code == statusCode)
@@ -71,22 +76,6 @@ struct HTTPURLResponseValidationTests {
     }
 
     // MARK: - Retry-After (#957)
-
-    /// A response advertising a delta-seconds `Retry-After` (RFC 9110
-    /// §10.2.3) surfaces it on the thrown error, so a retrying consumer can
-    /// prefer the server's own backoff over a hard-coded schedule.
-    @Test
-    func retryAfterHeaderPopulatesTheThrownError() throws {
-        let response = HTTPURLResponse(
-            url: HTTPURLResponseValidationTests.testURL,
-            statusCode: 429,
-            httpVersion: nil,
-            headerFields: ["Retry-After": "60"]
-        )!
-        #expect(throws: HTTPStatusError(statusCode: 429, retryAfter: .seconds(60))) {
-            try response.validateSuccessStatus()
-        }
-    }
 
     /// A response with no `Retry-After` header leaves the field `nil` —
     /// today's behavior for every existing call site.
@@ -97,25 +86,6 @@ struct HTTPURLResponseValidationTests {
             statusCode: 503,
             httpVersion: nil,
             headerFields: nil
-        )!
-        let error = try #require(throws: HTTPStatusError.self) {
-            try response.validateSuccessStatus()
-        }
-        #expect(error.retryAfter == nil)
-    }
-
-    /// RFC 9110 §10.2.3 also permits an HTTP-date `Retry-After`. Backend-Service's
-    /// proxy limiter (`express-rate-limit` with `standardHeaders: true`) only ever
-    /// emits delta-seconds, so an HTTP-date value is deliberately left unparsed —
-    /// treated the same as a missing header — rather than carrying dead code for a
-    /// format this app has never received on the wire.
-    @Test
-    func httpDateRetryAfterIsIgnored() throws {
-        let response = HTTPURLResponse(
-            url: HTTPURLResponseValidationTests.testURL,
-            statusCode: 429,
-            httpVersion: nil,
-            headerFields: ["Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"]
         )!
         let error = try #require(throws: HTTPStatusError.self) {
             try response.validateSuccessStatus()
@@ -137,6 +107,12 @@ struct HTTPURLResponseValidationTests {
     @Test(arguments: [
         "inf", "infinity", "-inf", "nan", "1e30", "1e300", "0x1p4", "60.5",
         "99999999999999999999", "-1", "86401",
+        // RFC 9110 §10.2.3 also permits an HTTP-date `Retry-After`. Backend-Service's
+        // proxy limiter (`express-rate-limit` with `standardHeaders: true`) only ever
+        // emits delta-seconds, so an HTTP-date value is deliberately left unparsed —
+        // treated the same as a missing header — rather than carrying dead code for a
+        // format this app has never received on the wire.
+        "Wed, 21 Oct 2026 07:28:00 GMT",
     ])
     func nonConformantRetryAfterValuesAreIgnored(headerValue: String) throws {
         let response = HTTPURLResponse(
@@ -151,6 +127,10 @@ struct HTTPURLResponseValidationTests {
         #expect(error.retryAfter == nil, "\(headerValue) must not survive as a schedulable delay")
     }
 
+    /// A delta-seconds `Retry-After` (RFC 9110 §10.2.3) survives onto the
+    /// thrown error alongside the status, so a retrying consumer can reason
+    /// about the server's own backoff instead of only its hard-coded schedule.
+    ///
     /// The rejection rules must not clip any delay a real server would
     /// advertise — Backend-Service's proxy limiter sends `60`, and even a
     /// pathologically patient upstream stays inside a day. `86400` is the
@@ -166,6 +146,7 @@ struct HTTPURLResponseValidationTests {
         let error = try #require(throws: HTTPStatusError.self) {
             try response.validateSuccessStatus()
         }
+        #expect(error.statusCode == 429)
         #expect(error.retryAfter == .seconds(seconds))
     }
 
@@ -176,25 +157,5 @@ struct HTTPURLResponseValidationTests {
     func statusCodeOnlyInitializerDefaultsRetryAfterToNil() {
         let error = HTTPStatusError(statusCode: 404)
         #expect(error.retryAfter == nil)
-    }
-
-    /// Adding `retryAfter` must not perturb `errorCode`/`errorDomain`/
-    /// `localizedDescription` — those feed PostHog's `ErrorEvent` and Sentry
-    /// issue titles, and a change there would re-group existing issues.
-    @Test
-    func retryAfterDoesNotAffectNSErrorBridgeIdentity() throws {
-        let response = HTTPURLResponse(
-            url: HTTPURLResponseValidationTests.testURL,
-            statusCode: 429,
-            httpVersion: nil,
-            headerFields: ["Retry-After": "60"]
-        )!
-        let error = try #require(throws: HTTPStatusError.self) {
-            try response.validateSuccessStatus()
-        }
-        let nsError = error as NSError
-        #expect(nsError.code == 429)
-        #expect(nsError.domain == "Core.HTTPStatusError")
-        #expect(error.localizedDescription.contains("429"))
     }
 }

@@ -103,14 +103,10 @@ public struct HTTPStatusError: Error, Equatable {
         self.retryAfter = retryAfter
     }
 
-    /// The largest `Retry-After` this type will carry, in seconds: one day.
-    ///
-    /// A sanity ceiling, not a safety guard — `Int(_:)` parsing is what keeps
-    /// unrepresentable values out. Chosen to sit far above anything a real
-    /// server advertises: Backend-Service's proxy limiter sends `60`. A client
-    /// asked to wait longer than a day has been told something it will never
-    /// act on anyway.
-    public static let maximumRetryAfterSeconds = 86_400
+    /// The largest `Retry-After` this type will carry, in seconds: one day — a
+    /// sanity ceiling rather than a safety guard, for the reasons given on
+    /// `HTTPURLResponse.retryAfterDelay` above.
+    fileprivate static let maximumRetryAfterSeconds = Int(TimeInterval.oneDay)
 }
 
 /// Diagnostics-sink bridging: without these conformances, the NSError bridge
