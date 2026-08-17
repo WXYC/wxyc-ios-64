@@ -35,10 +35,13 @@
 # Environment (all supplied by Xcode, except where noted):
 #   DWARF_DSYM_FOLDER_PATH  the folder Xcode wrote this build's dSYMs into
 #   CONFIGURATION / ACTION  Release / install for an archive; selects strictness
-#   SRCROOT                 repo root; where .ci-tools/bin and .sentryclirc live
+#   SRCROOT                 repo root; where .ci-tools and .sentryclirc live
 #   CI / CI_XCODE_CLOUD     set by Xcode Cloud; selects error-vs-warning
 #   SENTRY_AUTH_TOKEN       optional, read by sentry-cli itself
 #   SENTRY_CLI              optional explicit path to the binary (tests)
+#
+# Plus one file, not an environment variable: $SRCROOT/.ci-tools/ci-runner,
+# written by ci_post_clone.sh. See is_ci().
 #
 # Tested by scripts/tests/test-upload-debug-symbols.sh.
 
@@ -55,9 +58,21 @@ if [[ -n "${SRCROOT:-}" && -d "${SRCROOT}" ]]; then
 fi
 readonly REPO_ROOT="${SRCROOT:-$PWD}"
 
-# Xcode Cloud sets CI=TRUE; GitHub Actions sets CI=true. Some tools set
-# CI=false to mean "not CI", which a bare emptiness test would read backwards.
+# Am I on a build runner? Two sources, because neither alone is enough.
+#
+# The marker file comes first. Everything strict in this script hangs off this
+# answer, and $CI reaching a run-script phase nested inside xcodebuild is the
+# same guarantee install-sentry-cli.sh deliberately refuses to bet the token
+# on. If it doesn't make that hop, every error: below silently becomes a
+# warning: and the archive ships unsymbolicated with a green build — #955
+# again, this time with a passing test suite. ci_post_clone.sh writes the
+# marker into the checkout, where nothing has to propagate to find it.
+#
+# Then the environment: Xcode Cloud sets CI=TRUE, GitHub Actions sets CI=true.
+# Some tools set CI=false to mean "not CI", which a bare emptiness test would
+# read backwards.
 is_ci() {
+    [[ -f "${REPO_ROOT}/.ci-tools/ci-runner" ]] && return 0
     [[ -n "${CI_XCODE_CLOUD:-}" ]] && return 0
     case "${${CI:-}:l}" in
         "" | false | 0 | no | off) return 1 ;;
@@ -66,22 +81,28 @@ is_ci() {
 }
 
 # Can this build reach a user? xcodebuild sets ACTION=install when archiving,
-# and the shipping configuration is Release.
+# and every configuration that distributes anything — Release, TestFlight,
+# Release (Active Arch) — is named without a Debug prefix.
 #
-# The presence of dSYMs is NOT the test. WXYC builds Debug with
+# It is a prefix and not an equality test on purpose. This project has two
+# debug configurations, and the shared scheme's TestAction builds the second
+# one: "Debug TestFlight". An `xcodebuild test -scheme WXYC` with no explicit
+# -configuration — what scripts/test-affected.sh runs, and what an Xcode Cloud
+# test workflow runs — lands there. Matching only the literal "Debug" would
+# classify every one of those runs as shipping and fail it for want of a token
+# nobody gave a test workflow.
+#
+# The presence of dSYMs is NOT the test either. WXYC builds Debug with
 # DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an ordinary simulator build
-# populates DWARF_DSYM_FOLDER_PATH exactly like an archive — meaning a
-# strict-whenever-dSYMs-exist rule would demand a Sentry token from every
-# Xcode Cloud test workflow and fail the ones that don't have one.
+# populates DWARF_DSYM_FOLDER_PATH exactly like an archive does.
 #
-# Neither setting present is treated as shipping. A spurious CI failure is
+# No CONFIGURATION at all is treated as shipping. A spurious CI failure is
 # loud and gets fixed in an afternoon; a skipped upload is silent and is the
 # whole reason this script exists.
 is_shipping_build() {
     [[ "${ACTION:-}" == "install" ]] && return 0
-    [[ -z "${CONFIGURATION:-}" ]] && return 0
-    [[ "${CONFIGURATION}" != "Debug" ]] && return 0
-    return 1
+    [[ "${CONFIGURATION:-}" == Debug* ]] && return 1
+    return 0
 }
 
 # Where the binary might be, in order of specificity: an explicit override,
@@ -121,34 +142,53 @@ has_credentials() {
 }
 
 # ---------------------------------------------------------------------------
-# 1. Did this build produce anything to upload?
-# ---------------------------------------------------------------------------
-
-dsym_folder="${DWARF_DSYM_FOLDER_PATH:-}"
-
-if [[ -z "$dsym_folder" || ! -d "$dsym_folder" ]]; then
-    echo "note: no dSYM folder for this build; skipping Sentry debug-symbol upload"
-    exit 0
-fi
-
-dsym_bundles=("$dsym_folder"/*.dSYM(N))
-if (( ${#dsym_bundles} == 0 )); then
-    echo "note: no dSYMs in ${dsym_folder}; skipping Sentry debug-symbol upload"
-    exit 0
-fi
-
-# ---------------------------------------------------------------------------
-# 2. Is this a build whose symbols anyone will need?
+# 1. Is this a build whose symbols anyone will need?
 #
 # A CI runner's Debug build reports no events to Sentry, so uploading its
 # dSYMs only pads the debug-file list. Skip outright rather than upload-and-
 # ignore-failures, which would put a network call on the critical path of
 # every test workflow. Locally the upload still runs on every build: a
 # developer's simulator crashes do reach Sentry and are worth symbolicating.
+#
+# This comes before the dSYM check, not after, so that everything below can
+# read "is_ci" as "is_ci and this build ships".
 # ---------------------------------------------------------------------------
 
 if is_ci && ! is_shipping_build; then
     echo "note: ${CONFIGURATION:-unknown}/${ACTION:-unknown} build on CI does not ship; skipping Sentry debug-symbol upload"
+    exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# 2. Did this build produce anything to upload?
+#
+# Locally this is unremarkable — nothing to upload, nothing to say. On a
+# shipping CI build it is a failure: all five WXYC configurations set
+# DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an archive with an empty
+# folder means a build setting moved, dsymutil failed, or the path changed.
+# Passing that through as a note would be the #955 silence with a new cause.
+# ---------------------------------------------------------------------------
+
+dsym_folder="${DWARF_DSYM_FOLDER_PATH:-}"
+missing_dsyms=""
+
+if [[ -z "$dsym_folder" ]]; then
+    missing_dsyms="DWARF_DSYM_FOLDER_PATH is not set"
+elif [[ ! -d "$dsym_folder" ]]; then
+    missing_dsyms="${dsym_folder} does not exist"
+else
+    dsym_bundles=("$dsym_folder"/*.dSYM(N))
+    if (( ${#dsym_bundles} == 0 )); then
+        missing_dsyms="no .dSYM bundles in ${dsym_folder}"
+    fi
+fi
+
+if [[ -n "$missing_dsyms" ]]; then
+    if is_ci; then
+        echo "error: this build ships but produced no debug symbols to upload (${missing_dsyms}), so its Sentry events would arrive unsymbolicated. Every WXYC configuration builds with DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an empty dSYM folder means something upstream of this phase changed."
+        exit 1
+    fi
+    echo "note: ${missing_dsyms}; skipping Sentry debug-symbol upload"
     exit 0
 fi
 
