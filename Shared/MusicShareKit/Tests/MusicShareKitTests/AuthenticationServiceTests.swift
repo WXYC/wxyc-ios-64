@@ -833,8 +833,9 @@ struct AuthenticationServiceTests {
     @Test("A Keychain write failure degrades to an /auth/token mint on the next stale refresh, instead of re-signing-in")
     func saveFailureDegradesToMintNotResignIn() async throws {
         // Given — storage.save() always throws (matches -34018's silent
-        // swallow at AuthenticationService.swift#L450-457), so load()
-        // faithfully reports nil: nothing was ever actually persisted.
+        // swallow in `freshSignIn()`'s non-rethrowing catch around
+        // `storage.save`), so load() faithfully reports nil: nothing was
+        // ever actually persisted.
         let storage = MockThrowingTokenStorage(
             saveError: AuthenticationError.keychainError(status: errSecInteractionNotAllowed)
         )
@@ -847,9 +848,8 @@ struct AuthenticationServiceTests {
 
         // First call: no cached/stored session -> freshSignIn(). storage.save
         // throws and is swallowed, but per the ticket's verified premise,
-        // cachedSession is still populated — the assignment at
-        // AuthenticationService.swift#L461 runs after the non-rethrowing
-        // catch around storage.save.
+        // cachedSession is still populated — `freshSignIn()` assigns it
+        // after the non-rethrowing catch around storage.save, not before.
         _ = try await service.ensureAuthenticated()
         #expect(networkClient.signInCallCount == 1)
 
