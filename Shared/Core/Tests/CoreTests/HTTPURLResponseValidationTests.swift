@@ -135,7 +135,7 @@ struct HTTPURLResponseValidationTests {
     /// process in a consumer that schedules a sleep from this value. Such
     /// values are unparseable as far as this app is concerned, and are
     /// reported the same way as every other malformed value: `nil`.
-    @Test(arguments: ["inf", "infinity", "-inf", "nan", "1e30", "1e300", "99999999999999999999"])
+    @Test(arguments: ["inf", "infinity", "-inf", "nan", "1e30", "1e300", "99999999999999999999", "-1", "86401"])
     func unrepresentableRetryAfterValuesAreIgnored(headerValue: String) throws {
         let response = HTTPURLResponse(
             url: HTTPURLResponseValidationTests.testURL,
@@ -169,6 +169,24 @@ struct HTTPURLResponseValidationTests {
         } catch let error as HTTPStatusError {
             #expect(error.retryAfter == seconds)
         }
+    }
+
+    /// The range check has to live at the *type* boundary, not only on the
+    /// parse path. `init(statusCode:retryAfter:)` is public, so test doubles,
+    /// stub fetchers, and any future non-`validateSuccessStatus()` producer can
+    /// hand a consumer a value that traps `Duration.seconds(_:)` — which
+    /// `PlaycutMetadataService` builds directly from this field. The invariant
+    /// is only true if the initializer enforces it.
+    @Test(arguments: [TimeInterval.infinity, -TimeInterval.infinity, TimeInterval.nan, 1e30, -1, 86_401])
+    func publicInitializerRejectsUnrepresentableRetryAfter(retryAfter: TimeInterval) {
+        let error = HTTPStatusError(statusCode: 429, retryAfter: retryAfter)
+        #expect(error.retryAfter == nil, "\(retryAfter) must not survive construction as a schedulable delay")
+    }
+
+    /// The initializer must not clip a delay a real server would advertise.
+    @Test(arguments: [0.0, 1.0, 60.0, 3600.0, 86_400.0])
+    func publicInitializerKeepsPlausibleRetryAfter(retryAfter: TimeInterval) {
+        #expect(HTTPStatusError(statusCode: 429, retryAfter: retryAfter).retryAfter == retryAfter)
     }
 
     /// `HTTPStatusError(statusCode:)` — the initializer used by
