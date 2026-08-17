@@ -127,6 +127,50 @@ struct HTTPURLResponseValidationTests {
         }
     }
 
+    /// `Double(String)` accepts more than RFC 9110's `delay-seconds` grammar:
+    /// `"inf"`, `"infinity"`, and exponent forms like `"1e30"` all parse to
+    /// finite-or-infinite values far outside anything `Duration.seconds(_:)`
+    /// can represent, and building a `Duration` from one of those *traps* —
+    /// so a header a hostile or broken intermediary controls could abort the
+    /// process in a consumer that schedules a sleep from this value. Such
+    /// values are unparseable as far as this app is concerned, and are
+    /// reported the same way as every other malformed value: `nil`.
+    @Test(arguments: ["inf", "infinity", "-inf", "nan", "1e30", "1e300", "99999999999999999999"])
+    func unrepresentableRetryAfterValuesAreIgnored(headerValue: String) throws {
+        let response = HTTPURLResponse(
+            url: HTTPURLResponseValidationTests.testURL,
+            statusCode: 429,
+            httpVersion: nil,
+            headerFields: ["Retry-After": headerValue]
+        )!
+        do {
+            try response.validateSuccessStatus()
+            Issue.record("Expected validateSuccessStatus() to throw")
+        } catch let error as HTTPStatusError {
+            #expect(error.retryAfter == nil, "\(headerValue) must not survive as a schedulable delay")
+        }
+    }
+
+    /// The ceiling that rejects unrepresentable values must not clip any
+    /// delay a real server would advertise — Backend-Service's proxy limiter
+    /// sends `60`, and even a pathologically patient upstream stays well
+    /// inside a day.
+    @Test(arguments: [0.0, 1.0, 60.0, 3600.0, 86400.0])
+    func plausibleRetryAfterValuesSurvive(seconds: TimeInterval) throws {
+        let response = HTTPURLResponse(
+            url: HTTPURLResponseValidationTests.testURL,
+            statusCode: 429,
+            httpVersion: nil,
+            headerFields: ["Retry-After": "\(Int(seconds))"]
+        )!
+        do {
+            try response.validateSuccessStatus()
+            Issue.record("Expected validateSuccessStatus() to throw")
+        } catch let error as HTTPStatusError {
+            #expect(error.retryAfter == seconds)
+        }
+    }
+
     /// `HTTPStatusError(statusCode:)` — the initializer used by
     /// `StubConcertsFetcher` and various test doubles — must keep compiling
     /// unchanged, defaulting the new field to `nil`.
