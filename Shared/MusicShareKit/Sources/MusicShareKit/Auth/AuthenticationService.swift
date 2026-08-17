@@ -271,7 +271,20 @@ public actor AuthenticationService: SessionTokenProvider {
     /// `/auth/token` and `/sign-in/anonymous`.
     private func performRefresh(trustStoredJWT: Bool) async throws -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
-        let loaded = loadFromKeychain()
+        // A Keychain miss (nil) degrades to the in-memory `cachedSession`
+        // rather than escalating straight to a fresh sign-in. Without this,
+        // a transient Keychain write failure (e.g. -34018) that silently
+        // failed to persist the session — see `freshSignIn()`'s and
+        // `mintJWT(for:)`'s non-rethrowing `catch` around `storage.save` —
+        // reads as "no session at all" on the next refresh, even though
+        // `cachedSession` still holds a good one whose *session token* is
+        // valid for ~7 days. Falling through to `freshSignIn()` in that
+        // state resends the still-live session's cookie to
+        // /auth/sign-in/anonymous, which better-auth correctly 400s
+        // ("Anonymous users cannot sign in again anonymously") — and
+        // because the Keychain is still broken, every subsequent refresh
+        // repeats the same wedge (#948).
+        let loaded = loadFromKeychain() ?? cachedSession
 
         // 3a. Keychain hit on a fresh JWT — fast path.
         if trustStoredJWT, let session = loaded, !session.jwtIsStale(margin: Self.freshnessMargin) {

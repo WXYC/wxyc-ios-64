@@ -795,6 +795,44 @@ struct AuthenticationServiceTests {
         #expect(failedEvents.isEmpty)
     }
 
+    @Test("A Keychain write failure degrades to an /auth/token mint on the next stale refresh, instead of re-signing-in")
+    func saveFailureDegradesToMintNotResignIn() async throws {
+        // Given — storage.save() always throws (matches -34018's silent
+        // swallow at AuthenticationService.swift#L450-457), so load()
+        // faithfully reports nil: nothing was ever actually persisted.
+        let storage = MockThrowingTokenStorage(
+            saveError: AuthenticationError.keychainError(status: errSecInteractionNotAllowed)
+        )
+        // A JWT that expires inside the 60s freshness margin makes the very
+        // next ensureAuthenticated() call treat the cached session as stale
+        // without the test needing to sleep.
+        let networkClient = makeNetworkClient(jwtExpiresIn: 30)
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        // First call: no cached/stored session -> freshSignIn(). storage.save
+        // throws and is swallowed, but per the ticket's verified premise,
+        // cachedSession is still populated — the assignment at
+        // AuthenticationService.swift#L461 runs after the non-rethrowing
+        // catch around storage.save.
+        _ = try await service.ensureAuthenticated()
+        #expect(networkClient.signInCallCount == 1)
+
+        // Second call: cachedSession's JWT is already inside the freshness
+        // margin, so ensureAuthenticated() must refresh. Because storage
+        // never actually persisted anything, loadFromKeychain() returns
+        // nil. Before the fix, performRefresh's `if let session = loaded`
+        // branch was skipped entirely and it fell straight to
+        // freshSignIn() — resending session S1's cookie to
+        // /auth/sign-in/anonymous and reproducing IOS-37's 400 loop. Fixed:
+        // `loadFromKeychain() ?? cachedSession` recovers session S1 and
+        // mints via /auth/token instead.
+        let token2 = try await service.ensureAuthenticated()
+        #expect(networkClient.signInCallCount == 1, "must not re-sign-in on a Keychain miss when cachedSession still holds a good session")
+        #expect(networkClient.fetchJWTCallCount == 2, "one mint from freshSignIn, one from the recovered mint path")
+        #expect(token2.contains("."))
+    }
+
     @Test("Operational-failure on storage load emits RequestLineAuthFailedEvent")
     func operationalFailureCapturesEvent() async throws {
         let storage = MockThrowingTokenStorage(
@@ -819,16 +857,28 @@ struct AuthenticationServiceTests {
 
 // MARK: - MockThrowingTokenStorage
 
-/// `TokenStorage` test double whose `load()` always throws the configured
-/// error. Used by the D1 migration tests to drive the
-/// decode-vs-operational disambiguation in `ensureAuthenticated()`'s catch
-/// without standing up a real Keychain (which the SPM unit-test bundle
-/// can't access on the simulator due to errSecMissingEntitlement).
+/// `TokenStorage` test double whose `load()`/`save()` can each be
+/// independently configured to throw. Used by the D1 migration tests
+/// (`loadError` only) to drive the decode-vs-operational disambiguation in
+/// `ensureAuthenticated()`'s catch, and by the #948 keychain-miss-fallback
+/// test (`saveError` only, `load()` returning nil) to reproduce a Keychain
+/// write that silently fails to persist — without standing up a real
+/// Keychain (which the SPM unit-test bundle can't access on the simulator
+/// due to errSecMissingEntitlement).
 private final class MockThrowingTokenStorage: TokenStorage, @unchecked Sendable {
-    let loadError: Error
-    init(loadError: Error) { self.loadError = loadError }
-    func load() throws -> AuthSession? { throw loadError }
-    func save(_ session: AuthSession) throws {}
+    let loadError: Error?
+    let saveError: Error?
+    init(loadError: Error? = nil, saveError: Error? = nil) {
+        self.loadError = loadError
+        self.saveError = saveError
+    }
+    func load() throws -> AuthSession? {
+        if let loadError { throw loadError }
+        return nil
+    }
+    func save(_ session: AuthSession) throws {
+        if let saveError { throw saveError }
+    }
     func delete() throws {}
 }
 
