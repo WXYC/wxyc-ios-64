@@ -58,6 +58,10 @@ worklog/
 # Sentry CLI config (contains auth token)
 .sentryclirc
 
+# Tools ci_scripts/install-sentry-cli.sh vendors into the checkout (sentry-cli).
+# Binaries, per-machine, reinstalled on demand.
+.ci-tools/
+
 # Scratch clone used by scripts/regenerate-api-types.sh / verify-api-types.sh
 # (already covered by **/.build/* above; called out explicitly for clarity)
 .build/wxyc-shared-codegen/
