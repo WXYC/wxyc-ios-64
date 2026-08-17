@@ -283,21 +283,13 @@ struct WXYCApp: App {
             options.dsn = AppConfiguration.sentryDsn
 
             // Unset, the SDK defaults this to "production" — so every simulator
-            // run and every Xcode launch has been filing under real user
-            // traffic, and triage on the `environment` tag was worthless. Whole
-            // issues turned out to be this machine: `BGTaskScheduler is not
-            // available on this platform` (IOS-1S/20/1V, an API the Simulator
-            // genuinely lacks) and the v2 playlist timeouts (IOS-2S/1T/24/3Y,
-            // 100% on the debug bundle).
+            // run and every Xcode launch was filing under real user traffic, and
+            // triage on the `environment` tag was worthless.
             //
-            // Computed rather than hardcoded per configuration because no
-            // single build-time fact separates the four cases. The scheme's
-            // Test action builds `Debug TestFlight`, which carries the
-            // *release* bundle id, so a simulator run can look shipped by
-            // bundle id alone (IOS-41); and Archive builds TestFlight and App
-            // Store from one `Release` configuration, so only the receipt tells
-            // those two apart, at runtime. See `BuildEnvironment` for the
-            // precedence and the tests that pin it.
+            // Computed rather than hardcoded per configuration because no single
+            // build-time fact separates the five cases; two of them can only be
+            // told apart at runtime. `BuildEnvironment` documents the precedence,
+            // the evidence behind each case, and the tests that pin them.
             options.environment = BuildEnvironment.current.rawValue
 
             options.enableAutoSessionTracking = true
