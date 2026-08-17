@@ -52,7 +52,7 @@ Skip a single push with `git push --no-verify`, or globally with `git config wxy
 zsh .github/scripts/tests/test-affected-tests.sh    # affected-tests.sh: pbxproj classification, whitespace input, output() guard
 zsh scripts/tests/test-pre-push-hook.sh             # scripts/hooks/pre-push: BASE_REF derivation from git's stdin protocol
 zsh scripts/tests/test-affected-error-fallback.sh   # test-affected.sh: CoreTests coverage when affected-tests.sh itself crashes
-zsh scripts/tests/test-upload-debug-symbols.sh      # upload-debug-symbols.sh: the CI-errors/local-warns split, and the no-dSYM exemption
+zsh scripts/tests/test-upload-debug-symbols.sh      # upload-debug-symbols.sh: archive-errors/build-warns, and the no-dSYM exemption
 zsh scripts/tests/test-install-sentry-cli.sh        # install-sentry-cli.sh: version pinning, idempotency, ~/.sentryclirc handling
 ```
 

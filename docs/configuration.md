@@ -32,14 +32,23 @@ The row opens its destination in an `SFSafariViewController` sheet, not `openURL
 
 Sentry symbolicates Release stacks **server-side**, from dSYMs uploaded at build time by the `Upload Debug Symbols to Sentry` build phase on the WXYC target. The phase is a one-line `exec` of `scripts/upload-debug-symbols.sh`; the logic lives in the script so it can be regression-tested (`scripts/tests/test-upload-debug-symbols.sh`) instead of edited blind inside `project.pbxproj`.
 
-Without that upload, Sentry has addresses and no function names, and everything downstream of a symbolicated stack — grouping rules, fingerprints, the innermost-in-app-frame heuristics — silently stops working. Nothing in the build says so, which is why the script's failure behavior depends on where it runs.
+Without that upload, Sentry has addresses and no function names, and everything downstream of a symbolicated stack — grouping rules, fingerprints, the innermost-in-app-frame heuristics — silently stops working. Nothing in the build says so, which is why the script's failure behavior depends on what kind of build it is.
 
-Every failure mode — no `sentry-cli`, no credentials, upload rejected — resolves the same way, and only *where* the build runs changes the resolution. Locally it is a `warning:` and the build continues; on a CI build that ships it is an `error:` and the build stops; on a CI build that can't ship the upload is never attempted at all.
+Every failure mode — no `sentry-cli`, no credentials, upload rejected — resolves the same way, and only the *build* changes the resolution:
 
-A dev Mac must not be blocked by a tool nobody installed. A CI archive is the opposite case: it ships. Two exemptions sit on top of that:
+| Build | A failed upload is | Because |
+|---|---|---|
+| An **archive** (`ACTION=install`), on a dev Mac or a runner | an `error:`, exit 1, no archive | this is the build that reaches TestFlight and the App Store |
+| Any other **local** build, `Release` included | a `warning:`, exit 0 | the phase runs on every build and must not block work on a machine without `sentry-cli` |
+| A **shipping CI** build that isn't an archive | an `error:`, exit 1 | nobody is waiting on a runner, so a spurious failure costs a rerun |
+| A **non-shipping CI** build | never attempted | a test workflow uploads nothing, so it needs no token |
 
-- **A build with no dSYMs** skips, except on a shipping CI build, where it is an `error:` — every WXYC configuration sets `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so an archive with an empty `DWARF_DSYM_FOLDER_PATH` means something upstream broke, and passing that through quietly is the original bug with a new cause.
-- **A CI build that can't ship** skips entirely. "Shipping" is `ACTION=install` (an archive) or a `CONFIGURATION` whose name does not start with `Debug`; a build with no `CONFIGURATION` at all counts as shipping, since a spurious CI failure is loud and a skipped upload is not.
+The archive row is the one that matters in practice: **WXYC archives locally**, from Xcode's Product > Archive, not on a runner. The first version of this (#955) keyed strictness on CI alone, which left the only build that actually ships taking the lenient path — the build manifest for the 2026-08-11 archive records `ACTION=install`, `CONFIGURATION=Release`, and no `CI` in the environment.
+
+Two exemptions sit on top of the table:
+
+- **A build with no dSYMs** skips, except on a shipping build, where it is an `error:` — every WXYC configuration sets `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so an archive with an empty `DWARF_DSYM_FOLDER_PATH` means something upstream broke, and passing that through quietly is the original bug with a new cause.
+- **A CI build that can't ship** skips entirely. "Shipping" is `ACTION=install` (an archive) or a `CONFIGURATION` whose name does not start with `Debug`; a CI build with no `CONFIGURATION` at all counts as shipping, since a spurious CI failure is loud and a skipped upload is not. Locally the same unknown build counts as *not* shipping — the argument for guessing "shipping" is that a wrong guess is cheap, and on a dev Mac it isn't.
 
 The second exemption is load-bearing and easy to get wrong twice over.
 
@@ -47,9 +56,13 @@ The second exemption is load-bearing and easy to get wrong twice over.
 
 **And the configuration test is a prefix, not an equality.** This project has five configurations — `Debug`, `Debug TestFlight`, `TestFlight`, `Release`, `Release (Active Arch)` — and the shared scheme's `TestAction` builds `Debug TestFlight`. Any `xcodebuild test -scheme WXYC` without an explicit `-configuration` (that includes `scripts/test-affected.sh`) lands there, so matching only the literal `Debug` would classify every test run as shipping.
 
-CI-ness has two sources, checked in that order. `ci_post_clone.sh` writes `.ci-tools/ci-runner` into the checkout, and that file alone is enough; otherwise `CI` is read from the environment as a tri-state, not a presence check (`false`, `0`, `no`, `off`, and empty all mean local; Xcode Cloud sets `CI=TRUE`). The marker exists because the environment hop this depends on is the same one the token deliberately doesn't rely on — see below — and a `CI` that fails to reach the build phase would silently turn every `error:` above back into the `warning:` this whole section exists to eliminate.
+CI-ness has two sources, checked in that order. `ci_post_clone.sh` writes `.ci-tools/ci-runner` into the checkout, and that file alone is enough; otherwise `CI` is read from the environment as a tri-state, not a presence check (`false`, `0`, `no`, `off`, and empty all mean local; Xcode Cloud sets `CI=TRUE`). The marker exists because the environment hop this depends on is the same one the token deliberately doesn't rely on — see below — and a `CI` that fails to reach the build phase would silently downgrade the non-archive rows of the table back to a `warning:`.
+
+CI-ness also picks which fix the diagnostic names, since Xcode's issue navigator shows one line and nothing around it: a runner is told to check `ci_post_clone`, a dev Mac is told to `brew install getsentry/tools/sentry-cli` or to write a `.sentryclirc`. Sending either one the other's instructions is a dead end.
 
 ### Local setup
+
+This is a prerequisite for archiving, not a nicety: **Product > Archive fails without it.** For an ordinary build it stays optional — a missing `sentry-cli` is a `warning:` and the build continues.
 
 Install `sentry-cli` (`brew install getsentry/tools/sentry-cli`, or `ci_scripts/install-sentry-cli.sh` for the pinned version) and put an auth token in a `.sentryclirc` at the repo root:
 
@@ -58,9 +71,13 @@ Install `sentry-cli` (`brew install getsentry/tools/sentry-cli`, or `ci_scripts/
 token=<your token>
 ```
 
-`.sentryclirc` is gitignored and must stay that way. The script also accepts `SENTRY_AUTH_TOKEN` in the environment, or a `~/.sentryclirc`.
+Mint the token the same way an Xcode Cloud one is minted (step 1 below) — an organization token scoped to `org:ci` / `project:releases`.
+
+`.sentryclirc` is gitignored and must stay that way. The script also accepts `SENTRY_AUTH_TOKEN` in the environment, or a `~/.sentryclirc` — worth having, since a repo-root `.sentryclirc` doesn't follow the checkout into a git worktree.
 
 ### Xcode Cloud setup
+
+Nothing currently archives on Xcode Cloud — the "Default" workflow on the `WXYC` product has never run, and its product is attached to a personal fork rather than `WXYC/wxyc-ios-64`. This section is what has to be true if that changes; the local path above is the one in use.
 
 Xcode Cloud runners ship no `sentry-cli` and, because `.sentryclirc` is gitignored, no credentials either. `ci_scripts/ci_post_clone.sh` marks the checkout with `.ci-tools/ci-runner` and supplies both by calling `ci_scripts/install-sentry-cli.sh`, which:
 
