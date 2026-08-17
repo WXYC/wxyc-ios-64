@@ -2,8 +2,10 @@
 //  DeviceFingerprintConfigurationTests.swift
 //  MusicShareKit
 //
-//  Tests for the MusicShareKitConfiguration / MusicShareKit.configure(...)
-//  device-fingerprint plumbing (iOS#351 Step 2).
+//  Tests for the MusicShareKitConfiguration / MusicShareKit.reconfigure(...)
+//  device-fingerprint plumbing (iOS#351 Step 2). Uses reconfigure(_:), not
+//  the guarded configure(_:), because this suite depends on every call
+//  rebuilding state with fresh doubles (#956).
 //
 //  Created by Jake Bromberg on 06/01/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -47,7 +49,7 @@ struct DeviceFingerprintConfigurationTests {
         let storage = InMemoryDeviceFingerprintStorage()
         storage.stubFingerprint = "fingerprint-eager-42"
 
-        MusicShareKit.configure(makeConfiguration(storage: storage))
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
 
         // Capture immediately — within MusicShareKitTests' parallelizable
         // run, a concurrent suite may reconfigure MusicShareKit globals
@@ -64,7 +66,7 @@ struct DeviceFingerprintConfigurationTests {
         let storage = InMemoryDeviceFingerprintStorage()
         storage.stubFingerprint = "cached-val"
 
-        MusicShareKit.configure(makeConfiguration(storage: storage))
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
         let postConfigureCount = storage.ensureCallCount
 
         _ = MusicShareKit.deviceFingerprint
@@ -90,7 +92,7 @@ struct DeviceFingerprintConfigurationTests {
         )
         mockAnalytics.reset()
 
-        MusicShareKit.configure(makeConfiguration(storage: storage))
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
 
         let failures = mockAnalytics.typedEvents(ofType: DeviceFingerprintInitFailedEvent.self)
         #expect(failures.count == 1)
@@ -104,7 +106,7 @@ struct DeviceFingerprintConfigurationTests {
             status: errSecInteractionNotAllowed
         )
 
-        MusicShareKit.configure(makeConfiguration(storage: storage))
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
 
         // …then later (e.g., after first-unlock) Keychain comes online.
         // The accessor's at-most-once retry fires on the next read.
@@ -121,7 +123,7 @@ struct DeviceFingerprintConfigurationTests {
             status: errSecInteractionNotAllowed
         )
 
-        MusicShareKit.configure(makeConfiguration(storage: storage))
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
         let preCount = storage.ensureCallCount  // 1 from eager configure
 
         // Multiple accesses while storage continues failing.

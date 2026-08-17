@@ -38,7 +38,7 @@ struct MusicShareKitTokenProviderTests {
         // DeviceFingerprintConfigurationTests.makeConfiguration).
         let fingerprintStorage = InMemoryDeviceFingerprintStorage()
         fingerprintStorage.stubFingerprint = "fp-facade-\(UUID().uuidString)"
-        MusicShareKit.configure(MusicShareKitConfiguration(
+        MusicShareKit.reconfigure(MusicShareKitConfiguration(
             requestOMaticURL: "https://example.com/request",
             authBaseURL: "http://127.0.0.1:9",
             keychainAccessGroup: nil,

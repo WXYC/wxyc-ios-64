@@ -77,6 +77,13 @@ public enum MusicShareKit {
     /// on every request when the Keychain is wedged.
     nonisolated(unsafe) private static var _fingerprintRetryAttempted: Bool = false
     private static let fingerprintLock = NSLock()
+    /// Backs `configure(_:)`'s once-per-process guard (#956). A caller that
+    /// runs on every presentation — the share extension's
+    /// `ShareViewController.viewDidLoad` — must not rebuild `_authService`
+    /// on every call, or the in-memory `AuthenticationService` (and its
+    /// `cachedSession`, the #948 Keychain-miss fallback's load-bearing
+    /// state) never survives long enough to be read.
+    private static let configureGate = RunOnceGate()
 
     /// The current configuration. Fatal error if not set.
     public static var configuration: MusicShareKitConfiguration {
@@ -154,8 +161,41 @@ public enum MusicShareKit {
     }
 
     /// Configure MusicShareKit with the required settings.
-    /// Call this early in your app's lifecycle before using any MusicShareKit services.
+    ///
+    /// Call this early in your app's lifecycle before using any MusicShareKit
+    /// services. Idempotent per process from the second call onward: only
+    /// the first call actually rebuilds `_configuration`, the device
+    /// fingerprint, and `_authService` (via `reconfigure(_:)`); every later
+    /// call in the same process is a no-op (#956). That makes it safe for a
+    /// caller that runs on every presentation — the share extension's
+    /// `ShareViewController.viewDidLoad` — to call this unconditionally: the
+    /// first presentation's `AuthenticationService`, and whatever
+    /// `cachedSession` it accumulates, is reused by every later
+    /// presentation in the same process instead of being rebuilt from
+    /// scratch (which would start each presentation from `cachedSession ==
+    /// nil` and re-mint an orphaned anonymous user on a Keychain-miss
+    /// device — the #948 fallback's precondition, broken).
+    ///
+    /// Tests that need a guaranteed rebuild with fresh doubles installed on
+    /// every call should call `reconfigure(_:)` instead.
     public static func configure(_ configuration: MusicShareKitConfiguration) {
+        configureGate.runOnce {
+            reconfigure(configuration)
+        }
+    }
+
+    /// Unconditionally (re)initializes MusicShareKit's global state —
+    /// `_configuration`, the device fingerprint, and `_authService` — even
+    /// if `configure(_:)` already ran once in this process.
+    ///
+    /// Reserved for tests: several `MusicShareKitTests` suites
+    /// (`DeviceFingerprintConfigurationTests`, `MusicShareKitTokenProviderTests`,
+    /// `AuthenticationServiceTests`, `RequestServiceTests`) call this
+    /// repeatedly within one test process and depend on the rebuild to
+    /// install fresh doubles (analytics mocks, fingerprint/token storage
+    /// doubles, etc.) on every call. Production code should call the
+    /// guarded `configure(_:)` instead — see its doc comment for why.
+    public static func reconfigure(_ configuration: MusicShareKitConfiguration) {
         _configuration = configuration
 
         // Eagerly materialize the device fingerprint BEFORE init'ing the auth
