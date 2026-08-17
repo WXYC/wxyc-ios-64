@@ -677,9 +677,16 @@ public actor PlaycutMetadataService {
     /// caller's own cancellation handling runs, not be treated as "retry
     /// me" — `fetchAlbumWithRetry` checks for cancellation before this
     /// predicate is ever consulted.
+    ///
+    /// 429 joins the 5xx range as transient (#948): a wedged anonymous-auth
+    /// session hammering `/auth/sign-in/anonymous` can burn through
+    /// Backend-Service's rate limit, and a wedge on one device shouldn't
+    /// turn one rate-limited album lookup into a surfaced failure when the
+    /// existing backoff schedule (``albumFetchRetryDelays``) already spaces
+    /// retries out.
     private static func isTransient(_ error: any Error) -> Bool {
         if let httpError = error as? HTTPStatusError {
-            return (500...599).contains(httpError.statusCode)
+            return httpError.statusCode == 429 || (500...599).contains(httpError.statusCode)
         }
         guard let urlError = error as? URLError else { return false }
         return switch urlError.code {
