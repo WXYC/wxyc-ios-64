@@ -12,30 +12,20 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
-import Synchronization
 import Testing
 @testable import MusicShareKit
 
 @Suite("RunOnceGate Tests")
 struct RunOnceGateTests {
 
-    @Test("runOnce executes its body on the first call")
-    func firstCallRuns() {
+    @Test("runOnce executes its body exactly once no matter how often it is called", arguments: [1, 2, 5])
+    func runOnceExecutesBodyExactlyOnce(callsMade: Int) {
         let gate = RunOnceGate()
         var callCount = 0
 
-        gate.runOnce { callCount += 1 }
-
-        #expect(callCount == 1)
-    }
-
-    @Test("runOnce does not execute its body on a second call")
-    func secondCallIsANoOp() {
-        let gate = RunOnceGate()
-        var callCount = 0
-
-        gate.runOnce { callCount += 1 }
-        gate.runOnce { callCount += 1 }
+        for _ in 0..<callsMade {
+            gate.runOnce { callCount += 1 }
+        }
 
         #expect(callCount == 1)
     }
@@ -50,18 +40,6 @@ struct RunOnceGateTests {
         #expect(gate.hasRun)
     }
 
-    @Test("runOnce does not execute its body across many repeated calls")
-    func repeatedCallsStayAtOne() {
-        let gate = RunOnceGate()
-        var callCount = 0
-
-        for _ in 0..<5 {
-            gate.runOnce { callCount += 1 }
-        }
-
-        #expect(callCount == 1)
-    }
-
     /// `MusicShareKit.configure(_:)` is `public` and `nonisolated`, so a
     /// future caller is not confined to the main thread. An unsynchronized
     /// check-then-set would let two callers both pass the guard and both
@@ -69,31 +47,21 @@ struct RunOnceGateTests {
     @Test("Concurrent callers still run the body exactly once")
     func concurrentCallersRunBodyOnce() async {
         let gate = RunOnceGate()
-        let callCount = Counter()
 
-        await withTaskGroup(of: Void.self) { group in
+        // Each child task reports whether IT was the winner, so the tally
+        // needs no shared mutable state: `runOnce`'s `body` is non-escaping,
+        // so mutating the task-local `didRun` is legal.
+        let runs = await withTaskGroup(of: Bool.self) { group in
             for _ in 0..<64 {
                 group.addTask {
-                    gate.runOnce { callCount.increment() }
+                    var didRun = false
+                    gate.runOnce { didRun = true }
+                    return didRun
                 }
             }
+            return await group.reduce(into: 0) { $0 += $1 ? 1 : 0 }
         }
 
-        #expect(callCount.value == 1)
-    }
-}
-
-/// A `Sendable` tally the concurrency test's child tasks can share.
-///
-/// `Mutex` is `~Copyable`, so a bare `Mutex<Int>` local can't be captured by
-/// the `sending` closure `addTask` takes; boxing it in a final class gives
-/// the tasks a reference to share instead.
-private final class Counter: Sendable {
-    private let storage = Mutex(0)
-
-    var value: Int { storage.withLock { $0 } }
-
-    func increment() {
-        storage.withLock { $0 += 1 }
+        #expect(runs == 1)
     }
 }

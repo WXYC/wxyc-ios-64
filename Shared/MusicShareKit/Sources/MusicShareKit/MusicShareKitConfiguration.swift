@@ -77,12 +77,8 @@ public enum MusicShareKit {
     /// on every request when the Keychain is wedged.
     nonisolated(unsafe) private static var _fingerprintRetryAttempted: Bool = false
     private static let fingerprintLock = NSLock()
-    /// Backs `configure(_:)`'s once-per-process guard (#956). A caller that
-    /// runs on every presentation — the share extension's
-    /// `ShareViewController.viewDidLoad` — must not rebuild `_authService`
-    /// on every call, or the in-memory `AuthenticationService` (and its
-    /// `cachedSession`, the #948 Keychain-miss fallback's load-bearing
-    /// state) never survives long enough to be read.
+    /// Backs `configure(_:)`'s once-per-process guard — see
+    /// ``MusicShareKit/configure(_:)`` for why it exists (#956).
     ///
     /// `internal` rather than `private` so tests can assert the gate is
     /// still fresh before exercising it — a once-per-process guarantee that
@@ -193,9 +189,7 @@ public enum MusicShareKit {
     /// `_configuration`, the device fingerprint, and `_authService` — even
     /// if `configure(_:)` already ran once in this process.
     ///
-    /// Reserved for tests: several `MusicShareKitTests` suites
-    /// (`DeviceFingerprintConfigurationTests`, `MusicShareKitTokenProviderTests`,
-    /// `AuthenticationServiceTests`, `RequestServiceTests`) call this
+    /// Reserved for tests: several `MusicShareKitTests` suites call this
     /// repeatedly within one test process and depend on the rebuild to
     /// install fresh doubles (analytics mocks, fingerprint/token storage
     /// doubles, etc.) on every call.
