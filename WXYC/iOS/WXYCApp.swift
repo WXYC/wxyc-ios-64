@@ -272,13 +272,6 @@ struct WXYCApp: App {
     }
 
     private func setUpSentry() {
-        // Stands in for process launch. `init()` runs before any UI exists, so
-        // this is within milliseconds of it, and it is captured by `beforeSend`
-        // below to date every event against the launch it belongs to. A wall
-        // clock deliberately, not a monotonic one: it is compared against
-        // `event.timestamp`, which is also wall clock.
-        let launchedAt = Date()
-
         SentrySDK.start { options in
             options.dsn = AppConfiguration.sentryDsn
 
@@ -321,8 +314,8 @@ struct WXYCApp: App {
             // highlight the exact blocking location" — which is precisely the
             // noise that fragmented these issues. Over 30 days, 1207 hang
             // events became 68 issues, 40 of them holding a single event.
-            // Dropping the non-fully-blocking half attacks that at the source;
-            // `SentryEventFilters` regroups whatever still arrives.
+            // Non-fully-blocking hangs are dropped before an event is even
+            // created, so they cost nothing downstream.
             options.enableAppHangTrackingV2 = true
             options.enableReportNonFullyBlockingAppHangs = false
 
@@ -334,13 +327,18 @@ struct WXYCApp: App {
             // underpowered-hardware artifact, and a higher threshold would hide
             // exactly the cold-launch regression this is meant to catch.
 
-            // The app's only `beforeSend`. Runs on every event, so it is
-            // written to return anything it does not recognise untouched — see
-            // `SentryEventFilters` for the rules and for where to add the next
-            // filter.
-            options.beforeSend = { event in
-                SentryEventFilters.beforeSend(event, launchedAt: launchedAt)
-            }
+            // Regrouping the remaining hangs belongs to Sentry's server-side
+            // Stack Trace Rules, not to a client `beforeSend`, and there is
+            // deliberately no `beforeSend` here. A client fingerprint was built
+            // and measured before being removed: `beforeSend` runs before
+            // upload, and the SDK only symbolicates when `options.debug` is on
+            // (`SentryThreadInspector` sets `symbolicate = options.debug`), so
+            // `frame.function` is nil on every frame of every Release build —
+            // any stack-derived fingerprint degenerates to one bucket in the
+            // builds that matter. Worse, a custom fingerprint without a
+            // `{{ default }}` token replaces server-side grouping outright,
+            // which would put those Stack Trace Rules out of reach until the
+            // next release. See git history for the full write-up.
 
             #if DEBUG
             options.debug = true
