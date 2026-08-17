@@ -32,7 +32,8 @@ struct SentryEventFiltersTests {
         let fingerprint = SentryEventFilters.appHangFingerprint(
             mechanismType: mechanismType,
             exceptionType: "NSRangeException",
-            secondsSinceLaunch: 1
+            secondsSinceLaunch: 1,
+            innermostInAppFunction: "AudioEnginePlayer.play"
         )
 
         #expect(fingerprint == nil)
@@ -48,10 +49,113 @@ struct SentryEventFiltersTests {
         let fingerprint = SentryEventFilters.appHangFingerprint(
             mechanismType: "AppHang",
             exceptionType: exceptionType,
-            secondsSinceLaunch: 1
+            secondsSinceLaunch: 1,
+            innermostInAppFunction: "AudioEnginePlayer.play"
         )
 
-        #expect(fingerprint == ["app-hang", exceptionType, "launch"])
+        #expect(fingerprint == ["app-hang", exceptionType, "launch", "AudioEnginePlayer.play"])
+    }
+
+    // MARK: - The in-app frame discriminator
+
+    /// Without a fourth component the reachable fingerprint set is three issues
+    /// for the whole app: dropping non-fully-blocking hangs means only
+    /// `App Hang Fully Blocked` and its `Fatal` counterpart can ever be created
+    /// (`SentryANRTrackingIntegration.m:113`), leaving launch/runtime/unknown as
+    /// the only variation. A Metal stall, a playlist decode and an artwork
+    /// decode would share one issue.
+    @Test("The in-app function separates hangs that share a type and phase")
+    func inAppFunctionSeparatesOtherwiseIdenticalHangs() {
+        let fingerprints = ["AudioEnginePlayer.play", "MetalWallpaperRenderer.setUpStitchablePipeline"]
+            .compactMap { function in
+                SentryEventFilters.appHangFingerprint(
+                    mechanismType: "AppHang",
+                    exceptionType: "App Hang Fully Blocked",
+                    secondsSinceLaunch: 60,
+                    innermostInAppFunction: function
+                )
+            }
+
+        #expect(fingerprints.count == 2)
+        #expect(Set(fingerprints).count == 2)
+    }
+
+    /// Sentry truncates a thread at 100 frames and keeps the leaf-most ones, so
+    /// deep SwiftUI render recursion loses every app frame near the root — real
+    /// events like IOS-23 are 100 frames of AttributeGraph with no app frame at
+    /// all. Those genuinely are one category, and a named constant says so in
+    /// the Sentry UI rather than leaving a blank component.
+    @Test("A hang with no in-app frame gets a self-describing bucket")
+    func hangWithoutAnInAppFrameGetsANamedBucket() {
+        let fingerprint = SentryEventFilters.appHangFingerprint(
+            mechanismType: "AppHang",
+            exceptionType: "App Hang Fully Blocked",
+            secondsSinceLaunch: 60,
+            innermostInAppFunction: nil
+        )
+
+        #expect(fingerprint == ["app-hang", "App Hang Fully Blocked", "runtime", "no-app-frame"])
+    }
+
+    /// Sentry orders frames root-first and leaf-last — `SentryStacktraceBuilder`
+    /// reverses them with the comment "The frames must be ordered from caller to
+    /// callee, or oldest to youngest". The *innermost* in-app frame is therefore
+    /// the last one, and it is the specific attribution: on the real IOS-4C
+    /// event that is `AudioEnginePlayer.play` rather than its caller
+    /// `MP3Streamer.handleDecodedBuffer`. Getting this backwards silently
+    /// inverts every fingerprint, so it is pinned on a frame list shaped like
+    /// the real one.
+    @Test("The innermost in-app frame wins over its callers")
+    func innermostInAppFrameWins() {
+        let frames = [
+            frame(function: "main", inApp: true),
+            frame(function: "MP3Streamer.handleDecodedBuffer", inApp: true),
+            frame(function: "AudioEnginePlayer.play", inApp: true),
+            frame(function: "AudioQueueStart", inApp: false),
+        ]
+
+        #expect(SentryEventFilters.innermostInAppFunction(in: frames) == "AudioEnginePlayer.play")
+    }
+
+    @Test("A frame list with no in-app frames yields nothing")
+    func noInAppFramesYieldsNil() {
+        let frames = [
+            frame(function: "AG::Graph::update_attribute", inApp: false),
+            frame(function: "GSFontCacheGetDictionary", inApp: false),
+        ]
+
+        #expect(SentryEventFilters.innermostInAppFunction(in: frames) == nil)
+    }
+
+    /// `inApp` is `NSNumber?` on the SDK's `Frame`, so it is genuinely absent on
+    /// frames Sentry could not classify. Absent must read as "not in-app"
+    /// rather than crashing or counting as in-app.
+    @Test("A frame with no inApp flag is not treated as in-app")
+    func missingInAppFlagIsNotInApp() {
+        let frames = [
+            frame(function: "AppDelegate.application", inApp: true),
+            frame(function: "unclassified", inApp: nil),
+        ]
+
+        #expect(SentryEventFilters.innermostInAppFunction(in: frames) == "AppDelegate.application")
+    }
+
+    /// An in-app frame with no symbol carries no attribution, so it must not
+    /// win over a named caller and must not produce an empty component.
+    @Test("An unnamed in-app frame does not claim the discriminator")
+    func unnamedInAppFrameIsSkipped() {
+        let frames = [
+            frame(function: "ArtworkLoader.load", inApp: true),
+            frame(function: nil, inApp: true),
+        ]
+
+        #expect(SentryEventFilters.innermostInAppFunction(in: frames) == "ArtworkLoader.load")
+    }
+
+    @Test("An empty or absent frame list yields nothing")
+    func emptyFrameListYieldsNil() {
+        #expect(SentryEventFilters.innermostInAppFunction(in: []) == nil)
+        #expect(SentryEventFilters.innermostInAppFunction(in: nil) == nil)
     }
 
     /// The whole point of the change: fragmentation must not come back through
@@ -64,7 +168,8 @@ struct SentryEventFiltersTests {
                 SentryEventFilters.appHangFingerprint(
                     mechanismType: "AppHang",
                     exceptionType: exceptionType,
-                    secondsSinceLaunch: seconds
+                    secondsSinceLaunch: seconds,
+                    innermostInAppFunction: "AudioEnginePlayer.play"
                 )
             }
         }
@@ -78,10 +183,11 @@ struct SentryEventFiltersTests {
         let fingerprint = SentryEventFilters.appHangFingerprint(
             mechanismType: "AppHang",
             exceptionType: nil,
-            secondsSinceLaunch: 1
+            secondsSinceLaunch: 1,
+            innermostInAppFunction: "AudioEnginePlayer.play"
         )
 
-        #expect(fingerprint == ["app-hang", "unknown", "launch"])
+        #expect(fingerprint == ["app-hang", "unknown", "launch", "AudioEnginePlayer.play"])
     }
 
     // MARK: - Launch vs runtime
@@ -91,10 +197,13 @@ struct SentryEventFiltersTests {
         let fingerprint = SentryEventFilters.appHangFingerprint(
             mechanismType: "AppHang",
             exceptionType: "App Hang Fully Blocked",
-            secondsSinceLaunch: secondsSinceLaunch
+            secondsSinceLaunch: secondsSinceLaunch,
+            innermostInAppFunction: "AudioEnginePlayer.play"
         )
 
-        #expect(fingerprint == ["app-hang", "App Hang Fully Blocked", expectedPhase])
+        #expect(
+            fingerprint == ["app-hang", "App Hang Fully Blocked", expectedPhase, "AudioEnginePlayer.play"]
+        )
     }
 
     // MARK: - Wiring, on real events
@@ -122,13 +231,65 @@ struct SentryEventFiltersTests {
         let event = Event()
         let exception = Exception(value: "App hanging for at least 2000 ms.", type: "App Hang Fully Blocked")
         exception.mechanism = Mechanism(type: "AppHang")
+        exception.stacktrace = SentryStacktrace(
+            frames: [
+                frame(function: "WXYCApp.$main", inApp: true),
+                frame(function: "AudioEnginePlayer.play", inApp: true),
+                frame(function: "AudioQueueStart", inApp: false),
+            ],
+            registers: [:]
+        )
         event.exceptions = [exception]
         event.timestamp = launchedAt.addingTimeInterval(1.5)
 
         let result = SentryEventFilters.beforeSend(event, launchedAt: launchedAt)
 
         #expect(result === event)
-        #expect(event.fingerprint == ["app-hang", "App Hang Fully Blocked", "launch"])
+        #expect(
+            event.fingerprint == ["app-hang", "App Hang Fully Blocked", "launch", "AudioEnginePlayer.play"]
+        )
+    }
+
+    /// The IOS-23 shape: a hang event whose stacktrace is all system frames.
+    /// It still gets a fingerprint — just the shared fallback one.
+    @Test("A hang event with no in-app frames falls back on the real object graph")
+    func realHangEventWithoutInAppFramesFallsBack() {
+        let launchedAt = Date()
+        let event = Event()
+        let exception = Exception(value: "App hanging.", type: "App Hang Fully Blocked")
+        exception.mechanism = Mechanism(type: "AppHang")
+        exception.stacktrace = SentryStacktrace(
+            frames: [
+                frame(function: "AG::Graph::update_attribute", inApp: false),
+                frame(function: "GSFontCacheGetDictionary", inApp: false),
+            ],
+            registers: [:]
+        )
+        event.exceptions = [exception]
+        event.timestamp = launchedAt.addingTimeInterval(60)
+
+        _ = SentryEventFilters.beforeSend(event, launchedAt: launchedAt)
+
+        #expect(
+            event.fingerprint == ["app-hang", "App Hang Fully Blocked", "runtime", "no-app-frame"]
+        )
+    }
+
+    /// A hang event carrying no stacktrace at all must not crash the walk.
+    @Test("A hang event with no stacktrace still fingerprints")
+    func realHangEventWithoutStacktraceStillFingerprints() {
+        let launchedAt = Date()
+        let event = Event()
+        let exception = Exception(value: "App hanging.", type: "App Hang Fully Blocked")
+        exception.mechanism = Mechanism(type: "AppHang")
+        event.exceptions = [exception]
+        event.timestamp = launchedAt.addingTimeInterval(1)
+
+        _ = SentryEventFilters.beforeSend(event, launchedAt: launchedAt)
+
+        #expect(
+            event.fingerprint == ["app-hang", "App Hang Fully Blocked", "launch", "no-app-frame"]
+        )
     }
 
     /// A fatal hang is written to disk while the app is hanging and sent on the
@@ -148,7 +309,7 @@ struct SentryEventFiltersTests {
 
         _ = SentryEventFilters.beforeSend(event, launchedAt: launchedAt)
 
-        #expect(event.fingerprint == ["app-hang", "Fatal App Hang Fully Blocked", "unknown"])
+        #expect(event.fingerprint == ["app-hang", "Fatal App Hang Fully Blocked", "unknown", "no-app-frame"])
     }
 
     /// A non-hang event must survive the pipeline with its grouping untouched,
@@ -168,6 +329,15 @@ struct SentryEventFiltersTests {
 }
 
 // MARK: - Fixtures
+
+/// Builds a `Frame` the way the SDK does: `inApp` is an `NSNumber`, and `nil`
+/// means Sentry never classified the frame at all.
+private func frame(function: String?, inApp: Bool?) -> Frame {
+    let frame = Frame()
+    frame.function = function
+    frame.inApp = inApp.map(NSNumber.init(value:))
+    return frame
+}
 
 /// Mechanism types that are not app hangs, including `nil` for an event with no
 /// exceptions and a lowercase near-miss.
