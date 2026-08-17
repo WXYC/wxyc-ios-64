@@ -444,6 +444,56 @@ struct PlaycutMetadataServiceHTTPTests {
         #expect(QueuedStubURLProtocol.capturedRequests().count == 3)
     }
 
+    @Test("Retries a 429 (rate limited) with backoff, then succeeds (#948)")
+    func retriesRateLimitedThenSucceeds() async throws {
+        // Given — the proxy 429s once (a wedged anonymous-auth session
+        // hammering /auth/sign-in/anonymous per #948 can burn through
+        // Backend-Service's rate limit), then the retry succeeds. isTransient
+        // is `private static`, so this is driven entirely through the public
+        // fetchMetadata(for:) API — same shape as
+        // retriesTransientServerErrorThenSucceeds above and the 401
+        // reauth-and-retry test, just with a 429 substituted.
+        let mockURLSession = QueuedStubURLProtocol.makeSession()
+        let mockCache = CountingCache()
+        let cache = CacheCoordinator(cache: mockCache)
+        let service = PlaycutMetadataService(
+            baseURL: URL(string: "https://api.wxyc.org")!,
+            urlSession: mockURLSession,
+            cache: cache
+        )
+
+        QueuedStubURLProtocol.setResponses([
+            (429, Data(#"{"error": "Too Many Requests"}"#.utf8)),
+            (200, Data("""
+            {
+                "discogsReleaseId": 12345,
+                "label": "Warp Records",
+                "releaseYear": 2001,
+                "spotifyUrl": null,
+                "appleMusicUrl": null,
+                "youtubeMusicUrl": null,
+                "bandcampUrl": null,
+                "soundcloudUrl": null
+            }
+            """.utf8)),
+        ])
+
+        let playcut = Playcut.stub(
+            songTitle: "VI Scose Poise",
+            labelName: "Warp",
+            artistName: "Autechre",
+            releaseTitle: "Confield"
+        )
+
+        // When
+        let result = await service.fetchMetadata(for: playcut)
+
+        // Then — retried rather than surfaced, and the retry's 200 wins.
+        #expect(result.album.label == "Warp Records")
+        #expect(result.album.releaseYear == 2001)
+        #expect(QueuedStubURLProtocol.capturedRequests().count == 2)
+    }
+
     @Test("Retries a transient networking blip (URLError) with backoff, then succeeds")
     func retriesTransientNetworkErrorThenSucceeds() async throws {
         // Given — a handler that throws a transient URLError twice, then serves 200.
