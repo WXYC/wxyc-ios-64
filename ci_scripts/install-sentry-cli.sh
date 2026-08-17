@@ -148,6 +148,23 @@ if [[ -f "$RC_PATH" ]]; then
     # Never clobber one that already exists — on a dev Mac that file is the
     # developer's own token, and this script is meant to be runnable there.
     echo "   Leaving the existing ${RC_PATH} in place"
+
+    # Never-clobber is not never-check. An rc file with no token in it — an
+    # empty one, a stale [defaults]-only section — satisfies "the file exists"
+    # while leaving the archive exactly as unable to upload as it was, and
+    # --require-auth exists to catch that here rather than twenty minutes on.
+    if grep -q '^[[:space:]]*token[[:space:]]*=' "$RC_PATH"; then
+        exit 0
+    fi
+    if [[ -n "${SENTRY_AUTH_TOKEN:-}" ]]; then
+        echo "   It carries no token, but SENTRY_AUTH_TOKEN is set and takes precedence"
+        exit 0
+    fi
+    if [[ "$REQUIRE_AUTH" == "true" ]]; then
+        echo "error: ${RC_PATH} exists but carries no token= line, and SENTRY_AUTH_TOKEN is not set, so this archive could not upload its dSYMs to Sentry. Add SENTRY_AUTH_TOKEN as a secret environment variable on the Xcode Cloud workflow; see docs/configuration.md."
+        exit 1
+    fi
+    echo "warning: ${RC_PATH} carries no token= line and SENTRY_AUTH_TOKEN is not set; debug symbols will not be uploaded"
     exit 0
 fi
 
