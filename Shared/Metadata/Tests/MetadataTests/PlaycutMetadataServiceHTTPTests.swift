@@ -623,16 +623,29 @@ struct PlaycutMetadataServiceHTTPTests {
     /// than failing fast, so a delay that exceeds the remaining retry budget
     /// abandons the retry immediately rather than spending even the first
     /// scheduled attempt: exactly one request goes out.
-    @Test("Abandons the retry when the server's Retry-After exceeds the remaining retry budget")
-    func abandonsRetryWhenServerDelayExceedsBudget() async throws {
+    ///
+    /// The veto is keyed on the presence of a `Retry-After`, not on the status
+    /// code: `isTransient` admits 5xx as well as 429, so the 503 case is
+    /// abandoned on exactly the same terms.
+    ///
+    /// See also `givesUpAfterExhaustingRetriesOnPersistentTransientError`,
+    /// which pins the other side of this — the same persistent transient
+    /// failure *without* a `Retry-After` still spends all three attempts — and
+    /// so is what keeps this test from passing vacuously if the retry loop
+    /// ever stopped retrying altogether.
+    @Test(
+        "Abandons the retry when the server's Retry-After exceeds the remaining retry budget",
+        arguments: [(429, "60"), (503, "30")]
+    )
+    func abandonsRetryWhenServerDelayExceedsBudget(statusCode: Int, retryAfter: String) async throws {
         let mockURLSession = QueuedStubURLProtocol.session { request in
             let response = HTTPURLResponse(
                 url: request.url!,
-                statusCode: 429,
+                statusCode: statusCode,
                 httpVersion: nil,
-                headerFields: ["Retry-After": "60"]
+                headerFields: ["Retry-After": retryAfter]
             )!
-            return (Data(#"{"error": "Too Many Requests"}"#.utf8), response)
+            return (Data(#"{"error": "Retry later"}"#.utf8), response)
         }
 
         let mockCache = CountingCache()
@@ -653,11 +666,14 @@ struct PlaycutMetadataServiceHTTPTests {
         // When
         let result = await service.fetchMetadata(for: playcut)
 
-        // Then — a single attempt: the 60s advertised delay dwarfs the
-        // ~600ms schedule budget, so no retry is even scheduled.
-        #expect(result.album.label == "Warp", "Should fall back to playcut label when the retry is abandoned")
-        #expect(QueuedStubURLProtocol.capturedRequests().count == 1, "A Retry-After beyond the retry budget must not be retried")
-        #expect(mockCache.setKeys.isEmpty, "An abandoned transient failure must not be recorded as a negative answer")
+        // Then — a single attempt: the advertised delay dwarfs the ~600ms
+        // schedule budget, so no retry is even scheduled.
+        #expect(result.album.label == "Warp", "Should fall back to playcut label when the retry is vetoed")
+        #expect(
+            QueuedStubURLProtocol.capturedRequests().count == 1,
+            "A \(statusCode) naming a wait beyond the retry budget must not be retried"
+        )
+        #expect(mockCache.setKeys.isEmpty, "A vetoed transient failure must not be recorded as a negative answer")
     }
 
     /// `Retry-After: 0` is the *only* value RFC 9110 §10.2.3's `delay-seconds`
@@ -725,79 +741,5 @@ struct PlaycutMetadataServiceHTTPTests {
         #expect(result.album.label == "Warp Records")
         #expect(attemptCount.withLock { $0 } == 2)
         #expect(elapsed >= 0.09, "The schedule's 100ms floor must survive a Retry-After of 0, not be replaced by it")
-    }
-
-    /// The veto is keyed on the presence of a `Retry-After`, not on the status
-    /// code: `isTransient` admits 5xx as well as 429, and a 503 that names a
-    /// wait longer than the budget is abandoned on exactly the same terms.
-    @Test("A 5xx carrying an over-budget Retry-After is vetoed like a 429")
-    func serverErrorWithOverBudgetRetryAfterIsAlsoAbandoned() async throws {
-        let mockURLSession = QueuedStubURLProtocol.session { request in
-            let response = HTTPURLResponse(
-                url: request.url!,
-                statusCode: 503,
-                httpVersion: nil,
-                headerFields: ["Retry-After": "30"]
-            )!
-            return (Data(#"{"error": "Service Unavailable"}"#.utf8), response)
-        }
-
-        let mockCache = CountingCache()
-        let cache = CacheCoordinator(cache: mockCache)
-        let service = PlaycutMetadataService(
-            baseURL: URL(string: "https://api.wxyc.org")!,
-            urlSession: mockURLSession,
-            cache: cache
-        )
-
-        let playcut = Playcut.stub(
-            songTitle: "VI Scose Poise",
-            labelName: "Warp",
-            artistName: "Autechre",
-            releaseTitle: "Confield"
-        )
-
-        // When
-        let result = await service.fetchMetadata(for: playcut)
-
-        // Then
-        #expect(result.album.label == "Warp", "Should fall back to the playcut label when the retry is vetoed")
-        #expect(QueuedStubURLProtocol.capturedRequests().count == 1, "A 5xx naming an over-budget wait must not be retried either")
-        #expect(mockCache.setKeys.isEmpty, "A vetoed transient failure must not be recorded as a negative answer")
-    }
-
-    /// A transient failure with no `Retry-After` at all must keep the
-    /// pre-#957 behavior: the full schedule runs, so three requests go out.
-    /// This is the non-vacuity guard on the two veto tests above — without it
-    /// they would still pass if the retry loop had stopped retrying entirely.
-    @Test("A transient failure with no Retry-After still spends the whole schedule")
-    func transientWithoutRetryAfterStillRetriesFully() async throws {
-        let mockURLSession = QueuedStubURLProtocol.session { request in
-            let response = HTTPURLResponse(url: request.url!, statusCode: 503, httpVersion: nil, headerFields: nil)!
-            return (Data(#"{"error": "Service Unavailable"}"#.utf8), response)
-        }
-
-        let mockCache = CountingCache()
-        let cache = CacheCoordinator(cache: mockCache)
-        let service = PlaycutMetadataService(
-            baseURL: URL(string: "https://api.wxyc.org")!,
-            urlSession: mockURLSession,
-            cache: cache
-        )
-
-        let playcut = Playcut.stub(
-            songTitle: "VI Scose Poise",
-            labelName: "Warp",
-            artistName: "Autechre",
-            releaseTitle: "Confield"
-        )
-
-        // When
-        let result = await service.fetchMetadata(for: playcut)
-
-        // Then — 3 attempts: the initial one plus both scheduled delays.
-        #expect(result.album.label == "Warp")
-        #expect(QueuedStubURLProtocol.capturedRequests().count == 3, "Without a Retry-After the schedule must still run in full")
-        #expect(mockCache.setKeys.isEmpty)
     }
 }
