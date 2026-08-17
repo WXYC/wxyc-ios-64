@@ -343,7 +343,7 @@ struct AuthenticationServiceTests {
         // value surviving the race.
         let fingerprintStorage = InMemoryDeviceFingerprintStorage()
         fingerprintStorage.stubFingerprint = "fp-thread-test-\(UUID().uuidString)"
-        MusicShareKit.configure(MusicShareKitConfiguration(
+        MusicShareKit.reconfigure(MusicShareKitConfiguration(
             requestOMaticURL: "https://example.com/request",
             authBaseURL: nil,
             keychainAccessGroup: nil,
@@ -374,7 +374,7 @@ struct AuthenticationServiceTests {
         // assertion is on non-nil rather than equality.
         let fingerprintStorage = InMemoryDeviceFingerprintStorage()
         fingerprintStorage.stubFingerprint = "fp-mint-test-\(UUID().uuidString)"
-        MusicShareKit.configure(MusicShareKitConfiguration(
+        MusicShareKit.reconfigure(MusicShareKitConfiguration(
             requestOMaticURL: "https://example.com/request",
             authBaseURL: nil,
             keychainAccessGroup: nil,
@@ -580,6 +580,39 @@ struct AuthenticationServiceTests {
         #expect(token.contains("."))
         #expect(networkClient.signInCallCount == 1, "must not mint a second anonymous user when the in-memory session is still good")
         #expect(networkClient.fetchJWTCallCount == 2, "one mint from the sign-in, one from the recovered mint path")
+    }
+
+    @Test("Reusing one AuthenticationService across two ensureAuthenticated() calls avoids a second sign-in on a Keychain-miss device (#956)")
+    func reusingServiceAcrossPresentationsAvoidsDuplicateSignIn() async throws {
+        // Given — the #948 population exactly: storage.save() always throws,
+        // so load() faithfully returns nil and nothing is ever persisted.
+        // This is what MusicShareKit.configure(_:)'s guard (#956) buys the
+        // share extension: ShareViewController.viewDidLoad runs on every
+        // presentation, but a guarded configure(_:) hands back the SAME
+        // AuthenticationService instance every time instead of rebuilding
+        // one with a fresh, nil cachedSession — modeled here by reusing one
+        // `service` across two `ensureAuthenticated()` calls rather than
+        // constructing a fresh instance per call.
+        let storage = MockThrowingTokenStorage(
+            saveError: AuthenticationError.keychainError(status: errSecInteractionNotAllowed)
+        )
+        let networkClient = makeNetworkClient()
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        // Presentation 1 — nothing stored or cached yet, so this is a
+        // legitimate first sign-in. The swallowed save leaves the session
+        // in cachedSession only.
+        _ = try await service.ensureAuthenticated()
+        #expect(networkClient.signInCallCount == 1)
+
+        // Presentation 2 — same process, same instance. Without the guard,
+        // ShareViewController would have built a fresh AuthenticationService
+        // whose cachedSession is nil and whose storage.load() also returns
+        // nil, forcing freshSignIn() again and minting another orphaned
+        // anonymous user. Reusing the instance answers from the in-memory
+        // cache instead.
+        _ = try await service.ensureAuthenticated()
+        #expect(networkClient.signInCallCount == 1, "a second presentation reusing the same AuthenticationService must not mint a second anonymous user")
     }
 
     // MARK: - Concurrent reauthenticate Coalescing (H1, #414/#415)

@@ -25,6 +25,14 @@ class ShareViewController: UIViewController {
         // Configure MusicShareKit. Pass keychainAccessGroup so this extension
         // shares its anonymous-auth session with the main app via the keychain
         // group declared in ShareExtension.entitlements (issue #336).
+        //
+        // Safe to call on every presentation: configure(_:) is a once-per-
+        // process no-op after its first call (#956), so the extension keeps
+        // reusing the first presentation's AuthenticationService — and
+        // whatever cachedSession it accumulates — across the whole process
+        // instead of rebuilding a fresh, unauthenticated one (and re-minting
+        // an orphaned anonymous user on a Keychain-miss device, #948) on
+        // every share.
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,

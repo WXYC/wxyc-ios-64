@@ -26,7 +26,7 @@ struct RequestServiceTests {
         // can hang the test process on CI simulators (the local iPhone 17 sim
         // returns errSecMissingEntitlement instantly; the iPhone 16 Pro CI sim
         // does not).
-        MusicShareKit.configure(MusicShareKitConfiguration(
+        MusicShareKit.reconfigure(MusicShareKitConfiguration(
             requestOMaticURL: "https://example.com/request",
             analyticsService: MockStructuredAnalytics(),
             deviceFingerprintStorage: InMemoryDeviceFingerprintStorage()
