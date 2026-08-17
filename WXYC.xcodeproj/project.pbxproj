@@ -812,7 +812,6 @@
 			alwaysOutOfDate = 1;
 			inputPaths = (
 				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
-				"${SRCROOT}/scripts/upload-debug-symbols.sh",
 			);
 			name = "Upload Debug Symbols to Sentry";
 			shellPath = /bin/sh;
@@ -821,6 +820,11 @@
 				"# regression-tested (scripts/tests/test-upload-debug-symbols.sh)",
 				"# rather than edited blind inside project.pbxproj. It warns on a",
 				"# dev Mac and fails the build in CI; see the script's header.",
+				"#",
+				"# alwaysOutOfDate is what makes the phase run every build; the one",
+				"# input above is the ordering dependency on dsymutil, not a staleness",
+				"# check. Don't add the script itself as an input — under",
+				"# alwaysOutOfDate it can't cause a run that wasn't already happening.",
 				"exec \"${SRCROOT}/scripts/upload-debug-symbols.sh\"",
 				"",
 			);
