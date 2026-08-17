@@ -6,8 +6,11 @@ name: Shell Script Tests
 # deploy key and costs 20-30 minutes). These suites are different in kind —
 # hand-rolled zsh regression tests for the CI scripts themselves
 # (.github/scripts/affected-tests.sh, scripts/test-affected.sh,
-# scripts/hooks/pre-push). They need no simulator, no submodule, and no
-# secrets; the whole set runs in under two seconds. That asymmetry — cheap
+# scripts/hooks/pre-push, scripts/upload-debug-symbols.sh,
+# ci_scripts/install-sentry-cli.sh). They need no simulator, no submodule,
+# and no secrets — the sentry-cli suites stub both the download and the
+# binary, so nothing here touches the network or needs a real auth token;
+# the whole set runs in under two seconds. That asymmetry — cheap
 # and self-contained vs. expensive and credential-gated — is the reason this
 # workflow auto-runs on pull_request while build-and-test.yml stays manual.
 #
@@ -27,6 +30,7 @@ on:
     paths:
       - ".github/scripts/**"
       - "scripts/**"
+      - "ci_scripts/**"
       - ".github/workflows/shell-script-tests.yml"
   push:
     branches:
@@ -34,6 +38,7 @@ on:
     paths:
       - ".github/scripts/**"
       - "scripts/**"
+      - "ci_scripts/**"
       - ".github/workflows/shell-script-tests.yml"
   workflow_dispatch:
 
@@ -73,3 +78,9 @@ jobs:
 
       - name: test-affected.sh error-fallback regression suite
         run: zsh scripts/tests/test-affected-error-fallback.sh
+
+      - name: Sentry dSYM upload regression suite
+        run: zsh scripts/tests/test-upload-debug-symbols.sh
+
+      - name: sentry-cli installer regression suite
+        run: zsh scripts/tests/test-install-sentry-cli.sh
