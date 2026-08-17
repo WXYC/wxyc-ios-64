@@ -609,8 +609,22 @@ public actor PlaycutMetadataService {
     /// immediately so `timedOperation`'s cancellation handling — not this
     /// retry loop — decides what happens next.
     ///
+    /// When a transient `HTTPStatusError` carries a server-advertised
+    /// `retryAfter` (#957), that value is preferred over
+    /// ``albumFetchRetryDelays``'s own fixed delay for the *next* attempt —
+    /// but only when it fits inside what's left of the schedule's ~600ms
+    /// budget (the sum of `remainingDelays`). Backend-Service's proxy
+    /// limiter is a 60s fixed window, so a 429 here almost always advertises
+    /// a delay two orders of magnitude past that budget; rather than
+    /// sleeping 60s in the middle of a card-open fetch — worse for the user
+    /// than just failing — the retry is abandoned outright and the error
+    /// propagates immediately, without spending the remaining attempts. A
+    /// smaller server-advertised delay (one that does fit) is honored in
+    /// full, replacing the schedule's own number for that attempt.
+    ///
     /// - Throws: the last transient error, once ``albumFetchRetryDelays`` is
-    ///   exhausted, so the caller's existing uncached fallback path is taken
+    ///   exhausted, or once a server-advertised `retryAfter` is abandoned as
+    ///   above, so the caller's existing uncached fallback path is taken
     ///   rather than pinning a negative verdict for a condition that might
     ///   clear on the very next poll; any error that is neither a definitive
     ///   absence nor transient, unretried; or a cancellation error,
@@ -638,6 +652,23 @@ public actor PlaycutMetadataService {
             guard let delay = remainingDelays.first else {
                 // Retries exhausted and still transient — propagate uncached.
                 throw error
+            }
+            if let retryAfter = (error as? HTTPStatusError)?.retryAfter {
+                // Prefer the server's own advertised backoff over the fixed
+                // schedule (#957) — but only when it fits inside what's left
+                // of that schedule's budget. Backend-Service's proxy limiter
+                // advertises a 60s window; sleeping 60s inside a card-open
+                // fetch is worse for the user than failing fast, so a delay
+                // that outruns the remaining budget abandons the retry
+                // immediately rather than spending it.
+                let remainingBudget = remainingDelays.reduce(Duration.zero, +)
+                guard Duration.seconds(retryAfter) <= remainingBudget else {
+                    Log(.warning, category: .network, "Transient /proxy/metadata/album failure with Retry-After \(retryAfter)s exceeding the \(remainingBudget) retry budget, abandoning: \(error)")
+                    throw error
+                }
+                Log(.warning, category: .network, "Transient /proxy/metadata/album failure, honoring server Retry-After of \(retryAfter)s: \(error)")
+                try? await Task.sleep(for: .seconds(retryAfter))
+                return try await fetchAlbumWithRetry(query: query, remainingDelays: remainingDelays.dropFirst())
             }
             Log(.warning, category: .network, "Transient /proxy/metadata/album failure, retrying in \(delay): \(error)")
             try? await Task.sleep(for: delay)
@@ -681,15 +712,13 @@ public actor PlaycutMetadataService {
     /// 429 joins the 5xx range as transient (#948): a rate limit is by
     /// definition temporary, so it should not surface as a failed lookup.
     ///
-    /// Known limitation — this retries blind. Backend-Service's proxy
-    /// limiter is a 60s fixed window (`RATE_LIMIT_PROXY_WINDOW_MS`) and says
-    /// so in the response, but `Core.HTTPStatusError` carries only the
-    /// status code; `validateSuccessStatus()` discards the headers, so no
-    /// consumer in this app can read `Retry-After`. ``albumFetchRetryDelays``
-    /// therefore spends its 600ms budget inside a window that is two orders
-    /// of magnitude longer, and the retry usually 429s again. Honoring the
-    /// server's own backoff means widening `HTTPStatusError` in `Core`,
-    /// which is a change for every proxy consumer and not for this fix.
+    /// This only classifies; it does not schedule. `fetchAlbumWithRetry`
+    /// prefers `HTTPStatusError.retryAfter` (#957) over ``albumFetchRetryDelays``
+    /// when the server advertised one, and abandons the retry outright when
+    /// that delay outruns what's left of the schedule's budget — see the
+    /// doc comment on ``fetchAlbumWithRetry(query:remainingDelays:)`` for why
+    /// Backend-Service's proxy limiter (a 60s fixed window) makes that the
+    /// common case for a 429 here, not the exception.
     private static func isTransient(_ error: any Error) -> Bool {
         if let httpError = error as? HTTPStatusError {
             return httpError.statusCode == 429 || (500...599).contains(httpError.statusCode)
