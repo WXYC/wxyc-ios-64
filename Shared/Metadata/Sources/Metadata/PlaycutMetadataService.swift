@@ -669,8 +669,8 @@ public actor PlaycutMetadataService {
                 // above for why honoring one is not implementable against a
                 // sub-second budget.
                 let remainingBudget = remainingDelays.reduce(Duration.zero, +)
-                guard Duration.seconds(retryAfter) <= remainingBudget else {
-                    Log(.warning, category: .network, "Transient /proxy/metadata/album failure with Retry-After \(retryAfter)s exceeding the \(remainingBudget) retry budget, abandoning: \(error)")
+                guard retryAfter <= remainingBudget else {
+                    Log(.warning, category: .network, "Transient /proxy/metadata/album failure with Retry-After \(retryAfter) exceeding the \(remainingBudget) retry budget, abandoning: \(error)")
                     throw error
                 }
             }

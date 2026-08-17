@@ -83,7 +83,7 @@ struct HTTPURLResponseValidationTests {
             httpVersion: nil,
             headerFields: ["Retry-After": "60"]
         )!
-        #expect(throws: HTTPStatusError(statusCode: 429, retryAfter: 60)) {
+        #expect(throws: HTTPStatusError(statusCode: 429, retryAfter: .seconds(60))) {
             try response.validateSuccessStatus()
         }
     }
@@ -98,12 +98,10 @@ struct HTTPURLResponseValidationTests {
             httpVersion: nil,
             headerFields: nil
         )!
-        do {
+        let error = try #require(throws: HTTPStatusError.self) {
             try response.validateSuccessStatus()
-            Issue.record("Expected validateSuccessStatus() to throw")
-        } catch let error as HTTPStatusError {
-            #expect(error.retryAfter == nil)
         }
+        #expect(error.retryAfter == nil)
     }
 
     /// RFC 9110 §10.2.3 also permits an HTTP-date `Retry-After`. Backend-Service's
@@ -119,74 +117,56 @@ struct HTTPURLResponseValidationTests {
             httpVersion: nil,
             headerFields: ["Retry-After": "Wed, 21 Oct 2026 07:28:00 GMT"]
         )!
-        do {
+        let error = try #require(throws: HTTPStatusError.self) {
             try response.validateSuccessStatus()
-            Issue.record("Expected validateSuccessStatus() to throw")
-        } catch let error as HTTPStatusError {
-            #expect(error.retryAfter == nil)
         }
+        #expect(error.retryAfter == nil)
     }
 
-    /// `Double(String)` accepts more than RFC 9110's `delay-seconds` grammar:
-    /// `"inf"`, `"infinity"`, and exponent forms like `"1e30"` all parse to
-    /// finite-or-infinite values far outside anything `Duration.seconds(_:)`
-    /// can represent, and building a `Duration` from one of those *traps* —
-    /// so a header a hostile or broken intermediary controls could abort the
-    /// process in a consumer that schedules a sleep from this value. Such
-    /// values are unparseable as far as this app is concerned, and are
-    /// reported the same way as every other malformed value: `nil`.
-    @Test(arguments: ["inf", "infinity", "-inf", "nan", "1e30", "1e300", "99999999999999999999", "-1", "86401"])
-    func unrepresentableRetryAfterValuesAreIgnored(headerValue: String) throws {
+    /// Everything outside RFC 9110's `delay-seconds` grammar (`1*DIGIT`) is
+    /// rejected, and the ceiling and floor are pinned from just outside.
+    ///
+    /// The floating-point forms matter because a `Double`-based parser would
+    /// accept every one of them: `"inf"`/`"nan"` directly, `"1e30"` as an
+    /// exponent, and `"0x1p4"` as a hex float worth `16`. Several are values
+    /// `Duration.seconds(_:)` traps on, which is why the parser is `Int(_:)`.
+    /// `"-1"` is the realistic malformed case — a server computing
+    /// `resetTime - now` and going negative — and `"86401"` pins the ceiling
+    /// from above so a later `0...max` to `0..<max` slip is caught on both
+    /// sides rather than only one.
+    @Test(arguments: [
+        "inf", "infinity", "-inf", "nan", "1e30", "1e300", "0x1p4", "60.5",
+        "99999999999999999999", "-1", "86401",
+    ])
+    func nonConformantRetryAfterValuesAreIgnored(headerValue: String) throws {
         let response = HTTPURLResponse(
             url: HTTPURLResponseValidationTests.testURL,
             statusCode: 429,
             httpVersion: nil,
             headerFields: ["Retry-After": headerValue]
         )!
-        do {
+        let error = try #require(throws: HTTPStatusError.self) {
             try response.validateSuccessStatus()
-            Issue.record("Expected validateSuccessStatus() to throw")
-        } catch let error as HTTPStatusError {
-            #expect(error.retryAfter == nil, "\(headerValue) must not survive as a schedulable delay")
         }
+        #expect(error.retryAfter == nil, "\(headerValue) must not survive as a schedulable delay")
     }
 
-    /// The ceiling that rejects unrepresentable values must not clip any
-    /// delay a real server would advertise — Backend-Service's proxy limiter
-    /// sends `60`, and even a pathologically patient upstream stays well
-    /// inside a day.
-    @Test(arguments: [0.0, 1.0, 60.0, 3600.0, 86400.0])
-    func plausibleRetryAfterValuesSurvive(seconds: TimeInterval) throws {
+    /// The rejection rules must not clip any delay a real server would
+    /// advertise — Backend-Service's proxy limiter sends `60`, and even a
+    /// pathologically patient upstream stays inside a day. `86400` is the
+    /// ceiling from below, the other half of the boundary pin.
+    @Test(arguments: [0, 1, 60, 3600, 86_400])
+    func plausibleRetryAfterValuesSurvive(seconds: Int) throws {
         let response = HTTPURLResponse(
             url: HTTPURLResponseValidationTests.testURL,
             statusCode: 429,
             httpVersion: nil,
-            headerFields: ["Retry-After": "\(Int(seconds))"]
+            headerFields: ["Retry-After": "\(seconds)"]
         )!
-        do {
+        let error = try #require(throws: HTTPStatusError.self) {
             try response.validateSuccessStatus()
-            Issue.record("Expected validateSuccessStatus() to throw")
-        } catch let error as HTTPStatusError {
-            #expect(error.retryAfter == seconds)
         }
-    }
-
-    /// The range check has to live at the *type* boundary, not only on the
-    /// parse path. `init(statusCode:retryAfter:)` is public, so test doubles,
-    /// stub fetchers, and any future non-`validateSuccessStatus()` producer can
-    /// hand a consumer a value that traps `Duration.seconds(_:)` — which
-    /// `PlaycutMetadataService` builds directly from this field. The invariant
-    /// is only true if the initializer enforces it.
-    @Test(arguments: [TimeInterval.infinity, -TimeInterval.infinity, TimeInterval.nan, 1e30, -1, 86_401])
-    func publicInitializerRejectsUnrepresentableRetryAfter(retryAfter: TimeInterval) {
-        let error = HTTPStatusError(statusCode: 429, retryAfter: retryAfter)
-        #expect(error.retryAfter == nil, "\(retryAfter) must not survive construction as a schedulable delay")
-    }
-
-    /// The initializer must not clip a delay a real server would advertise.
-    @Test(arguments: [0.0, 1.0, 60.0, 3600.0, 86_400.0])
-    func publicInitializerKeepsPlausibleRetryAfter(retryAfter: TimeInterval) {
-        #expect(HTTPStatusError(statusCode: 429, retryAfter: retryAfter).retryAfter == retryAfter)
+        #expect(error.retryAfter == .seconds(seconds))
     }
 
     /// `HTTPStatusError(statusCode:)` — the initializer used by
@@ -209,14 +189,12 @@ struct HTTPURLResponseValidationTests {
             httpVersion: nil,
             headerFields: ["Retry-After": "60"]
         )!
-        do {
+        let error = try #require(throws: HTTPStatusError.self) {
             try response.validateSuccessStatus()
-            Issue.record("Expected validateSuccessStatus() to throw")
-        } catch let error as HTTPStatusError {
-            let nsError = error as NSError
-            #expect(nsError.code == 429)
-            #expect(nsError.domain == "Core.HTTPStatusError")
-            #expect(error.localizedDescription.contains("429"))
         }
+        let nsError = error as NSError
+        #expect(nsError.code == 429)
+        #expect(nsError.domain == "Core.HTTPStatusError")
+        #expect(error.localizedDescription.contains("429"))
     }
 }

@@ -27,6 +27,12 @@ extension HTTPURLResponse {
     /// parsed as delta-seconds — RFC 9110 §10.2.3's `delay-seconds` form, a
     /// non-negative decimal integer of seconds to wait.
     ///
+    /// Parsed with `Int(_:)` rather than a floating-point initializer, so the
+    /// grammar the doc claims is the grammar actually enforced: `"60.5"`,
+    /// `"0x1p4"` (which `Double` would read as `16`), `"inf"`, and `"nan"` are
+    /// all rejected. Consumers reason from this grammar — see
+    /// `PlaycutMetadataService.fetchAlbumWithRetry` — so it has to hold.
+    ///
     /// The header's other permitted form, an HTTP-date, is deliberately
     /// **not** parsed. Backend-Service's proxy rate limiter
     /// (`express-rate-limit` configured with `standardHeaders: true`, in
@@ -37,12 +43,17 @@ extension HTTPURLResponse {
     /// HTTP-date `Retry-After` is treated the same as a response with no
     /// header at all: `nil`.
     ///
-    /// This only *parses*. Range-checking the result is ``HTTPStatusError``'s
-    /// job — see its initializer — so the "can't trap a consumer" guarantee
-    /// holds for every producer of the type rather than only for this one.
-    private var retryAfterDelay: TimeInterval? {
+    /// Values outside `0...HTTPStatusError.maximumRetryAfterSeconds` are
+    /// rejected too. With `Int(_:)` doing the parsing that ceiling is a plain
+    /// sanity check rather than a safety guard — a negative delay is a server
+    /// bug (a `resetTime - now` that went negative), and a delay past a day is
+    /// something no client will ever act on.
+    private var retryAfterDelay: Duration? {
         guard let headerValue = value(forHTTPHeaderField: "Retry-After") else { return nil }
-        return TimeInterval(headerValue.trimmingCharacters(in: .whitespaces))
+        guard let seconds = Int(headerValue.trimmingCharacters(in: .whitespaces)),
+              (0...HTTPStatusError.maximumRetryAfterSeconds).contains(seconds)
+        else { return nil }
+        return .seconds(seconds)
     }
 }
 
@@ -66,43 +77,40 @@ public struct HTTPStatusError: Error, Equatable {
     /// app parses. A retrying consumer may prefer this over its own
     /// hard-coded backoff schedule; nothing requires it to.
     ///
-    /// Guaranteed to lie in `0...maximumRetryAfterSeconds` when non-`nil`, so
-    /// a consumer can build a `Duration` from it without checking — see
-    /// ``init(statusCode:retryAfter:)``.
+    /// A `Duration` rather than a `TimeInterval` on purpose. `Duration.seconds(_:)`
+    /// *traps* on a `Double` it cannot represent — an infinity, a NaN, `1e30` —
+    /// and building a `Duration` from a server-supplied delay is exactly what a
+    /// retrying consumer does. Carrying the already-converted `Duration` makes
+    /// that crash unrepresentable rather than merely guarded against: this
+    /// initializer is `public`, so test doubles and stub fetchers reach it too
+    /// (`ConcertsTesting.StubConcertsFetcher` is shipping code that constructs
+    /// this type), and a `TimeInterval` field would put the burden on every one
+    /// of them. Validation happens once, at the parse boundary, and there is no
+    /// unvalidated `Double` anywhere downstream. It also matches what the only
+    /// consumer actually wants — `albumFetchRetryDelays` is a `[Duration]`.
     ///
     /// Note that this participates in the synthesized `Equatable` conformance,
     /// so `error == HTTPStatusError(statusCode: 429)` is also an assertion that
-    /// the response carried *no* `Retry-After`. Where that isn't the intent —
-    /// most `#expect(throws:)` assertions — match on the type and check
-    /// `statusCode` explicitly instead.
-    public let retryAfter: TimeInterval?
+    /// the response carried *no* parseable `Retry-After`. Nothing relies on that
+    /// today, but when it bites, the failure will point at the status code and
+    /// be both correct and misleading. Where that isn't the intent — most
+    /// `#expect(throws:)` assertions — match on the type and check `statusCode`
+    /// explicitly instead.
+    public let retryAfter: Duration?
 
-    /// - Parameter retryAfter: A server-advertised backoff in seconds. Values
-    ///   outside `0...maximumRetryAfterSeconds` — including infinities and NaN
-    ///   — are discarded as `nil` rather than stored.
-    ///
-    ///   The check lives here, at the type boundary, rather than in the header
-    ///   parser, because this initializer is public: test doubles, stub
-    ///   fetchers, and any future non-`validateSuccessStatus()` producer reach
-    ///   it too. `Duration.seconds(_:)` *traps* on a value it cannot represent,
-    ///   and building a `Duration` from this field is precisely what a retrying
-    ///   consumer does — so an unchecked value here is a process abort in the
-    ///   consumer, whether it arrived from a hostile intermediary's header or
-    ///   from a careless stub.
-    public init(statusCode: Int, retryAfter: TimeInterval? = nil) {
+    public init(statusCode: Int, retryAfter: Duration? = nil) {
         self.statusCode = statusCode
-        self.retryAfter = retryAfter.flatMap { seconds in
-            (0...HTTPStatusError.maximumRetryAfterSeconds).contains(seconds) ? seconds : nil
-        }
+        self.retryAfter = retryAfter
     }
 
     /// The largest `Retry-After` this type will carry, in seconds: one day.
     ///
-    /// Chosen to sit far above anything a real server advertises —
-    /// Backend-Service's proxy limiter sends `60` — while staying far below the
-    /// magnitudes that make `Duration.seconds(_:)` trap. A client asked to wait
-    /// longer than a day has been told something it will never act on anyway.
-    public static let maximumRetryAfterSeconds: TimeInterval = 86_400
+    /// A sanity ceiling, not a safety guard — `Int(_:)` parsing is what keeps
+    /// unrepresentable values out. Chosen to sit far above anything a real
+    /// server advertises: Backend-Service's proxy limiter sends `60`. A client
+    /// asked to wait longer than a day has been told something it will never
+    /// act on anyway.
+    public static let maximumRetryAfterSeconds = 86_400
 }
 
 /// Diagnostics-sink bridging: without these conformances, the NSError bridge
