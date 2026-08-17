@@ -259,6 +259,52 @@ struct DefaultAuthNetworkClientTests {
         }
     }
 
+    // MARK: - Cookie Isolation Tests (#948)
+    //
+    // A first attempt at these asserted `Cookie` absence on the SECOND
+    // captured request, the way IOS-37 actually manifests over the wire.
+    // That assertion is vacuous: `QueuedStubURLProtocol`'s synthetic
+    // response never round-trips through `URLSession`'s cookie-storage
+    // machinery at all — a `Set-Cookie` response header is never stored,
+    // and outgoing requests never gain a `Cookie` header, regardless of
+    // whether the session is cookie-free. Confirmed empirically: the
+    // Cookie-header assertion passed against completely unfixed
+    // (`.ephemeral`, no cookie-disabling) production code. Reassigned to
+    // two layers that ARE reachable from a unit test: the session's own
+    // `URLSessionConfiguration` (no network round trip needed at all), and
+    // the per-request `httpShouldHandleCookies` flag (a plain `URLRequest`
+    // property `QueuedStubURLProtocol` captures faithfully, independent of
+    // whatever cookie machinery does or doesn't run underneath it).
+
+    @Test("makeSession() produces a session configuration with no cookie storage, set-cookie acceptance, or send policy")
+    func makeSessionConfigurationIsCookieFree() {
+        let session = DefaultAuthNetworkClient.makeSession()
+
+        #expect(session.configuration.httpCookieStorage == nil)
+        #expect(session.configuration.httpShouldSetCookies == false)
+        #expect(session.configuration.httpCookieAcceptPolicy == .never)
+    }
+
+    @Test("Sign-in and fetchJWT requests both opt out of cookie handling")
+    func requestsOptOutOfCookieHandling() async throws {
+        QueuedStubURLProtocol.setResponses([
+            (200, validBetterAuthResponse),
+            (200, validJWTTokenResponse),
+        ])
+
+        let session = QueuedStubURLProtocol.makeSession()
+        let client = DefaultAuthNetworkClient(session: session)
+
+        _ = try await client.signInAnonymously(baseURL: "https://api.example.com", deviceFingerprint: nil)
+        _ = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "sess-tok", deviceFingerprint: nil)
+
+        let requests = QueuedStubURLProtocol.capturedRequests()
+        #expect(requests.count == 2)
+        for request in requests {
+            #expect(request.httpShouldHandleCookies == false)
+        }
+    }
+
     @Test("Sign-in throws the canonical notConfigured error for a malformed baseURL")
     func signInThrowsNotConfiguredForMalformedBaseURL() async throws {
         let client = DefaultAuthNetworkClient()

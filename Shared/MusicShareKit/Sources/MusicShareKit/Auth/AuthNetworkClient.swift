@@ -53,14 +53,41 @@ public protocol AuthNetworkClient: Sendable {
 
 /// Default implementation of `AuthNetworkClient` using URLSession.
 ///
-/// Uses an ephemeral session by default to avoid cookie contamination from
-/// prior anonymous sessions (better-auth returns 400 if a valid session
-/// cookie is already present).
+/// This is a pure bearer-token client and has no use for a cookie jar, so
+/// the session is configured to be genuinely cookie-free rather than merely
+/// `.ephemeral`. `.ephemeral` only avoids writing cookies to disk — it
+/// still keeps an in-memory `HTTPCookieStorage` and resends whatever it
+/// collects for the lifetime of the `URLSession` object. `DefaultAuthNetworkClient`
+/// is constructed once at process start and lives for the whole app
+/// lifetime, so a session that merely avoids disk persistence would still
+/// accumulate and resend the cookie from the first anonymous sign-in on
+/// every subsequent one — better-auth then 400s ("Anonymous users cannot
+/// sign in again anonymously") because it sees a still-live session cookie
+/// (#948). `makeSession()` disables cookie storage, acceptance, and
+/// sending at the configuration level, and both requests below additionally
+/// set `httpShouldHandleCookies = false` as a second, independent guard.
 public struct DefaultAuthNetworkClient: AuthNetworkClient {
     private let session: URLSession
 
-    public init(session: URLSession = URLSession(configuration: .ephemeral)) {
+    public init(session: URLSession = DefaultAuthNetworkClient.makeSession()) {
         self.session = session
+    }
+
+    /// Builds a session with no cookie jar: no storage to write into, no
+    /// acceptance of `Set-Cookie` responses, and no attaching of stored
+    /// cookies to outgoing requests. Used as `init(session:)`'s default
+    /// argument (which requires `public` visibility here, since the
+    /// default-argument expression is evaluated at each call site); this
+    /// also lets it be asserted on directly in tests, since a stubbed
+    /// `URLProtocol` doesn't route through `URLSession`'s cookie-storage
+    /// machinery at all — the only way to observe this configuration is to
+    /// inspect it directly.
+    public static func makeSession() -> URLSession {
+        let config = URLSessionConfiguration.ephemeral
+        config.httpCookieStorage = nil
+        config.httpShouldSetCookies = false
+        config.httpCookieAcceptPolicy = .never
+        return URLSession(configuration: config)
     }
 
     public func signInAnonymously(
@@ -72,6 +99,7 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.httpShouldHandleCookies = false
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue(baseURL, forHTTPHeaderField: "Origin")
         request.addValue(UserAgentHeader.value, forHTTPHeaderField: "User-Agent")
@@ -114,6 +142,7 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.httpShouldHandleCookies = false
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue(baseURL, forHTTPHeaderField: "Origin")
         request.addValue("Bearer \(sessionToken)", forHTTPHeaderField: "Authorization")
