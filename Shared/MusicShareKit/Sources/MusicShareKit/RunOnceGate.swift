@@ -14,22 +14,39 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Synchronization
+
 /// Runs a closure at most once per instance.
 ///
-/// Not thread-safe by design: every call site in this module runs on the
-/// main thread (app launch, `ShareViewController.viewDidLoad`), matching
-/// the rest of `MusicShareKit`'s `nonisolated(unsafe)` global state, which
-/// carries the same single-threaded assumption. `@unchecked Sendable` so it
-/// can back a `nonisolated(unsafe)` static, same as `_configuration` /
-/// `_authService` above.
-final class RunOnceGate: @unchecked Sendable {
-    private var hasRun = false
+/// Thread-safe: `configure(_:)` is `public` and `nonisolated`, so nothing in
+/// its signature confines callers to the main thread even though today's two
+/// call sites (app launch, `ShareViewController.viewDidLoad`) both run there.
+/// An unsynchronized check-then-set would let two concurrent callers both
+/// pass the guard and both rebuild `_authService` — precisely the failure
+/// this gate exists to prevent — so the flag lives in a `Mutex`, per
+/// `docs/swift-style.md`'s preference for `Mutex`/`Atomic` over `NSLock`.
+/// The lock is held across `body` so a losing caller blocks until the
+/// winner's configuration is fully installed, rather than racing ahead and
+/// observing half-built global state.
+final class RunOnceGate: Sendable {
+    private let state = Mutex(false)
+
+    /// Whether `runOnce` has already consumed this gate.
+    ///
+    /// A test seam: it lets a suite assert its gate is still fresh, so a
+    /// once-per-process assertion fails loudly instead of passing vacuously
+    /// when something tripped the gate first.
+    var hasRun: Bool {
+        state.withLock { $0 }
+    }
 
     /// Runs `body` the first time this is called; every subsequent call is
     /// a no-op.
     func runOnce(_ body: () -> Void) {
-        guard !hasRun else { return }
-        hasRun = true
-        body()
+        state.withLock { hasRun in
+            guard !hasRun else { return }
+            hasRun = true
+            body()
+        }
     }
 }

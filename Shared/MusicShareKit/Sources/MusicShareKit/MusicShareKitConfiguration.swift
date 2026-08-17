@@ -83,7 +83,12 @@ public enum MusicShareKit {
     /// on every call, or the in-memory `AuthenticationService` (and its
     /// `cachedSession`, the #948 Keychain-miss fallback's load-bearing
     /// state) never survives long enough to be read.
-    private static let configureGate = RunOnceGate()
+    ///
+    /// `internal` rather than `private` so tests can assert the gate is
+    /// still fresh before exercising it — a once-per-process guarantee that
+    /// silently no-ops when something already tripped the gate would let its
+    /// own regression test pass vacuously.
+    static let configureGate = RunOnceGate()
 
     /// The current configuration. Fatal error if not set.
     public static var configuration: MusicShareKitConfiguration {
@@ -193,9 +198,16 @@ public enum MusicShareKit {
     /// `AuthenticationServiceTests`, `RequestServiceTests`) call this
     /// repeatedly within one test process and depend on the rebuild to
     /// install fresh doubles (analytics mocks, fingerprint/token storage
-    /// doubles, etc.) on every call. Production code should call the
-    /// guarded `configure(_:)` instead — see its doc comment for why.
-    public static func reconfigure(_ configuration: MusicShareKitConfiguration) {
+    /// doubles, etc.) on every call.
+    ///
+    /// Deliberately `internal`, not `public`: the package's test target
+    /// reaches it through `@testable import`, while app and extension
+    /// targets cannot see it at all. That makes #956's guarantee structural
+    /// rather than conventional — a future `ShareViewController` edit can't
+    /// autocomplete its way past the guard and silently reinstate #948's
+    /// per-presentation rebuild. Production code calls the guarded
+    /// `configure(_:)` — see its doc comment for why.
+    static func reconfigure(_ configuration: MusicShareKitConfiguration) {
         _configuration = configuration
 
         // Eagerly materialize the device fingerprint BEFORE init'ing the auth

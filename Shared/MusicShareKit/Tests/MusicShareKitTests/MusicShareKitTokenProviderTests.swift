@@ -29,9 +29,10 @@ struct MusicShareKitTokenProviderTests {
         // resolve authService at each call, not at construction (#718).
         let provider = MusicShareKit.tokenProvider
 
-        // No other suite configures with a non-nil authBaseURL, so this is
-        // the only setter of MusicShareKit's global authService in the test
-        // process. The discard-port baseURL makes any attempted sign-in fail
+        // MusicShareKitConfigureGuardTests is the only other suite that
+        // installs a non-nil authBaseURL, and it points at the same discard
+        // port for this reason: whichever of the two wins the last write to
+        // MusicShareKit's global authService, any attempted sign-in fails
         // fast with connection-refused instead of leaving the network.
         // `requestOMaticURL` matches the other suites' value because configure
         // races across parallel suites are last-write-wins (see the note in
