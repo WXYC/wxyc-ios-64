@@ -154,11 +154,25 @@ public actor AuthenticationService: SessionTokenProvider {
 
         // Clear only the in-memory cache; the stored session must survive so
         // performRefresh() can attempt the identity-preserving mint.
+        //
+        // On a device whose Keychain writes are failing there IS no stored
+        // session to survive — that is the #948 population — so carry the
+        // rejected session forward explicitly rather than letting the clear
+        // below destroy the last copy of it. What the server rejected is the
+        // JWT, not the session token underneath it, so this session is still
+        // exactly what the mint wants; if the session itself is dead too, the
+        // mint's 401/404 arm clears it and falls through to a sign-in as
+        // before. Without this, every 401 on such a device mints a brand-new
+        // anonymous DB user.
+        let rejectedSession = cachedSession
         cachedSession = nil
 
         let task = Task<String, Error> { [weak self] in
             guard let self else { throw SessionTokenProviderError.notConfigured }
-            return try await self.performRefreshAndClear(trustStoredJWT: false)
+            return try await self.performRefreshAndClear(
+                trustStoredJWT: false,
+                fallbackSession: rejectedSession
+            )
         }
         inFlightAuth = task
 
@@ -251,9 +265,15 @@ public actor AuthenticationService: SessionTokenProvider {
     /// Actor-isolated, so `defer` runs on the actor's executor at function
     /// exit (success or throw). This is the ONLY site that clears
     /// `inFlightAuth`; the outer `ensureAuthenticated()` body never clears it.
-    private func performRefreshAndClear(trustStoredJWT: Bool) async throws -> String {
+    private func performRefreshAndClear(
+        trustStoredJWT: Bool,
+        fallbackSession: AuthSession? = nil
+    ) async throws -> String {
         defer { inFlightAuth = nil }
-        return try await performRefresh(trustStoredJWT: trustStoredJWT)
+        return try await performRefresh(
+            trustStoredJWT: trustStoredJWT,
+            fallbackSession: fallbackSession
+        )
     }
 
     /// The actual refresh flow: Keychain → `/auth/token` → re-sign-in.
@@ -269,7 +289,16 @@ public actor AuthenticationService: SessionTokenProvider {
     /// branch that actually serves the JWT. The 401/404 fallthrough is a
     /// single logical "network" auth even though it spans both
     /// `/auth/token` and `/sign-in/anonymous`.
-    private func performRefresh(trustStoredJWT: Bool) async throws -> String {
+    ///
+    /// - Parameter fallbackSession: A session the caller is holding that is
+    ///   not in `cachedSession` — currently only
+    ///   ``reauthenticate(reason:)``, which clears the cache before
+    ///   refreshing and would otherwise drop the last in-memory copy on a
+    ///   device whose Keychain writes are failing (#948).
+    private func performRefresh(
+        trustStoredJWT: Bool,
+        fallbackSession: AuthSession? = nil
+    ) async throws -> String {
         let startTime = CFAbsoluteTimeGetCurrent()
         // A Keychain miss (nil) degrades to the in-memory `cachedSession`
         // rather than escalating straight to a fresh sign-in. Without this,
@@ -284,7 +313,7 @@ public actor AuthenticationService: SessionTokenProvider {
         // ("Anonymous users cannot sign in again anonymously") — and
         // because the Keychain is still broken, every subsequent refresh
         // repeats the same wedge (#948).
-        let loaded = loadFromKeychain() ?? cachedSession
+        let loaded = loadFromKeychain() ?? fallbackSession ?? cachedSession
 
         // 3a. Keychain hit on a fresh JWT — fast path.
         if trustStoredJWT, let session = loaded, !session.jwtIsStale(margin: Self.freshnessMargin) {
