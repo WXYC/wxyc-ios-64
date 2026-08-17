@@ -44,17 +44,19 @@ The hook derives its diff base from the ref data git pipes on stdin (the remote'
 
 Skip a single push with `git push --no-verify`, or globally with `git config wxyc.skipTests true`.
 
-### Testing the test-selection scripts themselves
+### Testing the build scripts themselves
 
-`.github/scripts/affected-tests.sh` decides which tests run for every change in this repo, so a regression in it does not fail loudly — it silently runs fewer tests than it should. Three shell suites cover it and `scripts/test-affected.sh`'s own fallback behavior. They auto-run on `pull_request` via `.github/workflows/shell-script-tests.yml` — a separate, much lighter workflow than `build-and-test.yml` (no Xcode, no simulator, no submodule; the whole set runs in under two seconds), which is why it can auto-run when `build-and-test.yml` deliberately stays `workflow_dispatch`-only. Run them by hand after touching any of the scripts they cover:
+`.github/scripts/affected-tests.sh` decides which tests run for every change in this repo, so a regression in it does not fail loudly — it silently runs fewer tests than it should. The Sentry dSYM upload has the same shape: when it breaks, the build stays green and the symbols merely never arrive. Five shell suites cover that family of scripts. They auto-run on `pull_request` via `.github/workflows/shell-script-tests.yml` — a separate, much lighter workflow than `build-and-test.yml` (no Xcode, no simulator, no submodule; the whole set runs in under two seconds), which is why it can auto-run when `build-and-test.yml` deliberately stays `workflow_dispatch`-only. Run them by hand after touching any of the scripts they cover:
 
 ```bash
-zsh .github/scripts/tests/test-affected-tests.sh   # affected-tests.sh: pbxproj classification, whitespace input, output() guard
-zsh scripts/tests/test-pre-push-hook.sh            # scripts/hooks/pre-push: BASE_REF derivation from git's stdin protocol
-zsh scripts/tests/test-affected-error-fallback.sh  # test-affected.sh: CoreTests coverage when affected-tests.sh itself crashes
+zsh .github/scripts/tests/test-affected-tests.sh    # affected-tests.sh: pbxproj classification, whitespace input, output() guard
+zsh scripts/tests/test-pre-push-hook.sh             # scripts/hooks/pre-push: BASE_REF derivation from git's stdin protocol
+zsh scripts/tests/test-affected-error-fallback.sh   # test-affected.sh: CoreTests coverage when affected-tests.sh itself crashes
+zsh scripts/tests/test-upload-debug-symbols.sh      # upload-debug-symbols.sh: the CI-errors/local-warns split, and the no-dSYM exemption
+zsh scripts/tests/test-install-sentry-cli.sh        # install-sentry-cli.sh: version pinning, idempotency, ~/.sentryclirc handling
 ```
 
-All three are dependency-free (no bats), print TAP-ish `ok -` / `FAIL -` lines, and exit nonzero on any failure. They build throwaway git repos in `mktemp -d`, so they never touch the working tree.
+All five are dependency-free (no bats), print TAP-ish `ok -` / `FAIL -` lines, and exit nonzero on any failure. They build throwaway fixtures in `mktemp -d`, so they never touch the working tree — the two sentry-cli suites also stub the download and the binary, and redirect `HOME`, so they neither hit the network nor go near a real auth token.
 
 One case deserves care when editing `is_pbxproj_change_structural`: it compares *sorted structural fingerprints* of the two file versions rather than grepping the textual diff for marker keywords, because the array a membership entry lives in can be dozens of lines long and the keyword only appears on the array's unchanged declaration line. A fixture whose `membershipExceptions` array is short enough to keep that line inside git's 3 lines of context will pass while the real `WXYC.xcodeproj` fails. The suite pins mid-array add, mid-array remove, and cross-target move for exactly this reason.
 

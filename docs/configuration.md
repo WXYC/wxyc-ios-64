@@ -28,6 +28,53 @@ Both are **optional** in Swift. Non-optional properties would make `JSONDecoder.
 
 The row opens its destination in an `SFSafariViewController` sheet, not `openURL`. Donations must be collected outside the app (App Store Review Guideline 3.2.1(vi) reserves in-app fundraising for approved nonprofits, which requires a Candid Seal that SEB does not have), so this is a web checkout regardless; the sheet keeps the listener in the app with a Done button and uninterrupted audio, and Apple Pay on the Web works in `SFSafariViewController` — the restriction is on `WKWebView`.
 
+## Sentry Debug Symbols (dSYM upload)
+
+Sentry symbolicates Release stacks **server-side**, from dSYMs uploaded at build time by the `Upload Debug Symbols to Sentry` build phase on the WXYC target. The phase is a one-line `exec` of `scripts/upload-debug-symbols.sh`; the logic lives in the script so it can be regression-tested (`scripts/tests/test-upload-debug-symbols.sh`) instead of edited blind inside `project.pbxproj`.
+
+Without that upload, Sentry has addresses and no function names, and everything downstream of a symbolicated stack — grouping rules, fingerprints, the innermost-in-app-frame heuristics — silently stops working. Nothing in the build says so, which is why the script's failure behavior depends on where it runs:
+
+| | sentry-cli missing | no credentials | upload rejected |
+|---|---|---|---|
+| **Local** (`CI` unset) | `warning:`, build continues | `warning:`, build continues | `warning:`, build continues |
+| **CI**, shipping build | `error:`, build fails | `error:`, build fails | `error:`, build fails |
+| **CI**, non-shipping build | n/a — never attempted | n/a — never attempted | n/a — never attempted |
+
+A dev Mac must not be blocked by a tool nobody installed. A CI archive is the opposite case: it ships. Two exemptions sit on top of that:
+
+- **A build with no dSYMs** skips everywhere.
+- **A CI build that can't ship** skips too. "Shipping" is `ACTION=install` (an archive) or any non-`Debug` `CONFIGURATION`; a build with neither setting present counts as shipping, since a spurious CI failure is loud and a skipped upload is not.
+
+The second exemption is load-bearing and easy to get wrong: **the presence of dSYMs is not the discriminator.** WXYC builds Debug with `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so a plain simulator build populates `DWARF_DSYM_FOLDER_PATH` exactly like an archive does. A strict-whenever-dSYMs-exist rule would demand a Sentry token from every Xcode Cloud test workflow and fail the ones that don't have one. Locally, Debug builds still upload as they always have — Sentry does symbolicate simulator events from dev machines.
+
+`CI` is read as a tri-state, not a presence check: `false`, `0`, `no`, `off`, and empty all mean local. Xcode Cloud sets `CI=TRUE`.
+
+### Local setup
+
+Install `sentry-cli` (`brew install getsentry/tools/sentry-cli`, or `ci_scripts/install-sentry-cli.sh` for the pinned version) and put an auth token in a `.sentryclirc` at the repo root:
+
+```ini
+[auth]
+token=<your token>
+```
+
+`.sentryclirc` is gitignored and must stay that way. The script also accepts `SENTRY_AUTH_TOKEN` in the environment, or a `~/.sentryclirc`.
+
+### Xcode Cloud setup
+
+Xcode Cloud runners ship no `sentry-cli` and, because `.sentryclirc` is gitignored, no credentials either. `ci_scripts/ci_post_clone.sh` supplies both by calling `ci_scripts/install-sentry-cli.sh`, which:
+
+- installs a **pinned** `sentry-cli` (the version is a constant at the top of that script — bump it deliberately, never float latest) into `.ci-tools/bin/` inside the checkout. Checkout-local rather than system-wide: the upstream installer falls back to `sudo -k` when its target isn't writable, which on a non-interactive runner hangs or fails without a prompt.
+- writes `SENTRY_AUTH_TOKEN` to `~/.sentryclirc` at mode 600, never overwriting an existing file. Xcode Cloud environment variables are documented as reaching custom build scripts; whether one reaches a run-script phase nested inside `xcodebuild` is a thinner guarantee, and a config file on disk is one `sentry-cli` reads regardless of how it was invoked.
+
+The one thing that is **not** in this repo is the token itself. It has to be added by hand, once, in App Store Connect:
+
+1. Mint an **organization auth token** (the `sntrys_…` kind) at https://sentry.io/settings/wxyc/auth-tokens/. Its scope is fixed at `org:ci` / `project:releases` — enough to upload debug files, not enough to administer the project, which is exactly what an upload credential should be. Don't substitute a personal user token: those carry the minting user's full access and die with their account.
+2. In App Store Connect → Xcode Cloud → the workflow → **Environment**, add `SENTRY_AUTH_TOKEN` with **Secret** checked so it is redacted from build logs.
+3. Add it to every workflow whose `xcodebuild` action is `archive`. Build- and test-only workflows don't need it.
+
+An archive workflow missing the token fails in `ci_post_clone` (that script passes `--require-auth` when `CI_XCODEBUILD_ACTION` is `archive`, so the failure lands at minute zero rather than twenty minutes into the build). If it somehow gets past that, the build phase fails the archive anyway. Both are deliberate: the previous behavior was a `warning:` in a green build, and an archive shipping without symbols is not something anyone notices until they need a crash report weeks later.
+
 ## Code Signing
 
 - Development Team: `92V374HC38`
