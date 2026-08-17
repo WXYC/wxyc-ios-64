@@ -3,10 +3,8 @@
 //  MusicShareKit
 //
 //  Tests that MusicShareKit.configure(_:) is a once-per-process no-op after
-//  its first call (#956): the share extension's ShareViewController calls
-//  configure(_:) on every presentation, and without the guard that rebuilds
-//  _authService from scratch each time, dropping the in-memory
-//  cachedSession the #948 Keychain-miss fallback depends on.
+//  its first call. See MusicShareKit.configure(_:) for why that guard
+//  exists (#956).
 //
 //  Every assertion below is scoped to a test-local
 //  InMemoryDeviceFingerprintStorage rather than to MusicShareKit's process
