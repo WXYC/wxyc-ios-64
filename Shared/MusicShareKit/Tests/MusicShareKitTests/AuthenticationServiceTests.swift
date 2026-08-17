@@ -551,6 +551,41 @@ struct AuthenticationServiceTests {
         #expect(networkClient.fetchJWTCallCount == 2)
     }
 
+    @Test("Forced reauthentication on a Keychain-miss device mints from the in-memory session instead of re-signing-in (#948)")
+    func reauthenticateOnKeychainMissMintsFromInMemorySession() async throws {
+        // Given — the #948 population exactly: storage.save() always throws
+        // (a transient -34018), so nothing is ever persisted and load()
+        // faithfully returns nil.
+        let storage = MockThrowingTokenStorage(
+            saveError: AuthenticationError.keychainError(status: errSecInteractionNotAllowed)
+        )
+        let networkClient = makeNetworkClient()
+        let service = makeService(storage: storage, networkClient: networkClient)
+
+        // Nothing stored or cached yet, so this is a legitimate first
+        // sign-in. The swallowed save leaves the session in cachedSession
+        // only.
+        _ = try await service.ensureAuthenticated()
+        #expect(networkClient.signInCallCount == 1)
+        #expect(networkClient.fetchJWTCallCount == 1)
+
+        // When — the server rejects that JWT and a caller forces a reauth.
+        let token = try await service.reauthenticate(reason: .unauthorized)
+
+        // Then — recovery is a one-round-trip /auth/token mint, NOT a second
+        // anonymous sign-in. `reauthenticate(reason:)` deliberately clears
+        // cachedSession before refreshing, so performRefresh's
+        // `?? cachedSession` fallback has nothing left to recover from
+        // unless the rejected session is threaded through explicitly. Without
+        // that, a Keychain-miss device mints a brand-new anonymous DB user on
+        // every single 401 — the orphaned-user leak #948 set out to close,
+        // just relocated from the proactive-refresh path to the forced-reauth
+        // one.
+        #expect(token.contains("."))
+        #expect(networkClient.signInCallCount == 1, "must not mint a second anonymous user when the in-memory session is still good")
+        #expect(networkClient.fetchJWTCallCount == 2, "one mint from the sign-in, one from the recovered mint path")
+    }
+
     // MARK: - Concurrent reauthenticate Coalescing (H1, #414/#415)
 
     /// Regression guard for the On-Tour-tab-spins-forever bug: a burst of
