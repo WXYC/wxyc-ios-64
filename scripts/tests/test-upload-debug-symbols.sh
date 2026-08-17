@@ -142,8 +142,18 @@ STUB
 #
 # CONFIGURATION and ACTION default to an archive's values (Release/install),
 # because that is the build the strict behavior is about. Cases that want a
-# Debug or plain-build environment set CASE_CONFIGURATION / CASE_ACTION.
+# Debug or plain-build environment set CASE_CONFIGURATION / CASE_ACTION; a case
+# that unsets them gets a child environment with those variables genuinely
+# absent, which is a distinct branch in the script and needs a distinct
+# fixture. Building the assignments into an array is the only way to express
+# that through `env -i`: a `CONFIGURATION="${CASE_CONFIGURATION-Release}"`
+# argument substitutes the default *precisely when the variable is unset*, so
+# the absent case would silently test the same thing as the default one.
 run_script() {
+    local -a build_settings=()
+    [[ -n "${CASE_CONFIGURATION+set}" ]] && build_settings+=("CONFIGURATION=${CASE_CONFIGURATION}")
+    [[ -n "${CASE_ACTION+set}" ]] && build_settings+=("ACTION=${CASE_ACTION}")
+
     env -i \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$1" \
@@ -151,8 +161,7 @@ run_script() {
         DWARF_DSYM_FOLDER_PATH="$3" \
         CI="$4" \
         SENTRY_AUTH_TOKEN="$5" \
-        CONFIGURATION="${CASE_CONFIGURATION-Release}" \
-        ACTION="${CASE_ACTION-install}" \
+        "${build_settings[@]}" \
         STUB_LOG="${STUB_LOG:-}" \
         STUB_FAIL="${STUB_FAIL:-}" \
         /bin/zsh "$REAL_SCRIPT" 2>&1
@@ -171,26 +180,52 @@ new_case() {
 }
 
 # =========================================================================
-# Case 1: no dSYMs. Neither side may fail — this is every Debug build.
+# Case 1: no dSYMs.
+#
+# Locally, and on any CI build that cannot ship, this is unremarkable: there
+# is nothing to upload, so there is nothing to say. On a CI build that *does*
+# ship it is the opposite — every WXYC configuration sets
+# DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an archive with an empty
+# DWARF_DSYM_FOLDER_PATH means something upstream broke (a flipped build
+# setting, a dsymutil failure, a moved path) and the archive is about to ship
+# unsymbolicated. Skipping quietly there is the #955 failure mode wearing a
+# different hat.
 # =========================================================================
 
 echo "=== Case 1: build produced no dSYMs ==="
 
-new_case "no-dsyms-ci"
+new_case "no-dsyms-local"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$EMPTY_DSYM_DIR" "" ""); RC=$?
+expect_exit "empty dSYM folder locally exits 0" "$RC" "0" "$OUT"
+expect_not_contains "empty dSYM folder locally emits no error:" "$OUT" "error:"
+expect_not_contains "empty dSYM folder locally emits no warning:" "$OUT" "warning:"
+
+new_case "no-dsym-path-local"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "" "" ""); RC=$?
+expect_exit "unset DWARF_DSYM_FOLDER_PATH locally exits 0" "$RC" "0" "$OUT"
+expect_not_contains "unset DWARF_DSYM_FOLDER_PATH locally emits no error:" "$OUT" "error:"
+
+new_case "no-dsyms-ci-nonshipping"
+CASE_CONFIGURATION="Debug"
+CASE_ACTION="build"
 OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$EMPTY_DSYM_DIR" "TRUE" ""); RC=$?
-expect_exit "empty dSYM folder in CI exits 0" "$RC" "0" "$OUT"
-expect_not_contains "empty dSYM folder in CI emits no error:" "$OUT" "error:"
-expect_not_contains "empty dSYM folder in CI emits no warning:" "$OUT" "warning:"
+expect_exit "empty dSYM folder on a non-shipping CI build exits 0" "$RC" "0" "$OUT"
+expect_not_contains "empty dSYM folder on a non-shipping CI build emits no error:" "$OUT" "error:"
 
-new_case "no-dsym-path-ci"
-OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "" "TRUE" ""); RC=$?
-expect_exit "unset DWARF_DSYM_FOLDER_PATH in CI exits 0" "$RC" "0" "$OUT"
-expect_not_contains "unset DWARF_DSYM_FOLDER_PATH in CI emits no error:" "$OUT" "error:"
+new_case "no-dsyms-ci-archive"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$EMPTY_DSYM_DIR" "TRUE" "sntrys_fake"); RC=$?
+expect_exit "an archive that produced no dSYMs fails the build" "$RC" "1" "$OUT"
+expect_contains "an archive with no dSYMs is an error:" "$OUT" "error:"
+expect_contains "the error names the folder it found empty" "$OUT" "$EMPTY_DSYM_DIR"
 
-new_case "missing-dsym-dir-ci"
-OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$FIXTURE/does-not-exist" "TRUE" ""); RC=$?
-expect_exit "nonexistent dSYM folder in CI exits 0" "$RC" "0" "$OUT"
-expect_not_contains "nonexistent dSYM folder in CI emits no error:" "$OUT" "error:"
+new_case "no-dsym-path-ci-archive"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "" "TRUE" "sntrys_fake"); RC=$?
+expect_exit "an archive with no DWARF_DSYM_FOLDER_PATH at all fails the build" "$RC" "1" "$OUT"
+expect_contains "the missing dSYM folder is an error:" "$OUT" "error:"
+
+new_case "missing-dsym-dir-ci-archive"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$FIXTURE/does-not-exist" "TRUE" "sntrys_fake"); RC=$?
+expect_exit "an archive whose dSYM folder does not exist fails the build" "$RC" "1" "$OUT"
 
 # =========================================================================
 # Case 2: dSYMs exist but sentry-cli does not.
@@ -345,9 +380,18 @@ done
 # for the day somebody adds a workflow and forgets.
 #
 # So strictness is scoped to builds that can actually ship — an archive
-# (ACTION=install) or any non-Debug configuration. A CI build that is neither
-# skips the upload outright: those runners never report events to Sentry, so
-# their dSYMs are pure noise in the debug-file list.
+# (ACTION=install) or a configuration whose name does not begin with "Debug".
+# A CI build that is neither skips the upload outright: those runners never
+# report events to Sentry, so their dSYMs are pure noise in the debug-file
+# list.
+#
+# The prefix, not equality, is the load-bearing part. This project has five
+# configurations — Debug, "Debug TestFlight", TestFlight, Release, and
+# "Release (Active Arch)" — and the shared scheme's TestAction builds
+# "Debug TestFlight". An `xcodebuild test -scheme WXYC` with no explicit
+# -configuration (what scripts/test-affected.sh runs, and what an Xcode Cloud
+# test workflow runs) therefore lands on a configuration that is not literally
+# "Debug" but is emphatically not shipping.
 #
 # Local builds are unaffected either way. A developer's Debug dSYMs are worth
 # uploading — Sentry symbolicates simulator events from dev machines — and
@@ -372,6 +416,32 @@ make_stub "$CASE_SRCROOT/.ci-tools/bin/sentry-cli"
 OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "TRUE" "sntrys_fake"); RC=$?
 expect_exit "a CI Debug build exits 0 even with everything available" "$RC" "0" "$OUT"
 expect_not_contains "a CI Debug build uploads nothing" "$(<"$STUB_LOG")" "debug-files"
+
+# The scheme's TestAction configuration. Getting this wrong turns every
+# `xcodebuild test` on a runner into a build failure demanding a Sentry token.
+new_case "ci-debug-testflight-test"
+CASE_CONFIGURATION="Debug TestFlight"
+CASE_ACTION="build"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "TRUE" ""); RC=$?
+expect_exit "a CI 'Debug TestFlight' test build with no token still exits 0" "$RC" "0" "$OUT"
+expect_not_contains "a CI 'Debug TestFlight' build does not error" "$OUT" "error:"
+
+new_case "ci-debug-testflight-skips-upload"
+CASE_CONFIGURATION="Debug TestFlight"
+CASE_ACTION="build"
+make_stub "$CASE_SRCROOT/.ci-tools/bin/sentry-cli"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "TRUE" "sntrys_fake"); RC=$?
+expect_exit "a CI 'Debug TestFlight' build exits 0 with everything available" "$RC" "0" "$OUT"
+expect_not_contains "a CI 'Debug TestFlight' build uploads nothing" "$(<"$STUB_LOG")" "debug-files"
+
+# TestFlight (no Debug prefix) is a distribution configuration and must stay
+# strict — the prefix rule must not be read as "anything with TestFlight in
+# the name".
+new_case "ci-testflight-build"
+CASE_CONFIGURATION="TestFlight"
+CASE_ACTION="build"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "TRUE" ""); RC=$?
+expect_exit "a CI TestFlight build is strict" "$RC" "1" "$OUT"
 
 new_case "ci-release-build"
 CASE_CONFIGURATION="Release"
@@ -401,6 +471,58 @@ make_stub "$CASE_SRCROOT/.ci-tools/bin/sentry-cli"
 OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "" "sntrys_fake"); RC=$?
 expect_exit "a local Debug build still exits 0" "$RC" "0" "$OUT"
 expect_contains "a local Debug build still uploads, as it did before" "$(<"$STUB_LOG")" "debug-files"
+
+# =========================================================================
+# Case 8: the on-disk CI marker.
+#
+# Everything above turns on $CI reaching this script. That is the same
+# assumption ci_scripts/install-sentry-cli.sh deliberately refuses to make
+# about SENTRY_AUTH_TOKEN — Xcode Cloud documents its environment variables as
+# reaching custom build scripts, not as surviving into a run-script phase
+# nested inside xcodebuild. If $CI does not make that hop, every strict path
+# above quietly reverts to `warning:` + exit 0 and the archive ships
+# unsymbolicated with a green build: #955 again, this time with a test suite
+# asserting it was fixed.
+#
+# So ci_post_clone.sh drops a marker file in the checkout, where nothing has
+# to propagate for the build phase to find it.
+# =========================================================================
+
+echo ""
+echo "=== Case 8: the .ci-tools/ci-runner marker ==="
+
+new_case "marker-without-ci-env"
+mkdir -p "$CASE_SRCROOT/.ci-tools"
+: > "$CASE_SRCROOT/.ci-tools/ci-runner"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "" "sntrys_fake"); RC=$?
+expect_exit "the marker alone makes an archive strict, with CI unset" "$RC" "1" "$OUT"
+expect_contains "the marker path produces an error:" "$OUT" "error:"
+
+new_case "marker-with-ci-false"
+mkdir -p "$CASE_SRCROOT/.ci-tools"
+: > "$CASE_SRCROOT/.ci-tools/ci-runner"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "false" "sntrys_fake"); RC=$?
+expect_exit "the marker outranks a CI=false that never got cleared" "$RC" "1" "$OUT"
+
+# The marker must not make a non-shipping build strict either — it answers
+# "where am I", not "does this build ship".
+new_case "marker-debug-testflight"
+CASE_CONFIGURATION="Debug TestFlight"
+CASE_ACTION="build"
+mkdir -p "$CASE_SRCROOT/.ci-tools"
+: > "$CASE_SRCROOT/.ci-tools/ci-runner"
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "" ""); RC=$?
+expect_exit "the marker does not make a test build strict" "$RC" "0" "$OUT"
+expect_not_contains "the marker does not error a test build" "$OUT" "error:"
+
+# And a dev Mac that happens to have a .ci-tools/bin from running the
+# installer by hand is not a CI runner.
+new_case "vendored-cli-is-not-a-marker"
+make_stub "$CASE_SRCROOT/.ci-tools/bin/sentry-cli"
+STUB_FAIL=1
+OUT=$(run_script "$CASE_HOME" "$CASE_SRCROOT" "$DSYM_DIR" "" "sntrys_expired"); RC=$?
+expect_exit "a vendored sentry-cli by itself does not imply CI" "$RC" "0" "$OUT"
+expect_contains "a local failure with a vendored cli is still a warning:" "$OUT" "warning:"
 
 # =========================================================================
 # Summary

@@ -14,6 +14,19 @@ mkdir -p ~/Library/org.swift.swiftpm/security/
 cp "$SCRIPT_DIR/macros.json" ~/Library/org.swift.swiftpm/security/
 echo "   Copied macros.json to Swift security directory"
 
+# Tell the build phases they are on a runner.
+#
+# scripts/upload-debug-symbols.sh is strict on CI and lenient locally, and it
+# used to learn which it was from $CI alone. That variable is set for this
+# script — Xcode Cloud documents its environment as reaching custom build
+# scripts — but a run-script phase nested inside xcodebuild is a further hop,
+# and if $CI doesn't survive it the phase silently reverts to warnings and an
+# unsymbolicated archive ships green. A file in the checkout has no hop to
+# survive. .ci-tools/ is gitignored, and the runner is ephemeral.
+mkdir -p "$REPO_ROOT/.ci-tools"
+: > "$REPO_ROOT/.ci-tools/ci-runner"
+echo "   Marked this checkout as a CI runner"
+
 # Install sentry-cli and its credentials for the "Upload Debug Symbols to
 # Sentry" build phase. Xcode Cloud runners ship neither. (#955)
 #
@@ -36,7 +49,7 @@ if [[ "${CI_XCODEBUILD_ACTION:-}" == "archive" ]]; then
         exit 1
     fi
 elif ! "$SCRIPT_DIR/install-sentry-cli.sh"; then
-    echo "warning: sentry-cli setup failed; a build that produces dSYMs will fail in the upload build phase"
+    echo "warning: sentry-cli setup failed; a build that ships — an archive, or any non-Debug configuration — will fail in the upload build phase. A test workflow will not: it skips the upload."
 fi
 
 echo "✅ CI post-clone complete"

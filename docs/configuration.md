@@ -42,12 +42,16 @@ Without that upload, Sentry has addresses and no function names, and everything 
 
 A dev Mac must not be blocked by a tool nobody installed. A CI archive is the opposite case: it ships. Two exemptions sit on top of that:
 
-- **A build with no dSYMs** skips everywhere.
-- **A CI build that can't ship** skips too. "Shipping" is `ACTION=install` (an archive) or any non-`Debug` `CONFIGURATION`; a build with neither setting present counts as shipping, since a spurious CI failure is loud and a skipped upload is not.
+- **A build with no dSYMs** skips, except on a shipping CI build, where it is an `error:` — every WXYC configuration sets `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so an archive with an empty `DWARF_DSYM_FOLDER_PATH` means something upstream broke, and passing that through quietly is the original bug with a new cause.
+- **A CI build that can't ship** skips entirely. "Shipping" is `ACTION=install` (an archive) or a `CONFIGURATION` whose name does not start with `Debug`; a build with no `CONFIGURATION` at all counts as shipping, since a spurious CI failure is loud and a skipped upload is not.
 
-The second exemption is load-bearing and easy to get wrong: **the presence of dSYMs is not the discriminator.** WXYC builds Debug with `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so a plain simulator build populates `DWARF_DSYM_FOLDER_PATH` exactly like an archive does. A strict-whenever-dSYMs-exist rule would demand a Sentry token from every Xcode Cloud test workflow and fail the ones that don't have one. Locally, Debug builds still upload as they always have — Sentry does symbolicate simulator events from dev machines.
+The second exemption is load-bearing and easy to get wrong twice over.
 
-`CI` is read as a tri-state, not a presence check: `false`, `0`, `no`, `off`, and empty all mean local. Xcode Cloud sets `CI=TRUE`.
+**The presence of dSYMs is not the discriminator.** WXYC builds Debug with `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so a plain simulator build populates `DWARF_DSYM_FOLDER_PATH` exactly like an archive does. A strict-whenever-dSYMs-exist rule would demand a Sentry token from every Xcode Cloud test workflow and fail the ones that don't have one. Locally, Debug builds still upload as they always have — Sentry does symbolicate simulator events from dev machines.
+
+**And the configuration test is a prefix, not an equality.** This project has five configurations — `Debug`, `Debug TestFlight`, `TestFlight`, `Release`, `Release (Active Arch)` — and the shared scheme's `TestAction` builds `Debug TestFlight`. Any `xcodebuild test -scheme WXYC` without an explicit `-configuration` (that includes `scripts/test-affected.sh`) lands there, so matching only the literal `Debug` would classify every test run as shipping.
+
+CI-ness has two sources. `ci_post_clone.sh` writes `.ci-tools/ci-runner` into the checkout, and that file alone is enough; otherwise `CI` is read from the environment as a tri-state, not a presence check (`false`, `0`, `no`, `off`, and empty all mean local; Xcode Cloud sets `CI=TRUE`). The marker exists because the environment hop this depends on is the same one the token deliberately doesn't rely on — see below — and a `CI` that fails to reach the build phase would silently turn every `error:` above back into the `warning:` this whole section exists to eliminate.
 
 ### Local setup
 
@@ -62,18 +66,18 @@ token=<your token>
 
 ### Xcode Cloud setup
 
-Xcode Cloud runners ship no `sentry-cli` and, because `.sentryclirc` is gitignored, no credentials either. `ci_scripts/ci_post_clone.sh` supplies both by calling `ci_scripts/install-sentry-cli.sh`, which:
+Xcode Cloud runners ship no `sentry-cli` and, because `.sentryclirc` is gitignored, no credentials either. `ci_scripts/ci_post_clone.sh` marks the checkout with `.ci-tools/ci-runner` and supplies both by calling `ci_scripts/install-sentry-cli.sh`, which:
 
 - installs a **pinned** `sentry-cli` (the version is a constant at the top of that script — bump it deliberately, never float latest) into `.ci-tools/bin/` inside the checkout. Checkout-local rather than system-wide: the upstream installer falls back to `sudo -k` when its target isn't writable, which on a non-interactive runner hangs or fails without a prompt.
-- writes `SENTRY_AUTH_TOKEN` to `~/.sentryclirc` at mode 600, never overwriting an existing file. Xcode Cloud environment variables are documented as reaching custom build scripts; whether one reaches a run-script phase nested inside `xcodebuild` is a thinner guarantee, and a config file on disk is one `sentry-cli` reads regardless of how it was invoked.
+- writes `SENTRY_AUTH_TOKEN` to `~/.sentryclirc` at mode 600, never overwriting an existing file — though it does check that an existing one actually carries a `token=` line, since "the file is there" and "there is a credential" are not the same claim. Xcode Cloud environment variables are documented as reaching custom build scripts; whether one reaches a run-script phase nested inside `xcodebuild` is a thinner guarantee, and a config file on disk is one `sentry-cli` reads regardless of how it was invoked.
 
 The one thing that is **not** in this repo is the token itself. It has to be added by hand, once, in App Store Connect:
 
 1. Mint an **organization auth token** (the `sntrys_…` kind) at https://sentry.io/settings/wxyc/auth-tokens/. Its scope is fixed at `org:ci` / `project:releases` — enough to upload debug files, not enough to administer the project, which is exactly what an upload credential should be. Don't substitute a personal user token: those carry the minting user's full access and die with their account.
 2. In App Store Connect → Xcode Cloud → the workflow → **Environment**, add `SENTRY_AUTH_TOKEN` with **Secret** checked so it is redacted from build logs.
-3. Add it to every workflow whose `xcodebuild` action is `archive`. Build- and test-only workflows don't need it.
+3. Add it to every workflow that builds something shipping — every `archive` workflow, and any Build-action workflow set to `Release` or `TestFlight`. Test workflows don't need it: their configuration is `Debug TestFlight`, which skips the upload.
 
-An archive workflow missing the token fails in `ci_post_clone` (that script passes `--require-auth` when `CI_XCODEBUILD_ACTION` is `archive`, so the failure lands at minute zero rather than twenty minutes into the build). If it somehow gets past that, the build phase fails the archive anyway. Both are deliberate: the previous behavior was a `warning:` in a green build, and an archive shipping without symbols is not something anyone notices until they need a crash report weeks later.
+An archive workflow missing the token fails in `ci_post_clone` (that script passes `--require-auth` when `CI_XCODEBUILD_ACTION` is `archive`, so the failure lands at minute zero rather than twenty minutes into the build). A non-archive workflow on a shipping configuration gets no such head start — Xcode Cloud exposes the action to `ci_post_clone`, not the configuration — so it fails later, in the build phase. Both are deliberate: the previous behavior was a `warning:` in a green build, and an archive shipping without symbols is not something anyone notices until they need a crash report weeks later.
 
 ## Code Signing
 
