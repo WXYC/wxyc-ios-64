@@ -206,14 +206,33 @@ OUT2=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_a"); RC2=$?
 expect_exit "second run succeeds instead of tripping over the existing binary" "$RC2" "0" "$OUT2"
 expect_not_contains "the second run does not report an installer error" "$OUT2" "already installed."
 
-# An existing binary at the wrong version is a stale runner cache, not a
-# reason to skip: the pin is the point.
-new_case "stale-version"
+# An install that comes back at the wrong version is a yanked release or a
+# typo'd pin. A pin nobody verifies is a comment.
+new_case "reports-wrong-version"
 FAKE_REPORTED_VERSION="1.0.0"
 OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_a"); RC=$?
 expect_exit "an install that reports the wrong version fails loudly" "$RC" "1" "$OUT"
 expect_contains "the version mismatch is an error:" "$OUT" "error:"
 expect_contains "the mismatch names the version it got" "$OUT" "1.0.0"
+
+# A binary already sitting there at the wrong version is the warm-runner-cache
+# case, and it is the one the upstream installer cannot handle by itself: it
+# hard-errors on an existing file rather than replacing it. The stale copy has
+# to be removed first, and the run has to end at the pinned version.
+new_case "stale-cached-binary"
+mkdir -p "$CASE_ROOT/.ci-tools/bin"
+cat > "$CASE_ROOT/.ci-tools/bin/sentry-cli" <<'STALE'
+#!/bin/sh
+if [ "$1" = "--version" ]; then echo "sentry-cli 2.0.0"; exit 0; fi
+exit 0
+STALE
+chmod +x "$CASE_ROOT/.ci-tools/bin/sentry-cli"
+OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_a"); RC=$?
+expect_exit "a stale cached binary is replaced rather than tripped over" "$RC" "0" "$OUT"
+expect_contains "the replacement names the version it found" "$OUT" "2.0.0"
+expect_not_contains "the installer never sees the existing file" "$OUT" "already installed."
+expect_eq "the binary ends up at the pinned version" \
+    "$("$CASE_ROOT/.ci-tools/bin/sentry-cli" --version)" "sentry-cli $PIN"
 
 # =========================================================================
 # Case 3: an existing ~/.sentryclirc is never clobbered. The script is
@@ -230,6 +249,23 @@ OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "sntrys_from_env"); RC=$?
 expect_exit "the run succeeds with an existing rc file" "$RC" "0" "$OUT"
 expect_contains "the developer's own token is left in place" "$(<"$CASE_HOME/.sentryclirc")" "sntrys_mine"
 expect_not_contains "the environment token did not overwrite it" "$(<"$CASE_HOME/.sentryclirc")" "sntrys_from_env"
+
+# Never-clobber must not become never-check. A ~/.sentryclirc with no token in
+# it — a stale [defaults] section, an empty file left by a previous run — is
+# not a credential, and --require-auth exists precisely so an archive dies at
+# minute zero instead of twenty minutes later in the build phase.
+new_case "existing-rc-without-token"
+printf '[defaults]\norg=wxyc\n' > "$CASE_HOME/.sentryclirc"
+OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" "" --require-auth); RC=$?
+expect_exit "a token-less rc file does not satisfy --require-auth" "$RC" "1" "$OUT"
+expect_contains "the token-less rc file is an error:" "$OUT" "error:"
+expect_contains "the developer's file is still left alone" "$(<"$CASE_HOME/.sentryclirc")" "[defaults]"
+
+new_case "existing-rc-without-token-lenient"
+printf '[defaults]\norg=wxyc\n' > "$CASE_HOME/.sentryclirc"
+OUT=$(run_install "$CASE_HOME" "$CASE_ROOT" ""); RC=$?
+expect_exit "a token-less rc file only warns without --require-auth" "$RC" "0" "$OUT"
+expect_contains "the token-less rc file warns" "$OUT" "warning:"
 
 # =========================================================================
 # Case 4: no token.
