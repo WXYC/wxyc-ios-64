@@ -261,24 +261,15 @@ struct DefaultAuthNetworkClientTests {
 
     // MARK: - Cookie Isolation Tests (#948)
     //
-    // A first attempt at these asserted `Cookie` absence on the SECOND
-    // captured request, the way IOS-37 actually manifests over the wire.
-    // That assertion is vacuous: `QueuedStubURLProtocol`'s synthetic
-    // response never round-trips through `URLSession`'s cookie-storage
-    // machinery at all — a `Set-Cookie` response header is never stored,
-    // and outgoing requests never gain a `Cookie` header, regardless of
-    // whether the session is cookie-free. Confirmed empirically: the
-    // Cookie-header assertion passed against completely unfixed
-    // (`.ephemeral`, no cookie-disabling) production code. Reassigned to
-    // two layers that ARE reachable from a unit test: the session's own
-    // `URLSessionConfiguration` (no network round trip needed at all), and
-    // the per-request `httpShouldHandleCookies` flag (a plain `URLRequest`
-    // property `QueuedStubURLProtocol` captures faithfully, independent of
-    // whatever cookie machinery does or doesn't run underneath it).
+    // Do NOT assert on a `Cookie` request header here: `QueuedStubURLProtocol`
+    // never routes through `URLSession`'s cookie machinery, so that assertion
+    // passes against unfixed (`.ephemeral`, cookie-enabled) production code.
+    // The two reachable layers are the session's own configuration and the
+    // per-request `httpShouldHandleCookies` flag.
 
-    @Test("makeSession() produces a session configuration with no cookie storage, set-cookie acceptance, or send policy")
+    @Test("makeCookieFreeSession() produces a configuration with no cookie storage, set-cookie acceptance, or send policy")
     func makeSessionConfigurationIsCookieFree() {
-        let session = DefaultAuthNetworkClient.makeSession()
+        let session = DefaultAuthNetworkClient.makeCookieFreeSession()
 
         #expect(session.configuration.httpCookieStorage == nil)
         #expect(session.configuration.httpShouldSetCookies == false)

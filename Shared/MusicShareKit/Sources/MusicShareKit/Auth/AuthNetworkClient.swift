@@ -54,35 +54,37 @@ public protocol AuthNetworkClient: Sendable {
 /// Default implementation of `AuthNetworkClient` using URLSession.
 ///
 /// This is a pure bearer-token client and has no use for a cookie jar, so
-/// the session is configured to be genuinely cookie-free rather than merely
-/// `.ephemeral`. `.ephemeral` only avoids writing cookies to disk — it
-/// still keeps an in-memory `HTTPCookieStorage` and resends whatever it
-/// collects for the lifetime of the `URLSession` object. `DefaultAuthNetworkClient`
-/// is constructed once at process start and lives for the whole app
-/// lifetime, so a session that merely avoids disk persistence would still
-/// accumulate and resend the cookie from the first anonymous sign-in on
-/// every subsequent one — better-auth then 400s ("Anonymous users cannot
-/// sign in again anonymously") because it sees a still-live session cookie
-/// (#948). `makeSession()` disables cookie storage, acceptance, and
-/// sending at the configuration level, and both requests below additionally
-/// set `httpShouldHandleCookies = false` as a second, independent guard.
+/// the session is genuinely cookie-free rather than merely `.ephemeral`.
+/// `.ephemeral` only avoids writing cookies to *disk* — it still keeps an
+/// in-memory `HTTPCookieStorage` and resends whatever it collects for the
+/// lifetime of the `URLSession` object. Since this client outlives a single
+/// request (one instance per `MusicShareKit.configure(_:)`), a merely
+/// `.ephemeral` session accumulates the cookie from the first anonymous
+/// sign-in and resends it on every subsequent one — better-auth then 400s
+/// ("Anonymous users cannot sign in again anonymously") because it sees a
+/// still-live session cookie, wedging auth until the process restarts
+/// (#948).
+///
+/// Two independent guards, and both are needed:
+/// - ``makeCookieFreeSession()`` disables cookie storage, acceptance, and
+///   sending at the configuration level. This covers every request the
+///   client grows in future, including one whose author forgets the flag
+///   below.
+/// - Each request sets `httpShouldHandleCookies = false`. This is the only
+///   guard that survives an injected session — `init(session:)` accepts any
+///   `URLSession`, and a caller passing a plain `.ephemeral` one gets a real
+///   cookie jar that the configuration above never touched.
 public struct DefaultAuthNetworkClient: AuthNetworkClient {
     private let session: URLSession
 
-    public init(session: URLSession = DefaultAuthNetworkClient.makeSession()) {
+    public init(session: URLSession = DefaultAuthNetworkClient.makeCookieFreeSession()) {
         self.session = session
     }
 
-    /// Builds a session with no cookie jar: no storage to write into, no
-    /// acceptance of `Set-Cookie` responses, and no attaching of stored
-    /// cookies to outgoing requests. Used as `init(session:)`'s default
-    /// argument (which requires `public` visibility here, since the
-    /// default-argument expression is evaluated at each call site); this
-    /// also lets it be asserted on directly in tests, since a stubbed
-    /// `URLProtocol` doesn't route through `URLSession`'s cookie-storage
-    /// machinery at all — the only way to observe this configuration is to
-    /// inspect it directly.
-    public static func makeSession() -> URLSession {
+    /// Builds the cookie-free session described on the type. `public`
+    /// because it is `init(session:)`'s default argument, which is evaluated
+    /// at each call site.
+    public static func makeCookieFreeSession() -> URLSession {
         let config = URLSessionConfiguration.ephemeral
         config.httpCookieStorage = nil
         config.httpShouldSetCookies = false
