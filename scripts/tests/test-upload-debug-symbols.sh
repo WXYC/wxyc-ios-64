@@ -5,20 +5,25 @@
 # Black-box regression test for scripts/upload-debug-symbols.sh — the script
 # the "Upload Debug Symbols to Sentry" build phase runs.
 #
-# The behavior under test is the CI/local asymmetry (#955). Before that
-# issue, the whole thing was four lines inlined in project.pbxproj and every
-# failure path — no binary, no credentials, a rejected upload — degraded to a
-# `warning:`. On a dev Mac that is right: a local Debug build must not fail
-# because somebody hasn't installed sentry-cli. On an Xcode Cloud runner it is
-# exactly wrong: the archive ships, the build stays green, and every Release
-# event in Sentry loses its function names with no visible error anywhere.
+# The behavior under test is which builds a missed upload is allowed to stop
+# (#955). Before that issue, the whole thing was four lines inlined in
+# project.pbxproj and every failure path — no binary, no credentials, a
+# rejected upload — degraded to a `warning:`. For an everyday build that is
+# right: nobody debugging a layout bug should be blocked because they never
+# installed sentry-cli. For a build that ships it is exactly wrong: the archive
+# is made, the build stays green, and every Release event in Sentry loses its
+# function names with no visible error anywhere.
 #
-# So the contract has two halves and both need pinning:
-#   local (CI unset)  — every failure is a warning, exit 0, build continues
-#   CI    (CI set)    — every failure is an error, exit 1, build stops
-# plus one shared guard: a build that produced no dSYMs at all (any Debug
-# build, where DEBUG_INFORMATION_FORMAT is plain `dwarf`) has nothing to
-# upload and must not fail on either side.
+# So the contract has four branches and all of them need pinning:
+#   an archive (ACTION=install), anywhere — every failure is an error, exit 1,
+#       and the archive does not get made. WXYC ships from Product > Archive on
+#       a dev Mac, so this is the branch guarding the real shipping path.
+#   any other local build — every failure is a warning, exit 0, build
+#       continues. A plain local Release build is in this branch: people build
+#       Release to check optimized behavior, and that is not a ship.
+#   a shipping build on CI — an error too, on the fail-safe reasoning in
+#       is_shipping_build().
+#   a non-shipping CI build — skipped outright, nothing uploaded.
 #
 # The stub sentry-cli records its argv and the Sentry-relevant environment so
 # the tests can assert the upload is invoked against the right org/project
@@ -150,12 +155,24 @@ new_case() {
     CASE_ACTION="install"
 }
 
+# The opposite fixture: an ordinary build rather than an archive. Cases that
+# assert leniency need this, because an archive is strict everywhere and so can
+# no longer stand in for "an ordinary local build" the way it could when CI-ness
+# was the only thing strictness turned on.
+#
+# Release rather than Debug on purpose: a Debug build on CI skips the upload
+# outright, so a Debug fixture cannot tell "lenient" apart from "skipped".
+ordinary_build() {
+    CASE_CONFIGURATION="Release"
+    CASE_ACTION="build"
+}
+
 # =========================================================================
 # Case 1: no dSYMs.
 #
-# Locally, and on any CI build that cannot ship, this is unremarkable: there
-# is nothing to upload, so there is nothing to say. On a CI build that *does*
-# ship it is the opposite — every WXYC configuration sets
+# On an ordinary build, and on any CI build that cannot ship, this is
+# unremarkable: there is nothing to upload, so there is nothing to say. On a
+# build that *does* ship it is the opposite — every WXYC configuration sets
 # DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an archive with an empty
 # DWARF_DSYM_FOLDER_PATH means something upstream broke (a flipped build
 # setting, a dsymutil failure, a moved path) and the archive is about to ship
@@ -166,12 +183,14 @@ new_case() {
 echo "=== Case 1: build produced no dSYMs ==="
 
 new_case "no-dsyms-local"
+ordinary_build
 OUT=$(run_script "$EMPTY_DSYM_DIR" "" ""); RC=$?
 expect_exit "empty dSYM folder locally exits 0" "$RC" "0" "$OUT"
 expect_not_contains "empty dSYM folder locally emits no error:" "$OUT" "error:"
 expect_not_contains "empty dSYM folder locally emits no warning:" "$OUT" "warning:"
 
 new_case "no-dsym-path-local"
+ordinary_build
 OUT=$(run_script "" "" ""); RC=$?
 expect_exit "unset DWARF_DSYM_FOLDER_PATH locally exits 0" "$RC" "0" "$OUT"
 expect_not_contains "unset DWARF_DSYM_FOLDER_PATH locally emits no error:" "$OUT" "error:"
@@ -215,8 +234,10 @@ expect_exit "missing sentry-cli in CI fails the build" "$RC" "1" "$OUT"
 expect_contains "missing sentry-cli in CI is an error:" "$OUT" "error:"
 expect_contains "the error names sentry-cli" "$OUT" "sentry-cli"
 expect_contains "the error points at the installer script" "$OUT" "ci_scripts/install-sentry-cli.sh"
+expect_not_contains "the CI diagnostic does not tell a runner to run Homebrew" "$OUT" "brew"
 
 new_case "no-cli-local"
+ordinary_build
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
 expect_exit "missing sentry-cli locally still exits 0" "$RC" "0" "$OUT"
 expect_contains "missing sentry-cli locally is a warning:" "$OUT" "warning:"
@@ -239,10 +260,12 @@ OUT=$(run_script "$DSYM_DIR" "TRUE" ""); RC=$?
 expect_exit "missing token in CI fails the build" "$RC" "1" "$OUT"
 expect_contains "missing token in CI is an error:" "$OUT" "error:"
 expect_contains "the error names the env var to set" "$OUT" "SENTRY_AUTH_TOKEN"
+expect_contains "the CI credential diagnostic names where to set it" "$OUT" "Xcode Cloud"
 NOTOKEN_LOG=$(<"$STUB_LOG")
 expect_not_contains "sentry-cli is not invoked at all without credentials" "$NOTOKEN_LOG" "debug-files"
 
 new_case "no-token-local"
+ordinary_build
 make_stub
 OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
 expect_exit "missing token locally still exits 0" "$RC" "0" "$OUT"
@@ -322,6 +345,7 @@ expect_contains "a rejected upload in CI is an error:" "$OUT" "error:"
 expect_contains "sentry-cli's own message survives into the diagnostic" "$OUT" "org auth token is required"
 
 new_case "upload-fails-local"
+ordinary_build
 make_stub
 STUB_FAIL=1
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_expired"); RC=$?
@@ -335,6 +359,11 @@ expect_not_contains "a rejected upload locally is not an error:" "$OUT" "error:"
 # Xcode Cloud sets CI=TRUE. GitHub Actions sets CI=true. Neither of those is
 # a value anyone should be pattern-matching by hand, and a bare `[ -n "$CI" ]`
 # would read the literal string "false" as CI — which some tools do set.
+#
+# The fixture is a Release *build*, not an archive: an archive is strict
+# wherever it runs, so it cannot tell the two answers apart. A non-archive
+# shipping configuration is exactly the input whose outcome is decided by this
+# question and nothing else.
 # =========================================================================
 
 echo ""
@@ -342,12 +371,14 @@ echo "=== Case 6: CI detection ==="
 
 for ci_value in TRUE true True 1 YES; do
     new_case "ci-truthy-$ci_value"
+    ordinary_build
     OUT=$(run_script "$DSYM_DIR" "$ci_value" "sntrys_fake"); RC=$?
     expect_exit "CI=$ci_value is treated as CI (missing cli fails)" "$RC" "1" "$OUT"
 done
 
 for ci_value in "" false FALSE 0 NO; do
     new_case "ci-falsy-${ci_value:-empty}"
+    ordinary_build
     OUT=$(run_script "$DSYM_DIR" "$ci_value" "sntrys_fake"); RC=$?
     expect_exit "CI='${ci_value}' is treated as local (missing cli warns)" "$RC" "0" "$OUT"
 done
@@ -445,18 +476,23 @@ expect_contains "a local Debug build still uploads, as it did before" "$(<"$STUB
 # bet the token on (its header makes the argument). So ci_post_clone.sh drops a
 # marker file in the checkout, and these cases pin strictness to the file
 # independently of $CI.
+#
+# As in Case 6 the fixture is a Release build rather than an archive, so that
+# the marker is the only thing deciding the outcome.
 # =========================================================================
 
 echo ""
 echo "=== Case 8: the .ci-tools/ci-runner marker ==="
 
 new_case "marker-without-ci-env"
+ordinary_build
 mark_ci_runner
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
-expect_exit "the marker alone makes an archive strict, with CI unset" "$RC" "1" "$OUT"
+expect_exit "the marker alone makes a shipping build strict, with CI unset" "$RC" "1" "$OUT"
 expect_contains "the marker path produces an error:" "$OUT" "error:"
 
 new_case "marker-with-ci-false"
+ordinary_build
 mark_ci_runner
 OUT=$(run_script "$DSYM_DIR" "false" "sntrys_fake"); RC=$?
 expect_exit "the marker outranks a CI=false that never got cleared" "$RC" "1" "$OUT"
@@ -474,10 +510,94 @@ expect_not_contains "the marker does not error a test build" "$OUT" "error:"
 # And a dev Mac that happens to have a .ci-tools/bin from running the
 # installer by hand is not a CI runner.
 new_case "vendored-cli-is-not-a-marker"
+ordinary_build
 make_stub
 STUB_FAIL=1
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_expired"); RC=$?
 expect_exit "a vendored sentry-cli by itself does not imply CI" "$RC" "0" "$OUT"
 expect_contains "a local failure with a vendored cli is still a warning:" "$OUT" "warning:"
+
+# =========================================================================
+# Case 9: a local archive is strict.
+#
+# Everything above this case was written for a project that archives on a
+# runner. WXYC does not: archives are made from Product > Archive on a dev Mac,
+# and the manifest of the 2026-08-11 archive shows the phase ran with
+# ACTION=install, CONFIGURATION=Release and no CI in the environment — so it
+# took the lenient path, and every failure #955 set out to make loud was a
+# `warning:` on the one build that actually ships.
+#
+# So strictness follows the archive, not the runner. The upload has to work for
+# an archive to be made, wherever it is made.
+#
+# The diagnostics split too. Xcode's issue navigator shows one line; a dev Mac
+# told to "check that ci_post_clone ran" has been handed a dead end, and a
+# runner told to run Homebrew has as well.
+# =========================================================================
+
+echo ""
+echo "=== Case 9: a local archive is strict ==="
+
+new_case "local-archive-no-cli"
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
+expect_exit "a local archive with no sentry-cli fails the build" "$RC" "1" "$OUT"
+expect_contains "a local archive with no sentry-cli is an error:" "$OUT" "error:"
+expect_contains "the local diagnostic names the local fix" "$OUT" "brew install getsentry/tools/sentry-cli"
+expect_not_contains "the local diagnostic does not send a dev Mac to ci_post_clone" "$OUT" "ci_post_clone"
+
+new_case "local-archive-no-token"
+make_stub
+OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
+expect_exit "a local archive with no credentials fails the build" "$RC" "1" "$OUT"
+expect_contains "a local archive with no credentials is an error:" "$OUT" "error:"
+expect_contains "the local credential diagnostic names .sentryclirc" "$OUT" ".sentryclirc"
+expect_not_contains "the local credential diagnostic does not send a dev Mac to Xcode Cloud" "$OUT" "Xcode Cloud"
+expect_not_contains "no upload is attempted without credentials" "$(<"$STUB_LOG")" "debug-files"
+
+new_case "local-archive-no-dsyms"
+OUT=$(run_script "$EMPTY_DSYM_DIR" "" "sntrys_fake"); RC=$?
+expect_exit "a local archive that produced no dSYMs fails the build" "$RC" "1" "$OUT"
+expect_contains "an empty dSYM folder on a local archive is an error:" "$OUT" "error:"
+
+new_case "local-archive-upload-fails"
+make_stub
+STUB_FAIL=1
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_expired"); RC=$?
+expect_exit "a rejected upload fails a local archive" "$RC" "1" "$OUT"
+expect_contains "a rejected upload on a local archive is an error:" "$OUT" "error:"
+expect_contains "sentry-cli's own message survives into the local diagnostic" "$OUT" "org auth token is required"
+
+new_case "local-archive-ok"
+make_stub
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_local"); RC=$?
+expect_exit "a local archive that uploads cleanly exits 0" "$RC" "0" "$OUT"
+expect_contains "a local archive uploads the dSYMs" "$(<"$STUB_LOG")" "debug-files upload"
+expect_contains "a local archive says so in the build log" "$OUT" "note: uploaded debug symbols"
+
+# Only the archive. Everything else a developer builds stays lenient, which is
+# the constraint #955 was given: the phase runs on every build, and it must not
+# break a local build on a machine without sentry-cli. "Release (Active Arch)"
+# is a developer-local fast-build variant of Release, and a plain Release build
+# is something people do to check optimized behavior — neither is a ship.
+for config in "Release" "Release (Active Arch)" "TestFlight" "Debug" "Debug TestFlight"; do
+    new_case "local-build-${config// /-}"
+    CASE_CONFIGURATION="$config"
+    CASE_ACTION="build"
+    OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
+    expect_exit "a local '$config' build with no credentials still exits 0" "$RC" "0" "$OUT"
+    expect_not_contains "a local '$config' build does not error" "$OUT" "error:"
+done
+
+# The unknown-build case points the other way locally than it does on CI (Case
+# 7): a build with no ACTION is not an archive, and the reason to treat an
+# unknown CI build as shipping — a spurious failure is loud and gets fixed —
+# does not apply to a developer's machine, where the same guess would fail
+# builds nobody can explain.
+new_case "local-unset-build-settings"
+unset CASE_CONFIGURATION
+unset CASE_ACTION
+OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
+expect_exit "a local build with neither setting still exits 0" "$RC" "0" "$OUT"
+expect_not_contains "a local build with neither setting does not error" "$OUT" "error:"
 
 summarize
