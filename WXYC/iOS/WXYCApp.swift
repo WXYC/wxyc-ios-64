@@ -167,9 +167,10 @@ struct WXYCApp: App {
         #if targetEnvironment(macCatalyst)
         .windowResizability(.contentMinSize)
         #endif
-        .commands {
-            WXYCCommandMenus(appState: appState)
-        }
+        // EXPERIMENT (#965, variant B — do not merge): `.commands` attachment
+        // deleted to measure whether the Commands tree is a material
+        // cold-launch cost. WXYCCommandMenus.swift is untouched; only this
+        // attachment is gone.
     }
 
     // MARK: - Scene phase
