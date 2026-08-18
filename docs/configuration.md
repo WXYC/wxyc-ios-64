@@ -52,21 +52,21 @@ Two exemptions sit on top of the table:
 
 The second exemption is load-bearing and easy to get wrong twice over.
 
-**The presence of dSYMs is not the discriminator.** WXYC builds Debug with `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so a plain simulator build populates `DWARF_DSYM_FOLDER_PATH` exactly like an archive does. A strict-whenever-dSYMs-exist rule would demand a Sentry token from every Xcode Cloud test workflow and fail the ones that don't have one. Locally, Debug builds still upload as they always have — Sentry does symbolicate simulator events from dev machines.
+**The presence of dSYMs is not the discriminator.** WXYC builds Debug with `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so a plain simulator build populates `DWARF_DSYM_FOLDER_PATH` exactly like an archive does. A strict-whenever-dSYMs-exist rule would demand a Sentry token from every CI test run and fail the ones that don't have one. Locally, Debug builds still upload as they always have — Sentry does symbolicate simulator events from dev machines.
 
 **And the configuration test is a prefix, not an equality.** This project has five configurations — `Debug`, `Debug TestFlight`, `TestFlight`, `Release`, `Release (Active Arch)` — and the shared scheme's `TestAction` builds `Debug TestFlight`. Any `xcodebuild test -scheme WXYC` without an explicit `-configuration` (that includes `scripts/test-affected.sh`) lands there, so matching only the literal `Debug` would classify every test run as shipping.
 
-CI-ness has two sources, checked in that order. `ci_post_clone.sh` writes `.ci-tools/ci-runner` into the checkout, and that file alone is enough; otherwise `CI` is read from the environment as a tri-state, not a presence check (`false`, `0`, `no`, `off`, and empty all mean local; Xcode Cloud sets `CI=TRUE`). The marker exists because the environment hop this depends on is the same one the token deliberately doesn't rely on — see below — and a `CI` that fails to reach the build phase would silently downgrade the non-archive rows of the table back to a `warning:`.
+CI-ness comes from the `CI` environment variable, read as a tri-state rather than a presence check: `false`, `0`, `no`, `off`, and empty all mean local, and GitHub Actions sets `CI=true`. It decides only the two CI rows of the table — an archive is strict on its own account, wherever it runs.
 
-CI-ness also picks which fix the diagnostic names, since Xcode's issue navigator shows one line and nothing around it: a runner is told to check `ci_post_clone`, a dev Mac is told to `brew install getsentry/tools/sentry-cli` or to write a `.sentryclirc`. Sending either one the other's instructions is a dead end.
+CI-ness also picks which fix the diagnostic names, since Xcode's issue navigator shows one line and nothing around it: a runner is told to add an install step or set the token from a repository secret, a dev Mac is told to `brew install getsentry/tools/sentry-cli` or to write a `.sentryclirc`. Sending either one the other's instructions is a dead end.
 
-The marker is also how a dev Mac gets there by accident. Nothing removes `.ci-tools/ci-runner`, so running `ci_post_clone.sh` by hand once — to install `macros.json`, say — makes every later local `Release` build strict and gets it failed with Xcode Cloud instructions. When the marker is what answered and `CI` is absent from the environment, the diagnostic appends the file's path and says to delete it if this isn't a runner.
+There used to be a second source — a `.ci-tools/ci-runner` marker file written into the checkout by `ci_post_clone.sh`, on the reasoning that an environment variable surviving into a run-script phase nested inside `xcodebuild` is a thinner guarantee than a file on disk. It went with the rest of the Xcode Cloud path (below). It was also a trap: nothing removed the file, so a developer who ran that script once had every later local `Release` build fail asking for a Sentry token. A leftover marker in a working copy now decides nothing, which the test suite pins.
 
 ### Local setup
 
 This is a prerequisite for archiving, not a nicety: **Product > Archive fails without it.** For an ordinary build it stays optional — a missing `sentry-cli` is a `warning:` and the build continues.
 
-Install `sentry-cli` (`brew install getsentry/tools/sentry-cli`, or `ci_scripts/install-sentry-cli.sh` for the pinned version) and put an auth token in a `.sentryclirc` at the repo root:
+Install `sentry-cli` (`brew install getsentry/tools/sentry-cli`) and put an auth token in a `.sentryclirc` at the repo root:
 
 ```ini
 [auth]
@@ -77,24 +77,18 @@ Mint it at https://sentry.io/settings/wxyc/auth-tokens/ as an **organization aut
 
 `.sentryclirc` is gitignored and must stay that way. A `~/.sentryclirc` works too and is worth having, since a repo-root one doesn't follow the checkout into a git worktree. The script also reads `SENTRY_AUTH_TOKEN` from the environment — but don't make that your only credential, because Xcode.app launched from the Dock inherits `launchd`'s environment rather than your shell's. An `export` in `.zshrc` reaches `xcodebuild archive` run from a terminal and nothing you start from the GUI.
 
-The same inheritance decides whether the binary is findable at all, so the script does not rely on `PATH` to locate it. A build phase under Xcode.app gets the toolchain directories and then `/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin` — no `/opt/homebrew/bin`, which is where Homebrew installs on Apple Silicon. `resolve_sentry_cli` therefore checks `.ci-tools/bin` (the pinned copy, first), then `PATH`, then the prefixes in `SENTRY_CLI_SEARCH_DIRS`, which defaults to `/opt/homebrew/bin:/usr/local/bin`. Without that last step a `brew install` would satisfy the instructions above and the next archive would still fail asking for it. Set `SENTRY_CLI_SEARCH_DIRS` if yours lives somewhere else.
+The same inheritance decides whether the binary is findable at all, so the script does not rely on `PATH` alone to locate it. A build phase under Xcode.app gets the toolchain directories and then `/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin` — no `/opt/homebrew/bin`, which is where Homebrew installs on Apple Silicon. `resolve_sentry_cli` therefore checks `PATH` first and then the prefixes in `SENTRY_CLI_SEARCH_DIRS`, which defaults to `/opt/homebrew/bin:/usr/local/bin`. Without that second step a `brew install` would satisfy the instructions above and the next archive would still fail asking for it. Set `SENTRY_CLI_SEARCH_DIRS` if yours lives somewhere else — that variable, not a magic path in the repo, is the supported way to pin a particular copy.
 
-### Xcode Cloud setup
+### CI
 
-Nothing currently archives on Xcode Cloud — the "Default" workflow on the `WXYC` product has never run, and its product is attached to a personal fork rather than `WXYC/wxyc-ios-64`. This section is what has to be true if that changes; the local path above is the one in use.
+**No runner needs any of this today, and none is set up for it.** Both GitHub Actions workflows build `-configuration Debug`, which is the non-shipping CI row of the table: the phase skips the upload outright and wants neither a binary nor a token. Xcode Cloud isn't used at all — WXYC archives from Product > Archive on a dev Mac.
 
-Xcode Cloud runners ship no `sentry-cli` and, because `.sentryclirc` is gitignored, no credentials either. `ci_scripts/ci_post_clone.sh` marks the checkout with `.ci-tools/ci-runner` and supplies both by calling `ci_scripts/install-sentry-cli.sh`, which:
+There was an Xcode Cloud path here: `ci_post_clone.sh` marked the checkout as a runner and ran an `install-sentry-cli.sh` that vendored a pinned binary into `.ci-tools/bin/` and wrote `~/.sentryclirc` from a secret environment variable. It was ~490 lines including its test suite, it had never once executed, and its marker file made local `Release` builds fail on any machine where the script had been run by hand. It was deleted rather than maintained on spec.
 
-- installs a **pinned** `sentry-cli` (the version is a constant at the top of that script — bump it deliberately, never float latest) into `.ci-tools/bin/` inside the checkout. Checkout-local rather than system-wide: the upstream installer falls back to `sudo -k` when its target isn't writable, which on a non-interactive runner hangs or fails without a prompt.
-- writes `SENTRY_AUTH_TOKEN` to `~/.sentryclirc` at mode 600, never overwriting an existing file — though it does check that an existing one actually carries a `token=` line, since "the file is there" and "there is a credential" are not the same claim. Xcode Cloud environment variables are documented as reaching custom build scripts; whether one reaches a run-script phase nested inside `xcodebuild` is a thinner guarantee, and a config file on disk is one `sentry-cli` reads regardless of how it was invoked.
+If a runner ever does build something shipping, the phase will fail it — deliberately, since a shipping build with no symbols is the whole bug — and the two things to give it are:
 
-The one thing that is **not** in this repo is the token itself. It has to be added by hand, once, in App Store Connect:
-
-1. Mint an **organization auth token** (the `sntrys_…` kind) at https://sentry.io/settings/wxyc/auth-tokens/. Its scope is fixed at `org:ci` / `project:releases` — enough to upload debug files, not enough to administer the project, which is exactly what an upload credential should be. Don't substitute a personal user token: those carry the minting user's full access and die with their account.
-2. In App Store Connect → Xcode Cloud → the workflow → **Environment**, add `SENTRY_AUTH_TOKEN` with **Secret** checked so it is redacted from build logs.
-3. Add it to every workflow that builds something shipping — every `archive` workflow, and any Build-action workflow set to `Release` or `TestFlight`. Test workflows don't need it: their configuration is `Debug TestFlight`, which skips the upload.
-
-An archive workflow missing the token fails in `ci_post_clone` (that script passes `--require-auth` when `CI_XCODEBUILD_ACTION` is `archive`, so the failure lands at minute zero rather than twenty minutes into the build). A non-archive workflow on a shipping configuration gets no such head start — Xcode Cloud exposes the action to `ci_post_clone`, not the configuration — so it fails later, in the build phase. Both are deliberate: the previous behavior was a `warning:` in a green build, and an archive shipping without symbols is not something anyone notices until they need a crash report weeks later.
+1. `sentry-cli` on the runner's `PATH` before the build step, or a `SENTRY_CLI_SEARCH_DIRS` pointing at wherever the step put it.
+2. `SENTRY_AUTH_TOKEN` in the build environment, from a repository secret. Mint it as an **organization auth token** (the `sntrys_…` kind) at https://sentry.io/settings/wxyc/auth-tokens/ — scope fixed at `org:ci` / `project:releases`, enough to upload debug files and not enough to administer the project. Don't substitute a personal user token: those carry the minting user's full access and die with their account. The token belongs in the CI provider's secret store and never in this repo.
 
 ## Code Signing
 

@@ -38,15 +38,12 @@
 #   DWARF_DSYM_FOLDER_PATH  the folder Xcode wrote this build's dSYMs into
 #   ACTION                  install for an archive; the main strictness input
 #   CONFIGURATION           Release, Debug TestFlight, ...; strictness on CI
-#   SRCROOT                 repo root; where .ci-tools and .sentryclirc live
-#   CI                      set by Xcode Cloud; widens strictness, see is_ci()
+#   SRCROOT                 repo root; where .sentryclirc lives
+#   CI                      set by the runner; widens strictness, see is_ci()
 #   SENTRY_AUTH_TOKEN       optional, read by sentry-cli itself
 #   SENTRY_CLI_SEARCH_DIRS  optional, colon-separated; prefixes to check for
 #                           sentry-cli beyond PATH, which a GUI build's
 #                           environment leaves incomplete. See the default.
-#
-# Plus one file, not an environment variable: $SRCROOT/.ci-tools/ci-runner,
-# written by ci_post_clone.sh. See is_ci().
 #
 # Tested by scripts/tests/test-upload-debug-symbols.sh.
 
@@ -63,50 +60,22 @@ if [[ -d "${SRCROOT:-}" ]]; then
 fi
 readonly REPO_ROOT="$PWD"
 
-# One spelling, because two of the things below name this path: the test that
-# reads it and the diagnostic that tells a developer to delete it. A hint
-# naming a path other than the one being tested is the dead end it exists to
-# prevent. ci_post_clone.sh writes the file and cannot source this script, so
-# that copy stays a literal.
-readonly CI_MARKER="${REPO_ROOT}/.ci-tools/ci-runner"
-
-# Am I on a build runner? The marker file first — see install-sentry-cli.sh on
-# why a file in the checkout beats an environment variable for anything a
-# nested build phase has to read. Everything strict below hangs off this
-# answer, so if $CI failed to make that hop every error: would quietly become a
-# warning: and #955 would be back with a passing test suite.
+# Am I on a build runner? GitHub Actions sets CI=true and most other runners set
+# something; some tools set CI=false to mean "not CI", which a bare emptiness
+# test would read backwards, so this is a tri-state and not a presence check.
 #
-# Then the environment. Xcode Cloud sets CI=TRUE, GitHub Actions sets CI=true,
-# and some tools set CI=false to mean "not CI" — which a bare emptiness test
-# would read backwards.
-marker_says_ci() {
-    [[ -f "$CI_MARKER" ]]
-}
-
-env_says_ci() {
+# This used to have a second source: a marker file ci_post_clone.sh wrote into
+# the checkout, on the reasoning that an environment variable surviving into a
+# run-script phase nested inside xcodebuild is a thinner guarantee than a file
+# on disk. It belonged to an Xcode Cloud path this project never used, and it
+# cost more than it bought — nothing removed the file, so a developer who ran
+# that script once had every later local Release build fail asking for a Sentry
+# token and citing a workflow they were not on.
+is_ci() {
     case "${${CI:-}:l}" in
         "" | false | 0 | no | off) return 1 ;;
         *) return 0 ;;
     esac
-}
-
-is_ci() {
-    marker_says_ci || env_says_ci
-}
-
-# The marker has a second reading, and on a laptop it is the likelier one.
-# ci_post_clone.sh writes it before it does anything else and nothing ever
-# removes it, so a developer who ran that script once — to install macros.json,
-# say — answers is_ci forever, and their next plain Release build fails for a
-# Sentry token with instructions for a runner they are not on. That is the same
-# dead end this script exists to stop handing people, so the one line Xcode
-# shows has to name the file. Phrased as a conditional because a real runner
-# whose CI variable didn't survive the hop lands here too, and for that build
-# the marker is correct and should stay.
-stale_marker_hint() {
-    marker_says_ci && ! env_says_ci \
-        && print -rn -- " (If this is not a build runner, ${CI_MARKER} is stale — delete it.)"
-    return 0
 }
 
 # Every failure below has the same shape: it stops the builds is_strict()
@@ -120,7 +89,7 @@ stale_marker_hint() {
 # `warning:`.
 fail_or_continue() {
     if is_strict; then
-        echo "error: $1$(stale_marker_hint)"
+        echo "error: $1"
         exit 1
     fi
     echo "$2"
@@ -128,16 +97,16 @@ fail_or_continue() {
 }
 
 # The two strict contexts do not have the same fix, and the one line Xcode
-# shows is the whole message: a dev Mac told to check that ci_post_clone ran
-# has been handed a dead end, and so has a runner told to open Homebrew.
-# $1 is the CI sentence, $2 the local one.
+# shows is the whole message: a dev Mac told to edit a workflow file has been
+# handed a dead end, and so has a runner told to open Homebrew on a machine
+# nobody is sitting at. $1 is the CI sentence, $2 the local one.
 #
 # This asks is_ci while strictness asks is_strict, and since is_archive alone
-# can make a build strict the two can now disagree: a runner where neither the
-# marker file nor $CI arrived would be handed the dev-Mac sentence. Printing
-# both fixes is not the answer — the local archive is the common strict case,
-# and it would be the one paying for it. A runner that answers is_ci wrongly
-# has a detection failure, which is not something the remedy text can repair.
+# can make a build strict the two can disagree: a runner where $CI did not
+# arrive would be handed the dev-Mac sentence. Printing both fixes is not the
+# answer — the local archive is the common strict case, and it would be the one
+# paying for it. A runner that answers is_ci wrongly has a detection failure,
+# which is not something the remedy text can repair.
 remedy() {
     if is_ci; then
         print -r -- "$1"
@@ -166,10 +135,10 @@ is_archive() {
 # It is a prefix and not an equality test on purpose. This project has two
 # debug configurations, and the shared scheme's TestAction builds the second
 # one: "Debug TestFlight". An `xcodebuild test -scheme WXYC` with no explicit
-# -configuration — what scripts/test-affected.sh runs, and what an Xcode Cloud
-# test workflow runs — lands there. Matching only the literal "Debug" would
-# classify every one of those runs as shipping and fail it for want of a token
-# nobody gave a test workflow.
+# -configuration — what scripts/test-affected.sh runs, and what a CI test run
+# builds — lands there. Matching only the literal "Debug" would classify every
+# one of those runs as shipping and fail it for want of a token nobody gave a
+# test workflow.
 #
 # The presence of dSYMs is NOT the test either. WXYC builds Debug with
 # DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an ordinary simulator build
@@ -194,10 +163,7 @@ is_shipping_build() {
 # rerun. That reasoning does not survive the trip to a dev Mac, where the same
 # guess would fail ordinary work — a plain Release build, or the developer-
 # local `Release (Active Arch)` variant — for want of a tool the constraint on
-# #955 said must stay optional. So locally it is the archive, and the only
-# other way a dev Mac lands here is a stale marker — see stale_marker_hint(),
-# which is what tells the developer, a comment here reaching nobody who is
-# reading the issue navigator.
+# #955 said must stay optional. So locally it is the archive and nothing else.
 #
 # The two clauses are in the order the paragraphs above argue them, and the
 # archive is not tested twice: is_shipping_build() answers yes to every archive
@@ -230,20 +196,18 @@ is_strict() {
 # failing.
 : ${SENTRY_CLI_SEARCH_DIRS=/opt/homebrew/bin:/usr/local/bin}
 
-# Where the binary might be, most specific first: the copy
-# ci_scripts/install-sentry-cli.sh vendors into the checkout (Xcode Cloud
-# runners ship no sentry-cli and have no writable PATH entry we can count on),
-# then PATH, then the prefixes above. The vendored copy leads because its
-# version is pinned by this repo; anything found later is whatever the machine
-# happens to carry.
+# PATH first, then the prefixes above. That order is the point: the search list
+# is a fallback for a PATH the GUI left incomplete, not an override of it, so a
+# developer who put a particular sentry-cli on their PATH keeps it. A hardcoded
+# Homebrew prefix silently outranking that choice is the kind of thing nobody
+# notices until the two versions disagree.
 resolve_sentry_cli() {
     local candidate dir
-    for candidate in "${REPO_ROOT}/.ci-tools/bin/sentry-cli" "$(command -v sentry-cli 2>/dev/null)"; do
-        if [[ -n "$candidate" && -x "$candidate" ]]; then
-            print -r -- "$candidate"
-            return 0
-        fi
-    done
+    candidate="$(command -v sentry-cli 2>/dev/null)"
+    if [[ -n "$candidate" && -x "$candidate" ]]; then
+        print -r -- "$candidate"
+        return 0
+    fi
     for dir in ${(s.:.)SENTRY_CLI_SEARCH_DIRS}; do
         if [[ -x "${dir}/sentry-cli" ]]; then
             print -r -- "${dir}/sentry-cli"
@@ -258,10 +222,10 @@ resolve_sentry_cli() {
 # better diagnostic than the CLI's own — but "no token" and "token rejected"
 # have completely different fixes, and the build log is where that gets read.
 #
-# An rc file counts only when it actually carries a token, the same test
-# install-sentry-cli.sh applies before it declares an existing file good
-# enough: an empty or [defaults]-only file otherwise reaches the upload and
-# dies with sentry-cli's generic message instead of the one naming the fix.
+# An rc file counts only when it actually carries a token: "the file is there"
+# and "there is a credential" are not the same claim, and an empty or
+# [defaults]-only file otherwise reaches the upload and dies with sentry-cli's
+# generic message instead of the one naming the fix.
 has_credentials() {
     [[ -n "${SENTRY_AUTH_TOKEN:-}" ]] && return 0
     local rc
@@ -327,7 +291,7 @@ fi
 if ! sentry_cli=$(resolve_sentry_cli); then
     fail_or_continue \
         "sentry-cli is not installed, so this build's dSYMs cannot reach Sentry and its Release events would arrive unsymbolicated. $(remedy \
-            'ci_scripts/install-sentry-cli.sh installs it during ci_post_clone — check that it ran and succeeded.' \
+            'Runner images do not carry sentry-cli; add a workflow step that installs sentry-cli before the build.' \
             'Install it with: brew install getsentry/tools/sentry-cli')" \
         "warning: sentry-cli not installed, skipping debug symbol upload"
 fi
@@ -339,7 +303,7 @@ fi
 if ! has_credentials; then
     fail_or_continue \
         "no Sentry credentials available (neither SENTRY_AUTH_TOKEN nor a .sentryclirc carrying a token), so this build's dSYMs cannot reach Sentry. $(remedy \
-            'Set SENTRY_AUTH_TOKEN as a secret environment variable on the Xcode Cloud workflow; see docs/configuration.md.' \
+            'Set SENTRY_AUTH_TOKEN in the workflow environment from a repository secret; see docs/configuration.md.' \
             'Put an upload-scoped token in ~/.sentryclirc under [auth] as token=... — a shell-exported SENTRY_AUTH_TOKEN reaches an archive started from that shell, but not one from Xcode.app. See docs/configuration.md.')" \
         "warning: no Sentry credentials (SENTRY_AUTH_TOKEN or .sentryclirc), skipping debug symbol upload"
 fi
