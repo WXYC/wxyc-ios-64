@@ -47,7 +47,7 @@ The archive row is the one that matters in practice: **WXYC archives locally**, 
 
 Two exemptions sit on top of the table:
 
-- **A build with no dSYMs** skips — except where the table above says a failed upload is an `error:`, and then it is one. Every WXYC configuration sets `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so an archive with an empty `DWARF_DSYM_FOLDER_PATH` means something upstream broke, and passing that through quietly is the original bug with a new cause. This tracks the table, not the "shipping" test below: a plain local `Release` build with no dSYMs is shipping and still only warns.
+- **A build with no dSYMs** skips — except where the table above says a failed upload is an `error:`, and then it is one. Every WXYC configuration sets `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so an archive with an empty `DWARF_DSYM_FOLDER_PATH` means something upstream broke, and passing that through quietly is the original bug with a new cause. This tracks the table, not the "shipping" test below: a plain local `Release` build with no dSYMs is shipping and still just prints a `note:` and carries on — this branch is the one lenient path that isn't even a `warning:`, since a build with nothing to upload has nothing to warn about.
 - **A CI build that can't ship** skips entirely. "Shipping" is `ACTION=install` (an archive) or a `CONFIGURATION` whose name does not start with `Debug`; a build with no `CONFIGURATION` at all counts as shipping, since a spurious CI failure is loud and a skipped upload is not. That guess costs nothing locally, where a non-archive is lenient however it is classified — it decides only whether a *CI* build skips.
 
 The second exemption is load-bearing and easy to get wrong twice over.
@@ -59,6 +59,8 @@ The second exemption is load-bearing and easy to get wrong twice over.
 CI-ness has two sources, checked in that order. `ci_post_clone.sh` writes `.ci-tools/ci-runner` into the checkout, and that file alone is enough; otherwise `CI` is read from the environment as a tri-state, not a presence check (`false`, `0`, `no`, `off`, and empty all mean local; Xcode Cloud sets `CI=TRUE`). The marker exists because the environment hop this depends on is the same one the token deliberately doesn't rely on — see below — and a `CI` that fails to reach the build phase would silently downgrade the non-archive rows of the table back to a `warning:`.
 
 CI-ness also picks which fix the diagnostic names, since Xcode's issue navigator shows one line and nothing around it: a runner is told to check `ci_post_clone`, a dev Mac is told to `brew install getsentry/tools/sentry-cli` or to write a `.sentryclirc`. Sending either one the other's instructions is a dead end.
+
+The marker is also how a dev Mac gets there by accident. Nothing removes `.ci-tools/ci-runner`, so running `ci_post_clone.sh` by hand once — to install `macros.json`, say — makes every later local `Release` build strict and gets it failed with Xcode Cloud instructions. When the marker is what answered and `CI` is absent from the environment, the diagnostic appends the file's path and says to delete it if this isn't a runner.
 
 ### Local setup
 
@@ -74,6 +76,8 @@ token=<your token>
 Mint it at https://sentry.io/settings/wxyc/auth-tokens/ as an **organization auth token** (the `sntrys_…` kind). Its scope is fixed at `org:ci` / `project:releases` — enough to upload debug files, not enough to administer the project. Don't substitute a personal user token: those carry the minting user's full access and die with their account.
 
 `.sentryclirc` is gitignored and must stay that way. A `~/.sentryclirc` works too and is worth having, since a repo-root one doesn't follow the checkout into a git worktree. The script also reads `SENTRY_AUTH_TOKEN` from the environment — but don't make that your only credential, because Xcode.app launched from the Dock inherits `launchd`'s environment rather than your shell's. An `export` in `.zshrc` reaches `xcodebuild archive` run from a terminal and nothing you start from the GUI.
+
+The same inheritance decides whether the binary is findable at all, so the script does not rely on `PATH` to locate it. A build phase under Xcode.app gets the toolchain directories and then `/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin` — no `/opt/homebrew/bin`, which is where Homebrew installs on Apple Silicon. `resolve_sentry_cli` therefore checks `.ci-tools/bin` (the pinned copy, first), then `PATH`, then the prefixes in `SENTRY_CLI_SEARCH_DIRS`, which defaults to `/opt/homebrew/bin:/usr/local/bin`. Without that last step a `brew install` would satisfy the instructions above and the next archive would still fail asking for it. Set `SENTRY_CLI_SEARCH_DIRS` if yours lives somewhere else.
 
 ### Xcode Cloud setup
 

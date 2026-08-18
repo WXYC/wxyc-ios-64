@@ -41,6 +41,9 @@
 #   SRCROOT                 repo root; where .ci-tools and .sentryclirc live
 #   CI                      set by Xcode Cloud; widens strictness, see is_ci()
 #   SENTRY_AUTH_TOKEN       optional, read by sentry-cli itself
+#   SENTRY_CLI_SEARCH_DIRS  optional, colon-separated; prefixes to check for
+#                           sentry-cli beyond PATH, which a GUI build's
+#                           environment leaves incomplete. See the default.
 #
 # Plus one file, not an environment variable: $SRCROOT/.ci-tools/ci-runner,
 # written by ci_post_clone.sh. See is_ci().
@@ -69,12 +72,34 @@ readonly REPO_ROOT="$PWD"
 # Then the environment. Xcode Cloud sets CI=TRUE, GitHub Actions sets CI=true,
 # and some tools set CI=false to mean "not CI" — which a bare emptiness test
 # would read backwards.
-is_ci() {
-    [[ -f "${REPO_ROOT}/.ci-tools/ci-runner" ]] && return 0
+marker_says_ci() {
+    [[ -f "${REPO_ROOT}/.ci-tools/ci-runner" ]]
+}
+
+env_says_ci() {
     case "${${CI:-}:l}" in
         "" | false | 0 | no | off) return 1 ;;
         *) return 0 ;;
     esac
+}
+
+is_ci() {
+    marker_says_ci || env_says_ci
+}
+
+# The marker has a second reading, and on a laptop it is the likelier one.
+# ci_post_clone.sh writes it before it does anything else and nothing ever
+# removes it, so a developer who ran that script once — to install macros.json,
+# say — answers is_ci forever, and their next plain Release build fails for a
+# Sentry token with instructions for a runner they are not on. That is the same
+# dead end this script exists to stop handing people, so the one line Xcode
+# shows has to name the file. Phrased as a conditional because a real runner
+# whose CI variable didn't survive the hop lands here too, and for that build
+# the marker is correct and should stay.
+stale_marker_hint() {
+    marker_says_ci && ! env_says_ci \
+        && print -rn -- " (If this is not a build runner, ${REPO_ROOT}/.ci-tools/ci-runner is stale — delete it.)"
+    return 0
 }
 
 # Every failure below has the same shape: it stops the builds is_strict()
@@ -88,7 +113,7 @@ is_ci() {
 # `warning:`.
 fail_or_continue() {
     if is_strict; then
-        echo "error: $1"
+        echo "error: $1$(stale_marker_hint)"
         exit 1
     fi
     echo "$2"
@@ -166,21 +191,47 @@ is_shipping_build() {
 # other way a dev Mac lands here is a stale .ci-tools/ci-runner: ci_post_clone
 # writes that marker before it does anything else, and nothing removes it, so
 # a developer who ran that script once to install macros.json answers is_ci
-# forever. Delete the marker if a local Release build starts failing.
+# forever. Delete the marker if a local Release build starts failing — which
+# the diagnostic itself now says, since a comment here reaches nobody reading
+# the issue navigator. See stale_marker_hint().
 is_strict() {
     is_shipping_build || return 1
     is_archive || is_ci
 }
 
+# Prefixes to check by hand, because PATH does not reach them.
+#
+# Xcode.app launched from the Dock inherits launchd's environment, not a login
+# shell's, and the PATH a build phase actually gets is fixed: the toolchain
+# directories, then /usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin — recorded
+# verbatim in the manifest of the 2026-08-11 archive. Homebrew on Apple Silicon
+# installs into /opt/homebrew/bin, which is not on that list. Without this, the
+# `brew install getsentry/tools/sentry-cli` the diagnostic below recommends
+# produces a binary the next archive still cannot see, and the developer who
+# followed the advice gets the same error: telling them to follow it again.
+#
+# Overridable, which is also how the tests keep their hermeticity: /usr/local/bin
+# is named here, so a maintainer's real sentry-cli would otherwise satisfy the
+# cases written to run without one.
+: ${SENTRY_CLI_SEARCH_DIRS=/opt/homebrew/bin:/usr/local/bin}
+
 # Where the binary might be, most specific first: the copy
 # ci_scripts/install-sentry-cli.sh vendors into the checkout (Xcode Cloud
 # runners ship no sentry-cli and have no writable PATH entry we can count on),
-# then whatever a developer installed system-wide.
+# then PATH, then the prefixes above. The vendored copy leads because its
+# version is pinned by this repo; anything found later is whatever the machine
+# happens to carry.
 resolve_sentry_cli() {
-    local candidate
+    local candidate dir
     for candidate in "${REPO_ROOT}/.ci-tools/bin/sentry-cli" "$(command -v sentry-cli 2>/dev/null)"; do
         if [[ -n "$candidate" && -x "$candidate" ]]; then
             print -r -- "$candidate"
+            return 0
+        fi
+    done
+    for dir in ${(s.:.)SENTRY_CLI_SEARCH_DIRS}; do
+        if [[ -x "${dir}/sentry-cli" ]]; then
+            print -r -- "${dir}/sentry-cli"
             return 0
         fi
     done
