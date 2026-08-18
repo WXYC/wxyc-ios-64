@@ -99,6 +99,13 @@ fail_or_continue() {
 # shows is the whole message: a dev Mac told to check that ci_post_clone ran
 # has been handed a dead end, and so has a runner told to open Homebrew.
 # $1 is the CI sentence, $2 the local one.
+#
+# This asks is_ci while strictness asks is_strict, and since is_archive alone
+# can make a build strict the two can now disagree: a runner where neither the
+# marker file nor $CI arrived would be handed the dev-Mac sentence. Printing
+# both fixes is not the answer — the local archive is the common strict case,
+# and it would be the one paying for it. A runner that answers is_ci wrongly
+# has a detection failure, which is not something the remedy text can repair.
 remedy() {
     if is_ci; then
         print -r -- "$1"
@@ -115,9 +122,14 @@ is_archive() {
     [[ "${ACTION:-}" == "install" ]]
 }
 
-# Can this build reach a user? An archive can. So can any CI build at a
+# Can this build reach a user? An archive can. So can a build at a
 # configuration that distributes something — Release, TestFlight, Release
 # (Active Arch) are all named without a Debug prefix.
+#
+# This is only half of the strictness question: it says a build *could* ship,
+# not that a missed upload should stop it. A plain local Release build answers
+# yes here and is still lenient. See is_strict() for the other half, and
+# section 1 for the other caller, which uses this to skip CI test workflows.
 #
 # It is a prefix and not an equality test on purpose. This project has two
 # debug configurations, and the shared scheme's TestAction builds the second
@@ -150,7 +162,11 @@ is_shipping_build() {
 # rerun. That reasoning does not survive the trip to a dev Mac, where the same
 # guess would fail ordinary work — a plain Release build, or the developer-
 # local `Release (Active Arch)` variant — for want of a tool the constraint on
-# #955 said must stay optional. So locally it is the archive and nothing else.
+# #955 said must stay optional. So locally it is the archive, and the only
+# other way a dev Mac lands here is a stale .ci-tools/ci-runner: ci_post_clone
+# writes that marker before it does anything else, and nothing removes it, so
+# a developer who ran that script once to install macros.json answers is_ci
+# forever. Delete the marker if a local Release build starts failing.
 is_strict() {
     is_shipping_build || return 1
     is_archive || is_ci
@@ -210,8 +226,9 @@ fi
 # ---------------------------------------------------------------------------
 # 2. Did this build produce anything to upload?
 #
-# Locally this is unremarkable — nothing to upload, nothing to say. On a
-# shipping CI build it is a failure: all five WXYC configurations set
+# On an everyday build this is unremarkable — nothing to upload, nothing to
+# say. On a build strict enough to stop for it — every archive, wherever it
+# runs, plus a shipping build on CI — it is a failure: all five configurations set
 # DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an archive with an empty
 # folder means a build setting moved, dsymutil failed, or the path changed.
 # Passing that through as a note would be the #955 silence with a new cause.
@@ -257,7 +274,7 @@ if ! has_credentials; then
     fail_or_continue \
         "no Sentry credentials available (neither SENTRY_AUTH_TOKEN nor a .sentryclirc carrying a token), so this build's dSYMs cannot reach Sentry. $(remedy \
             'Set SENTRY_AUTH_TOKEN as a secret environment variable on the Xcode Cloud workflow; see docs/configuration.md.' \
-            'Put an upload-scoped token in ~/.sentryclirc under [auth] as token=..., or export SENTRY_AUTH_TOKEN; see docs/configuration.md.')" \
+            'Put an upload-scoped token in ~/.sentryclirc under [auth] as token=... — a shell-exported SENTRY_AUTH_TOKEN reaches an archive started from that shell, but not one from Xcode.app. See docs/configuration.md.')" \
         "warning: no Sentry credentials (SENTRY_AUTH_TOKEN or .sentryclirc), skipping debug symbol upload"
 fi
 

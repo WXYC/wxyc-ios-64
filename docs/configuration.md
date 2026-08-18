@@ -47,8 +47,8 @@ The archive row is the one that matters in practice: **WXYC archives locally**, 
 
 Two exemptions sit on top of the table:
 
-- **A build with no dSYMs** skips, except on a shipping build, where it is an `error:` — every WXYC configuration sets `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so an archive with an empty `DWARF_DSYM_FOLDER_PATH` means something upstream broke, and passing that through quietly is the original bug with a new cause.
-- **A CI build that can't ship** skips entirely. "Shipping" is `ACTION=install` (an archive) or a `CONFIGURATION` whose name does not start with `Debug`; a CI build with no `CONFIGURATION` at all counts as shipping, since a spurious CI failure is loud and a skipped upload is not. Locally the same unknown build counts as *not* shipping — the argument for guessing "shipping" is that a wrong guess is cheap, and on a dev Mac it isn't.
+- **A build with no dSYMs** skips — except where the table above says a failed upload is an `error:`, and then it is one. Every WXYC configuration sets `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so an archive with an empty `DWARF_DSYM_FOLDER_PATH` means something upstream broke, and passing that through quietly is the original bug with a new cause. This tracks the table, not the "shipping" test below: a plain local `Release` build with no dSYMs is shipping and still only warns.
+- **A CI build that can't ship** skips entirely. "Shipping" is `ACTION=install` (an archive) or a `CONFIGURATION` whose name does not start with `Debug`; a build with no `CONFIGURATION` at all counts as shipping, since a spurious CI failure is loud and a skipped upload is not. That guess costs nothing locally, where a non-archive is lenient however it is classified — it decides only whether a *CI* build skips.
 
 The second exemption is load-bearing and easy to get wrong twice over.
 
@@ -71,9 +71,9 @@ Install `sentry-cli` (`brew install getsentry/tools/sentry-cli`, or `ci_scripts/
 token=<your token>
 ```
 
-Mint the token the same way an Xcode Cloud one is minted (step 1 below) — an organization token scoped to `org:ci` / `project:releases`.
+Mint it at https://sentry.io/settings/wxyc/auth-tokens/ as an **organization auth token** (the `sntrys_…` kind). Its scope is fixed at `org:ci` / `project:releases` — enough to upload debug files, not enough to administer the project. Don't substitute a personal user token: those carry the minting user's full access and die with their account.
 
-`.sentryclirc` is gitignored and must stay that way. The script also accepts `SENTRY_AUTH_TOKEN` in the environment, or a `~/.sentryclirc` — worth having, since a repo-root `.sentryclirc` doesn't follow the checkout into a git worktree.
+`.sentryclirc` is gitignored and must stay that way. A `~/.sentryclirc` works too and is worth having, since a repo-root one doesn't follow the checkout into a git worktree. The script also reads `SENTRY_AUTH_TOKEN` from the environment — but don't make that your only credential, because Xcode.app launched from the Dock inherits `launchd`'s environment rather than your shell's. An `export` in `.zshrc` reaches `xcodebuild archive` run from a terminal and nothing you start from the GUI.
 
 ### Xcode Cloud setup
 
