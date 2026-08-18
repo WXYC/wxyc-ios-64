@@ -53,10 +53,9 @@ zsh .github/scripts/tests/test-affected-tests.sh    # affected-tests.sh: pbxproj
 zsh scripts/tests/test-pre-push-hook.sh             # scripts/hooks/pre-push: BASE_REF derivation from git's stdin protocol
 zsh scripts/tests/test-affected-error-fallback.sh   # test-affected.sh: CoreTests coverage when affected-tests.sh itself crashes
 zsh scripts/tests/test-upload-debug-symbols.sh      # upload-debug-symbols.sh: archive-errors/build-warns, and the no-dSYM exemption
-zsh scripts/tests/test-install-sentry-cli.sh        # install-sentry-cli.sh: version pinning, idempotency, ~/.sentryclirc handling
 ```
 
-They are dependency-free (no bats) and share their assertions — `ok`/`fail`/`expect_*`/`summarize` live in `scripts/tests/harness.zsh`, which every suite sources — so they print the same TAP-ish `ok -` / `FAIL -` lines and exit nonzero on any failure. They build throwaway fixtures in `mktemp -d`, so they never touch the working tree — the two sentry-cli suites also stub the download and the binary, and redirect `HOME`, so they neither hit the network nor go near a real auth token.
+They are dependency-free (no bats) and share their assertions — `ok`/`fail`/`expect_*`/`summarize` live in `scripts/tests/harness.zsh`, which every suite sources — so they print the same TAP-ish `ok -` / `FAIL -` lines and exit nonzero on any failure. They build throwaway fixtures in `mktemp -d`, so they never touch the working tree — the dSYM suite also stubs the `sentry-cli` binary, narrows `PATH`, and redirects `HOME`, so it neither hits the network nor lets a real auth token decide an outcome.
 
 One case deserves care when editing `is_pbxproj_change_structural`: it compares *sorted structural fingerprints* of the two file versions rather than grepping the textual diff for marker keywords, because the array a membership entry lives in can be dozens of lines long and the keyword only appears on the array's unchanged declaration line. A fixture whose `membershipExceptions` array is short enough to keep that line inside git's 3 lines of context will pass while the real `WXYC.xcodeproj` fails. The suite pins mid-array add, mid-array remove, and cross-target move for exactly this reason.
 

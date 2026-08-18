@@ -73,10 +73,11 @@ mkdir -p "$EMPTY_DSYM_DIR"
 make_stub() {
     # Not `local path` — zsh ties the lowercase `path` array to PATH, so a
     # local of that name blanks the command search path inside the function.
-    # Defaults to the vendored location resolve_sentry_cli searches, which is
-    # the point of installing it there; Case 10 passes a directory instead, to
-    # stand in for a Homebrew prefix that is on no PATH the phase inherits.
-    local stub_dir="${1:-$CASE_SRCROOT/.ci-tools/bin}"
+    # Defaults to the case's own bin directory, which run_script puts on PATH:
+    # the ordinary arrangement, where the developer has sentry-cli installed
+    # somewhere the phase can see. Case 10 passes a directory instead, to stand
+    # in for a Homebrew prefix that is on no PATH the phase inherits.
+    local stub_dir="${1:-$CASE_BIN}"
     local stub_path="$stub_dir/sentry-cli"
     mkdir -p "$stub_dir"
     cat > "$stub_path" <<'STUB'
@@ -103,20 +104,23 @@ STUB
     chmod +x "$stub_path"
 }
 
-# Exactly what ci_post_clone.sh drops into the checkout on a runner. Naming it
-# documents the coupling these cases exist to pin.
+# The marker file the deleted Xcode Cloud path used to write into the checkout.
+# It is gitignored, so nothing removes it from a working copy that once had one,
+# and Case 8 is what pins that a leftover copy now decides nothing.
 mark_ci_runner() {
     mkdir -p "$CASE_SRCROOT/.ci-tools"
     : > "$CASE_SRCROOT/.ci-tools/ci-runner"
 }
 
 # Runs the real script in a hermetic environment. Every knob the script reads
-# is passed explicitly; PATH is narrowed to the system directories so a real
-# sentry-cli in /usr/local/bin can never satisfy a case that is meant to run
-# without one. SENTRY_CLI_SEARCH_DIRS is emptied for the same reason and needs
-# the same care: the list the script ships with names /usr/local/bin outright,
-# so leaving it at its default would hand every "no sentry-cli" case a working
-# binary on the maintainer's Mac and pass for the wrong reason.
+# is passed explicitly; PATH is narrowed to the case's own bin directory plus
+# the system directories, so a real sentry-cli in /usr/local/bin can never
+# satisfy a case that is meant to run without one, and a case that wants one
+# gets it by calling make_stub. SENTRY_CLI_SEARCH_DIRS is emptied for the same
+# reason and needs the same care: the list the script ships with names
+# /usr/local/bin outright, so leaving it at its default would hand every "no
+# sentry-cli" case a working binary on the maintainer's Mac and pass for the
+# wrong reason.
 #
 # CONFIGURATION and ACTION default to an archive's values (Release/install),
 # because that is the build the strict behavior is about. Cases that want a
@@ -137,7 +141,7 @@ run_script() {
     [[ -n "${CASE_ACTION+set}" ]] && build_settings+=("ACTION=${CASE_ACTION}")
 
     env -i \
-        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        PATH="$CASE_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
         HOME="$CASE_HOME" \
         SRCROOT="$CASE_SRCROOT" \
         DWARF_DSYM_FOLDER_PATH="$dsym_folder" \
@@ -154,7 +158,8 @@ new_case() {
     local name="$1"
     CASE_HOME="$FIXTURE/$name/home"
     CASE_SRCROOT="$FIXTURE/$name/srcroot"
-    mkdir -p "$CASE_HOME" "$CASE_SRCROOT"
+    CASE_BIN="$FIXTURE/$name/bin"
+    mkdir -p "$CASE_HOME" "$CASE_SRCROOT" "$CASE_BIN"
     STUB_LOG="$FIXTURE/$name/stub.log"
     : > "$STUB_LOG"
     STUB_FAIL=""
@@ -239,9 +244,11 @@ expect_exit "an archive whose dSYM folder does not exist fails the build" "$RC" 
 # =========================================================================
 # Case 2: dSYMs exist but sentry-cli does not.
 #
-# This is the Xcode Cloud failure mode from #955 — the runner ships no
-# sentry-cli and ci_scripts never installed one, so the phase printed
-# "warning: sentry-cli not installed" and the archive shipped unsymbolicated.
+# The original #955 failure mode — a runner that ships no sentry-cli, where the
+# phase printed "warning: sentry-cli not installed" and the build shipped
+# unsymbolicated. No runner builds anything shipping today, so what this pins is
+# the diagnostic: a runner is told to add an install step, not to open Homebrew
+# on a machine nobody is sitting at.
 # =========================================================================
 
 echo ""
@@ -252,11 +259,8 @@ OUT=$(run_script "$DSYM_DIR" "TRUE" "sntrys_fake"); RC=$?
 expect_exit "missing sentry-cli in CI fails the build" "$RC" "1" "$OUT"
 expect_contains "missing sentry-cli in CI is an error:" "$OUT" "error:"
 expect_contains "the error names sentry-cli" "$OUT" "sentry-cli"
-expect_contains "the error points at the installer script" "$OUT" "ci_scripts/install-sentry-cli.sh"
+expect_contains "the CI diagnostic points at the workflow" "$OUT" "installs sentry-cli before the build"
 expect_not_contains "the CI diagnostic does not tell a runner to run Homebrew" "$OUT" "brew"
-# A runner whose CI variable did arrive has nothing stale to clean up, so the
-# marker advice would be noise on the one line Xcode shows.
-expect_not_contains "a genuine CI build is not told to delete a marker" "$OUT" ".ci-tools/ci-runner"
 
 new_case "no-cli-local"
 ordinary_build
@@ -282,7 +286,7 @@ OUT=$(run_script "$DSYM_DIR" "TRUE" ""); RC=$?
 expect_exit "missing token in CI fails the build" "$RC" "1" "$OUT"
 expect_contains "missing token in CI is an error:" "$OUT" "error:"
 expect_contains "the error names the env var to set" "$OUT" "SENTRY_AUTH_TOKEN"
-expect_contains "the CI credential diagnostic names where to set it" "$OUT" "Xcode Cloud"
+expect_contains "the CI credential diagnostic names where to set it" "$OUT" "repository secret"
 NOTOKEN_LOG=$(<"$STUB_LOG")
 expect_not_contains "sentry-cli is not invoked at all without credentials" "$NOTOKEN_LOG" "debug-files"
 
@@ -303,9 +307,9 @@ OUT=$(run_script "$DSYM_DIR" "TRUE" ""); RC=$?
 expect_exit "a .sentryclirc in SRCROOT counts as credentials" "$RC" "0" "$OUT"
 expect_contains "the upload runs on the strength of .sentryclirc alone" "$(<"$STUB_LOG")" "debug-files"
 
-# ~/.sentryclirc is what ci_scripts/install-sentry-cli.sh materializes on the
-# runner, and it has to be honored even when the token never reaches the
-# xcodebuild environment.
+# ~/.sentryclirc is the credential that survives a worktree — a repo-root one
+# does not follow the checkout — and it is the only one that reaches an archive
+# started from Xcode.app, which never sees a shell's exported variables.
 new_case "sentryclirc-in-home"
 make_stub
 printf '[auth]\ntoken=sntrys_from_home\n' > "$CASE_HOME/.sentryclirc"
@@ -313,9 +317,8 @@ OUT=$(run_script "$DSYM_DIR" "TRUE" ""); RC=$?
 expect_exit "a ~/.sentryclirc counts as credentials" "$RC" "0" "$OUT"
 expect_contains "the upload runs on the strength of ~/.sentryclirc alone" "$(<"$STUB_LOG")" "debug-files"
 
-# The file existing is not the same claim as a credential existing — the same
-# test install-sentry-cli.sh applies before it calls an existing rc file good
-# enough. Without it, this build reaches the upload and dies with sentry-cli's
+# The file existing is not the same claim as a credential existing. Without this
+# test, a [defaults]-only rc file reaches the upload and dies with sentry-cli's
 # generic "an org auth token is required" instead of the line naming the fix.
 new_case "sentryclirc-without-token"
 make_stub
@@ -337,7 +340,7 @@ make_stub
 OUT=$(run_script "$DSYM_DIR" "TRUE" "sntrys_supersecret"); RC=$?
 LOG=$(<"$STUB_LOG")
 expect_exit "a successful upload exits 0" "$RC" "0" "$OUT"
-expect_contains "sentry-cli is resolved from SRCROOT/.ci-tools/bin without PATH" "$LOG" "argv:"
+expect_contains "sentry-cli is resolved and invoked" "$LOG" "argv:"
 expect_contains "the subcommand is debug-files upload" "$LOG" "debug-files upload"
 expect_contains "sources are included so Sentry can show source context" "$LOG" "--include-sources"
 expect_contains "the dSYM folder is passed through" "$LOG" "$DSYM_DIR"
@@ -378,9 +381,9 @@ expect_not_contains "a rejected upload locally is not an error:" "$OUT" "error:"
 # =========================================================================
 # Case 6: what counts as CI.
 #
-# Xcode Cloud sets CI=TRUE. GitHub Actions sets CI=true. Neither of those is
-# a value anyone should be pattern-matching by hand, and a bare `[ -n "$CI" ]`
-# would read the literal string "false" as CI — which some tools do set.
+# GitHub Actions sets CI=true, other runners set other spellings, and a bare
+# `[ -n "$CI" ]` would read the literal string "false" as CI — which some tools
+# do set. Now that the environment is the only source, this is the whole answer.
 #
 # The fixture is a Release *build*, not an archive: an archive is strict
 # wherever it runs, so it cannot tell the two answers apart. A non-archive
@@ -473,8 +476,8 @@ CASE_ACTION="install"
 OUT=$(run_script "$DSYM_DIR" "TRUE" ""); RC=$?
 expect_exit "a CI archive is strict even at the Debug configuration" "$RC" "1" "$OUT"
 
-# xcodebuild always sets both, but a hand-run script or a future Xcode Cloud
-# change might not. An unknown build is treated as shipping: a spurious CI
+# xcodebuild always sets both, but a hand-run script or a future runner change
+# might not. An unknown build is treated as shipping: a spurious CI
 # failure is loud and gets fixed, a skipped upload is silent and does not.
 new_case "ci-unset-build-settings"
 unset CASE_CONFIGURATION
@@ -491,60 +494,46 @@ expect_exit "a local Debug build still exits 0" "$RC" "0" "$OUT"
 expect_contains "a local Debug build still uploads, as it did before" "$(<"$STUB_LOG")" "debug-files"
 
 # =========================================================================
-# Case 8: the on-disk CI marker.
+# Case 8: a leftover .ci-tools/ci-runner marker decides nothing.
 #
-# Everything above turns on $CI reaching this script, and a run-script phase
-# nested inside xcodebuild is exactly the hop install-sentry-cli.sh refuses to
-# bet the token on (its header makes the argument). So ci_post_clone.sh drops a
-# marker file in the checkout, and these cases pin strictness to the file
-# independently of $CI.
+# There used to be a second source of CI-ness: ci_post_clone.sh wrote a marker
+# file into the checkout, because a run-script phase nested inside xcodebuild is
+# a thin guarantee for anything an environment variable has to survive. That
+# whole path was for Xcode Cloud, which this project does not use, and it is
+# gone — but the file it wrote is not self-cleaning and is gitignored, so a
+# working copy where the script was once run by hand still has one.
 #
-# As in Case 6 the fixture is a Release build rather than an archive, so that
-# the marker is the only thing deciding the outcome.
+# On such a machine the marker used to make every later local Release build
+# strict and fail it citing an Xcode Cloud workflow the developer was not on.
+# These cases pin that it is now inert, which is the whole reason the removal is
+# safe to make quietly.
+#
+# As in Case 6 the fixture is a Release build rather than an archive, so nothing
+# but the marker could be deciding the outcome.
 # =========================================================================
 
 echo ""
-echo "=== Case 8: the .ci-tools/ci-runner marker ==="
+echo "=== Case 8: a leftover .ci-tools/ci-runner marker is inert ==="
 
-new_case "marker-without-ci-env"
+new_case "stale-marker-without-ci-env"
 ordinary_build
 mark_ci_runner
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
-expect_exit "the marker alone makes a shipping build strict, with CI unset" "$RC" "1" "$OUT"
-expect_contains "the marker path produces an error:" "$OUT" "error:"
-# This input has a second reading, and it is the likelier one on a laptop:
-# ci_post_clone.sh writes the marker before it does anything else and nothing
-# ever removes it, so a developer who ran that script once to install
-# macros.json answers is_ci forever — and then a plain local Release build
-# fails, citing Xcode Cloud. Naming the file is the difference between a
-# one-command fix and a mystery, and the issue navigator shows only this line.
-expect_contains "a marker with no CI in the environment says which file to delete" "$OUT" ".ci-tools/ci-runner"
+expect_exit "a leftover marker does not make a local shipping build strict" "$RC" "0" "$OUT"
+expect_not_contains "a leftover marker produces no error:" "$OUT" "error:"
+expect_contains "the build stays lenient and warns as any local build does" "$OUT" "warning:"
 
-new_case "marker-with-ci-false"
+# The environment is the only source now, so CI=false is local no matter what
+# is sitting in the checkout.
+new_case "stale-marker-with-ci-false"
 ordinary_build
 mark_ci_runner
 OUT=$(run_script "$DSYM_DIR" "false" "sntrys_fake"); RC=$?
-expect_exit "the marker outranks a CI=false that never got cleared" "$RC" "1" "$OUT"
+expect_exit "a leftover marker does not outrank CI=false" "$RC" "0" "$OUT"
 
-# The marker must not make a non-shipping build strict either — it answers
-# "where am I", not "does this build ship".
-new_case "marker-debug-testflight"
-CASE_CONFIGURATION="Debug TestFlight"
-CASE_ACTION="build"
-mark_ci_runner
-OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
-expect_exit "the marker does not make a test build strict" "$RC" "0" "$OUT"
-expect_not_contains "the marker does not error a test build" "$OUT" "error:"
-
-# And a dev Mac that happens to have a .ci-tools/bin from running the
-# installer by hand is not a CI runner.
-new_case "vendored-cli-is-not-a-marker"
-ordinary_build
-make_stub
-STUB_FAIL=1
-OUT=$(run_script "$DSYM_DIR" "" "sntrys_expired"); RC=$?
-expect_exit "a vendored sentry-cli by itself does not imply CI" "$RC" "0" "$OUT"
-expect_contains "a local failure with a vendored cli is still a warning:" "$OUT" "warning:"
+# No diagnostic anywhere should still be telling anyone about a file the script
+# no longer reads — the one line Xcode shows is too small to spend on a ghost.
+expect_not_contains "the script reads no CI marker file" "$(<"$REAL_SCRIPT")" "ci-runner"
 
 # =========================================================================
 # Case 9: a local archive is strict.
@@ -560,8 +549,8 @@ expect_contains "a local failure with a vendored cli is still a warning:" "$OUT"
 # an archive to be made, wherever it is made.
 #
 # The diagnostics split too. Xcode's issue navigator shows one line; a dev Mac
-# told to "check that ci_post_clone ran" has been handed a dead end, and a
-# runner told to run Homebrew has as well.
+# told to edit a workflow file has been handed a dead end, and a runner told to
+# run Homebrew on a machine nobody is sitting at has as well.
 # =========================================================================
 
 echo ""
@@ -572,10 +561,7 @@ OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
 expect_exit "a local archive with no sentry-cli fails the build" "$RC" "1" "$OUT"
 expect_contains "a local archive with no sentry-cli is an error:" "$OUT" "error:"
 expect_contains "the local diagnostic names the local fix" "$OUT" "brew install getsentry/tools/sentry-cli"
-expect_not_contains "the local diagnostic does not send a dev Mac to ci_post_clone" "$OUT" "ci_post_clone"
-# The archive is strict on its own account here. There is no marker to blame,
-# so mentioning one would send the reader after a file that isn't there.
-expect_not_contains "an archive strict on its own account mentions no marker" "$OUT" ".ci-tools/ci-runner"
+expect_not_contains "the local diagnostic does not send a dev Mac to a CI workflow" "$OUT" "before the build"
 
 new_case "local-archive-no-token"
 make_stub
@@ -583,7 +569,7 @@ OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
 expect_exit "a local archive with no credentials fails the build" "$RC" "1" "$OUT"
 expect_contains "a local archive with no credentials is an error:" "$OUT" "error:"
 expect_contains "the local credential diagnostic names .sentryclirc" "$OUT" ".sentryclirc"
-expect_not_contains "the local credential diagnostic does not send a dev Mac to Xcode Cloud" "$OUT" "Xcode Cloud"
+expect_not_contains "the local credential diagnostic does not send a dev Mac to a CI secret store" "$OUT" "repository secret"
 # The build this message is written for is Product > Archive, and Xcode.app
 # launched from the Dock inherits launchd's environment rather than a login
 # shell's — so "just export SENTRY_AUTH_TOKEN", offered without that caveat, is
@@ -669,16 +655,29 @@ expect_exit "a local archive finds a sentry-cli that is on no PATH it inherits" 
 expect_contains "and uploads with it" "$(<"$STUB_LOG")" "debug-files upload"
 expect_contains "the binary it ran is the one outside PATH" "$(<"$STUB_LOG")" "$BREW_PREFIX_BIN/sentry-cli"
 
-# Precedence, not just reachability. A runner has both: the pinned copy
-# install-sentry-cli.sh vendored into the checkout, and whatever the image
-# happens to carry. The pinned one has to win, or the version this project
-# controls is decided by the image.
-new_case "vendored-cli-outranks-search-dirs"
+# Precedence, not just reachability. The search list is a fallback for a PATH
+# the GUI left incomplete, so anything PATH *can* reach has to win: a developer
+# who put a particular sentry-cli on their PATH chose it, and a hardcoded
+# Homebrew prefix quietly outranking that choice is the kind of thing nobody
+# discovers until the versions disagree.
+new_case "path-cli-outranks-search-dirs"
 search_dir_stub
 make_stub
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_local"); RC=$?
-expect_contains "the vendored copy is the one that runs" "$(<"$STUB_LOG")" "$CASE_SRCROOT/.ci-tools/bin/sentry-cli"
-expect_not_contains "the searched prefix is not consulted when a vendored copy exists" "$(<"$STUB_LOG")" "$BREW_PREFIX_BIN/sentry-cli"
+expect_contains "the copy on PATH is the one that runs" "$(<"$STUB_LOG")" "$CASE_BIN/sentry-cli"
+expect_not_contains "the searched prefix is not consulted when PATH already answers" "$(<"$STUB_LOG")" "$BREW_PREFIX_BIN/sentry-cli"
+
+# And the repo-local slot the deleted installer used to vendor into is no longer
+# a lookup at all. It is gitignored, so a checkout that once ran that script
+# still has a stale pinned binary in it; resolving to it would mean a developer
+# who has since installed a current sentry-cli keeps uploading with the old one.
+# SENTRY_CLI_SEARCH_DIRS is the supported way to point at a specific copy.
+new_case "ci-tools-bin-is-not-searched"
+make_stub "$CASE_SRCROOT/.ci-tools/bin"
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_local"); RC=$?
+expect_exit "a binary in .ci-tools/bin alone does not satisfy the phase" "$RC" "1" "$OUT"
+expect_contains "an archive that finds nothing on PATH still fails" "$OUT" "error:"
+expect_not_contains "nothing was uploaded from .ci-tools/bin" "$(<"$STUB_LOG")" "debug-files"
 
 # The cases above prove the mechanism against a fixture directory, which is the
 # only way they can stay hermetic. What they cannot check is the list the script
