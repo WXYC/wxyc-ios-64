@@ -73,10 +73,12 @@ mkdir -p "$EMPTY_DSYM_DIR"
 make_stub() {
     # Not `local path` — zsh ties the lowercase `path` array to PATH, so a
     # local of that name blanks the command search path inside the function.
-    # The path is fixed rather than a parameter: it is the vendored location
-    # resolve_sentry_cli searches, which is the point of installing it here.
-    local stub_path="$CASE_SRCROOT/.ci-tools/bin/sentry-cli"
-    mkdir -p "${stub_path:h}"
+    # Defaults to the vendored location resolve_sentry_cli searches, which is
+    # the point of installing it there; Case 10 passes a directory instead, to
+    # stand in for a Homebrew prefix that is on no PATH the phase inherits.
+    local stub_dir="${1:-$CASE_SRCROOT/.ci-tools/bin}"
+    local stub_path="$stub_dir/sentry-cli"
+    mkdir -p "$stub_dir"
     cat > "$stub_path" <<'STUB'
 #!/bin/sh
 if [ "$1" = "--version" ]; then
@@ -84,6 +86,7 @@ if [ "$1" = "--version" ]; then
     exit 0
 fi
 {
+    echo "self: $0"
     echo "argv: $*"
     echo "SENTRY_ORG=${SENTRY_ORG:-}"
     echo "SENTRY_PROJECT=${SENTRY_PROJECT:-}"
@@ -110,7 +113,10 @@ mark_ci_runner() {
 # Runs the real script in a hermetic environment. Every knob the script reads
 # is passed explicitly; PATH is narrowed to the system directories so a real
 # sentry-cli in /usr/local/bin can never satisfy a case that is meant to run
-# without one.
+# without one. SENTRY_CLI_SEARCH_DIRS is emptied for the same reason and needs
+# the same care: the list the script ships with names /usr/local/bin outright,
+# so leaving it at its default would hand every "no sentry-cli" case a working
+# binary on the maintainer's Mac and pass for the wrong reason.
 #
 # CONFIGURATION and ACTION default to an archive's values (Release/install),
 # because that is the build the strict behavior is about. Cases that want a
@@ -138,6 +144,7 @@ run_script() {
         CI="$ci" \
         SENTRY_AUTH_TOKEN="$token" \
         "${build_settings[@]}" \
+        SENTRY_CLI_SEARCH_DIRS="$CASE_SEARCH_DIRS" \
         STUB_LOG="$STUB_LOG" \
         STUB_FAIL="$STUB_FAIL" \
         /bin/zsh "$REAL_SCRIPT" 2>&1
@@ -151,6 +158,7 @@ new_case() {
     STUB_LOG="$FIXTURE/$name/stub.log"
     : > "$STUB_LOG"
     STUB_FAIL=""
+    CASE_SEARCH_DIRS=""
     CASE_CONFIGURATION="Release"
     CASE_ACTION="install"
 }
@@ -235,6 +243,9 @@ expect_contains "missing sentry-cli in CI is an error:" "$OUT" "error:"
 expect_contains "the error names sentry-cli" "$OUT" "sentry-cli"
 expect_contains "the error points at the installer script" "$OUT" "ci_scripts/install-sentry-cli.sh"
 expect_not_contains "the CI diagnostic does not tell a runner to run Homebrew" "$OUT" "brew"
+# A runner whose CI variable did arrive has nothing stale to clean up, so the
+# marker advice would be noise on the one line Xcode shows.
+expect_not_contains "a genuine CI build is not told to delete a marker" "$OUT" ".ci-tools/ci-runner"
 
 new_case "no-cli-local"
 ordinary_build
@@ -490,6 +501,13 @@ mark_ci_runner
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
 expect_exit "the marker alone makes a shipping build strict, with CI unset" "$RC" "1" "$OUT"
 expect_contains "the marker path produces an error:" "$OUT" "error:"
+# This input has a second reading, and it is the likelier one on a laptop:
+# ci_post_clone.sh writes the marker before it does anything else and nothing
+# ever removes it, so a developer who ran that script once to install
+# macros.json answers is_ci forever — and then a plain local Release build
+# fails, citing Xcode Cloud. Naming the file is the difference between a
+# one-command fix and a mystery, and the issue navigator shows only this line.
+expect_contains "a marker with no CI in the environment says which file to delete" "$OUT" ".ci-tools/ci-runner"
 
 new_case "marker-with-ci-false"
 ordinary_build
@@ -544,6 +562,9 @@ expect_exit "a local archive with no sentry-cli fails the build" "$RC" "1" "$OUT
 expect_contains "a local archive with no sentry-cli is an error:" "$OUT" "error:"
 expect_contains "the local diagnostic names the local fix" "$OUT" "brew install getsentry/tools/sentry-cli"
 expect_not_contains "the local diagnostic does not send a dev Mac to ci_post_clone" "$OUT" "ci_post_clone"
+# The archive is strict on its own account here. There is no marker to blame,
+# so mentioning one would send the reader after a file that isn't there.
+expect_not_contains "an archive strict on its own account mentions no marker" "$OUT" ".ci-tools/ci-runner"
 
 new_case "local-archive-no-token"
 make_stub
@@ -609,5 +630,55 @@ unset CASE_ACTION
 OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
 expect_exit "a local build with neither setting still exits 0" "$RC" "0" "$OUT"
 expect_not_contains "a local build with neither setting does not error" "$OUT" "error:"
+
+# =========================================================================
+# Case 10: a sentry-cli that PATH cannot see.
+#
+# The build this whole strictness rule exists for starts in Xcode.app, which
+# inherits launchd's environment and not a login shell's. The manifest of the
+# 2026-08-11 archive records what the phase's PATH actually was: the Xcode
+# toolchain directories, then /usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin.
+# Homebrew on Apple Silicon installs into /opt/homebrew/bin, which is not on
+# that list.
+#
+# So `command -v` alone would fail to find a sentry-cli installed by the exact
+# command this script's own diagnostic recommends, and the developer who
+# followed it would get the same error: again — install the tool you just
+# installed — with no archive and no way out of the loop. The upload has to
+# look in the prefixes the GUI's PATH omits.
+# =========================================================================
+
+echo ""
+echo "=== Case 10: sentry-cli outside the build phase's PATH ==="
+
+new_case "cli-outside-path"
+BREW_PREFIX_BIN="$CASE_SRCROOT/../opt-homebrew-bin"
+mkdir -p "$BREW_PREFIX_BIN"
+make_stub "$BREW_PREFIX_BIN"
+CASE_SEARCH_DIRS="$BREW_PREFIX_BIN"
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_local"); RC=$?
+expect_exit "a local archive finds a sentry-cli that is on no PATH it inherits" "$RC" "0" "$OUT"
+expect_contains "and uploads with it" "$(<"$STUB_LOG")" "debug-files upload"
+expect_contains "the binary it ran is the one outside PATH" "$(<"$STUB_LOG")" "$BREW_PREFIX_BIN/sentry-cli"
+
+# Precedence, not just reachability. A runner has both: the pinned copy
+# install-sentry-cli.sh vendored into the checkout, and whatever the image
+# happens to carry. The pinned one has to win, or the version this project
+# controls is decided by the image.
+new_case "vendored-cli-outranks-search-dirs"
+BREW_PREFIX_BIN="$CASE_SRCROOT/../opt-homebrew-bin"
+mkdir -p "$BREW_PREFIX_BIN"
+make_stub "$BREW_PREFIX_BIN"
+make_stub
+CASE_SEARCH_DIRS="$BREW_PREFIX_BIN"
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_local"); RC=$?
+expect_contains "the vendored copy is the one that runs" "$(<"$STUB_LOG")" "$CASE_SRCROOT/.ci-tools/bin/sentry-cli"
+expect_not_contains "the searched prefix is not consulted when a vendored copy exists" "$(<"$STUB_LOG")" "$BREW_PREFIX_BIN/sentry-cli"
+
+# The cases above prove the mechanism against a fixture directory, which is the
+# only way they can stay hermetic. What they cannot check is the list the script
+# actually ships with — and that list is the entire fix, since a search path
+# without the Apple Silicon Homebrew prefix in it resolves nothing new.
+expect_contains "the shipped search list carries the Apple Silicon Homebrew prefix" "$(<"$REAL_SCRIPT")" "/opt/homebrew/bin"
 
 summarize
