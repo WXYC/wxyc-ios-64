@@ -291,10 +291,10 @@ struct WXYCApp: App {
             options.enableNetworkTracking = true
             options.enableSwizzling = true
 
-            // App-launch profiling, TestFlight only. WXYC/wxyc-ios-64#949's
-            // "measure first" acceptance criterion needs one real cold-launch
-            // profile before the ranked cost list there can be pruned or
-            // reordered by evidence instead of a static audit.
+            // App-launch profiling for WXYC/wxyc-ios-64#949's cold-launch
+            // measurement. Why TestFlight only is on `shouldProfileAppLaunch`;
+            // why the sampler is on `tracesSampleRate`. What is only true here
+            // is which SDK surface this uses, and why it is not the obvious one.
             //
             // Not the `enableAppLaunchProfiling` boolean this line used to set
             // to `false`. On sentry-cocoa 8.58.4 that property is deprecated in
@@ -314,49 +314,25 @@ struct WXYCApp: App {
             //   - `profileAppStarts` starts the profiler from
             //     `+[SentryProfiler load]`, before `main`.
             //   - `lifecycle = .trace` ties each profile to a root span, so it
-            //     stops when that span ends instead of running unbounded. For
-            //     the launch profile the span is not the
-            //     `enableAutoPerformanceTracing` app-start transaction —
-            //     `enableUIViewControllerTracing` is off above, so nothing ever
-            //     creates one here. It is the launch tracer the launch-profile
-            //     path builds for itself, and it ends inside `SentrySDK.start`,
-            //     because `enableTimeToFullDisplayTracing` is off; that profile
-            //     spans process start through SDK start.
-            //     `.trace` is not launch-only, though, and the memory argument
-            //     below has to cover the rest: every *sampled* root span after
-            //     launch also profiles for its duration. Those still draw at
-            //     `baseTracesSampleRate`, so on TestFlight it is 5% of the UI
-            //     interactions swizzling reports, each bounded by one span.
+            //     stops when that span ends. The launch profile's span is the
+            //     tracer the launch-profile path builds for itself — not the
+            //     `enableAutoPerformanceTracing` app-start transaction, which
+            //     `enableUIViewControllerTracing = false` above means nothing
+            //     ever creates — and it ends inside `SentrySDK.start`. But
+            //     `.trace` is not launch-only: every *sampled* root span after
+            //     launch profiles for its duration too, which on TestFlight is
+            //     5% of the UI interactions swizzling reports.
             //   - `sessionSampleRate` defaults to 0 — silently sampling nothing
             //     rather than erroring — so 1.0 is what makes it collect at all.
-            //
-            // The decision is drawn one launch ahead: at the end of
-            // `SentrySDK.start` the SDK samples a synthetic `app.launch`
-            // transaction and persists the outcome for the *next* launch, which
-            // consumes it and deletes the file. That draw goes through
-            // `tracesSampler` with `forNextAppLaunch` set, which is the hook
-            // below used to exempt it from the 5% every other transaction pays.
-            // Left at 5% the arrival rate is one profile per ~20 launches, and
-            // the TestFlight population is a handful of testers — small enough
-            // that "ship it, launch it a few times, go look" plausibly returns
-            // nothing at all, which is how this merges looking correct and
-            // leaves #949 exactly as blocked as before.
-            //
-            // TestFlight only, never `production`: the 10-20MB-of-stack-samples
-            // memory cost the old comment warned about is real at App Store
-            // scale, and #949 asks for one TestFlight measurement, not
-            // fleet-wide profiling. The sampler is installed in the same branch
-            // for the same reason — off TestFlight, every sampling decision
-            // stays on the plain `tracesSampleRate` path, untouched.
             if Self.shouldProfileAppLaunch(for: BuildEnvironment.current) {
                 options.configureProfiling = { profiling in
                     profiling.profileAppStarts = true
                     profiling.lifecycle = .trace
                     profiling.sessionSampleRate = 1.0
                 }
-                options.tracesSampler = { context in
-                    NSNumber(value: WXYCApp.tracesSampleRate(
-                        forNextAppLaunch: context.transactionContext.forNextAppLaunch
+                options.tracesSampler = {
+                    NSNumber(value: Self.tracesSampleRate(
+                        forNextAppLaunch: $0.transactionContext.forNextAppLaunch
                     ))
                 }
             }
@@ -388,22 +364,13 @@ struct WXYCApp: App {
             options.enableReportNonFullyBlockingAppHangs = false
 
             // `appHangTimeoutInterval` is deliberately left at its 2.0 default.
-            // Raising it is the obvious way to quieten hang reports and it is
-            // the wrong one here — but not for the reason this comment used to
-            // give. It used to argue from the `device.class` split across those
-            // 1207 events (high 1115 / medium 91 / low 0) that the fleet was
-            // flagship-only, so a >2 s stall had to be a real defect. That
-            // inference does not hold: Sentry almost never classifies a modern
-            // iPhone as `low`, so the absence of `low` describes Sentry's
-            // classifier and the device fleet, not the bug, and without
-            // normalizing against per-class session counts the split says
-            // nothing about which devices are disproportionately affected.
-            // WXYC/wxyc-ios-64#949's IOS-42 evidence includes an iPhone11,8 (a
-            // 2018 iPhone XR) classified `medium`, which the "flagship" framing
-            // could not have explained. The conclusion still stands on its own
-            // terms, though: raising the threshold hides the cold-launch
-            // regression this option exists to catch, independent of which
-            // devices it hits.
+            // Raising it is the obvious way to quieten hang reports, and the
+            // reason not to is that it hides the cold-launch regression this
+            // option exists to catch. Not, as this comment used to argue, that
+            // the `device.class` split across those 1207 events (high 1115 /
+            // medium 91 / low 0) proves a flagship-only fleet: Sentry rarely
+            // classifies a modern iPhone `low`, and #949's own IOS-42 evidence
+            // includes an iPhone11,8 classified `medium`. See git history.
 
             // Regrouping the remaining hangs belongs to Sentry's server-side
             // Stack Trace Rules, not to a client `beforeSend`, and there is
@@ -442,11 +409,9 @@ struct WXYCApp: App {
         environment == .testflight
     }
 
-    /// The share of transactions traced in the ordinary case.
-    ///
-    /// Named rather than written twice because `tracesSampler` shadows
-    /// `tracesSampleRate` completely once installed: a later edit to one and
-    /// not the other would change TestFlight's tracing volume silently.
+    /// The share of transactions traced in the ordinary case. Named because
+    /// an installed `tracesSampler` shadows `tracesSampleRate` outright, so
+    /// editing one and not the other would change tracing volume silently.
     nonisolated static let baseTracesSampleRate = 0.05
 
     /// The trace sample rate for one sampling decision, while app-launch
@@ -454,32 +419,26 @@ struct WXYCApp: App {
     ///
     /// `forNextAppLaunch` is set by exactly one caller inside the SDK: the
     /// synthetic `app.launch` transaction Sentry samples at the end of
-    /// `SentrySDK.start` to decide whether the *next* launch is profiled.
-    /// That decision gets 1.0 — it is the measurement WXYC/wxyc-ios-64#949
-    /// asks for, and at ``baseTracesSampleRate`` it would arrive about once
-    /// per twenty launches, which a TestFlight population of a handful of
-    /// testers cannot be relied on to reach.
-    ///
-    /// Every other sampling decision draws at ``baseTracesSampleRate``.
-    /// "Draws" rather than "is unaffected": installing a sampler also moves
-    /// it ahead of `parentSampled` in `sentry_sampleTrace`, so a transaction
-    /// continuing an inbound distributed trace would re-draw here instead of
-    /// inheriting its parent's decision. This app never receives a
-    /// `sentry-trace` header — it originates traces, it does not continue
-    /// them — so that branch is unreachable, but the rate is the only thing
-    /// this preserves exactly.
+    /// `SentrySDK.start` to decide whether the *next* launch is profiled, and
+    /// persists to disk for that launch to consume. It gets 1.0, because at
+    /// ``baseTracesSampleRate`` the profile arrives about once per twenty
+    /// launches — fine at App Store scale, and not something a TestFlight
+    /// population of a handful of testers can be relied on to reach. That is
+    /// the failure this exists to prevent, and it is a silent one: the change
+    /// merges looking correct and #949 stays blocked.
     ///
     /// Raising `tracesSampleRate` itself for TestFlight would have armed the
     /// profile just as well, and was rejected: it also multiplies every
     /// unrelated TestFlight transaction by twenty, and #949's own triage
-    /// reads those same series.
+    /// reads those same series. Every other decision keeps drawing at
+    /// ``baseTracesSampleRate`` — though a sampler does pre-empt
+    /// `parentSampled`, which is moot here: this app originates traces and
+    /// never continues an inbound one.
     ///
     /// `nonisolated` because `SentryOptions.tracesSampler` is
-    /// `NS_SWIFT_SENDABLE` and Sentry calls it off the main thread —
-    /// `sentry_configureLaunchProfilingForNextLaunch` is dispatched async
-    /// from `SentrySDK.start`. `WXYCApp` infers `@MainActor` from `App`, so
-    /// without this both members are main-actor-isolated and the call is a
-    /// warning today only because Sentry's headers import as
+    /// `NS_SWIFT_SENDABLE` and Sentry calls it off the main thread, while
+    /// `WXYCApp` infers `@MainActor` from `App`. Without it the call is a
+    /// warning rather than an error only because Sentry's headers import
     /// `@preconcurrency`.
     nonisolated static func tracesSampleRate(forNextAppLaunch: Bool) -> Double {
         forNextAppLaunch ? 1.0 : baseTracesSampleRate
