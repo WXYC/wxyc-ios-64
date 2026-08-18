@@ -313,15 +313,20 @@ struct WXYCApp: App {
             // `configureProfiling` is the documented replacement and is bounded:
             //   - `profileAppStarts` starts the profiler from
             //     `+[SentryProfiler load]`, before `main`.
-            //   - `lifecycle = .trace` ties the profile to a root span, so it
-            //     stops when that span ends instead of running unbounded. The
-            //     span is not the `enableAutoPerformanceTracing` app-start
-            //     transaction — `enableUIViewControllerTracing` is off above, so
-            //     nothing ever creates one here. It is the launch tracer the
-            //     launch-profile path builds for itself, and it ends inside
-            //     `SentrySDK.start`, because `enableTimeToFullDisplayTracing` is
-            //     off. The profile window is therefore process start through SDK
-            //     start.
+            //   - `lifecycle = .trace` ties each profile to a root span, so it
+            //     stops when that span ends instead of running unbounded. For
+            //     the launch profile the span is not the
+            //     `enableAutoPerformanceTracing` app-start transaction —
+            //     `enableUIViewControllerTracing` is off above, so nothing ever
+            //     creates one here. It is the launch tracer the launch-profile
+            //     path builds for itself, and it ends inside `SentrySDK.start`,
+            //     because `enableTimeToFullDisplayTracing` is off; that profile
+            //     spans process start through SDK start.
+            //     `.trace` is not launch-only, though, and the memory argument
+            //     below has to cover the rest: every *sampled* root span after
+            //     launch also profiles for its duration. Those still draw at
+            //     `baseTracesSampleRate`, so on TestFlight it is 5% of the UI
+            //     interactions swizzling reports, each bounded by one span.
             //   - `sessionSampleRate` defaults to 0 — silently sampling nothing
             //     rather than erroring — so 1.0 is what makes it collect at all.
             //
@@ -442,7 +447,7 @@ struct WXYCApp: App {
     /// Named rather than written twice because `tracesSampler` shadows
     /// `tracesSampleRate` completely once installed: a later edit to one and
     /// not the other would change TestFlight's tracing volume silently.
-    static let baseTracesSampleRate = 0.05
+    nonisolated static let baseTracesSampleRate = 0.05
 
     /// The trace sample rate for one sampling decision, while app-launch
     /// profiling is armed.
@@ -455,12 +460,28 @@ struct WXYCApp: App {
     /// per twenty launches, which a TestFlight population of a handful of
     /// testers cannot be relied on to reach.
     ///
-    /// Every other transaction keeps ``baseTracesSampleRate``. Raising
-    /// `tracesSampleRate` itself for TestFlight would have armed the profile
-    /// just as well, and was rejected: it also multiplies every unrelated
-    /// TestFlight transaction by twenty, and #949's own triage reads those
-    /// same series.
-    static func tracesSampleRate(forNextAppLaunch: Bool) -> Double {
+    /// Every other sampling decision draws at ``baseTracesSampleRate``.
+    /// "Draws" rather than "is unaffected": installing a sampler also moves
+    /// it ahead of `parentSampled` in `sentry_sampleTrace`, so a transaction
+    /// continuing an inbound distributed trace would re-draw here instead of
+    /// inheriting its parent's decision. This app never receives a
+    /// `sentry-trace` header — it originates traces, it does not continue
+    /// them — so that branch is unreachable, but the rate is the only thing
+    /// this preserves exactly.
+    ///
+    /// Raising `tracesSampleRate` itself for TestFlight would have armed the
+    /// profile just as well, and was rejected: it also multiplies every
+    /// unrelated TestFlight transaction by twenty, and #949's own triage
+    /// reads those same series.
+    ///
+    /// `nonisolated` because `SentryOptions.tracesSampler` is
+    /// `NS_SWIFT_SENDABLE` and Sentry calls it off the main thread —
+    /// `sentry_configureLaunchProfilingForNextLaunch` is dispatched async
+    /// from `SentrySDK.start`. `WXYCApp` infers `@MainActor` from `App`, so
+    /// without this both members are main-actor-isolated and the call is a
+    /// warning today only because Sentry's headers import as
+    /// `@preconcurrency`.
+    nonisolated static func tracesSampleRate(forNextAppLaunch: Bool) -> Double {
         forNextAppLaunch ? 1.0 : baseTracesSampleRate
     }
 
