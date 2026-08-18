@@ -60,6 +60,29 @@ if [[ -d "${SRCROOT:-}" ]]; then
 fi
 readonly REPO_ROOT="$PWD"
 
+# The escape hatch. A dSYM upload that cannot succeed stops an archive, which is
+# the entire point of this script — but sentry.io has outages, tokens expire on
+# Fridays, and laptops go on planes, and none of those should stand between a
+# developer and a build they need to ship with no recourse but editing this file.
+#
+# A file rather than an environment variable, and here that is the argument
+# rather than the trap the deleted .ci-tools/ci-runner marker turned out to be.
+# The build that needs this is Product > Archive under Xcode.app, which inherits
+# launchd's environment: nothing exported from a terminal reaches it, and a
+# scheme variable does not reach a run-script phase either. A file in the repo
+# root is the only channel a developer has to that build.
+#
+# What keeps it from becoming that trap is direction. The marker that failed
+# builds said nothing about why; this one makes them pass, so it announces
+# itself on exactly the builds it rescued — see opt_out_hint(). Gitignored,
+# because a committed copy would disable the check for everyone silently, which
+# is #955 with this file as the cause.
+readonly OPT_OUT_MARKER="${REPO_ROOT}/.sentry-dsym-optional"
+
+opted_out() {
+    [[ -f "$OPT_OUT_MARKER" ]]
+}
+
 # Am I on a build runner? GitHub Actions sets CI=true and most other runners set
 # something; some tools set CI=false to mean "not CI", which a bare emptiness
 # test would read backwards, so this is a tri-state and not a presence check.
@@ -92,8 +115,18 @@ fail_or_continue() {
         echo "error: $1"
         exit 1
     fi
-    echo "$2"
+    echo "$2$(opt_out_hint)"
     exit 0
+}
+
+# Said only on the builds the marker actually rescued. An ordinary build was
+# lenient anyway and has nothing to credit the file for, and a hint on every
+# green build is how a warning becomes wallpaper — which would leave this file
+# as quiet as the marker whose failure mode it inverts.
+opt_out_hint() {
+    opted_out && would_be_strict \
+        && print -rn -- " (${OPT_OUT_MARKER} is present, so this did not fail the build — delete it to restore the check.)"
+    return 0
 }
 
 # The two strict contexts do not have the same fix, and the one line Xcode
@@ -170,8 +203,13 @@ is_shipping_build() {
 # on its own first line, so guarding it up front would be a no-op for exactly
 # the case that needs no guard. This is also the visible complement of the skip
 # gate in section 1, which is `is_ci && ! is_shipping_build`.
-is_strict() {
+would_be_strict() {
     is_archive || { is_ci && is_shipping_build }
+}
+
+is_strict() {
+    opted_out && return 1
+    would_be_strict
 }
 
 # Prefixes to check by hand, because PATH does not reach them.
