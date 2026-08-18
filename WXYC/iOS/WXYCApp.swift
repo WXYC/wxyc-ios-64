@@ -286,7 +286,7 @@ struct WXYCApp: App {
             options.environment = BuildEnvironment.current.rawValue
 
             options.enableAutoSessionTracking = true
-            options.tracesSampleRate = 0.05
+            options.tracesSampleRate = NSNumber(value: Self.baseTracesSampleRate)
             options.enableUIViewControllerTracing = false  // SwiftUI app, no UIKit VCs
             options.enableNetworkTracking = true
             options.enableSwizzling = true
@@ -297,50 +297,62 @@ struct WXYCApp: App {
             // reordered by evidence instead of a static audit.
             //
             // Not the `enableAppLaunchProfiling` boolean this line used to set
-            // to `false`. On sentry-cocoa 8.58.4 that property carries
-            // DEPRECATED_MSG_ATTRIBUTE pointing at `SentryProfileOptions`, and
-            // the deprecation is load-bearing, not cosmetic: this file sets no
-            // `profilesSampleRate` anywhere, and the header is explicit that
-            // `enableAppLaunchProfiling = YES` with a nil `profilesSampleRate`
-            // "enables ... continuous profiling" on every launch with "no
-            // automatic stop" short of calling `SentrySDK.stopProfiler()` by
-            // hand. Flipping the deprecated flag alone would not have
+            // to `false`. On sentry-cocoa 8.58.4 that property is deprecated in
+            // favour of `SentryProfileOptions`, and the deprecation is
+            // load-bearing rather than cosmetic. `profilesSampleRate` defaults
+            // to nil and this file never sets it, which puts the SDK in
+            // continuous-profiling mode; there `sentry_shouldProfileNextLaunch`
+            // returns the deprecated flag's own value and the launch starts
+            // `SentryContinuousProfiler` with nothing to stop it
+            // (`SentryLaunchProfiling.m`). Flipping the old flag would not have
             // collected nothing — it would have collected forever, a worse
-            // version of the same memory concern this comment used to warn
-            // about.
+            // version of the memory concern the old comment warned about.
+            // Deleting the explicit `false` is a no-op: the SDK never assigns
+            // that ivar, so it is already NO.
             //
-            // `configureProfiling` is the SDK's documented replacement and
-            // does not share that failure mode:
-            //   - `profileAppStarts` starts the profiler as early in launch as
-            //     the deprecated flag did.
-            //   - `lifecycle = .trace` ties the profile to the launch's root
-            //     span, so it stops automatically when that span ends instead
-            //     of running unbounded. That root span is the automatic
-            //     "app start" transaction `enableAutoPerformanceTracing`
-            //     creates (default YES, untouched here) — this file starts no
-            //     span of its own — and it is itself subject to
-            //     `tracesSampleRate` above. That rate is already nonzero
-            //     (0.05), which is what makes `.trace` viable at all, but it
-            //     also means only ~1 in 20 TestFlight launches gets a sampled
-            //     app-start span to hang a profile on; the other ~19 in 20
-            //     arm nothing, by design of this mode, not by a bug here.
-            //   - `sessionSampleRate` defaults to 0 — silently sampling
-            //     nothing, not erroring — so it has to be set explicitly to
-            //     collect anything. 1.0 here is deliberate: it removes
-            //     session sampling as a second multiplier on top of the ~5%
-            //     from `tracesSampleRate` above, so this short, single-build
-            //     measurement pass for #949 isn't compounding two independent
-            //     undersampling risks into "no launches at all."
+            // `configureProfiling` is the documented replacement and is bounded:
+            //   - `profileAppStarts` starts the profiler from
+            //     `+[SentryProfiler load]`, before `main`.
+            //   - `lifecycle = .trace` ties the profile to a root span, so it
+            //     stops when that span ends instead of running unbounded. The
+            //     span is not the `enableAutoPerformanceTracing` app-start
+            //     transaction — `enableUIViewControllerTracing` is off above, so
+            //     nothing ever creates one here. It is the launch tracer the
+            //     launch-profile path builds for itself, and it ends inside
+            //     `SentrySDK.start`, because `enableTimeToFullDisplayTracing` is
+            //     off. The profile window is therefore process start through SDK
+            //     start.
+            //   - `sessionSampleRate` defaults to 0 — silently sampling nothing
+            //     rather than erroring — so 1.0 is what makes it collect at all.
+            //
+            // The decision is drawn one launch ahead: at the end of
+            // `SentrySDK.start` the SDK samples a synthetic `app.launch`
+            // transaction and persists the outcome for the *next* launch, which
+            // consumes it and deletes the file. That draw goes through
+            // `tracesSampler` with `forNextAppLaunch` set, which is the hook
+            // below used to exempt it from the 5% every other transaction pays.
+            // Left at 5% the arrival rate is one profile per ~20 launches, and
+            // the TestFlight population is a handful of testers — small enough
+            // that "ship it, launch it a few times, go look" plausibly returns
+            // nothing at all, which is how this merges looking correct and
+            // leaves #949 exactly as blocked as before.
             //
             // TestFlight only, never `production`: the 10-20MB-of-stack-samples
-            // memory cost this comment used to warn about is real at App
-            // Store scale, and #949 asks for one TestFlight measurement, not
-            // fleet-wide profiling.
+            // memory cost the old comment warned about is real at App Store
+            // scale, and #949 asks for one TestFlight measurement, not
+            // fleet-wide profiling. The sampler is installed in the same branch
+            // for the same reason — off TestFlight, every sampling decision
+            // stays on the plain `tracesSampleRate` path, untouched.
             if Self.shouldProfileAppLaunch(for: BuildEnvironment.current) {
                 options.configureProfiling = { profiling in
                     profiling.profileAppStarts = true
                     profiling.lifecycle = .trace
                     profiling.sessionSampleRate = 1.0
+                }
+                options.tracesSampler = { context in
+                    NSNumber(value: WXYCApp.tracesSampleRate(
+                        forNextAppLaunch: context.transactionContext.forNextAppLaunch
+                    ))
                 }
             }
 
@@ -423,6 +435,33 @@ struct WXYCApp: App {
     /// #949 is trying to measure.
     static func shouldProfileAppLaunch(for environment: BuildEnvironment) -> Bool {
         environment == .testflight
+    }
+
+    /// The share of transactions traced in the ordinary case.
+    ///
+    /// Named rather than written twice because `tracesSampler` shadows
+    /// `tracesSampleRate` completely once installed: a later edit to one and
+    /// not the other would change TestFlight's tracing volume silently.
+    static let baseTracesSampleRate = 0.05
+
+    /// The trace sample rate for one sampling decision, while app-launch
+    /// profiling is armed.
+    ///
+    /// `forNextAppLaunch` is set by exactly one caller inside the SDK: the
+    /// synthetic `app.launch` transaction Sentry samples at the end of
+    /// `SentrySDK.start` to decide whether the *next* launch is profiled.
+    /// That decision gets 1.0 — it is the measurement WXYC/wxyc-ios-64#949
+    /// asks for, and at ``baseTracesSampleRate`` it would arrive about once
+    /// per twenty launches, which a TestFlight population of a handful of
+    /// testers cannot be relied on to reach.
+    ///
+    /// Every other transaction keeps ``baseTracesSampleRate``. Raising
+    /// `tracesSampleRate` itself for TestFlight would have armed the profile
+    /// just as well, and was rejected: it also multiplies every unrelated
+    /// TestFlight transaction by twenty, and #949's own triage reads those
+    /// same series.
+    static func tracesSampleRate(forNextAppLaunch: Bool) -> Double {
+        forNextAppLaunch ? 1.0 : baseTracesSampleRate
     }
 
     private func setUpErrorReporting() {
