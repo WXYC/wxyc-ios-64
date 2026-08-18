@@ -38,14 +38,25 @@ enum PlaylistServiceEnvironmentDefault {
     /// the app is the WXYCTests host ("the test runner hung before
     /// establishing connection").
     ///
+    /// Cheap now, for a second reason on top of that one
+    /// (WXYC/wxyc-ios-64#964): `PlaylistService.init` no longer starts a
+    /// cache-load `Task`, so building this shadow instance costs an
+    /// allocation and nothing else — no `UserDefaults.wxyc` read for the API
+    /// version, no disk cache read, no fetcher work. Cache loading, fetching,
+    /// and polling all begin on first *use* (`waitForCacheLoad()` or
+    /// `updates()`), and nothing on this path ever calls either, so the
+    /// shadow this default builds on every correctly-injecting launch now
+    /// sits inert.
+    ///
     /// Still a single `static let`, deliberately, rather than a computed
     /// `defaultValue`: SwiftUI reads `EnvironmentKey.defaultValue` afresh on
     /// every lookup that misses, so a computed default would allocate a new
-    /// `PlaylistService` per read — each one kicking off its own cached-
-    /// playlist load and, once a view subscribes to `updates()`, its own
-    /// 30-second poll loop writing the app group's shared playlist cache key
-    /// (the same key the widget reads). One shadow is a bug; one shadow per
-    /// body evaluation is a resource leak.
+    /// `PlaylistService` per read — and per read that a caller actually
+    /// subscribes to (`updates()`), its own cache load, fetch, and 30-second
+    /// poll loop writing the app group's shared playlist cache key (the same
+    /// key the widget reads). One inert shadow is a wasted allocation; one
+    /// active shadow per body evaluation is a resource leak and a data
+    /// hazard.
     static let shared = PlaylistService()
 }
 

@@ -121,14 +121,18 @@ public final actor PlaylistService: Sendable {
     /// Collection of continuations for broadcasting to multiple observers
     private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
     
-    /// Task that loads the initial cached playlist. Awaited before first yield to prevent
-    /// race conditions where observers subscribe before cache is loaded.
-    /// 
-    /// Note: This is marked `nonisolated(unsafe)` because it's assigned once during `init`
-    /// (which is nonisolated in actors) and only read afterwards. This is safe because:
-    /// 1. The write happens before any async work can read it
-    /// 2. Task is a reference type and the reference itself doesn't change after init
-    private nonisolated(unsafe) var cacheLoadTask: Task<Void, Never>?
+    /// Task that loads the initial cached playlist. Started lazily, on first
+    /// use, by ``ensureCacheLoadStarted()`` — not in `init` — so constructing
+    /// a `PlaylistService` is free (WXYC/wxyc-ios-64#964). Awaited before
+    /// first yield to prevent race conditions where observers subscribe
+    /// before the cache is loaded.
+    ///
+    /// Actor-isolated, unlike the field this replaced: starting the load
+    /// lazily means two concurrent first-callers (``waitForCacheLoad()`` and
+    /// ``addContinuation(_:for:)``) must share one task rather than each
+    /// starting their own, and actor isolation is what makes the
+    /// check-then-set in ``ensureCacheLoadStarted()`` race-free.
+    private var cacheLoadTask: Task<Void, Never>?
     
     /// Whether the initial cache load has completed. Used to avoid awaiting the task
     /// on subsequent subscriptions.
@@ -184,11 +188,9 @@ public final actor PlaylistService: Sendable {
             liveUpdatesActive ? Self.liveUpdatesReconciliationInterval : Self.pollOnlyInterval
         )
 
-        // Start loading cached playlist immediately.
-        // Observers will await this task before receiving their first value.
-        cacheLoadTask = Task { [self] in
-            await self.loadCachedPlaylist()
-        }
+        // Deliberately no cache-load Task here: construction must be free
+        // (WXYC/wxyc-ios-64#964). The load starts lazily, on first use — see
+        // `ensureCacheLoadStarted()`.
     }
 
     /// Creates a `PlaylistService`.
@@ -229,8 +231,28 @@ public final actor PlaylistService: Sendable {
         )
     }
 
+    /// Starts the cache-load task on first use, and returns it.
+    ///
+    /// Idempotent and race-free by construction: this method only runs on
+    /// the actor, so two reentrant callers (``waitForCacheLoad()`` and
+    /// ``addContinuation(_:for:)``) landing on the same turn never start two
+    /// loads — the second sees ``cacheLoadTask`` already set and returns the
+    /// same `Task`. Called instead of reading ``cacheLoadTask`` directly at
+    /// every site that used to await an `init`-started task.
+    private func ensureCacheLoadStarted() -> Task<Void, Never> {
+        if let cacheLoadTask {
+            return cacheLoadTask
+        }
+
+        let task = Task { [self] in
+            await self.loadCachedPlaylist()
+        }
+        cacheLoadTask = task
+        return task
+    }
+
     /// Load cached playlist if available and not expired.
-    /// Called once at initialization.
+    /// Started lazily by ``ensureCacheLoadStarted()`` on first use.
     private func loadCachedPlaylist() async {
         defer { cacheLoaded = true }
         
@@ -257,13 +279,15 @@ public final actor PlaylistService: Sendable {
         }
     }
     
-    /// Waits for the initial cache load to complete.
+    /// Waits for the initial cache load to complete, starting it first if
+    /// this is the first caller to need it.
     ///
-    /// The service automatically loads cached data at initialization.
-    /// This method allows callers to await that operation's completion.
+    /// The cache load starts on first use, not at initialization (see
+    /// ``ensureCacheLoadStarted()``). This method allows callers to await
+    /// that operation's completion.
     public func waitForCacheLoad() async {
         if !cacheLoaded {
-            await cacheLoadTask?.value
+            await ensureCacheLoadStarted().value
         }
     }
     
@@ -553,11 +577,12 @@ public final actor PlaylistService: Sendable {
     private func addContinuation(_ continuation: AsyncStream<Playlist>.Continuation, for id: UUID) async {
         continuations[id] = continuation
         
-        // Wait for initial cache load to complete before deciding whether to yield.
-        // This prevents a race condition where observers subscribe before the cache
-        // is loaded, causing them to see an empty playlist until the network fetch completes.
+        // Wait for the initial cache load to complete before deciding whether to yield,
+        // starting it first if this is the first subscriber ever. This prevents a race
+        // condition where observers subscribe before the cache is loaded, causing them
+        // to see an empty playlist until the network fetch completes.
         if !cacheLoaded {
-            await cacheLoadTask?.value
+            await ensureCacheLoadStarted().value
         }
         
         // Yield current cache immediately if non-empty
