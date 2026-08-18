@@ -162,6 +162,22 @@ struct PlaylistServiceLazyCacheLoadTests {
             return values
         }
 
+        // Pin the ordering before touching anything that could start the load itself.
+        //
+        // `currentPlaylistSnapshot()` calls `waitForCacheLoad()`, so the poll below is a
+        // second starter racing the subscription. Winning that race is not a failure — it
+        // is a silent loss of coverage: the harness starts and finishes the load, the
+        // broadcast reaches zero continuations, and `addContinuation(_:for:)` then takes
+        // the `.established` branch and yields explicitly. Exactly one value arrives and
+        // the test passes without ever entering the `.loading` branch it exists to guard.
+        //
+        // `wiringSnapshot()` only observes; it never starts a load. So once it reports
+        // the load as started, the subscription is what started it — which means
+        // `addContinuation` has already run and already taken the non-`.established`
+        // branch, since the baseline is read on the same actor turn that registers the
+        // continuation.
+        #expect(await waitUntil { await service.wiringSnapshot().cacheLoadStarted })
+
         // Wait for the first delivery, then settle briefly. A duplicate is yielded on the
         // same actor turn as the value it duplicates, so this window only has to outlast
         // one hop — the `waitUntil` above it is what absorbs scheduling contention.
