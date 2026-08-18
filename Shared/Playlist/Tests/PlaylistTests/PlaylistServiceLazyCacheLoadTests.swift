@@ -108,7 +108,7 @@ struct PlaylistServiceLazyCacheLoadTests {
     }
 
     @Test(
-        "An observer subscribing immediately after construction receives the cached playlist, not .empty",
+        "An observer subscribing immediately after construction receives the cached playlist without waiting for a fetch",
         .timeLimit(.minutes(1))
     )
     func observerImmediatelyAfterConstructionSeesCachedPlaylist() async throws {
@@ -124,15 +124,23 @@ struct PlaylistServiceLazyCacheLoadTests {
             lifespan: 15 * 60
         )
 
-        // A fetcher whose result is distinguishable from the cached playlist,
-        // so the assertion below can tell "got the cache" from "got a fetch".
-        let mockFetcher = MockPlaylistFetcher()
-        mockFetcher.playlistToReturn = .stub(playcuts: [
+        // A fetcher parked at a gate this test never releases, standing in for
+        // a network fetch still in flight.
+        //
+        // The park is what keeps this test from going vacuous. Asserting only
+        // that the first value is the cached one passes even with the barrier
+        // below removed, because `ingest(_:)` awaits the cache load itself and
+        // broadcasts the cached playlist ahead of the fetched one — the right
+        // answer arriving for the wrong reason. Parking the fetch removes that
+        // second source entirely: the only thing that can deliver a value here
+        // is `addContinuation(_:for:)`'s own barrier, so a regression surfaces
+        // as no value at all rather than as the wrong one.
+        let fetcher = GatedPlaylistFetcher(playlist: .stub(playcuts: [
             .stub(songTitle: "Back, Baby", labelName: "Drag City", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again")
-        ])
+        ]))
 
         let service = PlaylistService(
-            fetcher: mockFetcher,
+            fetcher: fetcher,
             interval: 30,
             cacheCoordinator: cacheCoordinator,
             apiVersion: .v1
@@ -140,12 +148,30 @@ struct PlaylistServiceLazyCacheLoadTests {
 
         // When - subscribe immediately, with no explicit wait for the cache
         // load in between.
-        var iterator = service.updates().makeAsyncIterator()
-        let firstPlaylist = await iterator.next()
+        let subscription = Task { () -> Playlist? in
+            var iterator = service.updates().makeAsyncIterator()
+            return await iterator.next()
+        }
 
-        // Then - the first value observed is the cached playlist, never the
-        // `.empty` pre-load sentinel and never the freshly-fetched one.
-        let unwrapped = try #require(firstPlaylist)
+        // Bound the wait so a regression fails in half a second instead of
+        // hanging until the suite's time limit. This bounds the *failure*
+        // path only: on the success path the barrier yields within a couple of
+        // actor hops, long before this fires. Cancelling the subscription ends
+        // its `AsyncStream` iteration, so `next()` resolves to `nil`.
+        let deadline = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            subscription.cancel()
+        }
+        let firstPlaylist = await subscription.value
+        deadline.cancel()
+        fetcher.release()
+
+        // Then - the first value observed is the cached playlist, delivered
+        // ahead of any fetch and never the `.empty` pre-load sentinel.
+        let unwrapped = try #require(
+            firstPlaylist,
+            "Subscriber received no playlist while the fetch was parked: addContinuation(_:for:) did not await the cache load before deciding whether to yield."
+        )
         #expect(unwrapped != .empty)
         #expect(unwrapped.playcuts.first?.songTitle == "la paradoja")
     }
