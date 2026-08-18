@@ -63,6 +63,13 @@ if [[ -d "${SRCROOT:-}" ]]; then
 fi
 readonly REPO_ROOT="$PWD"
 
+# One spelling, because two of the things below name this path: the test that
+# reads it and the diagnostic that tells a developer to delete it. A hint
+# naming a path other than the one being tested is the dead end it exists to
+# prevent. ci_post_clone.sh writes the file and cannot source this script, so
+# that copy stays a literal.
+readonly CI_MARKER="${REPO_ROOT}/.ci-tools/ci-runner"
+
 # Am I on a build runner? The marker file first — see install-sentry-cli.sh on
 # why a file in the checkout beats an environment variable for anything a
 # nested build phase has to read. Everything strict below hangs off this
@@ -73,7 +80,7 @@ readonly REPO_ROOT="$PWD"
 # and some tools set CI=false to mean "not CI" — which a bare emptiness test
 # would read backwards.
 marker_says_ci() {
-    [[ -f "${REPO_ROOT}/.ci-tools/ci-runner" ]]
+    [[ -f "$CI_MARKER" ]]
 }
 
 env_says_ci() {
@@ -98,7 +105,7 @@ is_ci() {
 # the marker is correct and should stay.
 stale_marker_hint() {
     marker_says_ci && ! env_says_ci \
-        && print -rn -- " (If this is not a build runner, ${REPO_ROOT}/.ci-tools/ci-runner is stale — delete it.)"
+        && print -rn -- " (If this is not a build runner, ${CI_MARKER} is stale — delete it.)"
     return 0
 }
 
@@ -188,15 +195,17 @@ is_shipping_build() {
 # guess would fail ordinary work — a plain Release build, or the developer-
 # local `Release (Active Arch)` variant — for want of a tool the constraint on
 # #955 said must stay optional. So locally it is the archive, and the only
-# other way a dev Mac lands here is a stale .ci-tools/ci-runner: ci_post_clone
-# writes that marker before it does anything else, and nothing removes it, so
-# a developer who ran that script once to install macros.json answers is_ci
-# forever. Delete the marker if a local Release build starts failing — which
-# the diagnostic itself now says, since a comment here reaches nobody reading
-# the issue navigator. See stale_marker_hint().
+# other way a dev Mac lands here is a stale marker — see stale_marker_hint(),
+# which is what tells the developer, a comment here reaching nobody who is
+# reading the issue navigator.
+#
+# The two clauses are in the order the paragraphs above argue them, and the
+# archive is not tested twice: is_shipping_build() answers yes to every archive
+# on its own first line, so guarding it up front would be a no-op for exactly
+# the case that needs no guard. This is also the visible complement of the skip
+# gate in section 1, which is `is_ci && ! is_shipping_build`.
 is_strict() {
-    is_shipping_build || return 1
-    is_archive || is_ci
+    is_archive || { is_ci && is_shipping_build }
 }
 
 # Prefixes to check by hand, because PATH does not reach them.
@@ -213,6 +222,12 @@ is_strict() {
 # Overridable, which is also how the tests keep their hermeticity: /usr/local/bin
 # is named here, so a maintainer's real sentry-cli would otherwise satisfy the
 # cases written to run without one.
+#
+# `=` and not `:=`, and that is load-bearing rather than a style choice. The
+# suite passes this through as an explicit empty string, which `:=` would treat
+# as unset and helpfully replace with the default — handing every no-sentry-cli
+# case a working binary, so they would pass for the wrong reason instead of
+# failing.
 : ${SENTRY_CLI_SEARCH_DIRS=/opt/homebrew/bin:/usr/local/bin}
 
 # Where the binary might be, most specific first: the copy
@@ -278,10 +293,10 @@ fi
 # 2. Did this build produce anything to upload?
 #
 # On an everyday build this is unremarkable — nothing to upload, nothing to
-# say. On a build strict enough to stop for it — every archive, wherever it
-# runs, plus a shipping build on CI — it is a failure: all five configurations set
-# DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an archive with an empty
-# folder means a build setting moved, dsymutil failed, or the path changed.
+# say. On a strict build — see is_strict() — it is a failure: all five
+# configurations set DEBUG_INFORMATION_FORMAT = dwarf-with-dsym, so an archive
+# with an empty folder means a build setting moved, dsymutil failed, or the
+# path changed.
 # Passing that through as a note would be the #955 silence with a new cause.
 # ---------------------------------------------------------------------------
 
