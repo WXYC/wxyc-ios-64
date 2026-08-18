@@ -149,4 +149,62 @@ struct PlaylistServiceLazyCacheLoadTests {
         #expect(unwrapped != .empty)
         #expect(unwrapped.playcuts.first?.songTitle == "la paradoja")
     }
+
+    @Test(
+        "A failing fetch on an unsubscribed service does not clobber the cached playlist",
+        .timeLimit(.minutes(1))
+    )
+    func failedFetchWithoutSubscriptionPreservesCachedPlaylist() async throws {
+        // Given - a disk cache holding a good playlist from a previous
+        // session, exactly as the widget would read it.
+        let cacheCoordinator = CacheCoordinator(cache: InMemoryCache())
+        let cachedPlaylist = Playlist.stub(playcuts: [
+            .stub(songTitle: "la paradoja", labelName: "Sonamos", artistName: "Juana Molina", releaseTitle: "DOGA")
+        ])
+        await cacheCoordinator.set(
+            value: cachedPlaylist,
+            for: PlaylistCacheKey.playlist(for: .v1),
+            lifespan: 15 * 60
+        )
+
+        // And - a fetcher that fails, parked inside `fetchPlaylist()`.
+        // `PlaylistFetcherProtocol` swallows every error into `.empty`, so an
+        // empty return is what a network timeout looks like from the service's
+        // side. The park is what makes this test *discriminating*: a real
+        // network fetch takes far longer than a disk read, so any
+        // eagerly-started cache load would have long since finished by the time
+        // the fetch resolves. An instant mock fetcher would instead beat the
+        // disk read and fail this test on any implementation, proving nothing.
+        let fetcher = GatedPlaylistFetcher(playlist: .empty)
+
+        let service = PlaylistService(
+            fetcher: fetcher,
+            interval: 30,
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
+        )
+
+        // When - a background-launched refresh fetches with nothing having
+        // subscribed and nothing having awaited the cache-load barrier. This
+        // is `BackgroundRefreshController.handleRefresh` in a process with no
+        // views: `.backgroundTask(.appRefresh(_:))` fires, so no `updates()`
+        // subscription and no `waitForCacheLoad()` ever precedes the fetch.
+        let refresh = Task { await service.fetchAndCachePlaylist() }
+
+        // Hold the fetch at the gate long enough that a cache load running
+        // concurrently would certainly have completed, then let it return.
+        await fetcher.waitForEntry()
+        try await Task.sleep(for: .milliseconds(100))
+        fetcher.release()
+        _ = await refresh.value
+
+        // Then - the good playlist is still on disk. `ingest(_:)`'s
+        // broadcast-empty guard must have rejected the empty fetch, which
+        // requires it to have compared against the *cached* playlist rather
+        // than an unloaded `.empty` in-memory state.
+        let surviving: Playlist = try await cacheCoordinator.value(
+            for: PlaylistCacheKey.playlist(for: .v1)
+        )
+        #expect(surviving.playcuts.first?.songTitle == "la paradoja")
+    }
 }

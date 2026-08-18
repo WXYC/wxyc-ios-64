@@ -867,6 +867,22 @@ public final actor PlaylistService: Sendable {
     /// - Returns: `true` when the playlist was cached, `false` when ignored as an empty
     ///   replacement for valid data. Callers may log additional context either way.
     private func ingest(_ playlist: Playlist) async -> Bool {
+        // The guard below reads `currentPlaylist`, so the cache load has to have
+        // happened first — an unloaded `currentPlaylist` is `.empty`, which makes the
+        // guard wave an empty fetch through and overwrite the app group's cached
+        // playlist (the key the widget reads) with nothing.
+        //
+        // Most callers already cleared this barrier: `startFetching()` runs only from
+        // `ensureFetchTaskRunning()` behind `addContinuation(_:for:)`, and
+        // `applyLiveEvent(.refetch)` runs inside `consumeLiveEvents`, which awaits it
+        // at the top. The uncovered path is a bare `fetchAndCachePlaylist()` in a
+        // process where nothing ever subscribed — `BackgroundRefreshController`'s
+        // `.backgroundTask(.appRefresh(_:))` on a background launch, which builds no
+        // views. Awaiting here rather than in that one caller keeps the precondition
+        // attached to the code that depends on it; for everyone else `cacheLoaded` is
+        // already `true` and this is a no-op.
+        await waitForCacheLoad()
+
         // Gate on content emptiness, not `== .empty`: a successful fetch now always
         // carries an `onAir` value, so a content-empty payload no longer equals the
         // `.empty` sentinel and would otherwise slip past this guard and clear the
