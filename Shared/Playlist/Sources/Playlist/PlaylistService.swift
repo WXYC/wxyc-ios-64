@@ -121,22 +121,41 @@ public final actor PlaylistService: Sendable {
     /// Collection of continuations for broadcasting to multiple observers
     private var continuations: [UUID: AsyncStream<Playlist>.Continuation] = [:]
     
-    /// Task that loads the initial cached playlist. Started lazily, on first
-    /// use, by ``ensureCacheLoadStarted()`` — not in `init` — so constructing
-    /// a `PlaylistService` is free (WXYC/wxyc-ios-64#964). Awaited before
-    /// first yield to prevent race conditions where observers subscribe
-    /// before the cache is loaded.
+    /// Whether ``currentPlaylist`` is yet a trustworthy answer to "do we have real data?".
     ///
-    /// Actor-isolated, unlike the field this replaced: starting the load
-    /// lazily means two concurrent first-callers (``waitForCacheLoad()`` and
-    /// ``addContinuation(_:for:)``) must share one task rather than each
-    /// starting their own, and actor isolation is what makes the
-    /// check-then-set in ``ensureCacheLoadStarted()`` race-free.
-    private var cacheLoadTask: Task<Void, Never>?
-    
-    /// Whether the initial cache load has completed. Used to avoid awaiting the task
-    /// on subsequent subscriptions.
-    private var cacheLoaded = false
+    /// The empty-fetch guard in ``ingest(_:)`` and the first-yield decision in
+    /// ``addContinuation(_:for:)`` both read `currentPlaylist` to make that judgement, and
+    /// an unloaded `currentPlaylist` is indistinguishable from a genuinely empty one. This
+    /// is the bit that tells them apart.
+    private enum CacheBaseline {
+        /// No cache load has started. `init` leaves the service here — the load begins on
+        /// first use instead (WXYC/wxyc-ios-64#964), so constructing a `PlaylistService`
+        /// starts no work.
+        case unloaded
+
+        /// A load is in flight. Held so concurrent first-callers share one load rather
+        /// than each starting their own.
+        case loading(Task<Void, Never>)
+
+        /// `currentPlaylist` is authoritative. Reached by a finished load, or asserted
+        /// directly by ``switchAPIVersion(to:)``, whose deliberate clear *is* the new
+        /// baseline.
+        case established
+    }
+
+    /// The cache-load state machine. One field rather than a `Task?` plus a `Bool`,
+    /// because the pair could encode "settled without ever loading" only by convention,
+    /// and the fast path that reads it is a correctness gate rather than an optimization:
+    /// after ``switchAPIVersion(to:)`` asserts ``CacheBaseline/established``, anything that
+    /// started a load anyway would read the freshly-reassigned ``cacheKey`` and undo the
+    /// switch's clear. Making that a `case` puts it beyond the reach of a future reader
+    /// deleting a redundant-looking `if`.
+    ///
+    /// Actor-isolated, unlike the `nonisolated(unsafe)` task field it replaces: that
+    /// annotation existed only because `init` is nonisolated in an actor and had to write
+    /// the field from there. With the write moved onto the actor, the check-then-set in
+    /// ``waitForCacheLoad()`` is race-free by construction.
+    private var cacheBaseline: CacheBaseline = .unloaded
 
     /// Designated initializer. Takes the live-updates source directly so tests
     /// can inject a scripted `MockLiveFsEventSource`; app code uses the
@@ -188,9 +207,16 @@ public final actor PlaylistService: Sendable {
             liveUpdatesActive ? Self.liveUpdatesReconciliationInterval : Self.pollOnlyInterval
         )
 
-        // Deliberately no cache-load Task here: construction must be free
-        // (WXYC/wxyc-ios-64#964). The load starts lazily, on first use — see
-        // `ensureCacheLoadStarted()`.
+        // Deliberately no cache-load Task here: an actor's `init` should start no work
+        // (WXYC/wxyc-ios-64#964). The load begins on first use instead — see
+        // `waitForCacheLoad()`.
+        //
+        // That makes construction start nothing, not that it costs nothing: resolving the
+        // API version above reads `UserDefaults.wxyc` and a PostHog flag, and building the
+        // derived fetcher constructs a data source. Those are still eager. What this buys
+        // is that a `PlaylistService` nobody uses — the `PlaylistServiceEnvironment`
+        // fallback SwiftUI builds on every correctly-injecting launch — now sits inert
+        // rather than reading the disk cache and decoding a `Playlist`.
     }
 
     /// Creates a `PlaylistService`.
@@ -231,31 +257,22 @@ public final actor PlaylistService: Sendable {
         )
     }
 
-    /// Starts the cache-load task on first use, and returns it.
+    /// Starts the cache load if it has not started, without waiting for it.
     ///
-    /// Idempotent and race-free by construction: this method only runs on
-    /// the actor, so two reentrant callers (``waitForCacheLoad()`` and
-    /// ``addContinuation(_:for:)``) landing on the same turn never start two
-    /// loads — the second sees ``cacheLoadTask`` already set and returns the
-    /// same `Task`. Called instead of reading ``cacheLoadTask`` directly at
-    /// every site that used to await an `init`-started task.
-    private func ensureCacheLoadStarted() -> Task<Void, Never> {
-        if let cacheLoadTask {
-            return cacheLoadTask
-        }
-
-        let task = Task { [self] in
-            await self.loadCachedPlaylist()
-        }
-        cacheLoadTask = task
-        return task
+    /// For callers that are about to do something slow and unrelated — a network fetch —
+    /// and want the disk read overlapping it rather than queued behind it. The awaiting
+    /// form is ``waitForCacheLoad()``; both go through the same memoized task, so a kick
+    /// followed by a wait loads exactly once.
+    private func startCacheLoadIfNeeded() {
+        guard case .unloaded = cacheBaseline else { return }
+        cacheBaseline = .loading(Task { await self.loadCachedPlaylist() })
     }
 
     /// Load cached playlist if available and not expired.
-    /// Started lazily by ``ensureCacheLoadStarted()`` on first use.
+    /// Started lazily on first use — see ``waitForCacheLoad()``.
     private func loadCachedPlaylist() async {
-        defer { cacheLoaded = true }
-        
+        defer { cacheBaseline = .established }
+
         do {
             let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: cacheKey)
             currentPlaylist = cachedPlaylist
@@ -279,15 +296,23 @@ public final actor PlaylistService: Sendable {
         }
     }
     
-    /// Waits for the initial cache load to complete, starting it first if
-    /// this is the first caller to need it.
+    /// Waits for the initial cache load to complete, starting it first if this is the
+    /// first caller to need it.
     ///
-    /// The cache load starts on first use, not at initialization (see
-    /// ``ensureCacheLoadStarted()``). This method allows callers to await
-    /// that operation's completion.
+    /// The single memoized entry point to the load: it starts on first use rather than at
+    /// initialization, and concurrent first-callers share one load. Race-free by
+    /// construction — the read and the write below happen on the actor with no suspension
+    /// between them, so two callers landing on the same turn cannot both start one.
     public func waitForCacheLoad() async {
-        if !cacheLoaded {
-            await ensureCacheLoadStarted().value
+        switch cacheBaseline {
+        case .established:
+            return
+        case .loading(let task):
+            await task.value
+        case .unloaded:
+            let task = Task { await self.loadCachedPlaylist() }
+            cacheBaseline = .loading(task)
+            await task.value
         }
     }
     
@@ -336,6 +361,14 @@ public final actor PlaylistService: Sendable {
     /// Important: This method does NOT replace valid data with empty playlists.
     /// If the fetch fails (returning `.empty`), existing cached data is preserved.
     public func fetchAndCachePlaylist() async -> Playlist {
+        // Kick the cache load without waiting, so the disk read overlaps the network fetch
+        // below rather than queueing behind it at `ingest(_:)`'s barrier. This is the
+        // background-refresh path, whose BGAppRefresh budget is shared with a Spotlight
+        // batch — `init` used to buy this overlap for free by starting the load eagerly.
+        // A no-op once the baseline is settled, which is what keeps `switchAPIVersion`'s
+        // deliberate `.established` from being undone by a reload of the new version's key.
+        startCacheLoadIfNeeded()
+
         let playlist = await fetcher.fetchPlaylist()
 
         if await ingest(playlist) {
@@ -445,21 +478,20 @@ public final actor PlaylistService: Sendable {
         currentPlaylist = .empty
         broadcast(.empty)
 
-        // This clear *is* the baseline from here on, so record the initial cache load as
-        // settled even if it never ran. Without this, a switch on a service nothing had
-        // subscribed to would leave `cacheLoaded == false`, and the barrier that
-        // `fetchAndCachePlaylist()` now goes through would run the first load *below* —
-        // against the already-reassigned new-version `cacheKey` — repopulating
+        // This clear *is* the baseline from here on. Without saying so, a switch on a
+        // service nothing had subscribed to would leave the baseline `.unloaded`, and the
+        // barrier `fetchAndCachePlaylist()` now goes through would run the first load
+        // *below* — against the already-reassigned new-version `cacheKey` — repopulating
         // `currentPlaylist` and broadcasting, silently undoing the clear one line above
         // and flipping the empty-fetch guard from accept to reject.
         //
         // This restores what was true before the load was deferred rather than changing
-        // behavior: `init` used to start the load, so `cacheLoaded` was already `true` at
+        // behavior: `init` used to start the load, so the baseline was already settled at
         // every reachable switch. It still is on every shipping path today — iOS starts
         // `WidgetStateService` at launch, and the debug panel's version switcher is only
         // reachable from an already-subscribed `PlaylistView` — which is exactly why this
         // is worth pinning down rather than leaving to hold by convention.
-        cacheLoaded = true
+        cacheBaseline = .established
 
         // Fetch fresh data with new API version (this will overwrite the cache)
         _ = await fetchAndCachePlaylist()
@@ -509,6 +541,17 @@ public final actor PlaylistService: Sendable {
         /// test wait for the switch to have latched before driving reentrant
         /// calls at it, instead of racing an unstructured `Task`'s start.
         let isSwitchingAPIVersion: Bool
+
+        /// Whether the cached-playlist load has been started (or settled). `false` means
+        /// the service has done no cache work at all — the state `init` must leave it in
+        /// (WXYC/wxyc-ios-64#964).
+        ///
+        /// Reported for the same reason as ``hasLiveUpdatesTask``: the baseline is
+        /// assigned synchronously, before the load's task body runs, so a test asserting
+        /// that construction started nothing needs no timing tolerance. Sleeping for "long
+        /// enough that an eager load would have finished" instead would pass on a loaded
+        /// machine whether or not the regression was present.
+        let cacheLoadStarted: Bool
     }
 
     /// Returns the service's currently-resolved wiring — the API version,
@@ -521,7 +564,11 @@ public final actor PlaylistService: Sendable {
             pollInterval: interval,
             liveUpdatesActive: activeLiveEventSource != nil,
             hasLiveUpdatesTask: liveUpdatesTask != nil,
-            isSwitchingAPIVersion: isSwitchingAPIVersion
+            isSwitchingAPIVersion: isSwitchingAPIVersion,
+            cacheLoadStarted: {
+                if case .unloaded = cacheBaseline { return false }
+                return true
+            }()
         )
     }
 
@@ -592,35 +639,41 @@ public final actor PlaylistService: Sendable {
         
     private func addContinuation(_ continuation: AsyncStream<Playlist>.Continuation, for id: UUID) async {
         continuations[id] = continuation
-        
-        // Wait for the initial cache load to complete before deciding whether to yield,
-        // starting it first if this is the first subscriber ever. This prevents a race
-        // condition where observers subscribe before the cache is loaded, causing them
-        // to see an empty playlist until the network fetch completes.
-        //
-        // Awaiting the load is also the delivery, which is why there is no yield on this
-        // branch: `loadCachedPlaylist()` broadcasts to every registered continuation, and
-        // this one is registered above, so a yield here would hand the first subscriber
-        // the same playlist twice. The two are ordered, not racing — `loadCachedPlaylist`
-        // broadcasts and sets `cacheLoaded` with no suspension between them, so observing
-        // `cacheLoaded == false` here proves the broadcast has not happened yet and that
-        // this continuation will be registered in time to receive it.
-        //
-        // Deferring the load (WXYC/wxyc-ios-64#964) is what made the duplicate matter:
-        // the first subscriber now always arrives before the load rather than after it,
-        // so what used to be a rare race is every launch. `WidgetStateService` would spend
-        // a reload against the widget refresh budget on it, and `NowPlayingService` would
-        // re-fetch artwork and re-emit a now-playing item.
-        if !cacheLoaded {
-            await ensureCacheLoadStarted().value
-        } else if currentPlaylist != .empty {
-            // The load already ran and broadcast before this subscriber existed, so its
-            // baseline has to be handed over explicitly.
-            continuation.yield(currentPlaylist)
-        }
 
-        // Start fetching if not already running
+        // Start the poll loop before waiting on anything, so the first network fetch of
+        // the session overlaps the disk read instead of queueing behind it. Safe because
+        // `ingest(_:)` awaits the same barrier: a fetch that lands first still can't
+        // broadcast ahead of the cached baseline.
         ensureFetchTaskRunning()
+
+        // Wait for the initial cache load before deciding whether to yield, starting it
+        // if this is the first subscriber ever. This prevents a race where observers
+        // subscribe before the cache is loaded and see an empty playlist until the
+        // network fetch completes.
+        if case .established = cacheBaseline {
+            // The load already ran, and broadcast, before this subscriber existed, so its
+            // baseline has to be handed over explicitly.
+            if !currentPlaylist.isContentEmpty {
+                continuation.yield(currentPlaylist)
+            }
+        } else {
+            // No yield on this branch: awaiting the load *is* the delivery.
+            // `loadCachedPlaylist()` broadcasts to every registered continuation and this
+            // one is registered above, so yielding here as well would hand the first
+            // subscriber the same playlist twice. The two are ordered, not racing —
+            // `loadCachedPlaylist` broadcasts and settles the baseline with no suspension
+            // between them, so observing a non-`.established` baseline here proves the
+            // broadcast has not happened yet and that this continuation will be registered
+            // in time to receive it.
+            //
+            // Deferring the load (WXYC/wxyc-ios-64#964) is what made the duplicate matter:
+            // the first subscriber now always arrives before the load rather than after
+            // it, so what used to be a rare race would be every launch.
+            // `WidgetStateService` would spend a reload against the widget refresh budget
+            // on it, and `NowPlayingService` would re-fetch artwork and re-emit a
+            // now-playing item.
+            await waitForCacheLoad()
+        }
     }
     
     /// Playcuts whose `metadataStatus` transitions into a terminal enrichment
@@ -908,8 +961,8 @@ public final actor PlaylistService: Sendable {
         // process where nothing ever subscribed — `BackgroundRefreshController`'s
         // `.backgroundTask(.appRefresh(_:))` on a background launch, which builds no
         // views. Awaiting here rather than in that one caller keeps the precondition
-        // attached to the code that depends on it; for everyone else `cacheLoaded` is
-        // already `true` and this is a no-op.
+        // attached to the code that depends on it; for everyone else the baseline is
+        // already settled and this is a no-op that never suspends.
         await waitForCacheLoad()
 
         // Gate on content emptiness, not `== .empty`: a successful fetch now always
