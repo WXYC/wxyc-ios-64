@@ -16,6 +16,7 @@
 
 import Testing
 import Foundation
+import Synchronization
 import CachingTesting
 import CoreTesting
 import PlaylistTesting
@@ -293,5 +294,122 @@ struct PlaylistServiceLazyCacheLoadTests {
             entries.isEmpty,
             "A failed fetch cached an empty playlist, which the widget will be served as a hit for 15 minutes: \(entries.map(\.key))"
         )
+    }
+
+    @Test(
+        "switchAPIVersion cancels a cache load in flight rather than letting it publish the old version's rows",
+        .timeLimit(.minutes(1))
+    )
+    func switchAPIVersionCancelsInFlightCacheLoad() async throws {
+        // Given - a v1 cache whose first read parks, so the load can be held at
+        // `CacheBaseline.loading` for the whole of the switch.
+        let cache = GatedReadCache()
+        let cacheCoordinator = await seededCoordinator(version: .v1, cache: cache)
+
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = .empty
+
+        let service = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 30,
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
+        )
+
+        // And - a load actually in flight. Asserting it is parked, rather than starting it
+        // and hoping, is what stops this test going vacuous: an unparked load against an
+        // in-memory cache settles the baseline before the switch runs, and there would be
+        // nothing left for the switch to orphan.
+        let load = Task { await service.waitForCacheLoad() }
+        #expect(await waitUntil(timeout: .seconds(5)) { cache.isParked })
+
+        // When - the version switches while that load is parked, and the read is released
+        // only afterwards. `apiVersion` is reassigned in the same synchronous actor turn
+        // that settles the baseline, so observing it pins the release to a point after the
+        // switch has asserted its clear — without assuming anything about whether the
+        // switch's own fetch reached the cache first.
+        let switchTask = Task { await service.switchAPIVersion(to: .v2) }
+        #expect(await waitUntil(timeout: .seconds(5)) { await service.wiringSnapshot().apiVersion == .v2 })
+        cache.open()
+        await switchTask.value
+        await load.value
+
+        // Then - the clear stands. `loadCachedPlaylist()` evaluates `cacheKey` before its
+        // suspension, so the orphaned load comes back holding v1's rows; publishing them
+        // would undo the switch's deliberate clear and put two incompatible `chronOrderID`
+        // scales on screen at once.
+        #expect(
+            await service.currentPlaylistSnapshot().isContentEmpty,
+            "A cache load orphaned by switchAPIVersion published the pre-switch version's rows over the clear."
+        )
+    }
+}
+
+/// A ``Cache`` decorator that parks its first metadata read until the test opens the
+/// gate, so a test can hold `PlaylistService`'s cache load at `CacheBaseline.loading`
+/// and drive a version switch at it.
+///
+/// The park is a blocking semaphore wait rather than an async suspension, unlike
+/// `GatedPlaylistFetcher`: `Cache` is a synchronous protocol, so the read runs to
+/// completion inside `CacheCoordinator`'s actor with no suspension point to hold. It
+/// occupies one cooperative thread until ``open()`` and carries its own timeout, so a
+/// test that never opens the gate fails on an assertion rather than wedging the run.
+///
+/// Only the first read parks. Seeding writes through `set(_:metadata:for:)` and the
+/// coordinator's init purge reads `allMetadata()`, so neither trips the gate.
+private final class GatedReadCache: Cache, @unchecked Sendable {
+    private struct State {
+        var isParked = false
+        var isOpen = false
+    }
+
+    private let inner = InMemoryCache()
+    private let gate = DispatchSemaphore(value: 0)
+    private let state = Mutex(State())
+
+    /// True while a read is parked at the gate.
+    var isParked: Bool { state.withLock { $0.isParked } }
+
+    /// Releases the parked read and lets every later read through.
+    func open() {
+        state.withLock { $0.isOpen = true }
+        gate.signal()
+    }
+
+    func metadata(for key: String) -> CacheMetadata? {
+        let shouldPark = state.withLock { state -> Bool in
+            guard !state.isOpen, !state.isParked else { return false }
+            state.isParked = true
+            return true
+        }
+        if shouldPark {
+            _ = gate.wait(timeout: .now() + 30)
+            state.withLock { $0.isParked = false }
+        }
+        return inner.metadata(for: key)
+    }
+
+    func data(for key: String) -> Data? {
+        inner.data(for: key)
+    }
+
+    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
+        inner.set(data, metadata: metadata, for: key)
+    }
+
+    func remove(for key: String) {
+        inner.remove(for: key)
+    }
+
+    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
+        inner.allMetadata()
+    }
+
+    func clearAll() {
+        inner.clearAll()
+    }
+
+    func totalSize() -> Int64 {
+        inner.totalSize()
     }
 }
