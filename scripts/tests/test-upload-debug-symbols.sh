@@ -175,6 +175,17 @@ ordinary_build() {
     CASE_ACTION="build"
 }
 
+# A sentry-cli installed where a build phase's PATH cannot see it — Homebrew's
+# Apple Silicon prefix, in the case this stands in for. Pairing "put the stub
+# there" with "point the search at there" in one verb is what keeps a later
+# case from setting one and forgetting the other, which would not fail: it
+# would quietly resolve some other copy and pass for the wrong reason.
+search_dir_stub() {
+    BREW_PREFIX_BIN="$CASE_SRCROOT/../opt-homebrew-bin"
+    make_stub "$BREW_PREFIX_BIN"
+    CASE_SEARCH_DIRS="$BREW_PREFIX_BIN"
+}
+
 # =========================================================================
 # Case 1: no dSYMs.
 #
@@ -652,10 +663,7 @@ echo ""
 echo "=== Case 10: sentry-cli outside the build phase's PATH ==="
 
 new_case "cli-outside-path"
-BREW_PREFIX_BIN="$CASE_SRCROOT/../opt-homebrew-bin"
-mkdir -p "$BREW_PREFIX_BIN"
-make_stub "$BREW_PREFIX_BIN"
-CASE_SEARCH_DIRS="$BREW_PREFIX_BIN"
+search_dir_stub
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_local"); RC=$?
 expect_exit "a local archive finds a sentry-cli that is on no PATH it inherits" "$RC" "0" "$OUT"
 expect_contains "and uploads with it" "$(<"$STUB_LOG")" "debug-files upload"
@@ -666,11 +674,8 @@ expect_contains "the binary it ran is the one outside PATH" "$(<"$STUB_LOG")" "$
 # happens to carry. The pinned one has to win, or the version this project
 # controls is decided by the image.
 new_case "vendored-cli-outranks-search-dirs"
-BREW_PREFIX_BIN="$CASE_SRCROOT/../opt-homebrew-bin"
-mkdir -p "$BREW_PREFIX_BIN"
-make_stub "$BREW_PREFIX_BIN"
+search_dir_stub
 make_stub
-CASE_SEARCH_DIRS="$BREW_PREFIX_BIN"
 OUT=$(run_script "$DSYM_DIR" "" "sntrys_local"); RC=$?
 expect_contains "the vendored copy is the one that runs" "$(<"$STUB_LOG")" "$CASE_SRCROOT/.ci-tools/bin/sentry-cli"
 expect_not_contains "the searched prefix is not consulted when a vendored copy exists" "$(<"$STUB_LOG")" "$BREW_PREFIX_BIN/sentry-cli"
