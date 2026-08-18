@@ -38,15 +38,22 @@ enum PlaylistServiceEnvironmentDefault {
     /// the app is the WXYCTests host ("the test runner hung before
     /// establishing connection").
     ///
-    /// Cheap now, for a second reason on top of that one
+    /// Cheaper now, for a second reason on top of that one
     /// (WXYC/wxyc-ios-64#964): `PlaylistService.init` no longer starts a
-    /// cache-load `Task`, so building this shadow instance costs an
-    /// allocation and nothing else — no `UserDefaults.wxyc` read for the API
-    /// version, no disk cache read, no fetcher work. Cache loading, fetching,
-    /// and polling all begin on first *use* (`waitForCacheLoad()` or
-    /// `updates()`), and nothing on this path ever calls either, so the
-    /// shadow this default builds on every correctly-injecting launch now
-    /// sits inert.
+    /// cache-load `Task`, so building this shadow no longer reads the disk
+    /// cache or decodes a `Playlist`. Cache loading, fetching, and polling all
+    /// begin on first *use* (`waitForCacheLoad()` or `updates()`), and nothing
+    /// on this path ever calls either, so the shadow this default builds on
+    /// every correctly-injecting launch sits inert once constructed.
+    ///
+    /// Constructing it is not free, though, and this comment previously
+    /// claimed it was. Because no `apiVersion` is passed, `init` still
+    /// resolves `PlaylistAPIVersion.loadActive()` — a `UserDefaults.wxyc` read
+    /// plus a PostHog flag lookup — and still builds a
+    /// `PlaylistFetcher(apiVersion:)`, which constructs a data source and
+    /// touches the shared error-reporting and analytics singletons through its
+    /// default arguments. Making *those* lazy too is a further step nobody has
+    /// taken; don't read this as "the shadow is already free."
     ///
     /// Still a single `static let`, deliberately, rather than a computed
     /// `defaultValue`: SwiftUI reads `EnvironmentKey.defaultValue` afresh on
