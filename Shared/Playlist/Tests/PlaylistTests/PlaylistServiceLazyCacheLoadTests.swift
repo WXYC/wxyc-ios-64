@@ -77,6 +77,16 @@ private final class CountingCache: Cache, @unchecked Sendable {
     }
 }
 
+/// Accumulates the playlists delivered to a subscription, so a test can assert
+/// on how many arrived rather than only on the first.
+private actor Collector {
+    private(set) var values: [Playlist] = []
+
+    func append(_ playlist: Playlist) {
+        values.append(playlist)
+    }
+}
+
 @Suite("PlaylistService Lazy Cache Load Tests")
 struct PlaylistServiceLazyCacheLoadTests {
 
@@ -153,13 +163,16 @@ struct PlaylistServiceLazyCacheLoadTests {
             return await iterator.next()
         }
 
-        // Bound the wait so a regression fails in half a second instead of
-        // hanging until the suite's time limit. This bounds the *failure*
-        // path only: on the success path the barrier yields within a couple of
-        // actor hops, long before this fires. Cancelling the subscription ends
+        // Bound the wait so a regression fails in seconds instead of hanging
+        // until the suite's time limit. This bounds the *failure* path only:
+        // on the success path the barrier yields within a couple of actor
+        // hops. The margin is deliberately wide — this suite is neither
+        // `.serialized` nor `@MainActor` and runs alongside the rest of the
+        // package, so a bound close to the real success path would turn
+        // scheduling contention into a flake. Cancelling the subscription ends
         // its `AsyncStream` iteration, so `next()` resolves to `nil`.
         let deadline = Task {
-            try? await Task.sleep(for: .milliseconds(500))
+            try? await Task.sleep(for: .seconds(5))
             subscription.cancel()
         }
         let firstPlaylist = await subscription.value
@@ -174,6 +187,97 @@ struct PlaylistServiceLazyCacheLoadTests {
         )
         #expect(unwrapped != .empty)
         #expect(unwrapped.playcuts.first?.songTitle == "la paradoja")
+    }
+
+    @Test(
+        "The first subscriber receives the cached playlist once, not twice",
+        .timeLimit(.minutes(1))
+    )
+    func firstSubscriberReceivesCachedPlaylistExactlyOnce() async throws {
+        // Given - a pre-seeded cache and a fetcher parked at a gate, so the
+        // only values that can reach a subscriber come from the cache load.
+        let cacheCoordinator = CacheCoordinator(cache: InMemoryCache())
+        await cacheCoordinator.set(
+            value: Playlist.stub(playcuts: [
+                .stub(songTitle: "la paradoja", labelName: "Sonamos", artistName: "Juana Molina", releaseTitle: "DOGA")
+            ]),
+            for: PlaylistCacheKey.playlist(for: .v1),
+            lifespan: 15 * 60
+        )
+
+        let fetcher = GatedPlaylistFetcher(playlist: .empty)
+        let service = PlaylistService(
+            fetcher: fetcher,
+            interval: 30,
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
+        )
+
+        // When - the very first subscriber attaches, which is the launch path:
+        // deferring the load guarantees this subscription lands before the
+        // load rather than after it.
+        let collected = Collector()
+        let subscription = Task {
+            for await playlist in service.updates() {
+                await collected.append(playlist)
+            }
+        }
+        try await Task.sleep(for: .milliseconds(300))
+        subscription.cancel()
+        fetcher.release()
+
+        // Then - exactly one delivery. `loadCachedPlaylist()` broadcasts to
+        // every registered continuation, so registering this one before
+        // awaiting the load makes the subscriber receive the cached playlist
+        // from that broadcast *and* again from the explicit post-barrier
+        // yield. Nothing is corrupted by the duplicate, but every downstream
+        // observer pays for it: `WidgetStateService` spends a reload against
+        // the widget refresh budget and `NowPlayingService` re-fetches artwork
+        // and re-emits a now-playing item.
+        let values = await collected.values
+        #expect(values.count == 1)
+        #expect(values.first?.playcuts.first?.songTitle == "la paradoja")
+    }
+
+    @Test(
+        "switchAPIVersion on a service nothing subscribed to still clears the playlist",
+        .timeLimit(.minutes(1))
+    )
+    func switchAPIVersionClearsPlaylistWithoutPriorSubscription() async throws {
+        // Given - a cache holding content under the version being switched *to*,
+        // and a service on .v1 that nothing has ever subscribed to, so the
+        // initial cache load has not run.
+        let cacheCoordinator = CacheCoordinator(cache: InMemoryCache())
+        await cacheCoordinator.set(
+            value: Playlist.stub(playcuts: [
+                .stub(songTitle: "la paradoja", labelName: "Sonamos", artistName: "Juana Molina", releaseTitle: "DOGA")
+            ]),
+            for: PlaylistCacheKey.playlist(for: .v2),
+            lifespan: 15 * 60
+        )
+
+        // A fetcher that fails, so the post-switch fetch cannot supply content
+        // and the only thing that could repopulate the playlist is a cache load.
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = .empty
+
+        let service = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 30,
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
+        )
+
+        // When - switching versions, which clears the playlist to show a
+        // loading state and then fetches fresh data.
+        await service.switchAPIVersion(to: .v2)
+
+        // Then - the clear stands. `switchAPIVersion` documents that it clears
+        // the playlist "to ensure clean data"; that has to hold whether or not
+        // anything happened to subscribe first, rather than depending on a
+        // prior subscription having settled the cache load.
+        let snapshot = await service.currentPlaylistSnapshot()
+        #expect(snapshot.isContentEmpty)
     }
 
     @Test(
