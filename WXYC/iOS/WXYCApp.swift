@@ -272,6 +272,11 @@ struct WXYCApp: App {
     }
 
     private func setUpSentry() {
+        // Decided here rather than inside the configuration closure because it
+        // is not a pure read: saying yes spends one launch from a budget. See
+        // ``consumeLaunchProfileBudget(defaults:environment:now:)``.
+        let profileAppLaunch = Self.consumeLaunchProfileBudget()
+
         SentrySDK.start { options in
             options.dsn = AppConfiguration.sentryDsn
 
@@ -292,9 +297,10 @@ struct WXYCApp: App {
             options.enableSwizzling = true
 
             // App-launch profiling for WXYC/wxyc-ios-64#949's cold-launch
-            // measurement. Why TestFlight only is on `shouldProfileAppLaunch`;
-            // why the sampler is on `tracesSampleRate`. What is only true here
-            // is which SDK surface this uses, and why it is not the obvious one.
+            // measurement. What bounds it — TestFlight, a five-launch budget
+            // and a date — is on `shouldProfileAppLaunch`; why the sampler is
+            // on `tracesSampleRate`. What is only true here is which SDK
+            // surface this uses, and why it is not the obvious one.
             //
             // Not the `enableAppLaunchProfiling` boolean this line used to set
             // to `false`. On sentry-cocoa 8.58.4 that property is deprecated in
@@ -321,10 +327,12 @@ struct WXYCApp: App {
             //     ever creates — and it ends inside `SentrySDK.start`. But
             //     `.trace` is not launch-only: every *sampled* root span after
             //     launch profiles for its duration too, which on TestFlight is
-            //     5% of the UI interactions swizzling reports.
+            //     5% of the UI interactions swizzling reports — for as long as
+            //     this branch keeps installing `configureProfiling` at all,
+            //     which `launchProfileBudget` is what stops.
             //   - `sessionSampleRate` defaults to 0 — silently sampling nothing
             //     rather than erroring — so 1.0 is what makes it collect at all.
-            if Self.shouldProfileAppLaunch(for: BuildEnvironment.current) {
+            if profileAppLaunch {
                 options.configureProfiling = { profiling in
                     profiling.profileAppStarts = true
                     profiling.lifecycle = .trace
@@ -395,18 +403,129 @@ struct WXYCApp: App {
         }
     }
 
-    /// Whether app-launch profiling should be armed for `environment`. Split
-    /// out of `setUpSentry()` so the policy is testable without booting the
-    /// SDK — the same shape `BuildEnvironment.current` itself uses to keep
-    /// its own platform gate out of the untestable part.
+    /// Whether app-launch profiling should be armed for the launch *after*
+    /// this one. Split out of `setUpSentry()` so the policy is testable
+    /// without booting the SDK — the same shape `BuildEnvironment.current`
+    /// itself uses to keep its own platform gate out of the untestable part.
     ///
-    /// TestFlight only: WXYC/wxyc-ios-64#949 asks for one real cold-launch
-    /// profile from a TestFlight build. `production` stays off so the memory
-    /// cost documented at the call site never reaches App Store-scale
-    /// traffic, and `debug`/`simulator`/`adhoc` launches aren't the traffic
-    /// #949 is trying to measure.
-    static func shouldProfileAppLaunch(for environment: BuildEnvironment) -> Bool {
+    /// Three conditions, because WXYC/wxyc-ios-64#949 asks for "one TestFlight
+    /// build" of profiling and `configureProfiling` on its own delivers
+    /// something quite different. `sentry_configureLaunchProfilingForNextLaunch`
+    /// re-runs at the end of *every* `SentrySDK.start`, so an unconditional
+    /// arm rewrites the launch-profile config file forever and every launch
+    /// pays for a pre-`main` sampler. Each condition below closes one way that
+    /// could outlive the measurement:
+    ///
+    /// - **`environment == .testflight`** keeps it off App Store traffic
+    ///   entirely, and off `debug`/`simulator`/`adhoc`, which are not the
+    ///   traffic #949 is measuring.
+    /// - **``launchProfileBudget``** bounds what any one install pays, in both
+    ///   launch time and hang-report volume.
+    /// - **``launchProfilingExpiry``** is what turns the whole thing off
+    ///   without shipping anything. A build number would not: it stops the
+    ///   *next* build, never the pinned one, and a TestFlight build lives on
+    ///   testers' phones long after it is superseded.
+    ///
+    /// The conditions are independent on purpose — any one of them going false
+    /// disarms, and the SDK deletes the config file rather than leaving a
+    /// stale one behind (`sentry_shouldProfileNextLaunch` returning `NO` calls
+    /// `removeAppLaunchProfilingConfigFile`).
+    nonisolated static func shouldProfileAppLaunch(
+        environment: BuildEnvironment,
+        armedLaunches: Int,
+        now: Date
+    ) -> Bool {
         environment == .testflight
+            && armedLaunches < launchProfileBudget
+            && now < launchProfilingExpiry
+    }
+
+    /// How many launches one install may arm before it stops on its own.
+    ///
+    /// #949 needs one usable cold-launch profile; five is the margin for the
+    /// ways a given launch yields a poor one — a warm start moments after a
+    /// kill, a launch straight into the background, a tester who force-quits
+    /// mid-render. With a handful of testers that puts the expected profile
+    /// count comfortably above one. What it buys in return is a ceiling on two
+    /// costs, both of which land inside the launch window #949 is measuring:
+    ///
+    /// 1. **The sampler's own cost.** `SentrySamplingProfiler` runs at 101 Hz
+    ///    and `thread_suspend`s the main thread for a `thread_get_state` plus
+    ///    one `vm_read_overwrite` per frame, ≤128 frames
+    ///    (`SentryBacktrace.cpp`). Order 1% of main-thread time, plus the
+    ///    pre-`main` `CADisplayLink` + `pthread_create` + `clock_alarm` the
+    ///    profiler installs on the way up.
+    /// 2. **A wider hang-observation window.** Not the mechanism it looks
+    ///    like: app-hang V2 does not round-trip the main queue the way V1
+    ///    does (`SentryANRTrackerV1.m` dispatches, `SentryANRTrackerV2.m`
+    ///    does not), it reads a frame-delay ledger the main thread writes, and
+    ///    its watchdog is skipped by the profiler twice over — by the
+    ///    `io.sentry` thread-name rule in `SentryThreadMetadataCache.cpp` and
+    ///    by `isIdle()` while it sleeps. So the sampler does not lengthen a
+    ///    measured hang. What it does do is start `SentryFramesTracker`
+    ///    pre-`main` instead of at `SentrySDK.start`, and
+    ///    `SentryDelayedFramesTracker` refuses to score a window it has no
+    ///    history for. A profiled launch therefore reports launch-window
+    ///    hangs an unprofiled one silently discards. Those are real 2 s
+    ///    stalls, and for #949 seeing them is the point — but IOS-42's rate
+    ///    on a profiled build is not comparable to its rate on an unprofiled
+    ///    one, so this bounds how much traffic carries the wider window.
+    ///    (`environment` is `testflight` on exactly those launches, so the
+    ///    comparison can also just exclude them.)
+    nonisolated static let launchProfileBudget = 5
+
+    /// The date after which no launch arms, whatever the budget says.
+    ///
+    /// 2026-09-30T00:00:00Z, ~6 weeks out: long enough for a build to reach
+    /// TestFlight and accumulate launches, short enough that it cannot outlive
+    /// the investigation. Spelled as an epoch so it costs no date parsing on
+    /// the launch path; `SentryLaunchProfilingGateTests` pins the number to
+    /// the calendar date so the two cannot drift apart.
+    ///
+    /// A wrong device clock can move this either way. That is acceptable
+    /// because it cannot unbound anything: ``launchProfileBudget`` still caps
+    /// a skewed-early device at five launches, and a skewed-late one simply
+    /// contributes no profile.
+    nonisolated static let launchProfilingExpiry = Date(timeIntervalSince1970: 1_790_726_400)
+
+    /// `UserDefaults` key holding how many launches this install has armed.
+    nonisolated static let armedLaunchesDefaultsKey = "sentry_launch_profile_armed_launches"
+
+    /// Asks ``shouldProfileAppLaunch(environment:armedLaunches:now:)`` and, on
+    /// yes, records that this launch spent one of the budget.
+    ///
+    /// Counts *arms*, not profiles, which is the conservative direction: an
+    /// arm that never gets consumed — the app is deleted, or `SentrySDK.start`
+    /// runs again before the next cold launch — still costs a slot. What it
+    /// cannot do is under-count, so the budget is a true ceiling on profiled
+    /// launches.
+    ///
+    /// The off-by-one is the SDK's, not ours: launch *N* decides for launch
+    /// *N+1*, so a fresh install is never profiled on its first launch and a
+    /// budget of five profiles launches 2 through 6.
+    ///
+    /// The `defaults` read happens on every launch in every environment, which
+    /// is affordable: `CacheMigrationManager.migrateIfNeeded()` earlier in
+    /// `init()` has already faulted the standard domain in, leaving this a
+    /// dictionary lookup. The write happens at most ``launchProfileBudget``
+    /// times per install.
+    nonisolated static func consumeLaunchProfileBudget(
+        defaults: DefaultsStorage = UserDefaults.standard,
+        environment: BuildEnvironment = .current,
+        now: Date = .now
+    ) -> Bool {
+        let armedLaunches = defaults.integer(forKey: armedLaunchesDefaultsKey)
+
+        guard shouldProfileAppLaunch(
+            environment: environment,
+            armedLaunches: armedLaunches,
+            now: now
+        ) else {
+            return false
+        }
+
+        defaults.set(armedLaunches + 1, forKey: armedLaunchesDefaultsKey)
+        return true
     }
 
     /// The share of transactions traced in the ordinary case. Named because
