@@ -445,6 +445,22 @@ public final actor PlaylistService: Sendable {
         currentPlaylist = .empty
         broadcast(.empty)
 
+        // This clear *is* the baseline from here on, so record the initial cache load as
+        // settled even if it never ran. Without this, a switch on a service nothing had
+        // subscribed to would leave `cacheLoaded == false`, and the barrier that
+        // `fetchAndCachePlaylist()` now goes through would run the first load *below* —
+        // against the already-reassigned new-version `cacheKey` — repopulating
+        // `currentPlaylist` and broadcasting, silently undoing the clear one line above
+        // and flipping the empty-fetch guard from accept to reject.
+        //
+        // This restores what was true before the load was deferred rather than changing
+        // behavior: `init` used to start the load, so `cacheLoaded` was already `true` at
+        // every reachable switch. It still is on every shipping path today — iOS starts
+        // `WidgetStateService` at launch, and the debug panel's version switcher is only
+        // reachable from an already-subscribed `PlaylistView` — which is exactly why this
+        // is worth pinning down rather than leaving to hold by convention.
+        cacheLoaded = true
+
         // Fetch fresh data with new API version (this will overwrite the cache)
         _ = await fetchAndCachePlaylist()
 
@@ -581,15 +597,28 @@ public final actor PlaylistService: Sendable {
         // starting it first if this is the first subscriber ever. This prevents a race
         // condition where observers subscribe before the cache is loaded, causing them
         // to see an empty playlist until the network fetch completes.
+        //
+        // Awaiting the load is also the delivery, which is why there is no yield on this
+        // branch: `loadCachedPlaylist()` broadcasts to every registered continuation, and
+        // this one is registered above, so a yield here would hand the first subscriber
+        // the same playlist twice. The two are ordered, not racing — `loadCachedPlaylist`
+        // broadcasts and sets `cacheLoaded` with no suspension between them, so observing
+        // `cacheLoaded == false` here proves the broadcast has not happened yet and that
+        // this continuation will be registered in time to receive it.
+        //
+        // Deferring the load (WXYC/wxyc-ios-64#964) is what made the duplicate matter:
+        // the first subscriber now always arrives before the load rather than after it,
+        // so what used to be a rare race is every launch. `WidgetStateService` would spend
+        // a reload against the widget refresh budget on it, and `NowPlayingService` would
+        // re-fetch artwork and re-emit a now-playing item.
         if !cacheLoaded {
             await ensureCacheLoadStarted().value
-        }
-        
-        // Yield current cache immediately if non-empty
-        if currentPlaylist != .empty {
+        } else if currentPlaylist != .empty {
+            // The load already ran and broadcast before this subscriber existed, so its
+            // baseline has to be handed over explicitly.
             continuation.yield(currentPlaylist)
         }
-        
+
         // Start fetching if not already running
         ensureFetchTaskRunning()
     }
