@@ -133,8 +133,9 @@ public final actor PlaylistService: Sendable {
         /// starts no work.
         case unloaded
 
-        /// A load is in flight. Held so concurrent first-callers share one load rather
-        /// than each starting their own.
+        /// A load is in flight. The task is held for two reasons: so concurrent
+        /// first-callers share one load rather than each starting their own, and so
+        /// ``switchAPIVersion(to:)`` can cancel it instead of merely dropping its handle.
         case loading(Task<Void, Never>)
 
         /// `currentPlaylist` is authoritative. Reached by a finished load, or asserted
@@ -282,6 +283,24 @@ public final actor PlaylistService: Sendable {
 
         do {
             let cachedPlaylist: Playlist = try await cacheCoordinator.value(for: cacheKey)
+
+            // `cacheKey` was evaluated before the suspension above, so a
+            // `switchAPIVersion(to:)` that ran while this read was in flight leaves this
+            // holding the *pre-switch* version's rows — which publishing would put on
+            // screen over the switch's deliberate clear, mixing two incompatible
+            // `chronOrderID` scales. The switch cancels this task for exactly that
+            // reason, and this is where the cancellation is observed: the cache read
+            // itself is not cancellable, so cancelling alone would stop nothing.
+            //
+            // Checked after the read rather than before it. A read that runs anyway costs
+            // one wasted disk hit on a path that only a version switch reaches; moving
+            // the check earlier would buy that back and lose the guarantee, since the
+            // cancellation usually lands while the read is already in flight.
+            guard !Task.isCancelled else {
+                Log(.info, category: .network, "Discarding a cached playlist loaded across an API version switch")
+                return
+            }
+
             currentPlaylist = cachedPlaylist
             // Broadcast cached data to any existing observers
             broadcast(cachedPlaylist)
@@ -487,19 +506,34 @@ public final actor PlaylistService: Sendable {
         currentPlaylist = .empty
         broadcast(.empty)
 
-        // This clear *is* the baseline from here on. Without saying so, a switch on a
-        // service nothing had subscribed to would leave the baseline `.unloaded`, and the
-        // barrier `fetchAndCachePlaylist()` now goes through would run the first load
-        // *below* — against the already-reassigned new-version `cacheKey` — repopulating
+        // This clear *is* the baseline from here on — but asserting that only closes one
+        // of the two states the baseline can be in when a switch arrives, so the other is
+        // cancelled rather than merely overwritten.
+        //
+        // `.unloaded`: without the assignment, a switch on a service nothing had
+        // subscribed to would leave the baseline unset, and the barrier
+        // `fetchAndCachePlaylist()` now goes through would run the first load *below* —
+        // against the already-reassigned new-version `cacheKey` — repopulating
         // `currentPlaylist` and broadcasting, silently undoing the clear one line above
         // and flipping the empty-fetch guard from accept to reject.
         //
-        // This restores what was true before the load was deferred rather than changing
-        // behavior: `init` used to start the load, so the baseline was already settled at
-        // every reachable switch. It still is on every shipping path today — iOS starts
-        // `WidgetStateService` at launch, and the debug panel's version switcher is only
-        // reachable from an already-subscribed `PlaylistView` — which is exactly why this
-        // is worth pinning down rather than leaving to hold by convention.
+        // `.loading`: the assignment drops the task's handle without stopping the task.
+        // `loadCachedPlaylist()` evaluates `cacheKey` *before* its suspension, so an
+        // orphan resumes holding the pre-switch version's rows and publishes them over
+        // the clear, putting two incompatible `chronOrderID` scales on screen at once.
+        // Cancelling is what stops it; `loadCachedPlaylist()` is where the cancellation
+        // is observed, since the cache read cannot itself be cancelled.
+        //
+        // What is *guaranteed* is only what these two lines do. No shipping path reaches
+        // the `.loading` case today — iOS starts `WidgetStateService` at launch, and the
+        // debug panel's version switcher is only reachable from an already-subscribed
+        // `PlaylistView`, so the baseline is long settled before any switch — but that is
+        // a fact about today's callers, not a property of this method, and it was already
+        // load-bearing once: before the load was deferred, `init` started it and every
+        // reachable switch found the baseline settled.
+        if case .loading(let inFlightCacheLoad) = cacheBaseline {
+            inFlightCacheLoad.cancel()
+        }
         cacheBaseline = .established
 
         // Fetch fresh data with new API version (this will overwrite the cache)
