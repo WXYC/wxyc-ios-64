@@ -372,11 +372,21 @@ struct WXYCApp: App {
 
             // `appHangTimeoutInterval` is deliberately left at its 2.0 default.
             // Raising it is the obvious way to quieten hang reports and it is
-            // the wrong one here: across those 1207 events the `device.class`
-            // split was high 1115 / medium 91 / low 0. These are flagship
-            // devices, so a >2 s stall is a real defect rather than an
-            // underpowered-hardware artifact, and a higher threshold would hide
-            // exactly the cold-launch regression this is meant to catch.
+            // the wrong one here — but not for the reason this comment used to
+            // give. It used to argue from the `device.class` split across those
+            // 1207 events (high 1115 / medium 91 / low 0) that the fleet was
+            // flagship-only, so a >2 s stall had to be a real defect. That
+            // inference does not hold: Sentry almost never classifies a modern
+            // iPhone as `low`, so the absence of `low` describes Sentry's
+            // classifier and the device fleet, not the bug, and without
+            // normalizing against per-class session counts the split says
+            // nothing about which devices are disproportionately affected.
+            // WXYC/wxyc-ios-64#949's IOS-42 evidence includes an iPhone11,8 (a
+            // 2018 iPhone XR) classified `medium`, which the "flagship" framing
+            // could not have explained. The conclusion still stands on its own
+            // terms, though: raising the threshold hides the cold-launch
+            // regression this option exists to catch, independent of which
+            // devices it hits.
 
             // Regrouping the remaining hangs belongs to Sentry's server-side
             // Stack Trace Rules, not to a client `beforeSend`, and there is
