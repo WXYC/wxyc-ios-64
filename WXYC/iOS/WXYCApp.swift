@@ -291,10 +291,61 @@ struct WXYCApp: App {
             options.enableNetworkTracking = true
             options.enableSwizzling = true
 
-            // Disabled to reduce memory overhead:
-            // - App launch profiling accumulates 10-20MB of stack samples; use Instruments instead
-            // - File I/O tracing generates hundreds of spans from disk cache reads without actionable signal
-            options.enableAppLaunchProfiling = false
+            // App-launch profiling, TestFlight only. WXYC/wxyc-ios-64#949's
+            // "measure first" acceptance criterion needs one real cold-launch
+            // profile before the ranked cost list there can be pruned or
+            // reordered by evidence instead of a static audit.
+            //
+            // Not the `enableAppLaunchProfiling` boolean this line used to set
+            // to `false`. On sentry-cocoa 8.58.4 that property carries
+            // DEPRECATED_MSG_ATTRIBUTE pointing at `SentryProfileOptions`, and
+            // the deprecation is load-bearing, not cosmetic: this file sets no
+            // `profilesSampleRate` anywhere, and the header is explicit that
+            // `enableAppLaunchProfiling = YES` with a nil `profilesSampleRate`
+            // "enables ... continuous profiling" on every launch with "no
+            // automatic stop" short of calling `SentrySDK.stopProfiler()` by
+            // hand. Flipping the deprecated flag alone would not have
+            // collected nothing — it would have collected forever, a worse
+            // version of the same memory concern this comment used to warn
+            // about.
+            //
+            // `configureProfiling` is the SDK's documented replacement and
+            // does not share that failure mode:
+            //   - `profileAppStarts` starts the profiler as early in launch as
+            //     the deprecated flag did.
+            //   - `lifecycle = .trace` ties the profile to the launch's root
+            //     span, so it stops automatically when that span ends instead
+            //     of running unbounded. That root span is the automatic
+            //     "app start" transaction `enableAutoPerformanceTracing`
+            //     creates (default YES, untouched here) — this file starts no
+            //     span of its own — and it is itself subject to
+            //     `tracesSampleRate` above. That rate is already nonzero
+            //     (0.05), which is what makes `.trace` viable at all, but it
+            //     also means only ~1 in 20 TestFlight launches gets a sampled
+            //     app-start span to hang a profile on; the other ~19 in 20
+            //     arm nothing, by design of this mode, not by a bug here.
+            //   - `sessionSampleRate` defaults to 0 — silently sampling
+            //     nothing, not erroring — so it has to be set explicitly to
+            //     collect anything. 1.0 here is deliberate: it removes
+            //     session sampling as a second multiplier on top of the ~5%
+            //     from `tracesSampleRate` above, so this short, single-build
+            //     measurement pass for #949 isn't compounding two independent
+            //     undersampling risks into "no launches at all."
+            //
+            // TestFlight only, never `production`: the 10-20MB-of-stack-samples
+            // memory cost this comment used to warn about is real at App
+            // Store scale, and #949 asks for one TestFlight measurement, not
+            // fleet-wide profiling.
+            if Self.shouldProfileAppLaunch(for: BuildEnvironment.current) {
+                options.configureProfiling = { profiling in
+                    profiling.profileAppStarts = true
+                    profiling.lifecycle = .trace
+                    profiling.sessionSampleRate = 1.0
+                }
+            }
+
+            // Disabled to reduce memory overhead: file I/O tracing generates
+            // hundreds of spans from disk cache reads without actionable signal.
             options.enableFileIOTracing = false
 
             // Disable auto-capture of failed HTTP requests. The stream server returns 503
@@ -348,6 +399,20 @@ struct WXYCApp: App {
             options.diagnosticLevel = .warning
             #endif
         }
+    }
+
+    /// Whether app-launch profiling should be armed for `environment`. Split
+    /// out of `setUpSentry()` so the policy is testable without booting the
+    /// SDK — the same shape `BuildEnvironment.current` itself uses to keep
+    /// its own platform gate out of the untestable part.
+    ///
+    /// TestFlight only: WXYC/wxyc-ios-64#949 asks for one real cold-launch
+    /// profile from a TestFlight build. `production` stays off so the memory
+    /// cost documented at the call site never reaches App Store-scale
+    /// traffic, and `debug`/`simulator`/`adhoc` launches aren't the traffic
+    /// #949 is trying to measure.
+    static func shouldProfileAppLaunch(for environment: BuildEnvironment) -> Bool {
+        environment == .testflight
     }
 
     private func setUpErrorReporting() {
