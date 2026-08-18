@@ -29,16 +29,27 @@ struct PlaylistServiceLazyCacheLoadTests {
     private static let cachedPlaylist = Playlist.stub(playcuts: [.stub()])
 
     /// A cache coordinator pre-seeded with ``cachedPlaylist`` under `version`'s key.
+    ///
+    /// - Parameter agedOut: When `true`, the entry is aged past the 15-minute
+    ///   `PlaylistService.cacheLifespan` it was written with. That is the *normal*
+    ///   state on the background-refresh path — BGAppRefresh fires far less often than
+    ///   every 15 minutes — so a test that only ever seeds a live entry exercises the
+    ///   rarer of the two.
     private func seededCoordinator(
         version: PlaylistAPIVersion = .v1,
-        cache: Cache = InMemoryCache()
+        cache: Cache = InMemoryCache(),
+        agedOut: Bool = false
     ) async -> CacheCoordinator {
-        let coordinator = CacheCoordinator(cache: cache)
+        let clock = MockClock()
+        let coordinator = CacheCoordinator(cache: cache, clock: clock)
         await coordinator.set(
             value: Self.cachedPlaylist,
             for: PlaylistCacheKey.playlist(for: version),
             lifespan: 15 * 60
         )
+        if agedOut {
+            clock.advance(by: 16 * 60)
+        }
         return coordinator
     }
 
@@ -240,5 +251,47 @@ struct PlaylistServiceLazyCacheLoadTests {
             for: PlaylistCacheKey.playlist(for: .v1)
         )
         #expect(surviving.playcuts.first?.songTitle == "la paradoja")
+    }
+
+    @Test(
+        "A failing fetch on an unsubscribed service does not cache an empty playlist over an expired entry",
+        .timeLimit(.minutes(1))
+    )
+    func failedFetchWithExpiredCacheDoesNotCacheEmptyPlaylist() async throws {
+        // Given - the same background-refresh setup as the test above, except that the
+        // cached entry has aged out. This is the state that path is normally in:
+        // `cacheLifespan` is 15 minutes and BGAppRefresh fires far less often, so the
+        // sibling test's live entry is the exception rather than the rule.
+        //
+        // What that changes is where `currentPlaylist` ends up. `loadCachedPlaylist()`
+        // catches the throw from an expired read, logs, and leaves `currentPlaylist` at
+        // `.empty` while still settling the baseline — so `ingest(_:)`'s barrier is
+        // satisfied and its guard sees an empty playlist either way. The barrier alone
+        // therefore protects nothing here.
+        let cacheCoordinator = await seededCoordinator(agedOut: true)
+
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = .empty
+
+        let service = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 30,
+            cacheCoordinator: cacheCoordinator,
+            apiVersion: .v1
+        )
+
+        // When - the background refresh runs with nothing subscribed.
+        _ = await service.fetchAndCachePlaylist()
+
+        // Then - nothing sits under the key. The expired entry is already gone by now —
+        // `CacheCoordinator.value(for:)` removes an entry it finds expired — so what has
+        // to hold is that the failed fetch did not put a *fresh* empty one in its place.
+        // A miss is what sends `fetchPlaylist()`, the widget's read, to the network; a
+        // fresh empty entry is served to it as a hit for the full 15 minutes.
+        let entries = await cacheCoordinator.allEntries()
+        #expect(
+            entries.isEmpty,
+            "A failed fetch cached an empty playlist, which the widget will be served as a hit for 15 minutes: \(entries.map(\.key))"
+        )
     }
 }

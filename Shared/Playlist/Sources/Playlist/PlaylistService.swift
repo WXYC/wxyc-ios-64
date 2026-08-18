@@ -379,7 +379,9 @@ public final actor PlaylistService: Sendable {
         let playlist = await fetcher.fetchPlaylist()
 
         if await ingest(playlist) {
-            Log(.info, category: .network, "Fetched and cached playlist with \(playlist.entries.count) entries \(playlist.entries)")
+            // "Accepted", not "cached": `ingest(_:)` takes a content-empty playlist into
+            // the in-memory feed without persisting it. Its own log line above says which.
+            Log(.info, category: .network, "Accepted fetched playlist with \(playlist.entries.count) entries \(playlist.entries)")
         } else {
             Log(.warning, category: .network, "Ignoring empty playlist from background refresh - keeping existing data with \(currentPlaylist.entries.count) entries")
         }
@@ -953,13 +955,15 @@ public final actor PlaylistService: Sendable {
     /// The broadcast gate compares content (#266), not identifiers, so metadata-enriched
     /// re-fetches with the same IDs do reach observers.
     ///
-    /// - Returns: `true` when the playlist was cached, `false` when ignored as an empty
+    /// A content-empty playlist is never written to the cache, even in the one case where
+    /// it *is* accepted in memory — see the write below.
+    ///
+    /// - Returns: `true` when the playlist was accepted, `false` when ignored as an empty
     ///   replacement for valid data. Callers may log additional context either way.
     private func ingest(_ playlist: Playlist) async -> Bool {
         // The guard below reads `currentPlaylist`, so the cache load has to have
         // happened first — an unloaded `currentPlaylist` is `.empty`, which makes the
-        // guard wave an empty fetch through and overwrite the app group's cached
-        // playlist (the key the widget reads) with nothing.
+        // guard mistake a failed fetch for the session's first real data.
         //
         // Most callers already cleared this barrier: `startFetching()` runs only from
         // `ensureFetchTaskRunning()` behind `addContinuation(_:for:)`, and
@@ -970,6 +974,13 @@ public final actor PlaylistService: Sendable {
         // views. Awaiting here rather than in that one caller keeps the precondition
         // attached to the code that depends on it; for everyone else the baseline is
         // already settled and this is a no-op that never suspends.
+        //
+        // What the barrier settles is *when* `currentPlaylist` can be trusted, not
+        // *that* it holds content. On that same background-refresh path the cached entry
+        // has normally outlived the 15-minute `cacheLifespan` — BGAppRefresh fires far
+        // less often — so the load finds nothing, logs, and settles the baseline with
+        // `currentPlaylist` still `.empty`. Keeping the cache safe in that case is the
+        // write's job below, not the barrier's.
         await waitForCacheLoad()
 
         // Gate on content emptiness, not `== .empty`: a successful fetch now always
@@ -978,7 +989,30 @@ public final actor PlaylistService: Sendable {
         // visible feed. See `Playlist.isContentEmpty`.
         guard !playlist.isContentEmpty || currentPlaylist.isContentEmpty else { return false }
 
-        await cacheCoordinator.set(value: playlist, for: cacheKey, lifespan: Self.cacheLifespan)
+        // A content-empty playlist reaching this line has been accepted in memory — the
+        // guard above just did — but it is never persisted.
+        //
+        // `PlaylistFetcherProtocol.fetchPlaylist()` folds every failure (timeout, 5xx,
+        // decode drift) into a content-empty return, so the payload itself carries no
+        // evidence of which of the two it is, and the asymmetry decides it: an *absent*
+        // entry sends `fetchPlaylist()` — the widget's read — to the network, while a
+        // freshly written empty one is served to it as a hit for the full
+        // `cacheLifespan`. Persisting it bets 15 minutes of a blank widget against
+        // saving one request during a genuinely off-air stretch, which a station running
+        // a continuous flowsheet essentially never has. When the station really is off
+        // air the in-memory path is untouched: the payload is still broadcast to every
+        // observer below, so the feed and the `onAir` banner update as they always did —
+        // only the widget's copy is left to be re-fetched rather than read.
+        //
+        // Deliberately not conditioned on what the cache load found. `CacheCoordinator`
+        // reports an expired entry as `noCachedResult` *and removes it*, so "expired"
+        // degrades to "absent" by the next refresh; a rule that distinguished them would
+        // cover the first background refresh after expiry and fail open on the second.
+        if playlist.isContentEmpty {
+            Log(.info, category: .network, "Accepting a content-empty playlist in memory but not caching it - a failed fetch is indistinguishable from a genuinely empty one")
+        } else {
+            await cacheCoordinator.set(value: playlist, for: cacheKey, lifespan: Self.cacheLifespan)
+        }
 
         // Surface cancellation that occurred during the cache write so the surrounding
         // loop can exit before broadcasting stale work.
