@@ -211,6 +211,13 @@ public final actor PlaylistService: Sendable {
         // (WXYC/wxyc-ios-64#964). The load begins on first use instead — see
         // `waitForCacheLoad()`.
         //
+        // The compiler holds this, not just this comment: `cacheBaseline` is
+        // actor-isolated, so starting the load from here is "cannot access property
+        // 'cacheBaseline' here in nonisolated initializer" rather than a silent
+        // regression. That is what the old `nonisolated(unsafe)` on the task field was
+        // buying — the ability to write it from `init` — and dropping it is what closes
+        // the door.
+        //
         // That makes construction start nothing, not that it costs nothing: resolving the
         // API version above reads `UserDefaults.wxyc` and a PostHog flag, and building the
         // derived fetcher constructs a data source. Those are still eager. What this buys
