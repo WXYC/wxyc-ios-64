@@ -2,11 +2,13 @@
 //  PlaylistServiceLazyCacheLoadTests.swift
 //  Playlist
 //
-//  Guards WXYC/wxyc-ios-64#964: constructing a PlaylistService must not read
-//  the disk cache. The cache load starts on first use — waitForCacheLoad()
-//  or an updates() subscription — not in init, so the PlaylistServiceEnvironment
+//  Guards WXYC/wxyc-ios-64#964: constructing a PlaylistService must start no
+//  work. The cache load begins on first use — waitForCacheLoad() or an
+//  updates() subscription — not in init, so the PlaylistServiceEnvironment
 //  fallback (built on every correctly-injecting launch, see
-//  PlaylistServiceEnvironment.swift) costs an allocation and nothing else.
+//  PlaylistServiceEnvironment.swift) sits inert instead of reading the disk
+//  cache. Also covers what deferring the load put at risk: the ordering
+//  guarantee a subscriber depends on, and the empty-fetch guard in ingest(_:).
 //
 //  Created by Jake Bromberg on 08/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -14,107 +16,55 @@
 
 import Testing
 import Foundation
+import CachingTesting
+import CoreTesting
 import PlaylistTesting
 @testable import Playlist
 @testable import Caching
 
-/// A ``Cache`` that counts reads (``metadataResult(for:)`` / ``data(for:)``)
-/// separately from writes, so a test can assert "no read happened" without
-/// caring how many times a value was written.
-///
-/// Wraps an ``InMemoryCache`` rather than reimplementing storage — this
-/// double only needs to observe traffic, not model it.
-private final class CountingCache: Cache, @unchecked Sendable {
-    private let wrapped = InMemoryCache()
-    private let lock = NSLock()
-    private var _readCount = 0
-
-    var readCount: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return _readCount
-    }
-
-    private func recordRead() {
-        lock.lock()
-        _readCount += 1
-        lock.unlock()
-    }
-
-    func metadata(for key: String) -> CacheMetadata? {
-        recordRead()
-        return wrapped.metadata(for: key)
-    }
-
-    func metadataResult(for key: String) -> MetadataReadResult {
-        recordRead()
-        return wrapped.metadataResult(for: key)
-    }
-
-    func data(for key: String) -> Data? {
-        recordRead()
-        return wrapped.data(for: key)
-    }
-
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        wrapped.set(data, metadata: metadata, for: key)
-    }
-
-    func remove(for key: String) {
-        wrapped.remove(for: key)
-    }
-
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        wrapped.allMetadata()
-    }
-
-    func clearAll() {
-        wrapped.clearAll()
-    }
-
-    func totalSize() -> Int64 {
-        wrapped.totalSize()
-    }
-}
-
-/// Accumulates the playlists delivered to a subscription, so a test can assert
-/// on how many arrived rather than only on the first.
-private actor Collector {
-    private(set) var values: [Playlist] = []
-
-    func append(_ playlist: Playlist) {
-        values.append(playlist)
-    }
-}
-
 @Suite("PlaylistService Lazy Cache Load Tests")
 struct PlaylistServiceLazyCacheLoadTests {
 
-    @Test("Constructing a PlaylistService performs no cache read", .timeLimit(.minutes(1)))
-    func constructionPerformsNoCacheRead() async throws {
-        // Given - a cache double that counts reads, and a service built
-        // against it.
-        let countingCache = CountingCache()
-        let cacheCoordinator = CacheCoordinator(cache: countingCache)
+    /// A previous session's playlist, as the app group's cache would hold it.
+    private static let cachedPlaylist = Playlist.stub(playcuts: [.stub()])
 
+    /// A cache coordinator pre-seeded with ``cachedPlaylist`` under `version`'s key.
+    private func seededCoordinator(
+        version: PlaylistAPIVersion = .v1,
+        cache: Cache = InMemoryCache()
+    ) async -> CacheCoordinator {
+        let coordinator = CacheCoordinator(cache: cache)
+        await coordinator.set(
+            value: Self.cachedPlaylist,
+            for: PlaylistCacheKey.playlist(for: version),
+            lifespan: 15 * 60
+        )
+        return coordinator
+    }
+
+    @Test("Constructing a PlaylistService starts no cache load", .timeLimit(.minutes(1)))
+    func constructionStartsNoCacheLoad() async throws {
+        // Given - a cache double that counts reads, and a service built against it.
+        let countingCache = CountingCache()
         let service = PlaylistService(
             fetcher: MockPlaylistFetcher(),
             interval: 30,
-            cacheCoordinator: cacheCoordinator,
+            cacheCoordinator: CacheCoordinator(cache: countingCache),
             apiVersion: .v1
         )
 
-        // When - give any eagerly-started background work a chance to run.
-        // An `init` that starts a cache-load Task would have completed it
-        // well within this window; a lazy `init` never schedules one at all.
-        try await Task.sleep(for: .milliseconds(100))
+        // Then - construction started nothing. Asserted on the wiring rather than by
+        // sleeping and re-checking a counter: the baseline is assigned synchronously,
+        // before any task body runs, so this needs no timing tolerance. A sleep long
+        // enough for "an eager load would have finished by now" passes on a loaded
+        // machine whether or not the regression is present.
+        #expect(await service.wiringSnapshot().cacheLoadStarted == false)
+        #expect(countingCache.getCallCount == 0)
 
-        // Then - construction alone must not have touched the cache.
-        #expect(countingCache.readCount == 0)
-
-        // And - the first actual use starts (and completes) the load.
+        // And - the first actual use starts the load, and reads the cache.
         await service.waitForCacheLoad()
-        #expect(countingCache.readCount > 0)
+        #expect(await service.wiringSnapshot().cacheLoadStarted)
+        #expect(countingCache.getCallCount > 0)
     }
 
     @Test(
@@ -122,55 +72,41 @@ struct PlaylistServiceLazyCacheLoadTests {
         .timeLimit(.minutes(1))
     )
     func observerImmediatelyAfterConstructionSeesCachedPlaylist() async throws {
-        // Given - a cache pre-seeded with a real playlist, as if a previous
-        // launch had written it.
-        let cacheCoordinator = CacheCoordinator(cache: InMemoryCache())
-        let cachedPlaylist = Playlist.stub(playcuts: [
-            .stub(songTitle: "la paradoja", labelName: "Sonamos", artistName: "Juana Molina", releaseTitle: "DOGA")
-        ])
-        await cacheCoordinator.set(
-            value: cachedPlaylist,
-            for: PlaylistCacheKey.playlist(for: .v1),
-            lifespan: 15 * 60
-        )
-
-        // A fetcher parked at a gate this test never releases, standing in for
-        // a network fetch still in flight.
+        // Given - a cache pre-seeded as if a previous launch had written it, and a
+        // fetcher parked at a gate this test never releases, standing in for a network
+        // fetch still in flight.
         //
-        // The park is what keeps this test from going vacuous. Asserting only
-        // that the first value is the cached one passes even with the barrier
-        // below removed, because `ingest(_:)` awaits the cache load itself and
-        // broadcasts the cached playlist ahead of the fetched one — the right
-        // answer arriving for the wrong reason. Parking the fetch removes that
-        // second source entirely: the only thing that can deliver a value here
-        // is `addContinuation(_:for:)`'s own barrier, so a regression surfaces
-        // as no value at all rather than as the wrong one.
+        // The park is what keeps this test from going vacuous. Asserting only that the
+        // first value is the cached one passes even with the barrier in
+        // `addContinuation(_:for:)` removed, because `ingest(_:)` awaits the cache load
+        // itself and broadcasts the cached playlist ahead of the fetched one — the right
+        // answer arriving for the wrong reason. Parking the fetch removes that second
+        // source entirely: the only thing that can deliver a value here is the barrier
+        // under test, so a regression surfaces as no value at all rather than the wrong
+        // one.
         let fetcher = GatedPlaylistFetcher(playlist: .stub(playcuts: [
-            .stub(songTitle: "Back, Baby", labelName: "Drag City", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again")
+            .stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again")
         ]))
-
         let service = PlaylistService(
             fetcher: fetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator,
+            cacheCoordinator: await seededCoordinator(),
             apiVersion: .v1
         )
 
-        // When - subscribe immediately, with no explicit wait for the cache
-        // load in between.
+        // When - subscribe immediately, with no explicit wait for the cache load between.
         let subscription = Task { () -> Playlist? in
             var iterator = service.updates().makeAsyncIterator()
             return await iterator.next()
         }
 
-        // Bound the wait so a regression fails in seconds instead of hanging
-        // until the suite's time limit. This bounds the *failure* path only:
-        // on the success path the barrier yields within a couple of actor
-        // hops. The margin is deliberately wide — this suite is neither
-        // `.serialized` nor `@MainActor` and runs alongside the rest of the
-        // package, so a bound close to the real success path would turn
-        // scheduling contention into a flake. Cancelling the subscription ends
-        // its `AsyncStream` iteration, so `next()` resolves to `nil`.
+        // Bound the wait so a regression fails in seconds instead of hanging until the
+        // suite's time limit. This bounds the *failure* path only: on the success path
+        // the barrier yields within a couple of actor hops. The margin is deliberately
+        // wide — this suite is neither `.serialized` nor `@MainActor` and runs alongside
+        // the rest of the package, so a bound close to the real success path would turn
+        // scheduling contention into a flake. Cancelling the subscription ends its
+        // `AsyncStream` iteration, so `next()` resolves to `nil`.
         let deadline = Task {
             try? await Task.sleep(for: .seconds(5))
             subscription.cancel()
@@ -179,8 +115,8 @@ struct PlaylistServiceLazyCacheLoadTests {
         deadline.cancel()
         fetcher.release()
 
-        // Then - the first value observed is the cached playlist, delivered
-        // ahead of any fetch and never the `.empty` pre-load sentinel.
+        // Then - the first value observed is the cached playlist, delivered ahead of any
+        // fetch and never the `.empty` pre-load sentinel.
         let unwrapped = try #require(
             firstPlaylist,
             "Subscriber received no playlist while the fetch was parked: addContinuation(_:for:) did not await the cache load before deciding whether to yield."
@@ -194,47 +130,39 @@ struct PlaylistServiceLazyCacheLoadTests {
         .timeLimit(.minutes(1))
     )
     func firstSubscriberReceivesCachedPlaylistExactlyOnce() async throws {
-        // Given - a pre-seeded cache and a fetcher parked at a gate, so the
-        // only values that can reach a subscriber come from the cache load.
-        let cacheCoordinator = CacheCoordinator(cache: InMemoryCache())
-        await cacheCoordinator.set(
-            value: Playlist.stub(playcuts: [
-                .stub(songTitle: "la paradoja", labelName: "Sonamos", artistName: "Juana Molina", releaseTitle: "DOGA")
-            ]),
-            for: PlaylistCacheKey.playlist(for: .v1),
-            lifespan: 15 * 60
-        )
-
+        // Given - a pre-seeded cache and a fetcher parked at a gate, so the only values
+        // that can reach a subscriber come from the cache load.
         let fetcher = GatedPlaylistFetcher(playlist: .empty)
         let service = PlaylistService(
             fetcher: fetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator,
+            cacheCoordinator: await seededCoordinator(),
             apiVersion: .v1
         )
 
-        // When - the very first subscriber attaches, which is the launch path:
-        // deferring the load guarantees this subscription lands before the
-        // load rather than after it.
-        let collected = Collector()
-        let subscription = Task {
+        // When - the very first subscriber attaches, which is the launch path: deferring
+        // the load guarantees this subscription lands before the load rather than after.
+        let subscription = Task { () -> [Playlist] in
+            var values: [Playlist] = []
             for await playlist in service.updates() {
-                await collected.append(playlist)
+                values.append(playlist)
             }
+            return values
         }
-        try await Task.sleep(for: .milliseconds(300))
+
+        // Wait for the first delivery, then settle briefly. A duplicate is yielded on the
+        // same actor turn as the value it duplicates, so this window only has to outlast
+        // one hop — the `waitUntil` above it is what absorbs scheduling contention.
+        #expect(await waitUntil { await service.currentPlaylistSnapshot().isContentEmpty == false })
+        try await Task.sleep(for: .milliseconds(50))
         subscription.cancel()
         fetcher.release()
 
-        // Then - exactly one delivery. `loadCachedPlaylist()` broadcasts to
-        // every registered continuation, so registering this one before
-        // awaiting the load makes the subscriber receive the cached playlist
-        // from that broadcast *and* again from the explicit post-barrier
-        // yield. Nothing is corrupted by the duplicate, but every downstream
-        // observer pays for it: `WidgetStateService` spends a reload against
-        // the widget refresh budget and `NowPlayingService` re-fetches artwork
-        // and re-emits a now-playing item.
-        let values = await collected.values
+        // Then - exactly one delivery. The duplicate costs a `WidgetStateService` reload
+        // against the widget refresh budget and a `NowPlayingService` artwork re-fetch;
+        // see `addContinuation(_:for:)` for why registering before the barrier makes the
+        // load's broadcast and the explicit yield both fire.
+        let values = await subscription.value
         #expect(values.count == 1)
         #expect(values.first?.playcuts.first?.songTitle == "la paradoja")
     }
@@ -244,20 +172,52 @@ struct PlaylistServiceLazyCacheLoadTests {
         .timeLimit(.minutes(1))
     )
     func switchAPIVersionClearsPlaylistWithoutPriorSubscription() async throws {
-        // Given - a cache holding content under the version being switched *to*,
-        // and a service on .v1 that nothing has ever subscribed to, so the
-        // initial cache load has not run.
-        let cacheCoordinator = CacheCoordinator(cache: InMemoryCache())
-        await cacheCoordinator.set(
-            value: Playlist.stub(playcuts: [
-                .stub(songTitle: "la paradoja", labelName: "Sonamos", artistName: "Juana Molina", releaseTitle: "DOGA")
-            ]),
-            for: PlaylistCacheKey.playlist(for: .v2),
-            lifespan: 15 * 60
+        // Given - a cache holding content under the version being switched *to*, and a
+        // service on .v1 that nothing has ever subscribed to, so no load has run.
+        //
+        // The fetcher fails, so the post-switch fetch cannot supply content and a cache
+        // load is the only thing that could repopulate the playlist.
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = .empty
+
+        let service = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 30,
+            cacheCoordinator: await seededCoordinator(version: .v2),
+            apiVersion: .v1
         )
 
-        // A fetcher that fails, so the post-switch fetch cannot supply content
-        // and the only thing that could repopulate the playlist is a cache load.
+        // When - switching versions, which clears the playlist to show a loading state
+        // and then fetches fresh data.
+        await service.switchAPIVersion(to: .v2)
+
+        // Then - the clear stands. `switchAPIVersion` documents that it clears the
+        // playlist "to ensure clean data"; that has to hold whether or not anything
+        // happened to subscribe first, rather than depending on a prior subscription
+        // having settled the cache baseline.
+        #expect(await service.currentPlaylistSnapshot().isContentEmpty)
+    }
+
+    @Test(
+        "A failing fetch on an unsubscribed service does not clobber the cached playlist",
+        .timeLimit(.minutes(1))
+    )
+    func failedFetchWithoutSubscriptionPreservesCachedPlaylist() async throws {
+        // Given - a disk cache holding a good playlist from a previous session, exactly
+        // as the widget would read it.
+        let cacheCoordinator = await seededCoordinator()
+
+        // And - a fetcher that fails and returns *instantly*.
+        // `PlaylistFetcherProtocol` swallows every error into `.empty`, so an empty
+        // return is what a network timeout looks like from the service's side.
+        //
+        // Returning instantly is the load-bearing detail. `fetchAndCachePlaylist()` kicks
+        // the cache load before fetching, so a slow fetch lets the disk read finish first
+        // and `ingest(_:)` compares against a populated playlist no matter what. An
+        // instant fetch wins that race, which is exactly the condition `ingest`'s barrier
+        // exists to survive: without it the guard reads an unloaded `.empty`
+        // `currentPlaylist`, mistakes a failed fetch for the first real data, and writes
+        // the empty playlist over the app group's cache.
         let mockFetcher = MockPlaylistFetcher()
         mockFetcher.playlistToReturn = .empty
 
@@ -268,70 +228,14 @@ struct PlaylistServiceLazyCacheLoadTests {
             apiVersion: .v1
         )
 
-        // When - switching versions, which clears the playlist to show a
-        // loading state and then fetches fresh data.
-        await service.switchAPIVersion(to: .v2)
+        // When - a background-launched refresh fetches with nothing having subscribed and
+        // nothing having awaited the cache-load barrier. This is
+        // `BackgroundRefreshController.handleRefresh` in a process with no views:
+        // `.backgroundTask(.appRefresh(_:))` fires, so no `updates()` subscription and no
+        // `waitForCacheLoad()` ever precedes the fetch.
+        _ = await service.fetchAndCachePlaylist()
 
-        // Then - the clear stands. `switchAPIVersion` documents that it clears
-        // the playlist "to ensure clean data"; that has to hold whether or not
-        // anything happened to subscribe first, rather than depending on a
-        // prior subscription having settled the cache load.
-        let snapshot = await service.currentPlaylistSnapshot()
-        #expect(snapshot.isContentEmpty)
-    }
-
-    @Test(
-        "A failing fetch on an unsubscribed service does not clobber the cached playlist",
-        .timeLimit(.minutes(1))
-    )
-    func failedFetchWithoutSubscriptionPreservesCachedPlaylist() async throws {
-        // Given - a disk cache holding a good playlist from a previous
-        // session, exactly as the widget would read it.
-        let cacheCoordinator = CacheCoordinator(cache: InMemoryCache())
-        let cachedPlaylist = Playlist.stub(playcuts: [
-            .stub(songTitle: "la paradoja", labelName: "Sonamos", artistName: "Juana Molina", releaseTitle: "DOGA")
-        ])
-        await cacheCoordinator.set(
-            value: cachedPlaylist,
-            for: PlaylistCacheKey.playlist(for: .v1),
-            lifespan: 15 * 60
-        )
-
-        // And - a fetcher that fails, parked inside `fetchPlaylist()`.
-        // `PlaylistFetcherProtocol` swallows every error into `.empty`, so an
-        // empty return is what a network timeout looks like from the service's
-        // side. The park is what makes this test *discriminating*: a real
-        // network fetch takes far longer than a disk read, so any
-        // eagerly-started cache load would have long since finished by the time
-        // the fetch resolves. An instant mock fetcher would instead beat the
-        // disk read and fail this test on any implementation, proving nothing.
-        let fetcher = GatedPlaylistFetcher(playlist: .empty)
-
-        let service = PlaylistService(
-            fetcher: fetcher,
-            interval: 30,
-            cacheCoordinator: cacheCoordinator,
-            apiVersion: .v1
-        )
-
-        // When - a background-launched refresh fetches with nothing having
-        // subscribed and nothing having awaited the cache-load barrier. This
-        // is `BackgroundRefreshController.handleRefresh` in a process with no
-        // views: `.backgroundTask(.appRefresh(_:))` fires, so no `updates()`
-        // subscription and no `waitForCacheLoad()` ever precedes the fetch.
-        let refresh = Task { await service.fetchAndCachePlaylist() }
-
-        // Hold the fetch at the gate long enough that a cache load running
-        // concurrently would certainly have completed, then let it return.
-        await fetcher.waitForEntry()
-        try await Task.sleep(for: .milliseconds(100))
-        fetcher.release()
-        _ = await refresh.value
-
-        // Then - the good playlist is still on disk. `ingest(_:)`'s
-        // broadcast-empty guard must have rejected the empty fetch, which
-        // requires it to have compared against the *cached* playlist rather
-        // than an unloaded `.empty` in-memory state.
+        // Then - the good playlist is still on disk.
         let surviving: Playlist = try await cacheCoordinator.value(
             for: PlaylistCacheKey.playlist(for: .v1)
         )
