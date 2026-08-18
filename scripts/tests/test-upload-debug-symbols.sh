@@ -191,6 +191,12 @@ search_dir_stub() {
     CASE_SEARCH_DIRS="$BREW_PREFIX_BIN"
 }
 
+# The archive escape hatch: a file in the repo root, because that is the only
+# channel that reaches a build phase under Xcode.app. See Case 11.
+opt_out() {
+    : > "$CASE_SRCROOT/.sentry-dsym-optional"
+}
+
 # =========================================================================
 # Case 1: no dSYMs.
 #
@@ -531,9 +537,13 @@ mark_ci_runner
 OUT=$(run_script "$DSYM_DIR" "false" "sntrys_fake"); RC=$?
 expect_exit "a leftover marker does not outrank CI=false" "$RC" "0" "$OUT"
 
-# No diagnostic anywhere should still be telling anyone about a file the script
-# no longer reads — the one line Xcode shows is too small to spend on a ghost.
-expect_not_contains "the script reads no CI marker file" "$(<"$REAL_SCRIPT")" "ci-runner"
+# Nothing executable should touch that path again, and no diagnostic should be
+# spending Xcode's one visible line on a ghost. Comments are stripped rather
+# than matched: the marker is worth naming in prose — it is the cautionary tale
+# the opt-out in Case 11 is designed against — and a pin that forbade saying the
+# word would be pressure to delete the explanation instead of the code.
+expect_not_contains "no code path reads a CI marker file" \
+    "$(grep -v '^[[:space:]]*#' "$REAL_SCRIPT")" "ci-runner"
 
 # =========================================================================
 # Case 9: a local archive is strict.
@@ -684,5 +694,98 @@ expect_not_contains "nothing was uploaded from .ci-tools/bin" "$(<"$STUB_LOG")" 
 # actually ships with — and that list is the entire fix, since a search path
 # without the Apple Silicon Homebrew prefix in it resolves nothing new.
 expect_contains "the shipped search list carries the Apple Silicon Homebrew prefix" "$(<"$REAL_SCRIPT")" "/opt/homebrew/bin"
+
+# =========================================================================
+# Case 11: the archive escape hatch.
+#
+# Every failure path above stops an archive, which is the point — but it also
+# means a sentry.io outage, an expired token on a Friday, or a laptop on a plane
+# can stand between a developer and a build they need to ship. There has to be a
+# way through that does not involve editing this script.
+#
+# It has to be a file, and this is the one place where that is the argument
+# rather than the trap. The build that needs the escape hatch is Product >
+# Archive, started from Xcode.app, which inherits launchd's environment and not
+# a login shell's: nothing exported from a terminal reaches it, and a scheme
+# environment variable does not reach a run-script phase either. A file in the
+# repo root is the only channel a developer has to a GUI archive.
+#
+# The obvious hazard is the one the deleted .ci-tools/ci-runner marker actually
+# hit: a file nothing removes, silently deciding builds months later. The
+# difference is direction. That marker made builds fail and said nothing about
+# why; this one makes them pass, so it announces itself on exactly the builds it
+# rescued — the ones that would otherwise have stopped. A developer who forgets
+# it gets a line in every archive log saying the gate is off.
+# =========================================================================
+
+echo ""
+echo "=== Case 11: .sentry-dsym-optional forces an archive through ==="
+
+# The control, first: this is Case 9's local-archive-no-cli, and it must keep
+# failing. Everything below is only meaningful against it.
+new_case "no-opt-out-archive-still-fails"
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
+expect_exit "without the marker a local archive with no sentry-cli still fails" "$RC" "1" "$OUT"
+
+new_case "opt-out-archive-no-cli"
+opt_out
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
+expect_exit "the marker lets an archive with no sentry-cli through" "$RC" "0" "$OUT"
+expect_not_contains "the marker turns the error into something else" "$OUT" "error:"
+expect_contains "the rescued build still says what went wrong" "$OUT" "warning:"
+# The whole hazard of a file nobody removes is that it goes quiet. It must not.
+expect_contains "the rescued build names the marker that rescued it" "$OUT" ".sentry-dsym-optional"
+
+# The other three strict paths route through the same helper, but "they share a
+# code path" is a claim about today's implementation, and this case is what
+# keeps it true tomorrow.
+new_case "opt-out-archive-no-token"
+opt_out
+make_stub
+OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
+expect_exit "the marker lets an archive with no credentials through" "$RC" "0" "$OUT"
+expect_contains "the credential-less rescued build names the marker" "$OUT" ".sentry-dsym-optional"
+
+new_case "opt-out-archive-upload-fails"
+opt_out
+make_stub
+STUB_FAIL=1
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_expired"); RC=$?
+expect_exit "the marker lets an archive through a rejected upload" "$RC" "0" "$OUT"
+expect_contains "sentry-cli's own message still survives" "$OUT" "org auth token is required"
+
+new_case "opt-out-archive-no-dsyms"
+opt_out
+OUT=$(run_script "$EMPTY_DSYM_DIR" "" "sntrys_fake"); RC=$?
+expect_exit "the marker lets an archive with no dSYMs through" "$RC" "0" "$OUT"
+
+# An escape hatch, not an off switch. The upload is still attempted, because the
+# common reason to set this is a broken credential and not a broken intent — and
+# the archive that does manage to upload should still be symbolicated.
+new_case "opt-out-still-uploads"
+opt_out
+make_stub
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_local"); RC=$?
+expect_exit "an archive that can upload still exits 0 with the marker set" "$RC" "0" "$OUT"
+expect_contains "the marker does not stop a working upload" "$(<"$STUB_LOG")" "debug-files upload"
+expect_contains "the successful archive reports the upload as usual" "$OUT" "note: uploaded debug symbols"
+# Nothing was rescued here, so there is nothing to announce. A hint on every
+# green build is how a warning becomes wallpaper.
+expect_not_contains "a build that did not need rescuing says nothing about the marker" "$OUT" ".sentry-dsym-optional"
+
+# Same reasoning one step out: an ordinary local build was already lenient, so
+# the marker changed nothing and should not claim to have.
+new_case "opt-out-on-ordinary-build-is-silent"
+ordinary_build
+opt_out
+OUT=$(run_script "$DSYM_DIR" "" "sntrys_fake"); RC=$?
+expect_exit "an ordinary local build with the marker still exits 0" "$RC" "0" "$OUT"
+expect_not_contains "an already-lenient build does not credit the marker" "$OUT" ".sentry-dsym-optional"
+
+# The marker is a local override, and a committed one would silently disable the
+# gate for everybody — which is #955 again, with this branch's own file as the
+# cause. Being gitignored is the only thing standing between those two, so it is
+# worth an assertion rather than a habit.
+expect_contains "the marker is gitignored" "$(<"${REPO_ROOT}/.gitignore")" ".sentry-dsym-optional"
 
 summarize

@@ -45,7 +45,7 @@ Every failure mode — no `sentry-cli`, no credentials, upload rejected — reso
 
 The archive row is the one that matters in practice: **WXYC archives locally**, from Xcode's Product > Archive, not on a runner. The first version of this (#955) keyed strictness on CI alone, which left the only build that actually ships taking the lenient path — the build manifest for the 2026-08-11 archive records `ACTION=install`, `CONFIGURATION=Release`, and no `CI` in the environment.
 
-Two exemptions sit on top of the table:
+Two exemptions sit on top of the table, plus a deliberate manual override — see [Forcing an archive through](#forcing-an-archive-through):
 
 - **A build with no dSYMs** skips — except where the table above says a failed upload is an `error:`, and then it is one. Every WXYC configuration sets `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`, so an archive with an empty `DWARF_DSYM_FOLDER_PATH` means something upstream broke, and passing that through quietly is the original bug with a new cause. Where it is lenient it prints a `note:` rather than a `warning:` — the one lenient path that doesn't warn, since a build with nothing to upload has nothing to warn about. A plain local `Release` build with no dSYMs takes it.
 - **A CI build that can't ship** skips entirely. "Shipping" is `ACTION=install` (an archive) or a `CONFIGURATION` whose name does not start with `Debug`; a build with no `CONFIGURATION` at all counts as shipping, since a spurious CI failure is loud and a skipped upload is not. That guess costs nothing locally, where a non-archive is lenient however it is classified — it decides only whether a *CI* build skips.
@@ -61,6 +61,23 @@ CI-ness comes from the `CI` environment variable, read as a tri-state rather tha
 CI-ness also picks which fix the diagnostic names, since Xcode's issue navigator shows one line and nothing around it: a runner is told to add an install step or set the token from a repository secret, a dev Mac is told to `brew install getsentry/tools/sentry-cli` or to write a `.sentryclirc`. Sending either one the other's instructions is a dead end.
 
 There used to be a second source — a `.ci-tools/ci-runner` marker file written into the checkout by `ci_post_clone.sh`, on the reasoning that an environment variable surviving into a run-script phase nested inside `xcodebuild` is a thinner guarantee than a file on disk. It went with the rest of the Xcode Cloud path (below). It was also a trap: nothing removed the file, so a developer who ran that script once had every later local `Release` build fail asking for a Sentry token. A leftover marker in a working copy now decides nothing, which the test suite pins.
+
+### Forcing an archive through
+
+A failed upload stops an archive, and sometimes that is the wrong answer at the wrong moment: sentry.io is down, the token expired overnight, the laptop is offline. Create an empty file at the repo root and every failure path goes back to a `warning:`:
+
+```bash
+touch .sentry-dsym-optional
+```
+
+It has to be a file. The build that needs it is Product > Archive under Xcode.app, which inherits `launchd`'s environment rather than a shell's — nothing you `export` reaches it, and a scheme environment variable does not reach a run-script phase either. The repo root is the only channel a developer has to that build.
+
+The upload is still attempted; the marker only decides what a failure costs. An archive that can upload still uploads and still reports it.
+
+Two things keep this from becoming the `.ci-tools/ci-runner` trap it structurally resembles:
+
+- **It announces itself.** On any build it actually rescued — one that would otherwise have failed — the diagnostic names the file and says to delete it. A forgotten marker is a line in every archive log, not silence.
+- **It is gitignored, and must stay that way.** A committed copy would disable the check for everyone, silently, which is exactly the [#955](https://github.com/WXYC/wxyc-ios-64/issues/955) bug with this file as the new cause. The test suite asserts the `.gitignore` entry rather than trusting the habit.
 
 ### Local setup
 

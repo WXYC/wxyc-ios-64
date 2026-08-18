@@ -58,6 +58,11 @@ worklog/
 # Sentry CLI config (contains auth token)
 .sentryclirc
 
+# Local opt-out for the Sentry dSYM upload gate. Must never be committed: it
+# turns the archive failure into a warning, so a committed copy would disable
+# the check for everyone silently, which is the bug the check exists to catch.
+.sentry-dsym-optional
+
 # Tools ci_scripts/install-sentry-cli.sh vendors into the checkout (sentry-cli).
 # Binaries, per-machine, reinstalled on demand.
 .ci-tools/
