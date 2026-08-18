@@ -552,6 +552,11 @@ expect_exit "a local archive with no credentials fails the build" "$RC" "1" "$OU
 expect_contains "a local archive with no credentials is an error:" "$OUT" "error:"
 expect_contains "the local credential diagnostic names .sentryclirc" "$OUT" ".sentryclirc"
 expect_not_contains "the local credential diagnostic does not send a dev Mac to Xcode Cloud" "$OUT" "Xcode Cloud"
+# The build this message is written for is Product > Archive, and Xcode.app
+# launched from the Dock inherits launchd's environment rather than a login
+# shell's — so "just export SENTRY_AUTH_TOKEN", offered without that caveat, is
+# advice that does nothing for the reader most likely to be reading it.
+expect_contains "the local credential diagnostic flags that a shell export misses Xcode.app" "$OUT" "Xcode.app"
 expect_not_contains "no upload is attempted without credentials" "$(<"$STUB_LOG")" "debug-files"
 
 new_case "local-archive-no-dsyms"
@@ -586,6 +591,11 @@ for config in "Release" "Release (Active Arch)" "TestFlight" "Debug" "Debug Test
     OUT=$(run_script "$DSYM_DIR" "" ""); RC=$?
     expect_exit "a local '$config' build with no credentials still exits 0" "$RC" "0" "$OUT"
     expect_not_contains "a local '$config' build does not error" "$OUT" "error:"
+    # Exit 0 alone cannot tell leniency apart from skipping the upload
+    # altogether, and those are different behaviors: a local build is supposed
+    # to still try, because a developer's simulator crashes reach Sentry too.
+    # No stub on PATH here, so reaching the sentry-cli check is the proof.
+    expect_contains "a local '$config' build still evaluates the upload" "$OUT" "warning: sentry-cli not installed"
 done
 
 # The unknown-build case points the other way locally than it does on CI (Case

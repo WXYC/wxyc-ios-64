@@ -818,8 +818,9 @@
 			shellScript = (
 				"# The logic lives in scripts/upload-debug-symbols.sh so it can be",
 				"# regression-tested (scripts/tests/test-upload-debug-symbols.sh)",
-				"# rather than edited blind inside project.pbxproj. It warns on a",
-				"# dev Mac and fails the build in CI; see the script's header.",
+				"# rather than edited blind inside project.pbxproj. It fails an",
+				"# archive that can't upload — including a local one — and warns on",
+				"# every other build; see the script's header.",
 				"#",
 				"# alwaysOutOfDate is what makes the phase run every build; the one",
 				"# input above is the ordering dependency on dsymutil, not a staleness",
