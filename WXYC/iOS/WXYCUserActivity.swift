@@ -16,9 +16,11 @@ import PlaybackCore
 enum WXYCUserActivity {
     /// The activity type shared by the home screen quick action, the donated
     /// Siri/Spotlight prediction activity, and the playback-gated Handoff
-    /// activity `HandoffActivityManager` owns. All four `"org.wxyc.iphoneapp.play"`
-    /// call sites in the app target read this constant instead of repeating
-    /// the literal.
+    /// activity `HandoffActivityManager` owns. All four call sites in the
+    /// app target read this constant instead of repeating the
+    /// bundle-identifier-derived literal, so it always agrees with the
+    /// `$(PRODUCT_BUNDLE_IDENTIFIER).play` entry in `Info.plist`'s
+    /// `NSUserActivityTypes`, whatever configuration builds it.
     ///
     /// Not `nonisolated`: `WXYCApp.performDonation()` (#740) is the one
     /// caller that runs off the main actor, and it reads this from inside
@@ -26,7 +28,7 @@ enum WXYCUserActivity {
     /// non-isolated code, so this stays main-actor isolated like every
     /// other declaration in this module (`SWIFT_DEFAULT_ACTOR_ISOLATION =
     /// MainActor`) without needing an explicit override.
-    static let play = "org.wxyc.iphoneapp.play"
+    static let play = "\(Bundle.main.bundleIdentifier ?? "org.wxyc.iphoneapp").play"
 
     /// The `PlaybackReason` to attribute to a continued `NSUserActivity` of
     /// this type, or `nil` if `activityType` isn't ours.
