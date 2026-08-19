@@ -489,7 +489,10 @@ struct WXYCApp: App {
     nonisolated static let launchProfilingExpiry = Date(timeIntervalSince1970: 1_790_726_400)
 
     /// `UserDefaults` key holding how many launches this install has armed.
-    nonisolated static let armedLaunchesDefaultsKey = "sentry_launch_profile_armed_launches"
+    /// Dotted and type-prefixed like `CacheMigrationManager`'s keys, because
+    /// the App Group suite it lives in is shared with the widget and the Share
+    /// extension.
+    nonisolated static let armedLaunchesDefaultsKey = "SentryLaunchProfiling.armedLaunches"
 
     /// Asks ``shouldProfileAppLaunch(environment:armedLaunches:now:)`` and, on
     /// yes, records that this launch spent one of the budget.
@@ -504,13 +507,18 @@ struct WXYCApp: App {
     /// *N+1*, so a fresh install is never profiled on its first launch and a
     /// budget of five profiles launches 2 through 6.
     ///
-    /// The `defaults` read happens on every launch in every environment, which
-    /// is affordable: `CacheMigrationManager.migrateIfNeeded()` earlier in
-    /// `init()` has already faulted the standard domain in, leaving this a
-    /// dictionary lookup. The write happens at most ``launchProfileBudget``
+    /// The `defaults` read happens on every launch in every environment, so it
+    /// deliberately uses the App Group suite rather than
+    /// `UserDefaults.standard`: `CacheMigrationManager.migrateIfNeeded()` is
+    /// the first statement of `init()` and reads `UserDefaults.wxyc`, so that
+    /// domain is already faulted in by the time `setUpSentry()` runs and this
+    /// costs a dictionary lookup. Nothing on the launch path touches the
+    /// standard domain before this point, so reading it here would have added
+    /// a `cfprefsd` round trip to the cold-launch path of an issue about
+    /// cold-launch cost. The write happens at most ``launchProfileBudget``
     /// times per install.
     nonisolated static func consumeLaunchProfileBudget(
-        defaults: DefaultsStorage = UserDefaults.standard,
+        defaults: DefaultsStorage = UserDefaults.wxyc,
         environment: BuildEnvironment = .current,
         now: Date = .now
     ) -> Bool {
