@@ -131,6 +131,7 @@ struct PlaycutDetailView: View {
                         onLinkTapped: { source in
                             StructuredPostHogAnalytics.shared.capture(ExternalLinkTapped(
                                 service: source,
+                                songTitle: playcut.songTitle,
                                 artist: playcut.artistName,
                                 album: playcut.releaseTitle ?? ""
                             ))
@@ -147,6 +148,7 @@ struct PlaycutDetailView: View {
                         onServiceTapped: { service in
                             StructuredPostHogAnalytics.shared.capture(StreamingLinkTapped(
                                 service: service.displayName,
+                                songTitle: playcut.songTitle,
                                 artist: playcut.artistName,
                                 album: playcut.releaseTitle ?? ""
                             ))
@@ -163,6 +165,7 @@ struct PlaycutDetailView: View {
                         onLinkTapped: { service in
                             StructuredPostHogAnalytics.shared.capture(ExternalLinkTapped(
                                 service: service,
+                                songTitle: playcut.songTitle,
                                 artist: playcut.artistName,
                                 album: playcut.releaseTitle ?? ""
                             ))
@@ -193,6 +196,7 @@ struct PlaycutDetailView: View {
         .overlay(alignment: .topTrailing) { likeButton }
         .onAppear {
             StructuredPostHogAnalytics.shared.capture(PlaycutDetailViewPresented(
+                songTitle: playcut.songTitle,
                 artist: playcut.artistName,
                 album: playcut.releaseTitle ?? ""
             ))
@@ -366,14 +370,19 @@ struct PlaycutDetailView: View {
     }
 
     /// Toggles the song like from the detail card's heart and records the
-    /// toggle. The event carries no artist or song identity — only lifecycle
-    /// strings and the post-toggle size bucket.
+    /// toggle, including song/artist/album identity (2026-08-21 identity
+    /// reversal, docs/plans/likes-identity-capture.md).
     private func toggleLike() {
         let liked = appState.likedSongsStore.toggle(playcut)
+        let fields = LikeAnalyticsFields.make(from: playcut, action: liked ? "like" : "unlike")
         StructuredPostHogAnalytics.shared.capture(SongLikeToggled(
-            action: liked ? "like" : "unlike",
+            action: fields.action,
             surface: "detail",
-            totalBucket: appState.likedSongsStore.totalBucket
+            totalBucket: appState.likedSongsStore.totalBucket,
+            songTitle: fields.songTitle,
+            artist: fields.artist,
+            album: fields.album,
+            artistId: fields.artistId
         ))
     }
 

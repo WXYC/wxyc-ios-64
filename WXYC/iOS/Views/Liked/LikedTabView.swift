@@ -6,8 +6,9 @@
 //  the on-device LikedSongsStore. Rows unlike via swipe or heart-off; tapping a
 //  row reopens the standard playcut detail card through the tab's own
 //  full-screen cover (the root's presentation state stays private to
-//  RootTabView). Likes never leave the device; the toggle analytics carry no
-//  song identity.
+//  RootTabView). Likes never leave the device; the toggle analytics carry
+//  song/artist/album identity as of the 2026-08-21 reversal (see
+//  docs/plans/likes-identity-capture.md).
 //
 //  Created by Jake Bromberg on 07/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -167,16 +168,21 @@ struct LikedTabView: View {
     // MARK: - Actions
 
     /// Removes the song from the store (heart-off and swipe share this path)
-    /// and records the toggle. The event carries no artist or song identity —
-    /// only lifecycle strings and the post-toggle size bucket.
+    /// and records the toggle, including song/artist/album identity
+    /// (2026-08-21 identity reversal, docs/plans/likes-identity-capture.md).
     private func unlike(_ snapshot: LikedSongSnapshot) {
         withAnimation {
             appState.likedSongsStore.unlike(snapshot)
         }
+        let fields = LikeAnalyticsFields.make(from: snapshot, action: "unlike")
         StructuredPostHogAnalytics.shared.capture(SongLikeToggled(
-            action: "unlike",
+            action: fields.action,
             surface: "liked_tab",
-            totalBucket: appState.likedSongsStore.totalBucket
+            totalBucket: appState.likedSongsStore.totalBucket,
+            songTitle: fields.songTitle,
+            artist: fields.artist,
+            album: fields.album,
+            artistId: fields.artistId
         ))
     }
 }
