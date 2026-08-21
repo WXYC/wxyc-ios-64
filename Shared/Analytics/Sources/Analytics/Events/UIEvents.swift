@@ -103,10 +103,12 @@ public struct DonateTapped {
 /// Event fired when a playcut detail view is presented.
 @AnalyticsEvent
 public struct PlaycutDetailViewPresented {
+    public let songTitle: String
     public let artist: String
     public let album: String
 
-    public init(artist: String, album: String) {
+    public init(songTitle: String, artist: String, album: String) {
+        self.songTitle = songTitle
         self.artist = artist
         self.album = album
     }
@@ -116,11 +118,13 @@ public struct PlaycutDetailViewPresented {
 @AnalyticsEvent
 public struct StreamingLinkTapped {
     public let service: String
+    public let songTitle: String
     public let artist: String
     public let album: String
 
-    public init(service: String, artist: String, album: String) {
+    public init(service: String, songTitle: String, artist: String, album: String) {
         self.service = service
+        self.songTitle = songTitle
         self.artist = artist
         self.album = album
     }
@@ -130,11 +134,13 @@ public struct StreamingLinkTapped {
 @AnalyticsEvent
 public struct ExternalLinkTapped {
     public let service: String
+    public let songTitle: String
     public let artist: String
     public let album: String
 
-    public init(service: String, artist: String, album: String) {
+    public init(service: String, songTitle: String, artist: String, album: String) {
         self.service = service
+        self.songTitle = songTitle
         self.artist = artist
         self.album = album
     }
