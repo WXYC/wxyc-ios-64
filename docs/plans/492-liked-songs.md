@@ -2,6 +2,8 @@
 
 Status: planned 2026-07-18. Supersedes the R3a "artist likes" section of `docs/plans/474-touring-soon-tab.md` (issue #492's body predates this pivot and gets rewritten alongside the final PR).
 
+**Amendment (2026-08-21):** the privacy invariant recorded in decision #8 below — "the analytics event carries no artist or song identity" — was reversed by product decision. `SongLikeToggled` now carries `songTitle`/`artist`/`album`/`artistId`, and three other events (`PlaycutDetailViewPresented`, `StreamingLinkTapped`, `ExternalLinkTapped`) gained `songTitle`. This document is left as-is below (it records what shipped 2026-07-18 and should not read as though that decision never happened); see `docs/plans/likes-identity-capture.md` for the reversal's rationale, design, and the later phases (contract, Backend-Service store, iOS sync) that carry the taste signal off-device.
+
 ## Context
 
 Issue #492 was originally specced as on-device **artist** likes. On 2026-07-18 the model was pivoted: listeners like **songs**; the For You shelf (R3b, #493) derives its artist set from the songs they like. The governance gate [BS#1625](https://github.com/WXYC/Backend-Service/issues/1625) resolved **approved** (2026-07-18): `artist_id` (additive, nullable) is live on the V2 flowsheet wire (BS PR #1698, deployed). The wxyc-shared SSOT patch ([wxyc-shared#239](https://github.com/WXYC/wxyc-shared/pull/239), api.yaml 1.19.0) is open awaiting a second approval — the iOS decode is hand-written Codable (no codegen), so iOS work is not technically blocked on it, but it should merge promptly to keep the SSOT ahead of consumers.
