@@ -36,6 +36,8 @@ private let expectedEventNames: [(String, String)] = [
     (CarPlayConnected.name, "carplay_connected"),
     (WidgetGetSnapshot.name, "widget_get_snapshot"),
     (WidgetGetTimeline.name, "widget_get_timeline"),
+    // Liked songs
+    (SongLikeToggled.name, "song_like_toggled"),
     // Error
     (ErrorEvent.name, "error"),
 ]
