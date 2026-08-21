@@ -107,7 +107,12 @@ public final class LikedSongsStore {
     }
 
     /// The store size as a coarse analytics bucket ("0", "1-9", "10-49",
-    /// "50+") — volume without identity, per the privacy invariant.
+    /// "50+"), independent of any single toggle's identity — so habit
+    /// retention stays visible even as `SongLikeToggled` gained per-toggle
+    /// song/artist/album identity in the 2026-08-21 reversal (see
+    /// `docs/plans/likes-identity-capture.md`; the original "no artist or
+    /// song identity" invariant this comment described no longer holds for
+    /// the event as a whole).
     public var totalBucket: String {
         switch songs.count {
         case 0: "0"
