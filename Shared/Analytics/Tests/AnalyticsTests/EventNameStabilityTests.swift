@@ -17,6 +17,7 @@ private let expectedEventNames: [(String, String)] = [
     (AppLaunch.name, "app_launch"),
     (AppLaunchSimple.name, "app_launch"),
     (AppEnteredBackground.name, "app_entered_background"),
+    (ForegroundSession.name, "foreground_session"),
     (BackgroundRefreshCompleted.name, "background_refresh_completed"),
     (ArtworkCacheCleared.name, "artwork_cache_cleared"),
     // Intents

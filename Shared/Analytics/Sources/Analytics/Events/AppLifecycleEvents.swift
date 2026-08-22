@@ -47,6 +47,38 @@ public struct AppEnteredBackground {
     }
 }
 
+/// Event fired when the app leaves the screen, carrying how long it was on it.
+///
+/// This is the app's only measure of time spent in front of the listener.
+/// `app_entered_background` and the SDK's own `Application Backgrounded` record
+/// the edge alone, and PostHog's `$session_duration` spans background playback
+/// — `playback_heartbeat` keeps a session alive with the phone in a pocket — so
+/// neither answers "how long did they use the app".
+///
+/// Deliberately separate from ``AppEnteredBackground`` rather than a property
+/// on it: that edge also fires for a launch that never reached the screen (a
+/// background refresh), where there is no visit to describe, and an
+/// always-absent property is worse to query than an always-present event.
+///
+/// The span is measured by `ForegroundSessionTracker`, which treats a Control
+/// Center pull as part of the visit rather than the end of it. A visit that
+/// ends in termination is never reported, so summed time-on-screen is a floor.
+@AnalyticsEvent
+public struct ForegroundSession {
+    /// How long the app was on screen, in seconds.
+    public let durationSeconds: TimeInterval
+
+    /// Whether audio was still playing as the app left the screen — the split
+    /// between a listener who backgrounded the app to keep listening and one
+    /// who was done.
+    public let isPlaying: Bool
+
+    public init(durationSeconds: TimeInterval, isPlaying: Bool) {
+        self.durationSeconds = durationSeconds
+        self.isPlaying = isPlaying
+    }
+}
+
 /// Event fired when background refresh completes.
 @AnalyticsEvent
 public struct BackgroundRefreshCompleted {
