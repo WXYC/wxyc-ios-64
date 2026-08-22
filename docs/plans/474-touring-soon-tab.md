@@ -148,7 +148,7 @@ similar_artists:
 
 **Anonymous sessions.** No changes required in any release. All server reads remain the existing anonymously-authed surfaces (`GET /concerts`, V2 flowsheet).
 
-**Analytics** (PostHog, per app conventions): filter-sheet opens, per-facet apply counts, filtered-to-zero occurrences, shelf impressions and card taps, like/unlike counts. Events are declarative `@AnalyticsEvent` structs in the established idiom (e.g. `TouringFilterApplied`, `TouringFilteredToZero`, `ForYouShelfImpression`, `ForYouCardTapped`, `ArtistLikeToggled`), injected via the settable-`AnalyticsService` pattern; exact names finalized at implementation. Events carry no artist identity for likes/shelf events (counts and tiers only) — decided 2026-07-13; loosening to artist-level product analytics would be a deliberate future opt-in.
+**Analytics** (PostHog, per app conventions): filter-sheet opens, per-facet apply counts, filtered-to-zero occurrences, shelf impressions and card taps, like/unlike counts. Events are declarative `@AnalyticsEvent` structs in the established idiom (e.g. `TouringFilterApplied`, `TouringFilteredToZero`, `ForYouShelfImpression`, `ForYouCardTapped`, `ArtistLikeToggled`), injected via the settable-`AnalyticsService` pattern; exact names finalized at implementation. Events carry no artist identity for likes/shelf events (counts and tiers only) — decided 2026-07-13; loosening to artist-level product analytics would be a deliberate future opt-in. **Amended 2026-08-21:** that opt-in was taken for the *like* event — `SongLikeToggled` now carries `song_title`/`artist`/`album`/`artist_id`. Shelf events are unchanged and still carry counts and tiers only. See `docs/plans/likes-identity-capture.md`.
 
 **Contract discipline.** Every wire change lands in `wxyc-shared/api.yaml` first, regenerates all consumers, and passes `check:breaking`. iOS decodes are forward-compatible optionals that can land ahead of backend emission (established pattern: flowsheet `genres`/`styles`).
 
@@ -178,6 +178,7 @@ Every PR stays under the 1000-line guidance; the contract PRs are tiny and land 
 - **Likes v1 scope**: hearts **plus a browsable Liked Artists list**, persisted via SwiftData. (Overrides the hearts-only default.)
 - **Similar-tier noise cap**: top 3 similar matches shelved per window, by weight — **controlled by a PostHog feature flag** via `FeatureFlagProvider`, local default 3.
 - **Analytics identity**: like/shelf events carry no artist ids (strictest reading of the privacy invariant). Loosening to artist-level product analytics is a deliberate future opt-in.
+  - **Amended 2026-08-21:** the opt-in was taken, for like events only. Shelf events still carry no artist identity. Rationale and scope: `docs/plans/likes-identity-capture.md`.
 
 ## References
 
