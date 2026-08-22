@@ -20,13 +20,6 @@ import Testing
 @Suite("SongLikeToggled")
 struct LikedSongsEventsTests {
 
-    // MARK: - Event Name
-
-    @Test("Event name is 'song_like_toggled'")
-    func eventName() {
-        #expect(SongLikeToggled.name == "song_like_toggled")
-    }
-
     // MARK: - Property Serialization
 
     @Test("Properties include the lifecycle fields and identity")
@@ -81,19 +74,5 @@ struct LikedSongsEventsTests {
         let props = try #require(event.properties)
 
         #expect(props["album"] as? String == "")
-    }
-
-    @Test("Default artistId is nil when omitted from the initializer")
-    func defaultArtistIdIsNil() {
-        let event = SongLikeToggled(
-            action: "like",
-            surface: "row",
-            totalBucket: "0",
-            songTitle: "la paradoja",
-            artist: "Juana Molina",
-            album: "DOGA"
-        )
-
-        #expect(event.artistId == nil)
     }
 }

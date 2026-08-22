@@ -1,5 +1,5 @@
 //
-//  UIEventsSongTitleTests.swift
+//  UIEventsTests.swift
 //  Analytics
 //
 //  Property-shape coverage for the `songTitle` field added to the three
@@ -14,8 +14,8 @@
 import Testing
 @testable import Analytics
 
-@Suite("UI events song_title")
-struct UIEventsSongTitleTests {
+@Suite("UIEvents")
+struct UIEventsTests {
 
     @Test("PlaycutDetailViewPresented carries song_title alongside artist and album")
     func playcutDetailViewPresentedCarriesSongTitle() throws {

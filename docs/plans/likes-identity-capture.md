@@ -120,7 +120,7 @@ public struct SongLikeToggled: AnalyticsEvent {
 
 The explicit `public init` is **required, not stylistic**: the implicit memberwise init is `internal`, and all three call sites live in the `WXYC` app target. The macro-backed version has one today (`LikedSongsEvents.swift:26`), and `ErrorEvent` carries one at `ErrorEvents.swift:44`.
 
-Dropping the macro means the event name is no longer derived, so it can silently move. `SongLikeToggled` is absent from `EventNameStabilityTests` today; **add it there first**, before the hand-written conformance lands.
+~~Dropping the macro means the event name is no longer derived, so it can silently move.~~ **Corrected during PR 1:** this premise is wrong. `AnalyticsEvent` carries a *protocol-extension* default `name` that snake-cases the type name (`AnalyticsEvent.swift:33-36`), so the name survives dropping the macro either way; the macro only pre-bakes it as a stored `let` instead of recomputing it per capture. The pin is still worth adding, for the reason that actually applies to every event: the name is derived from the **type name**, so a rename of the type silently renames the event. `SongLikeToggled` is absent from `EventNameStabilityTests` today; **add it there first**, and keep the explicit `static let name` on the hand-written conformance so the string is stored rather than recomputed.
 
 **Step 1c:** `PlaycutDetailViewPresented`, `StreamingLinkTapped`, and `ExternalLinkTapped` each gain `songTitle: String`. Note this is a **source-breaking memberwise-init change** at four existing emit sites (`PlaycutDetailView.swift:132,148,164,195`), each of which must pass the title. Their existing `artist`/`album` names and non-optionality stay.
 
