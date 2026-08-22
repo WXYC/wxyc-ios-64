@@ -4,9 +4,11 @@
 //
 //  Collapses a run of ``ForegroundVisibility`` transitions into one measured
 //  on-screen span — how long the app was actually in front of the listener,
-//  which no analytics surface recorded before. Lives beside
-//  ``ForegroundVisibility`` because it is that classification's only stateful
-//  consumer, and in Core because the classification is here.
+//  which no analytics surface recorded before. In Core because it depends on
+//  nothing but the standard library and one Core enum, which makes this the
+//  lowest layer that can hold it; reporting the span is deliberately somebody
+//  else's job, since an Analytics edge here would put PostHog in the build
+//  graph of every package that imports Core.
 //
 //  Created by Jake Bromberg on 08/21/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -38,6 +40,13 @@
 /// meaningless in a distribution. `ContinuousClock` also keeps counting while
 /// the device is asleep, which is correct here — the visit ends at the
 /// transition, not at the moment the screen dimmed.
+///
+/// Holding a ``Timer`` instead of a bare instant was considered, since an
+/// optional `Timer` is already used elsewhere as an at-most-one-open-span
+/// (`AudioPlayerController.playbackTimer`). It does not fit: `Timer` reads
+/// `ContinuousClock().now` inside both `start()` and `duration()`, so there is
+/// no seam to hand it the instant a transition arrived, and the tests here
+/// pin exact durations rather than tolerances.
 ///
 /// A visit that never happened reports nothing: a launch straight into the
 /// background (a background refresh, a widget timeline reload) ends with an

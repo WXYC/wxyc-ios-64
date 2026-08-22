@@ -209,8 +209,8 @@ final class Singletonia {
     private var concertSpotlightDonationTask: Task<Void, Never>?
     private var likedSongsHealingTask: Task<Void, Never>?
 
-    /// Routes scene phases to the widget and playlist consumers. Not a
-    /// cancellable task like its neighbours above — it owns the ordered relay
+    /// Routes scene phases to the widget, playlist, and foreground-session
+    /// consumers. Not a cancellable task like its neighbours above — it owns the ordered relay
     /// to `playlistService`; see ``ForegroundRouter`` for why the ordering
     /// matters. Assigned in `init` rather than here because it captures the
     /// service sinks.
@@ -655,7 +655,7 @@ final class Singletonia {
         foregroundRouter.route(entering: phase)
     }
 
-    /// Routes one scene phase to the two consumers that deliberately read it
+    /// Routes one scene phase to the three consumers that deliberately read it
     /// differently, because they are answering different questions:
     ///
     /// - **Widget reloads** are budgeted (roughly 40-70 timeline reloads a day)
@@ -666,6 +666,12 @@ final class Singletonia {
     ///   a widget nobody is looking at.
     /// - **The live-fs SSE subscription** follows ``ForegroundVisibility``,
     ///   which is inert for `.inactive` — see that type for the story.
+    /// - **The foreground-session measurement** reads it the subscription's
+    ///   way, for the same reason: a Control Center pull is part of the visit
+    ///   being timed, not the end of one. Unlike the two above it is an event
+    ///   emission rather than a state push — it fires only on the edge that
+    ///   closes a visit, which is why it is the one sink taking a value out
+    ///   rather than pushing one in.
     ///
     /// The playlist sink is fed through a ``LatestValueRelay`` rather than a
     /// fresh `Task` per phase: successive phases pushed through bare
