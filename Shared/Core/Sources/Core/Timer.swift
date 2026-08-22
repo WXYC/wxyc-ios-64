@@ -24,9 +24,7 @@ public struct Timer: Sendable {
     }
 
     public func duration() -> TimeInterval {
-        let elapsed = start.duration(to: ContinuousClock().now)
-        return TimeInterval(elapsed.components.seconds)
-            + TimeInterval(elapsed.components.attoseconds) / 1e18
+        start.duration(to: ContinuousClock().now).timeInterval
     }
 
     let start: ContinuousClock.Instant = ContinuousClock().now
