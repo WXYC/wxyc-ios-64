@@ -3,7 +3,7 @@
 //  WXYC
 //
 //  Drives `Singletonia.ForegroundRouter` — the real code path between a scene
-//  phase and its two consumers — with recorder sinks. The two consumers
+//  phase and its three consumers — with recorder sinks. The first two
 //  deliberately disagree about `.inactive`: widget reloads are budgeted and
 //  only pay off while the app is frontmost, so they stop, while the live-fs
 //  subscription must survive it (see `ForegroundVisibility` for that story).
@@ -11,6 +11,10 @@
 //  direction it collapses, and delivering to the playlist sink with a bare
 //  `Task {}` per phase instead of the coalescing relay is the ordering
 //  regression #835 fixed — both fail here.
+//
+//  The third consumer reports how long the app was on screen, and reads
+//  `.inactive` the subscription's way for the same reason: a Control Center
+//  pull is part of the visit, not the end of one.
 //
 //  What stays outside this pin is the one-line delegation in
 //  `setScenePhase(_:)` and the `init` wiring of the real sinks.
@@ -53,7 +57,8 @@ struct SingletoniaForegroundRoutingTests {
         let playlist = PlaylistRecorder()
         let router = Singletonia.ForegroundRouter(
             setWidgetsForegrounded: { widgets.record($0) },
-            setPlaylistForegrounded: { await playlist.record($0) }
+            setPlaylistForegrounded: { await playlist.record($0) },
+            reportForegroundSession: { _ in }
         )
 
         router.route(entering: phase)
@@ -77,7 +82,8 @@ struct SingletoniaForegroundRoutingTests {
         let playlist = PlaylistRecorder()
         let router = Singletonia.ForegroundRouter(
             setWidgetsForegrounded: { widgets.record($0) },
-            setPlaylistForegrounded: { await playlist.record($0) }
+            setPlaylistForegrounded: { await playlist.record($0) },
+            reportForegroundSession: { _ in }
         )
 
         // Waiting out each delivery before routing the next phase keeps the
@@ -112,7 +118,8 @@ struct SingletoniaForegroundRoutingTests {
                 if await playlist.values.count == 1 {
                     await gate.waitUntilOpen()
                 }
-            }
+            },
+            reportForegroundSession: { _ in }
         )
 
         // Park the handler on the first delivery, then pile up a burst the way
@@ -133,6 +140,77 @@ struct SingletoniaForegroundRoutingTests {
         // prevent — delivers all four.
         #expect(await playlist.values == [false, true])
     }
+
+    // MARK: - Foreground session reporting
+
+    @Test("A visit is reported once, on the edge that ends it")
+    func visitIsReportedWhenTheAppLeavesTheScreen() {
+        let sessions = SessionRecorder()
+        let router = makeRouter(reportForegroundSession: { sessions.record($0) })
+
+        // `.active` is also what the initial (`initial: true`) delivery looks
+        // like from here — the router cannot tell a launch from a return, and
+        // must not, or a launch-into-active visit would go unmeasured.
+        router.route(entering: .active)
+        #expect(sessions.values.isEmpty)
+
+        router.route(entering: .background)
+        #expect(sessions.values.count == 1)
+        #expect(sessions.values.first ?? .seconds(-1) >= .zero)
+    }
+
+    @Test("A transient interruption is part of the visit, not the end of it")
+    func interruptionDoesNotReportAVisit() {
+        let sessions = SessionRecorder()
+        let router = makeRouter(reportForegroundSession: { sessions.record($0) })
+
+        router.route(entering: .active)
+        router.route(entering: .inactive)
+        #expect(sessions.values.isEmpty, "A Control Center pull is not the end of a visit")
+
+        router.route(entering: .active)
+        router.route(entering: .background)
+
+        // One visit spanning the whole sequence — not two, which is what
+        // reading `.inactive` as an exit would report.
+        #expect(sessions.values.count == 1)
+    }
+
+    @Test("A launch straight into the background reports no visit")
+    func backgroundLaunchReportsNothing() {
+        let sessions = SessionRecorder()
+        let router = makeRouter(reportForegroundSession: { sessions.record($0) })
+
+        // A background refresh launch never reaches the screen. Reporting a
+        // zero-length visit here would drag the whole distribution down.
+        router.route(entering: .background)
+        #expect(sessions.values.isEmpty)
+    }
+
+    @Test("Each visit is reported separately")
+    func successiveVisitsAreReportedSeparately() {
+        let sessions = SessionRecorder()
+        let router = makeRouter(reportForegroundSession: { sessions.record($0) })
+
+        router.route(entering: .active)
+        router.route(entering: .background)
+        router.route(entering: .active)
+        router.route(entering: .background)
+
+        #expect(sessions.values.count == 2)
+    }
+
+    /// A router whose widget and playlist sinks are inert, for the tests that
+    /// only care about the session sink.
+    private func makeRouter(
+        reportForegroundSession: @escaping (Duration) -> Void
+    ) -> Singletonia.ForegroundRouter {
+        Singletonia.ForegroundRouter(
+            setWidgetsForegrounded: { _ in },
+            setPlaylistForegrounded: { _ in },
+            reportForegroundSession: reportForegroundSession
+        )
+    }
 }
 
 // MARK: - Test helpers
@@ -144,6 +222,17 @@ private final class WidgetRecorder {
     private(set) var values: [Bool] = []
 
     func record(_ value: Bool) {
+        values.append(value)
+    }
+}
+
+/// Records the visits the router reported. Synchronous for the same reason
+/// `WidgetRecorder` is: the session sink is called inline on the main actor.
+@MainActor
+private final class SessionRecorder {
+    private(set) var values: [Duration] = []
+
+    func record(_ value: Duration) {
         values.append(value)
     }
 }
