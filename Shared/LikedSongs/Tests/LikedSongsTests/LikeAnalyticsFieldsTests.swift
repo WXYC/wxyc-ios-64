@@ -2,12 +2,12 @@
 //  LikeAnalyticsFieldsTests.swift
 //  LikedSongs
 //
-//  Coverage for the pure Playcut/LikedSongSnapshot -> LikeAnalyticsFields
-//  mapping: like-vs-unlike action, nil artistId carried through unchanged,
-//  empty-album coalescing, and that fields land in the right slot (no
-//  artist/songTitle transposition). This is where the real test coverage for
-//  the like-analytics identity work lives — the call sites that consume this
-//  type become a mechanical five-line mapping with no branching, mirroring
+//  Coverage for the pure LikableSong -> LikeAnalyticsFields mapping:
+//  like-vs-unlike action, nil artistId carried through unchanged, empty-album
+//  coalescing, and that fields land in the right slot (no artist/songTitle
+//  transposition). This is where the real test coverage for the like-analytics
+//  identity work lives — the call sites that consume this type become a
+//  mechanical mapping with no branching, mirroring
 //  LikeHeartButton.shouldCelebrate's testability bargain.
 //
 //  Created by Jake Bromberg on 08/21/26.
@@ -91,7 +91,10 @@ struct LikeAnalyticsFieldsTests {
 
     // MARK: - From a LikedSongSnapshot (the Liked tab's unlike path)
 
-    @Test("Deriving from a snapshot matches the Playcut overload's mapping")
+    /// `LikedSongSnapshot` reaches the shared body through its own
+    /// `LikableSong` conformance, so this guards that the conformance lands
+    /// each member in the slot the `Playcut` path does.
+    @Test("A snapshot derives the same fields as the playcut it was taken from")
     func snapshotDerivationMatchesPlaycut() {
         let playcut = Playcut.stub(
             songTitle: "Back, Baby", artistName: "Jessica Pratt",
@@ -106,25 +109,5 @@ struct LikeAnalyticsFieldsTests {
         #expect(fields.artist == "Jessica Pratt")
         #expect(fields.album == "On Your Own Love Again")
         #expect(fields.artistId == 812)
-    }
-
-    @Test("Snapshot overload also coalesces a missing release title to empty string")
-    func snapshotMissingReleaseTitleCoalesces() {
-        let playcut = Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", releaseTitle: nil)
-        let snapshot = LikedSongSnapshot(playcut: playcut, likedAt: Self.likedAt)
-
-        let fields = LikeAnalyticsFields.make(from: snapshot, liked: false)
-
-        #expect(fields.album == "")
-    }
-
-    @Test("Snapshot overload carries a nil artistId through as nil")
-    func snapshotNilArtistIdCarriesThrough() {
-        let playcut = Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", artistId: nil)
-        let snapshot = LikedSongSnapshot(playcut: playcut, likedAt: Self.likedAt)
-
-        let fields = LikeAnalyticsFields.make(from: snapshot, liked: false)
-
-        #expect(fields.artistId == nil)
     }
 }

@@ -28,6 +28,10 @@ import Foundation
 /// is the one field that stays optional-and-omitted: it has no sibling across
 /// those events, and absent-vs-unresolved is a real distinction.
 public struct SongLikeToggled: AnalyticsEvent {
+    /// Stated rather than left to `AnalyticsEvent`'s default, which derives
+    /// the same string but is a *computed* property that re-runs the
+    /// snake-case conversion on every capture. The macro pre-bakes a stored
+    /// `let` for exactly this reason; hand-written conformances have to say it.
     public static let name = "song_like_toggled"
 
     public let action: String

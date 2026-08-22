@@ -8,7 +8,7 @@ On-device liked-songs store for the WXYC app (#492). Listeners heart playcuts; t
 - **`LikedSongSnapshot`** is a lean snapshot of the playcut's display fields taken at like time (not a raw `Playcut` — no bio/genres/styles/embedded show). `toPlaycut()` bridges back for the standard detail card.
 - **Heal on observation:** `LikedSongsStore.heal(from:)` stamps artist ids onto nil-id rows when id-bearing plays of the same folded artist name are observed, making free-text likes eligible for For You matching.
 - **`likedArtistIds`** is the For You projection: distinct non-nil artist ids (the `artists.id` keyspace shared with `Concert.headliningArtistId`).
-- **`LikeAnalyticsFields`** is the pure toggle -> analytics-field mapping consumed by `SongLikeToggled` (in `Analytics`, which this package does not depend on): `action`, `songTitle`, `artist`, `album` (`""` when there's no release title), and `artistId`. Two statics derive it — `make(from: Playcut, action:)` for the row/detail toggle sites and `make(from: LikedSongSnapshot, action:)` for the Liked tab's unlike path.
+- **`LikeAnalyticsFields`** is the pure toggle -> analytics-field mapping consumed by `SongLikeToggled` (in `Analytics`, which this package does not depend on): `action`, `songTitle`, `artist`, `album` (`""` when there's no release title), and `artistId`. One static derives it — `make(from: some LikableSong, liked: Bool)` — over **`LikableSong`**, a local refinement of `Playlist`'s `SongDisplayable` that adds `artistId`, conformed by both `Playcut` (the row/detail toggle sites) and `LikedSongSnapshot` (the Liked tab's unlike path).
 
 ## Persistence
 
