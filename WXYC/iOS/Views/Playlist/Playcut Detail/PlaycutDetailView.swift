@@ -374,15 +374,10 @@ struct PlaycutDetailView: View {
     /// reversal, docs/plans/likes-identity-capture.md).
     private func toggleLike() {
         let liked = appState.likedSongsStore.toggle(playcut)
-        let fields = LikeAnalyticsFields.make(from: playcut, action: liked ? "like" : "unlike")
         StructuredPostHogAnalytics.shared.capture(SongLikeToggled(
-            action: fields.action,
+            fields: LikeAnalyticsFields.make(from: playcut, liked: liked),
             surface: "detail",
-            totalBucket: appState.likedSongsStore.totalBucket,
-            songTitle: fields.songTitle,
-            artist: fields.artist,
-            album: fields.album,
-            artistId: fields.artistId
+            totalBucket: appState.likedSongsStore.totalBucket
         ))
     }
 
