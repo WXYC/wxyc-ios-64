@@ -293,6 +293,18 @@ final class Singletonia {
             },
             setPlaylistForegrounded: { [playlistService] in
                 await playlistService.setForegrounded($0)
+            },
+            reportForegroundSession: { session in
+                // The player is read here rather than captured, because this
+                // closure outlives `init` by the life of the app and the
+                // question is what playback was doing as the visit ended.
+                // `WXYCApp` hands the player its own background notification
+                // *before* routing the phase here, so a visit the listener
+                // ended by pausing reads as not playing either way.
+                StructuredPostHogAnalytics.shared.capture(ForegroundSession(
+                    durationSeconds: session.timeInterval,
+                    isPlaying: AudioPlayerController.shared.isPlaying
+                ))
             }
         )
 
@@ -671,13 +683,22 @@ final class Singletonia {
     final class ForegroundRouter {
         private let setWidgetsForegrounded: (Bool) -> Void
         private let playlistRelay: LatestValueRelay<Bool>
+        private let reportForegroundSession: (Duration) -> Void
+
+        /// Accumulates the on-screen span between the phases below. Held here
+        /// because this is the only object that sees every phase — including
+        /// the `initial: true` delivery, which is where a launch-into-active
+        /// visit starts and which the change-edge arms in `WXYCApp` never see.
+        private var sessionTracker = ForegroundSessionTracker()
 
         init(
             setWidgetsForegrounded: @escaping (Bool) -> Void,
-            setPlaylistForegrounded: @escaping @Sendable (Bool) async -> Void
+            setPlaylistForegrounded: @escaping @Sendable (Bool) async -> Void,
+            reportForegroundSession: @escaping (Duration) -> Void
         ) {
             self.setWidgetsForegrounded = setWidgetsForegrounded
             self.playlistRelay = LatestValueRelay(setPlaylistForegrounded)
+            self.reportForegroundSession = reportForegroundSession
         }
 
         func route(entering phase: ScenePhase) {
@@ -694,15 +715,25 @@ final class Singletonia {
                 break
             }
 
+            let visibility = ForegroundVisibility(entering: phase)
+
             // The service ignores this when live updates aren't enabled, so
             // it's a no-op on any non-iOS PlaylistService instance (#269).
-            switch ForegroundVisibility(entering: phase) {
+            switch visibility {
             case .onScreen:
                 playlistRelay.send(true)
             case .offScreen:
                 playlistRelay.send(false)
             case .noChange:
                 break
+            }
+
+            // Reads the same classification as the subscription above, and for
+            // the same reason: a Control Center pull leaves the app on screen,
+            // so it belongs inside the visit rather than ending it. The tracker
+            // reports at most once per phase, on the edge that closes a visit.
+            if let session = sessionTracker.record(visibility) {
+                reportForegroundSession(session)
             }
         }
     }

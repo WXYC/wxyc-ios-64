@@ -63,4 +63,5 @@ PostHog is used throughout. Key events:
 - `app launch`
 - `App entered background`
 - `Background refresh completed`
+- `foreground_session` — how long the app was on screen, in `duration_seconds`. The only measure of time spent in front of the listener: the two background events above record the edge alone, and PostHog's own `$session_duration` spans background playback because `playback_heartbeat` keeps a session alive with the phone in a pocket. Measured by `ForegroundSessionTracker` (Core) off the scene phases `Singletonia.ForegroundRouter` already routes; a Control Center pull is part of the visit, not the end of one.
 - Error capture with context
