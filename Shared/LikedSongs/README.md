@@ -1,6 +1,6 @@
 # LikedSongs
 
-On-device liked-songs store for the WXYC app (#492). Listeners heart playcuts; the For You shelf (#493) derives its taste signal from the artists of the songs they like. Likes never leave the device — no server round-trip, no account. PostHog analytics do carry song/artist/album identity as of the 2026-08-21 product reversal (`SongLikeToggled`; see `docs/plans/likes-identity-capture.md`) — a durable server-side taste store is a later phase of that plan.
+On-device liked-songs store for the WXYC app (#492). Listeners heart playcuts; the For You shelf (#493) derives its taste signal from the artists of the songs they like. The liked-songs store never leaves the device — no server round-trip, no account. The *analytics* do: PostHog events carry song/artist/album identity as of the 2026-08-21 product reversal (`SongLikeToggled`; see `docs/plans/likes-identity-capture.md`) — a durable server-side taste store is a later phase of that plan.
 
 ## Model
 

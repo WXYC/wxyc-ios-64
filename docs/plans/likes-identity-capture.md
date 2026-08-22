@@ -204,8 +204,10 @@ The invariant is asserted far more widely than the Likes feature itself, and the
 Regenerate this inventory before each PR rather than trusting the table:
 
 ```
-grep -rn "no artist or song identity\|taste signal\|without identity" --include="*.swift" --include="*.md" Shared/ WXYC/ docs/
+grep -rn "no artist or song identity\|no artist identity\|no artist ids\|taste signal\|without identity\|never leave the device" --include="*.swift" --include="*.md" Shared/ WXYC/ docs/
 ```
+
+The first three alternations are all needed and are not redundant: `docs/plans/474-touring-soon-tab.md` phrases the same invariant as "carry no artist identity for likes/shelf events" (:151) and "carry no artist ids" (:180), and the original two-phrase grep matched **neither**. PR 1 found those sites only in review. Widen this before trusting a clean grep to mean there is nothing left to amend.
 
 `docs/plans/492-liked-songs.md` is a shipped plan and should not be rewritten as though the original decision never happened. Add a dated amendment recording the 2026-08-21 reversal and pointing here.
 
@@ -219,9 +221,10 @@ grep -rn "no artist or song identity\|taste signal\|without identity" --include=
 
 ## Risks
 
-- **App Store privacy declaration.** Music preference is a listener profile. The App Privacy answers live in App Store Connect, not this repo — there is no `.xcprivacy` manifest here at all. Review before the first build carrying Phase 4 ships. This is the one item that blocks a release rather than a PR.
+- **App Store privacy declaration.** Music preference is a listener profile. The App Privacy answers live in App Store Connect, not this repo — there is no `.xcprivacy` manifest here at all. **Review before the first build carrying Phase 1 ships**, not Phase 4: identity-bearing taste data leaves the device at Phase 1, to a third-party processor (PostHog), keyed to its `distinct_id`. Phase 4 changes who else receives it, not whether it is collected. This is the one item that blocks a release rather than a PR, and it now blocks the *next* release rather than a distant one.
 - **Phase 1 without Phase 3 is the worst outcome.** PostHog would hold identity-bearing like events keyed to `person_id` while the durable store that justified breaking the invariant does not exist. Either commit to Phase 3 or do not start.
 - **Distinct-listener inflation.** Per Decision #4, accepted and caveated. Any dashboard tile built on `count(distinct listener)` must carry the caveat in its description.
+- **`artist_id` is asymmetric between the like and the unlike path, and is not being fixed here.** The row/detail sites read `playcut.artistId`, which is nil for free-text and V1 plays; the Liked-tab unlike path reads `snapshot.artistId`, which `LikedSongsStore.heal(from:)` may have stamped *after* the like was recorded. So the same song can emit a like with `artist_id` absent and a later unlike with it present. Consequence: netting likes minus unlikes on `artist_id` can go negative for an artist, and distinct-artist counts over like events under-count relative to unlike events. This is tolerable precisely because Decision #2 already rules out toggle-netting as the metric — Phase 3's durable per-listener current-state store is the sanctioned answer to "top-liked artists". Do not build a PostHog tile that nets toggles. Closing the gap would need a pre-toggle store lookup at two view sites that are deliberately untestable, which is the branching the Phase 1 testability bargain exists to keep out of the views.
 - **Folded-name fallback misses.** Per Decision #6, the server's fold is narrower than the client's. Width-variant and multi-space artist names will fail the catalog match and land `artist_id` null.
 
 ## Testing
