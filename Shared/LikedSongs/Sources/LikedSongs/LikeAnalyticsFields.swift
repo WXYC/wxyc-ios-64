@@ -48,9 +48,15 @@ public struct LikeAnalyticsFields: Equatable, Sendable {
     }
 
     /// Derives fields from the playcut a row/detail toggle acted on.
-    public static func make(from playcut: Playcut, action: String) -> LikeAnalyticsFields {
+    ///
+    /// Takes the post-toggle liked state rather than an already-formatted
+    /// action string: the `"like"`/`"unlike"` spelling is the part of the
+    /// mapping that can silently drift (a call site typing `"liked"` would
+    /// split the PostHog `action` dimension without failing anything), so it
+    /// is derived here once and pinned by test, not retyped at three sites.
+    public static func make(from playcut: Playcut, liked: Bool) -> LikeAnalyticsFields {
         LikeAnalyticsFields(
-            action: action,
+            action: action(liked: liked),
             songTitle: playcut.songTitle,
             artist: playcut.artistName,
             album: playcut.releaseTitle ?? "",
@@ -60,13 +66,19 @@ public struct LikeAnalyticsFields: Equatable, Sendable {
 
     /// Derives fields from a persisted snapshot — the Liked tab's unlike path,
     /// which acts on a `LikedSongSnapshot` rather than a live `Playcut`.
-    public static func make(from snapshot: LikedSongSnapshot, action: String) -> LikeAnalyticsFields {
+    public static func make(from snapshot: LikedSongSnapshot, liked: Bool) -> LikeAnalyticsFields {
         LikeAnalyticsFields(
-            action: action,
+            action: action(liked: liked),
             songTitle: snapshot.songTitle,
             artist: snapshot.artistName,
             album: snapshot.releaseTitle ?? "",
             artistId: snapshot.artistId
         )
+    }
+
+    /// The wire spelling of the post-toggle state. Sole definition of these
+    /// two strings.
+    private static func action(liked: Bool) -> String {
+        liked ? "like" : "unlike"
     }
 }

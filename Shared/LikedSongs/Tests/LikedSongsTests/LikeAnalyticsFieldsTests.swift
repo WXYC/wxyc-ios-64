@@ -34,7 +34,7 @@ struct LikeAnalyticsFieldsTests {
             releaseTitle: "On Your Own Love Again", artistId: 812
         )
 
-        let fields = LikeAnalyticsFields.make(from: playcut, action: "like")
+        let fields = LikeAnalyticsFields.make(from: playcut, liked: true)
 
         #expect(fields.action == "like")
         #expect(fields.songTitle == "Back, Baby")
@@ -43,20 +43,23 @@ struct LikeAnalyticsFieldsTests {
         #expect(fields.artistId == 812)
     }
 
-    @Test("Unliking maps to a distinct action string")
-    func unlikingMapsAction() {
+    @Test(
+        "The post-toggle liked state derives the wire action string",
+        arguments: [(true, "like"), (false, "unlike")]
+    )
+    func likedStateDerivesAction(liked: Bool, expected: String) {
         let playcut = Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt")
 
-        let fields = LikeAnalyticsFields.make(from: playcut, action: "unlike")
+        let fields = LikeAnalyticsFields.make(from: playcut, liked: liked)
 
-        #expect(fields.action == "unlike")
+        #expect(fields.action == expected)
     }
 
     @Test("Nil artistId is carried through as nil, not defaulted")
     func nilArtistIdCarriesThrough() {
         let playcut = Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", artistId: nil)
 
-        let fields = LikeAnalyticsFields.make(from: playcut, action: "like")
+        let fields = LikeAnalyticsFields.make(from: playcut, liked: true)
 
         #expect(fields.artistId == nil)
     }
@@ -65,7 +68,7 @@ struct LikeAnalyticsFieldsTests {
     func missingReleaseTitleCoalesces() {
         let playcut = Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", releaseTitle: nil)
 
-        let fields = LikeAnalyticsFields.make(from: playcut, action: "like")
+        let fields = LikeAnalyticsFields.make(from: playcut, liked: true)
 
         #expect(fields.album == "")
     }
@@ -76,7 +79,7 @@ struct LikeAnalyticsFieldsTests {
             songTitle: "Call Your Name", artistName: "Chuquimamani-Condori", releaseTitle: "Edits"
         )
 
-        let fields = LikeAnalyticsFields.make(from: playcut, action: "like")
+        let fields = LikeAnalyticsFields.make(from: playcut, liked: true)
 
         #expect(fields.songTitle == "Call Your Name")
         #expect(fields.artist == "Chuquimamani-Condori")
@@ -96,7 +99,7 @@ struct LikeAnalyticsFieldsTests {
         )
         let snapshot = LikedSongSnapshot(playcut: playcut, likedAt: Self.likedAt)
 
-        let fields = LikeAnalyticsFields.make(from: snapshot, action: "unlike")
+        let fields = LikeAnalyticsFields.make(from: snapshot, liked: false)
 
         #expect(fields.action == "unlike")
         #expect(fields.songTitle == "Back, Baby")
@@ -110,7 +113,7 @@ struct LikeAnalyticsFieldsTests {
         let playcut = Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", releaseTitle: nil)
         let snapshot = LikedSongSnapshot(playcut: playcut, likedAt: Self.likedAt)
 
-        let fields = LikeAnalyticsFields.make(from: snapshot, action: "unlike")
+        let fields = LikeAnalyticsFields.make(from: snapshot, liked: false)
 
         #expect(fields.album == "")
     }
@@ -120,7 +123,7 @@ struct LikeAnalyticsFieldsTests {
         let playcut = Playcut.stub(songTitle: "la paradoja", artistName: "Juana Molina", artistId: nil)
         let snapshot = LikedSongSnapshot(playcut: playcut, likedAt: Self.likedAt)
 
-        let fields = LikeAnalyticsFields.make(from: snapshot, action: "unlike")
+        let fields = LikeAnalyticsFields.make(from: snapshot, liked: false)
 
         #expect(fields.artistId == nil)
     }
