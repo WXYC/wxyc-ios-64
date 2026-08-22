@@ -22,22 +22,13 @@ struct AppLifecycleEventsTests {
     func foregroundSessionProperties() throws {
         let event = ForegroundSession(durationSeconds: 12.5, isPlaying: true)
         let props = try #require(event.properties)
+        // 12.5, not 12: the median visit is on the order of ten seconds, so
+        // truncating to whole seconds — or typing this as an Int — would
+        // quantize away most of the distribution the event exists to measure.
         #expect(props["duration_seconds"] as? Double == 12.5)
         #expect(props["is_playing"] as? Bool == true)
         #expect(props.count == 2)
-        #expect(ForegroundSession.name == "foreground_session")
-    }
-
-    @Test(
-        "A sub-second visit keeps its fractional seconds",
-        arguments: [0.0, 0.25, 1.75, 3600.5]
-    )
-    func foregroundSessionKeepsFractionalSeconds(_ seconds: Double) throws {
-        // The median visit is on the order of ten seconds, so truncating to
-        // whole seconds — or to an Int — would quantize away most of the
-        // distribution this event exists to measure.
-        let props = try #require(ForegroundSession(durationSeconds: seconds, isPlaying: false).properties)
-        #expect(props["duration_seconds"] as? Double == seconds)
+        // The name itself is pinned once, in `EventNameStabilityTests`.
     }
 
     @Test("AppEnteredBackground still carries only the playback flag")

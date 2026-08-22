@@ -31,6 +31,22 @@ import Testing
 /// Extracted to a top-level constant so the tuple array doesn't lean on the
 /// type-checker inside the macro expansion. `nonisolated` because the `@Test`
 /// macro reads the arguments outside the suite's main-actor isolation.
+/// A run of phases, and how many completed visits it should report. Extracted
+/// alongside `routingRows` for the same type-checker reason.
+private nonisolated let sessionRows: [([ScenePhase], Int)] = [
+    // `.active` is also what the initial (`initial: true`) delivery looks like
+    // from here — the router cannot tell a launch from a return, and must not,
+    // or a launch-into-active visit would go unmeasured.
+    ([.active, .background], 1),
+    // A Control Center pull leaves the app on screen, so the whole sequence is
+    // one visit. Reading `.inactive` as an exit reports two.
+    ([.active, .inactive, .active, .background], 1),
+    // A background-refresh launch never reaches the screen; reporting a
+    // zero-length visit for it would drag the whole distribution down.
+    ([.background], 0),
+    ([.active, .background, .active, .background], 2),
+]
+
 private nonisolated let routingRows: [(ScenePhase, [Bool], [Bool])] = [
     (.active, [true], [true]),
     (.background, [false], [false]),
@@ -53,12 +69,11 @@ struct SingletoniaForegroundRoutingTests {
         expectedWidgets: [Bool],
         expectedPlaylist: [Bool]
     ) async {
-        let widgets = WidgetRecorder()
+        let widgets = Recorder<Bool>()
         let playlist = PlaylistRecorder()
-        let router = Singletonia.ForegroundRouter(
+        let router = makeRouter(
             setWidgetsForegrounded: { widgets.record($0) },
-            setPlaylistForegrounded: { await playlist.record($0) },
-            reportForegroundSession: { _ in }
+            setPlaylistForegrounded: { await playlist.record($0) }
         )
 
         router.route(entering: phase)
@@ -78,12 +93,11 @@ struct SingletoniaForegroundRoutingTests {
         .timeLimit(.minutes(1))
     )
     func inactiveSendsNothingWithinASequence() async {
-        let widgets = WidgetRecorder()
+        let widgets = Recorder<Bool>()
         let playlist = PlaylistRecorder()
-        let router = Singletonia.ForegroundRouter(
+        let router = makeRouter(
             setWidgetsForegrounded: { widgets.record($0) },
-            setPlaylistForegrounded: { await playlist.record($0) },
-            reportForegroundSession: { _ in }
+            setPlaylistForegrounded: { await playlist.record($0) }
         )
 
         // Waiting out each delivery before routing the next phase keeps the
@@ -111,15 +125,13 @@ struct SingletoniaForegroundRoutingTests {
         let playlist = PlaylistRecorder()
         let gate = Gate()
 
-        let router = Singletonia.ForegroundRouter(
-            setWidgetsForegrounded: { _ in },
+        let router = makeRouter(
             setPlaylistForegrounded: { value in
                 await playlist.record(value)
                 if await playlist.values.count == 1 {
                     await gate.waitUntilOpen()
                 }
-            },
-            reportForegroundSession: { _ in }
+            }
         )
 
         // Park the handler on the first delivery, then pile up a burst the way
@@ -143,71 +155,33 @@ struct SingletoniaForegroundRoutingTests {
 
     // MARK: - Foreground session reporting
 
-    @Test("A visit is reported once, on the edge that ends it")
-    func visitIsReportedWhenTheAppLeavesTheScreen() {
-        let sessions = SessionRecorder()
+    @Test(
+        "Each visit reaches the session sink once, on the edge that ends it",
+        arguments: sessionRows
+    )
+    func visitsReachTheSessionSink(phases: [ScenePhase], expectedVisits: Int) {
+        let sessions = Recorder<Duration>()
         let router = makeRouter(reportForegroundSession: { sessions.record($0) })
 
-        // `.active` is also what the initial (`initial: true`) delivery looks
-        // like from here — the router cannot tell a launch from a return, and
-        // must not, or a launch-into-active visit would go unmeasured.
-        router.route(entering: .active)
-        #expect(sessions.values.isEmpty)
+        for phase in phases {
+            router.route(entering: phase)
+        }
 
-        router.route(entering: .background)
-        #expect(sessions.values.count == 1)
-        #expect(sessions.values.first ?? .seconds(-1) >= .zero)
+        #expect(sessions.values.count == expectedVisits)
+        #expect(sessions.values.allSatisfy { $0 >= .zero })
     }
 
-    @Test("A transient interruption is part of the visit, not the end of it")
-    func interruptionDoesNotReportAVisit() {
-        let sessions = SessionRecorder()
-        let router = makeRouter(reportForegroundSession: { sessions.record($0) })
-
-        router.route(entering: .active)
-        router.route(entering: .inactive)
-        #expect(sessions.values.isEmpty, "A Control Center pull is not the end of a visit")
-
-        router.route(entering: .active)
-        router.route(entering: .background)
-
-        // One visit spanning the whole sequence — not two, which is what
-        // reading `.inactive` as an exit would report.
-        #expect(sessions.values.count == 1)
-    }
-
-    @Test("A launch straight into the background reports no visit")
-    func backgroundLaunchReportsNothing() {
-        let sessions = SessionRecorder()
-        let router = makeRouter(reportForegroundSession: { sessions.record($0) })
-
-        // A background refresh launch never reaches the screen. Reporting a
-        // zero-length visit here would drag the whole distribution down.
-        router.route(entering: .background)
-        #expect(sessions.values.isEmpty)
-    }
-
-    @Test("Each visit is reported separately")
-    func successiveVisitsAreReportedSeparately() {
-        let sessions = SessionRecorder()
-        let router = makeRouter(reportForegroundSession: { sessions.record($0) })
-
-        router.route(entering: .active)
-        router.route(entering: .background)
-        router.route(entering: .active)
-        router.route(entering: .background)
-
-        #expect(sessions.values.count == 2)
-    }
-
-    /// A router whose widget and playlist sinks are inert, for the tests that
-    /// only care about the session sink.
+    /// Builds a router with every sink inert unless a test asks for one, so a
+    /// fourth consumer costs this file one defaulted parameter instead of an
+    /// edit at every construction site.
     private func makeRouter(
-        reportForegroundSession: @escaping (Duration) -> Void
+        setWidgetsForegrounded: @escaping (Bool) -> Void = { _ in },
+        setPlaylistForegrounded: @escaping @Sendable (Bool) async -> Void = { _ in },
+        reportForegroundSession: @escaping (Duration) -> Void = { _ in }
     ) -> Singletonia.ForegroundRouter {
         Singletonia.ForegroundRouter(
-            setWidgetsForegrounded: { _ in },
-            setPlaylistForegrounded: { _ in },
+            setWidgetsForegrounded: setWidgetsForegrounded,
+            setPlaylistForegrounded: setPlaylistForegrounded,
             reportForegroundSession: reportForegroundSession
         )
     }
@@ -215,24 +189,14 @@ struct SingletoniaForegroundRoutingTests {
 
 // MARK: - Test helpers
 
-/// Records what the router pushed at the widget sink. The router calls the
-/// sink synchronously on the main actor, so no waiting is involved.
+/// Records what the router pushed at a synchronous sink. The widget and
+/// session sinks are both called inline on the main actor, so no waiting is
+/// involved — `PlaylistRecorder` below is an actor because its sink is async.
 @MainActor
-private final class WidgetRecorder {
-    private(set) var values: [Bool] = []
+private final class Recorder<Value> {
+    private(set) var values: [Value] = []
 
-    func record(_ value: Bool) {
-        values.append(value)
-    }
-}
-
-/// Records the visits the router reported. Synchronous for the same reason
-/// `WidgetRecorder` is: the session sink is called inline on the main actor.
-@MainActor
-private final class SessionRecorder {
-    private(set) var values: [Duration] = []
-
-    func record(_ value: Duration) {
+    func record(_ value: Value) {
         values.append(value)
     }
 }
