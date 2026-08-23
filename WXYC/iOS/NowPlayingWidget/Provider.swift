@@ -115,8 +115,6 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         ))
 
         var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
-        // Default to empty state; will be replaced if we have data
-        var entry: NowPlayingTimelineEntry = .emptyState(family: family)
 
         if context.isPreview {
             // Four literal evaluations, not `Array(repeating:)`: `.placeholder`
@@ -132,16 +130,53 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             nowPlayingItemsWithArtwork = await nowPlayingItems(from: playlistService.fetchPlaylist())
         }
 
+        let now = Date.now
+        let entries: [NowPlayingTimelineEntry]
+
         if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.safePopFirst() {
-            entry = NowPlayingTimelineEntry(
+            let recents = Array(recentItems)
+            let playedAt = nowPlayingItem.playcut.broadcastDate
+
+            let current = NowPlayingTimelineEntry(
                 nowPlayingItem: nowPlayingItem,
-                recentItems: Array(recentItems),
-                family: context.family
+                recentItems: recents,
+                family: family,
+                date: now,
+                isStale: WidgetStaleness.isStale(playedAt: playedAt, asOf: now)
             )
+
+            // A second, future-dated entry so the widget can admit it has gone
+            // stale without spending a reload to say so: WidgetKit renders it
+            // on schedule from the timeline it already holds. In normal
+            // operation the refresh below lands first and this is never shown
+            // — it is the honest fallback for when the budget is spent.
+            if let staleDate = WidgetStaleness.staleDate(playedAt: playedAt, after: now) {
+                entries = [current, NowPlayingTimelineEntry(
+                    nowPlayingItem: nowPlayingItem,
+                    recentItems: recents,
+                    family: family,
+                    date: staleDate,
+                    isStale: true
+                )]
+            } else {
+                entries = [current]
+            }
+        } else {
+            entries = [.emptyState(family: family)]
         }
 
-        // Schedule the next update
-        let fiveMinutes = Date.now.addingTimeInterval(5 * 60)
-        return Timeline(entries: [entry], policy: .after(fiveMinutes))
+        // Budget-aware, not fixed: a flat short interval asks for ~288 reloads
+        // a day against a ceiling of 40-70, so WidgetKit throttles it and the
+        // app loses all say in *when* the surviving reloads land. See
+        // `WidgetRefreshSchedule`. The far fresher updates come from the
+        // budget-exempt reloads `WidgetStateService` issues while the audio
+        // session is live.
+        let engagement = WidgetEngagementStore()
+        let nextRefresh = WidgetRefreshSchedule.nextRefreshDate(
+            now: now,
+            lastEngagement: engagement.lastEngagement,
+            isPlaying: engagement.isPlaying
+        )
+        return Timeline(entries: entries, policy: .after(nextRefresh))
     }
 }
