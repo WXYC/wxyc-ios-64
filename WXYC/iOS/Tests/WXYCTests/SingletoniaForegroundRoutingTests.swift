@@ -12,9 +12,11 @@
 //  `Task {}` per phase instead of the coalescing relay is the ordering
 //  regression #835 fixed — both fail here.
 //
-//  The third consumer reports how long the app was on screen, and reads
-//  `.inactive` the subscription's way for the same reason: a Control Center
-//  pull is part of the visit, not the end of one.
+//  The third consumer feeds the foreground-session measurement, and is pinned
+//  here only as far as the router's own job goes: every phase's classification
+//  reaches it, `.noChange` included. What that measurement then does with a run
+//  of them — a Control Center pull is inside a visit, not the end of one —
+//  belongs to `ForegroundSessionTrackerTests` and `ForegroundSessionReporterTests`.
 //
 //  What stays outside this pin is the one-line delegation in
 //  `setScenePhase(_:)` and the `init` wiring of the real sinks.
@@ -31,22 +33,6 @@ import Testing
 /// Extracted to a top-level constant so the tuple array doesn't lean on the
 /// type-checker inside the macro expansion. `nonisolated` because the `@Test`
 /// macro reads the arguments outside the suite's main-actor isolation.
-/// A run of phases, and how many completed visits it should report. Extracted
-/// alongside `routingRows` for the same type-checker reason.
-private nonisolated let sessionRows: [([ScenePhase], Int)] = [
-    // `.active` is also what the initial (`initial: true`) delivery looks like
-    // from here — the router cannot tell a launch from a return, and must not,
-    // or a launch-into-active visit would go unmeasured.
-    ([.active, .background], 1),
-    // A Control Center pull leaves the app on screen, so the whole sequence is
-    // one visit. Reading `.inactive` as an exit reports two.
-    ([.active, .inactive, .active, .background], 1),
-    // A background-refresh launch never reaches the screen; reporting a
-    // zero-length visit for it would drag the whole distribution down.
-    ([.background], 0),
-    ([.active, .background, .active, .background], 2),
-]
-
 private nonisolated let routingRows: [(ScenePhase, [Bool], [Bool])] = [
     (.active, [true], [true]),
     (.background, [false], [false]),
@@ -153,22 +139,30 @@ struct SingletoniaForegroundRoutingTests {
         #expect(await playlist.values == [false, true])
     }
 
-    // MARK: - Foreground session reporting
+    // MARK: - Foreground session measurement
 
     @Test(
-        "Each visit reaches the session sink once, on the edge that ends it",
-        arguments: sessionRows
+        "Every phase forwards its classification, including the inert one",
+        arguments: [
+            (ScenePhase.active, ForegroundVisibility.onScreen),
+            (ScenePhase.background, ForegroundVisibility.offScreen),
+            // Forwarded rather than filtered here: whether `.noChange` leaves
+            // a visit running is `ForegroundSessionReporter`'s rule, and a
+            // router that swallowed it would be applying that rule twice, in
+            // two places, with only one of them under test.
+            (ScenePhase.inactive, ForegroundVisibility.noChange),
+        ]
     )
-    func visitsReachTheSessionSink(phases: [ScenePhase], expectedVisits: Int) {
-        let sessions = Recorder<Duration>()
-        let router = makeRouter(reportForegroundSession: { sessions.record($0) })
+    func phaseForwardsItsVisibility(phase: ScenePhase, expected: ForegroundVisibility) {
+        let visibilities = Recorder<ForegroundVisibility>()
+        let router = makeRouter(recordForegroundVisibility: { visibilities.record($0) })
 
-        for phase in phases {
-            router.route(entering: phase)
-        }
+        router.route(entering: phase)
 
-        #expect(sessions.values.count == expectedVisits)
-        #expect(sessions.values.allSatisfy { $0 >= .zero })
+        // `.active` is also what the initial (`initial: true`) delivery looks
+        // like from here — the router cannot tell a launch from a return, and
+        // must not, or a launch-into-active visit would go unmeasured.
+        #expect(visibilities.values == [expected])
     }
 
     /// Builds a router with every sink inert unless a test asks for one, so a
@@ -177,12 +171,12 @@ struct SingletoniaForegroundRoutingTests {
     private func makeRouter(
         setWidgetsForegrounded: @escaping (Bool) -> Void = { _ in },
         setPlaylistForegrounded: @escaping @Sendable (Bool) async -> Void = { _ in },
-        reportForegroundSession: @escaping (Duration) -> Void = { _ in }
+        recordForegroundVisibility: @escaping (ForegroundVisibility) -> Void = { _ in }
     ) -> Singletonia.ForegroundRouter {
         Singletonia.ForegroundRouter(
             setWidgetsForegrounded: setWidgetsForegrounded,
             setPlaylistForegrounded: setPlaylistForegrounded,
-            reportForegroundSession: reportForegroundSession
+            recordForegroundVisibility: recordForegroundVisibility
         )
     }
 }

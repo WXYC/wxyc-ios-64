@@ -209,6 +209,17 @@ final class Singletonia {
     private var concertSpotlightDonationTask: Task<Void, Never>?
     private var likedSongsHealingTask: Task<Void, Never>?
 
+    /// Measures how long the app spends on screen and captures
+    /// `foreground_session` for each completed visit. A stored property rather
+    /// than a closure inside the router's wiring so the composition — span,
+    /// playback state, event — is testable away from these two globals; see
+    /// `ForegroundSessionReporterTests`. The player is read through a closure
+    /// because the answer is only meaningful as a visit ends.
+    private let foregroundSessionReporter = ForegroundSessionReporter(
+        analytics: StructuredPostHogAnalytics.shared,
+        isPlaying: { AudioPlayerController.shared.isPlaying }
+    )
+
     /// Routes scene phases to the widget, playlist, and foreground-session
     /// consumers. Not a cancellable task like its neighbours above — it owns the ordered relay
     /// to `playlistService`; see ``ForegroundRouter`` for why the ordering
@@ -294,17 +305,8 @@ final class Singletonia {
             setPlaylistForegrounded: { [playlistService] in
                 await playlistService.setForegrounded($0)
             },
-            reportForegroundSession: { session in
-                // The player is read here rather than captured, because this
-                // closure outlives `init` by the life of the app and the
-                // question is what playback was doing as the visit ended.
-                // `WXYCApp` hands the player its own background notification
-                // *before* routing the phase here, so a visit the listener
-                // ended by pausing reads as not playing either way.
-                StructuredPostHogAnalytics.shared.capture(ForegroundSession(
-                    durationSeconds: session.timeInterval,
-                    isPlaying: AudioPlayerController.shared.isPlaying
-                ))
+            recordForegroundVisibility: { [foregroundSessionReporter] in
+                foregroundSessionReporter.record($0)
             }
         )
 
@@ -666,12 +668,12 @@ final class Singletonia {
     ///   a widget nobody is looking at.
     /// - **The live-fs SSE subscription** follows ``ForegroundVisibility``,
     ///   which is inert for `.inactive` — see that type for the story.
-    /// - **The foreground-session measurement** reads it the subscription's
-    ///   way, for the same reason: a Control Center pull is part of the visit
-    ///   being timed, not the end of one. Unlike the two above it is an event
-    ///   emission rather than a state push — it fires only on the edge that
-    ///   closes a visit, which is why it is the one sink taking a value out
-    ///   rather than pushing one in.
+    /// - **The foreground-session measurement** is handed the classification
+    ///   itself rather than a reading of it, `.noChange` included. It is the
+    ///   only consumer whose answer depends on the phases that came before —
+    ///   a visit is a span, not a state — so the rule for folding a run of
+    ///   them into visits lives with the measurement, in
+    ///   `ForegroundSessionReporter`, and this stays a router.
     ///
     /// The playlist sink is fed through a ``LatestValueRelay`` rather than a
     /// fresh `Task` per phase: successive phases pushed through bare
@@ -689,22 +691,16 @@ final class Singletonia {
     final class ForegroundRouter {
         private let setWidgetsForegrounded: (Bool) -> Void
         private let playlistRelay: LatestValueRelay<Bool>
-        private let reportForegroundSession: (Duration) -> Void
-
-        /// Accumulates the on-screen span between the phases below. Held here
-        /// because this is the only object that sees every phase — including
-        /// the `initial: true` delivery, which is where a launch-into-active
-        /// visit starts and which the change-edge arms in `WXYCApp` never see.
-        private var sessionTracker = ForegroundSessionTracker()
+        private let recordForegroundVisibility: (ForegroundVisibility) -> Void
 
         init(
             setWidgetsForegrounded: @escaping (Bool) -> Void,
             setPlaylistForegrounded: @escaping @Sendable (Bool) async -> Void,
-            reportForegroundSession: @escaping (Duration) -> Void
+            recordForegroundVisibility: @escaping (ForegroundVisibility) -> Void
         ) {
             self.setWidgetsForegrounded = setWidgetsForegrounded
             self.playlistRelay = LatestValueRelay(setPlaylistForegrounded)
-            self.reportForegroundSession = reportForegroundSession
+            self.recordForegroundVisibility = recordForegroundVisibility
         }
 
         func route(entering phase: ScenePhase) {
@@ -734,13 +730,13 @@ final class Singletonia {
                 break
             }
 
-            // Reads the same classification as the subscription above, and for
-            // the same reason: a Control Center pull leaves the app on screen,
-            // so it belongs inside the visit rather than ending it. The tracker
-            // reports at most once per phase, on the edge that closes a visit.
-            if let session = sessionTracker.record(visibility) {
-                reportForegroundSession(session)
-            }
+            // Every classification is forwarded, `.noChange` included — which
+            // of them open, close, or leave a visit running is
+            // `ForegroundSessionReporter`'s rule to apply, not the router's to
+            // pre-judge. This is the only object that sees every phase,
+            // including the `initial: true` delivery where a launch-into-active
+            // visit starts, which the change-edge arms in `WXYCApp` never see.
+            recordForegroundVisibility(visibility)
         }
     }
 
