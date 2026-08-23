@@ -31,12 +31,15 @@ import AppKit
 ///
 /// When changes occur, it:
 /// - Updates the `isPlaying` key in `UserDefaults.wxyc`
-/// - Reloads all widget timelines (when in foreground to preserve budget)
+/// - Reloads all widget timelines, but only when WidgetKit won't charge the
+///   reload against the widget's scarce daily budget (see ``reloadWidgets()``)
 @MainActor
 public final class WidgetStateService {
     private let playbackController: any PlaybackController
     private let playlistService: PlaylistService
     private let relevanceUpdater: any WidgetRelevanceUpdating
+    private let reloader: any WidgetReloading
+    private let engagementStore: WidgetEngagementStore
     private var isForegrounded = false
     private var playbackObservationTask: Task<Void, Never>?
     private var playlistObservationTask: Task<Void, Never>?
@@ -45,11 +48,15 @@ public final class WidgetStateService {
     public init(
         playbackController: any PlaybackController,
         playlistService: PlaylistService,
-        relevanceUpdater: any WidgetRelevanceUpdating = SystemWidgetRelevanceUpdater()
+        relevanceUpdater: any WidgetRelevanceUpdating = SystemWidgetRelevanceUpdater(),
+        reloader: any WidgetReloading = SystemWidgetReloader(),
+        engagementStore: WidgetEngagementStore = WidgetEngagementStore()
     ) {
         self.playbackController = playbackController
         self.playlistService = playlistService
         self.relevanceUpdater = relevanceUpdater
+        self.reloader = reloader
+        self.engagementStore = engagementStore
 
         // Listen for app termination to clear playback state
         #if canImport(UIKit) && !os(watchOS)
@@ -90,13 +97,16 @@ public final class WidgetStateService {
     // MARK: - Foreground State
 
     /// Update the foreground state.
-    /// Widget reloads only occur when foregrounded to preserve the daily budget.
+    ///
+    /// Foreground is one of the two conditions under which WidgetKit exempts a
+    /// reload from the daily budget — see ``reloadWidgets()``.
     public func setForegrounded(_ foregrounded: Bool) {
         let wasForegrounded = isForegrounded
         isForegrounded = foregrounded
 
         // When returning to foreground, sync state and reload widgets
         if foregrounded && !wasForegrounded {
+            engagementStore.recordEngagement()
             syncPlaybackState()
             reloadWidgets()
         }
@@ -113,8 +123,25 @@ public final class WidgetStateService {
         UserDefaults.wxyc.set(isPlaying, forKey: "isPlaying")
     }
 
+    /// Whether a reload issued right now would be free.
+    ///
+    /// WidgetKit budgets each widget instance to roughly 40-70 reloads per 24
+    /// hours, but exempts reloads made while the containing app is in the
+    /// foreground *or* holds an active audio session. Both exemptions describe
+    /// a user who is present, which is exactly when the widget is worth
+    /// updating — so the app takes every free reload and declines every
+    /// budgeted one, leaving the budget entirely to the widget's own decaying
+    /// timeline schedule (``WidgetRefreshSchedule``).
+    ///
+    /// The audio-session half matters most: a listener has the app alive in
+    /// the background receiving live flowsheet updates, and before this the
+    /// widget went stale for exactly that user.
+    private var reloadsAreExemptFromBudget: Bool {
+        isForegrounded || playbackController.state.isActive
+    }
+
     private func reloadWidgets() {
-        WidgetCenter.shared.reloadAllTimelines()
+        reloader.reloadAllTimelines()
     }
 
     private func updateWidgetRelevance(isActive: Bool) async {
@@ -147,6 +174,13 @@ public final class WidgetStateService {
                 // Update UserDefaults
                 UserDefaults.wxyc.set(isActive, forKey: "isPlaying")
 
+                // Starting playback is an act of interest; the stream ending
+                // is not, so only the leading edge restarts the widget's
+                // refresh decay.
+                if isActive {
+                    self.engagementStore.recordEngagement()
+                }
+
                 // Update Smart Stack relevance hints
                 await self.updateWidgetRelevance(isActive: isActive)
 
@@ -155,8 +189,7 @@ public final class WidgetStateService {
                 ControlCenter.shared.reloadAllControls()
                 #endif
 
-                // Reload widgets (foreground reloads don't count against daily budget)
-                if self.isForegrounded {
+                if self.reloadsAreExemptFromBudget {
                     self.reloadWidgets()
                 }
             }
@@ -172,8 +205,7 @@ public final class WidgetStateService {
             for await _ in self.playlistService.updates() {
                 guard !Task.isCancelled else { break }
 
-                // Only reload widgets when foregrounded to preserve daily budget
-                if self.isForegrounded {
+                if self.reloadsAreExemptFromBudget {
                     self.reloadWidgets()
                 }
             }
