@@ -13,14 +13,19 @@
 import Caching
 import Foundation
 
-/// Reads and writes the freshness signals shared between the app and the
-/// widget extension.
+/// Reads the freshness signals shared between the app and the widget
+/// extension, and owns the engagement half of them.
 ///
 /// The widget runs in its own process and cannot see the app's memory, so
 /// ``WidgetRefreshSchedule``'s inputs have to travel through the
-/// `group.wxyc.iphone` app group. This is the one place that knows their keys
-/// and representations: ``WidgetStateService`` writes, the timeline provider
-/// reads.
+/// `group.wxyc.iphone` app group. This type owns the engagement timestamp
+/// outright — ``WidgetStateService`` writes it, the timeline provider reads
+/// it. For `isPlaying` it is one reader among several rather than the owner;
+/// see ``isPlaying``.
+///
+/// Cheap to construct, and every property is a **live read** rather than a
+/// snapshot — the provider builds a fresh one per timeline request, and two
+/// reads in the same request can disagree if the app writes between them.
 public struct WidgetEngagementStore: Sendable {
 
     // MARK: - Keys
@@ -29,8 +34,6 @@ public struct WidgetEngagementStore: Sendable {
     /// widget being current.
     private static let lastEngagementKey = "widget.lastEngagement"
 
-    /// Whether playback is currently active.
-    ///
     /// Deliberately the same bare `"isPlaying"` key the widget's `PlayButton`
     /// already binds with `@AppStorage` and `PlaybackStateProvider` already
     /// reads — this store joins those readers rather than introducing a

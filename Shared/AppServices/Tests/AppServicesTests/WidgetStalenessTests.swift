@@ -2,9 +2,9 @@
 //  WidgetStalenessTests.swift
 //  AppServices
 //
-//  Tests for when a now-playing widget entry stops claiming to be current,
-//  including the future-dated entry that lets it say so without spending a
-//  reload.
+//  Tests for the timeline a now-playing entry renders on: when it still claims
+//  to be current, and the future-dated entry that lets it stop claiming
+//  without spending a reload.
 //
 //  Created by Jake Bromberg on 08/22/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -19,82 +19,108 @@ struct WidgetStalenessTests {
 
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
-    // MARK: - isStale
+    // MARK: - A fresh entry
 
-    @Test("A just-broadcast playcut is current")
-    func freshPlaycutIsNotStale() {
-        #expect(WidgetStaleness.isStale(playedAt: now, asOf: now) == false)
+    @Test("A fresh playcut renders current now and stale at its expiry")
+    func freshPlaycutSchedulesItsOwnExpiry() throws {
+        // The whole trick: the second entry costs no reload — WidgetKit
+        // renders it on schedule from the timeline it already holds — so the
+        // widget can admit it is out of date even when the budget is spent
+        // and no refresh ever arrives.
+        let schedule = WidgetStaleness.renderSchedule(playedAt: now, from: now)
+
+        #expect(schedule == [
+            .init(date: now, isStale: false),
+            .init(date: now.addingTimeInterval(WidgetStaleness.threshold), isStale: true),
+        ])
     }
 
-    @Test("A playcut just under the threshold is still current")
-    func playcutUnderThresholdIsNotStale() {
+    @Test("A playcut just under the threshold is still current, and still schedules its expiry")
+    func playcutUnderThresholdIsNotStale() throws {
         let playedAt = now.addingTimeInterval(-WidgetStaleness.threshold + 60)
 
-        #expect(WidgetStaleness.isStale(playedAt: playedAt, asOf: now) == false)
+        let schedule = WidgetStaleness.renderSchedule(playedAt: playedAt, from: now)
+
+        #expect(schedule.count == 2)
+        #expect(schedule.first?.isStale == false)
+        #expect(schedule.last?.date == now.addingTimeInterval(60))
+        #expect(schedule.last?.isStale == true)
     }
 
-    @Test("A playcut past the threshold is stale")
-    func playcutPastThresholdIsStale() {
+    // MARK: - An already-stale entry
+
+    @Test("A playcut past the threshold renders stale immediately, with nothing to schedule")
+    func playcutPastThresholdIsStaleWithNoSecondEntry() throws {
+        // A second entry would be dated in the past. The leading entry carries
+        // the staleness itself, so there is nothing left to say later.
         let playedAt = now.addingTimeInterval(-WidgetStaleness.threshold - 1)
 
-        #expect(WidgetStaleness.isStale(playedAt: playedAt, asOf: now))
+        let schedule = WidgetStaleness.renderSchedule(playedAt: playedAt, from: now)
+
+        #expect(schedule == [.init(date: now, isStale: true)])
     }
 
-    @Test("Without a broadcast time nothing is claimed either way")
-    func missingBroadcastTimeIsNotStale() {
+    @Test("An entry expiring exactly now renders stale, with nothing to schedule")
+    func entryExpiringAtNowSchedulesNothing() throws {
+        // The boundary that used to live in the gap between two functions —
+        // one comparing `>=`, the other `>`. A second entry dated `now` would
+        // collide with the one already being rendered at `now`, so the tie
+        // resolves to a single stale entry.
+        let playedAt = now.addingTimeInterval(-WidgetStaleness.threshold)
+
+        let schedule = WidgetStaleness.renderSchedule(playedAt: playedAt, from: now)
+
+        #expect(schedule == [.init(date: now, isStale: true)])
+    }
+
+    // MARK: - No broadcast time
+
+    @Test("Without a broadcast time the entry renders once and never claims staleness")
+    func missingBroadcastTimeRendersOneCurrentEntry() throws {
         // The empty-state and placeholder entries carry no playcut. Dimming
         // them would present "no data yet" as "stale data", which is a
         // different and wronger message.
-        #expect(WidgetStaleness.isStale(playedAt: nil, asOf: now) == false)
+        let schedule = WidgetStaleness.renderSchedule(playedAt: nil, from: now)
+
+        #expect(schedule == [.init(date: now, isStale: false)])
     }
 
-    // MARK: - staleDate
+    // MARK: - Invariants
 
-    @Test("A fresh entry schedules the moment it will go stale")
-    func freshEntrySchedulesItsOwnExpiry() {
-        // This is the whole trick: a second, future-dated entry costs no
-        // reload — WidgetKit renders it on time from the timeline it already
-        // has — so the widget can admit it is out of date even when the
-        // budget is exhausted and no refresh ever arrives.
-        let staleDate = WidgetStaleness.staleDate(playedAt: now, after: now)
+    @Test("Every schedule leads with an entry dated now")
+    func scheduleAlwaysLeadsWithNow() throws {
+        // WidgetKit needs something to render at the moment the timeline is
+        // handed over; a schedule that started in the future would leave the
+        // widget showing its previous entry.
+        let offsets: [TimeInterval] = [0, 60, WidgetStaleness.threshold, WidgetStaleness.threshold + 60]
 
-        #expect(staleDate == now.addingTimeInterval(WidgetStaleness.threshold))
+        for offset in offsets {
+            let schedule = WidgetStaleness.renderSchedule(
+                playedAt: now.addingTimeInterval(-offset),
+                from: now
+            )
+            #expect(schedule.first?.date == now, "offset \(offset)")
+            #expect(schedule.isEmpty == false, "offset \(offset)")
+        }
     }
 
-    @Test("An entry that renders already-stale schedules nothing")
-    func alreadyStaleEntrySchedulesNothing() {
-        let playedAt = now.addingTimeInterval(-WidgetStaleness.threshold - 60)
+    @Test("Entries are strictly ordered and never repeat a date")
+    func scheduleIsStrictlyOrdered() throws {
+        let schedule = WidgetStaleness.renderSchedule(playedAt: now, from: now)
 
-        #expect(WidgetStaleness.staleDate(playedAt: playedAt, after: now) == nil)
+        let dates = schedule.map(\.date)
+        #expect(dates == dates.sorted())
+        #expect(Set(dates).count == dates.count)
     }
 
-    @Test("An entry that goes stale exactly now schedules nothing")
-    func entryExpiringAtNowSchedulesNothing() {
-        // A timeline entry dated `now` races the entry already being rendered
-        // at `now`; WidgetKit wants strictly future dates, so this boundary
-        // resolves to "no second entry" rather than a duplicate.
-        let playedAt = now.addingTimeInterval(-WidgetStaleness.threshold)
-
-        #expect(WidgetStaleness.staleDate(playedAt: playedAt, after: now) == nil)
-    }
-
-    @Test("Without a broadcast time there is nothing to schedule")
-    func missingBroadcastTimeSchedulesNothing() {
-        #expect(WidgetStaleness.staleDate(playedAt: nil, after: now) == nil)
-    }
-
-    // MARK: - Consistency
-
-    @Test("The scheduled date is exactly when isStale flips")
-    func scheduledDateAgreesWithIsStale() throws {
-        // The two functions are read by the same timeline — one picks the
-        // entry's date, the other its rendered state — so a disagreement would
-        // show up as an entry that renders dimmed while still claiming to be
-        // current, or the reverse.
-        let playedAt = now.addingTimeInterval(-10 * 60)
-        let flip = try #require(WidgetStaleness.staleDate(playedAt: playedAt, after: now))
-
-        #expect(WidgetStaleness.isStale(playedAt: playedAt, asOf: flip.addingTimeInterval(-1)) == false)
-        #expect(WidgetStaleness.isStale(playedAt: playedAt, asOf: flip))
+    @Test("The staleness threshold sits between the cool and cold refresh tiers")
+    func thresholdSitsBetweenTheRefreshTiers() throws {
+        // `threshold` is chosen to be longer than every refresh tier but the
+        // coldest, so in normal operation a refresh lands before the stale
+        // entry is ever rendered. That relationship spans two types, so it is
+        // asserted rather than left to a comment that cannot notice when
+        // someone retunes a tier.
+        #expect(WidgetStaleness.threshold > WidgetRefreshSchedule.coolInterval)
+        #expect(WidgetStaleness.threshold < WidgetRefreshSchedule.coldInterval)
     }
 }

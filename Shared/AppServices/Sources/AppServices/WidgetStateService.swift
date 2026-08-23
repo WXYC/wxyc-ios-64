@@ -32,7 +32,8 @@ import AppKit
 /// When changes occur, it:
 /// - Updates the `isPlaying` key in `UserDefaults.wxyc`
 /// - Reloads all widget timelines, but only when WidgetKit won't charge the
-///   reload against the widget's scarce daily budget (see ``reloadWidgets()``)
+///   reload against the widget's scarce daily budget (see
+///   ``reloadsAreExemptFromBudget``)
 @MainActor
 public final class WidgetStateService {
     private let playbackController: any PlaybackController
@@ -99,7 +100,7 @@ public final class WidgetStateService {
     /// Update the foreground state.
     ///
     /// Foreground is one of the two conditions under which WidgetKit exempts a
-    /// reload from the daily budget — see ``reloadWidgets()``.
+    /// reload from the daily budget — see ``reloadsAreExemptFromBudget``.
     public func setForegrounded(_ foregrounded: Bool) {
         let wasForegrounded = isForegrounded
         isForegrounded = foregrounded
@@ -125,13 +126,11 @@ public final class WidgetStateService {
 
     /// Whether a reload issued right now would be free.
     ///
-    /// WidgetKit budgets each widget instance to roughly 40-70 reloads per 24
-    /// hours, but exempts reloads made while the containing app is in the
-    /// foreground *or* holds an active audio session. Both exemptions describe
-    /// a user who is present, which is exactly when the widget is worth
-    /// updating — so the app takes every free reload and declines every
-    /// budgeted one, leaving the budget entirely to the widget's own decaying
-    /// timeline schedule (``WidgetRefreshSchedule``).
+    /// WidgetKit exempts a reload from the daily budget while the containing
+    /// app is in the foreground *or* holds an active audio session. Both
+    /// describe a user who is present, which is exactly when the widget is
+    /// worth updating — so the app takes every free reload and declines every
+    /// budgeted one, leaving the budget to ``WidgetRefreshSchedule``.
     ///
     /// The audio-session half matters most: a listener has the app alive in
     /// the background receiving live flowsheet updates, and before this the

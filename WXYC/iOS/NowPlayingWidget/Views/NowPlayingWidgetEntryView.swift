@@ -42,12 +42,15 @@ extension NowPlayingWidgetEntryView {
 
     /// How long ago the displayed playcut aired, e.g. "12 min ago".
     ///
-    /// `Text`'s `.relative` style re-renders itself as the clock advances
-    /// without a new timeline entry, so this stays truthful for free between
-    /// reloads — which matters because the widget's budget guarantees there
-    /// will be long gaps between them (see `WidgetRefreshSchedule`). When the
-    /// entry has aged past `WidgetStaleness.threshold` it also says so
-    /// outright, rather than leaving the reader to do the subtraction.
+    /// The relative token re-renders itself as the clock advances without a
+    /// new timeline entry, so this stays truthful between reloads at no cost
+    /// to the refresh budget.
+    ///
+    /// The literal " ago" is not redundant: `Text`'s `.relative` style renders
+    /// the magnitude alone ("12 min") with no indication of direction, which
+    /// beside a track title reads just as easily as the song's length. Wrapping
+    /// it in an interpolation keeps the token auto-updating while pinning the
+    /// direction.
     ///
     /// Renders nothing for the placeholder and empty states, which have no
     /// broadcast time.
@@ -55,7 +58,7 @@ extension NowPlayingWidgetEntryView {
     var freshnessLabel: some View {
         if let playedAt = entry.playedAt {
             HStack(spacing: 4) {
-                Text(playedAt, style: .relative)
+                Text("\(playedAt, style: .relative) ago")
                 if entry.isStale {
                     Text("· may be out of date")
                 }
