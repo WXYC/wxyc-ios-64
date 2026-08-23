@@ -1,0 +1,181 @@
+name: API Spec Drift
+
+# Staleness check for the wxyc-shared pin, not for the vendored tree.
+#
+# verify-api-types.yml already proves "the vendored Shared/WXYCAPIModels
+# tree matches a fresh regen from the SHA pinned in
+# Shared/WXYCAPIModels/contract-version.json" -- it fails if someone edits
+# the pin or the generated types without regenerating. It is structurally
+# blind to a different question: has wxyc-shared's api.yaml moved on since
+# that SHA was pinned? A pin can be perfectly self-consistent with the
+# vendored tree and still be 16 commits behind upstream, which is exactly
+# today's state (see WXYC/wxyc-ios-64#984) -- nothing short of a human
+# diffing two repos would have caught that drift.
+#
+# This workflow answers that second question by calling wxyc-shared's
+# reusable, read-only check-api-spec-drift.yml on a weekly schedule (plus
+# workflow_dispatch for on-demand checks), and opens/updates a single
+# tracking issue when it finds drift. It never touches the pin itself --
+# advancing contract-version.json, and absorbing whatever Swift type
+# renames that forces (this repo's generated types are operation-derived,
+# so a wxyc-shared path relocation like the ones in the 16-commit span
+# behind this pin renames Swift symbols, not just fields), is separate work
+# with its own risk profile. See #984's "What advancing the pin will cost"
+# section before picking that up.
+#
+# EXPECTED FIRST RUN: as of this workflow's introduction, the pin
+# (c804de3, api.yaml 1.36.0) is 16 commits behind wxyc-shared:main
+# (api.yaml 1.46.0). A scheduled run that reports "no drift" today would
+# mean the wiring here is broken, not that the pin caught up -- nobody has
+# advanced it. Drift should clear only after a future PR bumps
+# wxycSharedSha, at which point this workflow's next run is expected to
+# find none.
+
+on:
+  schedule:
+    - cron: '0 13 * * 1' # weekly, Monday 13:00 UTC
+  workflow_dispatch:
+
+# Workflow-level floor: read-only. The read-pin and check-drift jobs below
+# never write anything -- check-drift's own workflow_call file pins itself
+# to `contents: read` too, and per wxyc-shared's Tag Stability Policy,
+# reusable-workflow permissions intersect (caller AND callee) at job
+# dispatch, so raising the ceiling here would do nothing for that job
+# anyway. Only open-or-update-tracking-issue needs to write, and it
+# declares issues:write itself, scoped to just that job, per #984's
+# constraint that the drift check stays read-only.
+permissions:
+  contents: read
+
+concurrency:
+  group: spec-drift-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  read-pin:
+    name: Read pinned wxyc-shared SHA
+    runs-on: ubuntu-latest
+    outputs:
+      pinned-sha: ${{ steps.pin.outputs.pinned-sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Read wxycSharedSha from contract-version.json
+        id: pin
+        # wxycSharedSha is the real pin. wxycSharedTag currently reads the
+        # literal string "main" -- a leftover that does NOT track what's
+        # actually pinned (see #984) -- so this deliberately never reads
+        # that field. Read the SHA, not the tag.
+        #
+        # The SHA is read here, at run time, and passed to check-drift as a
+        # job output rather than hard-coded anywhere in this file: a SHA
+        # baked into the workflow YAML would be a second copy to keep in
+        # sync with contract-version.json, and the two would drift from
+        # each other the same way the pin drifts from upstream.
+        run: |
+          set -euo pipefail
+          PIN_FILE="Shared/WXYCAPIModels/contract-version.json"
+          SHA="$(jq -r '.wxycSharedSha' "$PIN_FILE")"
+          if [[ -z "$SHA" || "$SHA" == "null" ]]; then
+            echo "::error::could not read .wxycSharedSha from $PIN_FILE"
+            exit 1
+          fi
+          echo "pinned-sha=$SHA" >> "$GITHUB_OUTPUT"
+
+  check-drift:
+    name: Check pin against wxyc-shared:main
+    needs: read-pin
+    uses: WXYC/wxyc-shared/.github/workflows/check-api-spec-drift.yml@gha/v1
+    with:
+      pinned-ref: ${{ needs.read-pin.outputs.pinned-sha }}
+      # Pinning `@gha/v1` on `uses:` above only pins the workflow YAML; the
+      # script it runs (check-spec-drift.sh) comes from whatever
+      # wxyc-shared-ref resolves to, which defaults to `main`. Set it to
+      # `gha/v1` explicitly so "pinned to gha/v1" is a true statement about
+      # what ran, not just about which YAML got dispatched -- see
+      # wxyc-shared's Tag Stability Policy and the mixed-state warning it
+      # documents for consumers that leave this input unset.
+      wxyc-shared-ref: gha/v1
+
+  open-or-update-tracking-issue:
+    name: Open or update drift tracking issue
+    needs: [read-pin, check-drift]
+    if: needs.check-drift.outputs.drift == 'true'
+    runs-on: ubuntu-latest
+    # check-api-spec-drift.yml is workflow-level `contents: read` and
+    # cannot be escalated by a caller (permissions intersect, they don't
+    # union) -- so issue-filing has to be its own job with its own grant.
+    # This is the only job in this file that writes anything.
+    permissions:
+      issues: write
+    env:
+      # One literal, reused by both the search step and the create step, so
+      # a title edit here can't silently desync the two and start opening
+      # duplicates every week.
+      ISSUE_TITLE: "wxyc-shared pin is stale: Shared/WXYCAPIModels/contract-version.json is behind api.yaml on main"
+    steps:
+      - name: Find existing open tracking issue
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Full-text search on the exact title, scoped to open issues, so a
+        # second scheduled run updates the one issue instead of opening a
+        # duplicate. A previously-closed tracking issue (e.g. someone
+        # advanced the pin and closed it, then it drifted again later) is
+        # deliberately not reopened here -- a fresh issue for a fresh drift
+        # episode reads better than reopening old, possibly stale
+        # discussion.
+        run: |
+          set -euo pipefail
+          NUMBER=$(gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --search "\"$ISSUE_TITLE\" in:title" \
+            --json number \
+            --jq '.[0].number // empty')
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Build issue body
+        id: body
+        env:
+          PINNED_SHA: ${{ needs.read-pin.outputs.pinned-sha }}
+          PINNED_VERSION: ${{ needs.check-drift.outputs.pinned-version }}
+          CURRENT_SHA: ${{ needs.check-drift.outputs.current-sha }}
+          CURRENT_VERSION: ${{ needs.check-drift.outputs.current-version }}
+        run: |
+          {
+            echo "body<<SPEC_DRIFT_BODY_EOF"
+            echo "The \`api.yaml\` pin in \`Shared/WXYCAPIModels/contract-version.json\` has fallen behind \`WXYC/wxyc-shared\`'s \`main\` branch."
+            echo ""
+            echo "- **Pinned SHA:** \`${PINNED_SHA}\` (api.yaml ${PINNED_VERSION})"
+            echo "- **wxyc-shared:main SHA:** \`${CURRENT_SHA}\` (api.yaml ${CURRENT_VERSION})"
+            echo ""
+            echo "\`verify-api-types.yml\` only proves the vendored tree matches this pin -- it cannot see that the pin itself is stale. This issue is filed by \`spec-drift.yml\`, which checks that separately on a weekly schedule."
+            echo ""
+            echo "Advancing the pin is separate work from filing this issue: this repo's generated Swift types are operation-derived, so an api.yaml path relocation (several land in the span behind this pin) renames Swift symbols, not just fields. See WXYC/wxyc-ios-64#984 for the accounting of what's in the gap."
+            echo ""
+            echo "This issue was filed automatically by the spec-drift workflow."
+            echo "SPEC_DRIFT_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or update tracking issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EXISTING: ${{ steps.existing.outputs.number }}
+          BODY: ${{ steps.body.outputs.body }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$EXISTING" ]]; then
+            gh issue create \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$ISSUE_TITLE" \
+              --label ci \
+              --body "$BODY"
+          else
+            gh issue comment "$EXISTING" \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "$BODY"
+          fi
