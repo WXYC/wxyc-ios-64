@@ -129,9 +129,18 @@ If a runner ever does build something shipping, the phase will fail it — delib
 
 ## Widget Considerations
 
-- Widget refresh budget: 40-70 updates/day
-- Foreground refreshes don't count against budget
+- Widget refresh budget: 40-70 updates/day, per widget *instance*
 - Background refresh scheduled every 15 minutes
+
+WXYC turns over 10-15 playcuts an hour, so the budget cannot track the flowsheet play-for-play. Widget freshness is built from three layers instead, two of which cost no reloads.
+
+**Budget-exempt reloads.** WidgetKit doesn't charge a reload while the containing app is in the foreground *or* holds an active audio session. `WidgetStateService` takes every reload that qualifies and declines every one that doesn't, so a listener's widget tracks the flowsheet change-for-change for free, while an idle backgrounded app spends nothing. Both conditions are in `reloadsAreExemptFromBudget`; `WidgetReloading` is the seam that makes them testable, since `WidgetCenter` silently no-ops under test.
+
+**Budgeted timeline reloads.** `WidgetRefreshSchedule` decays the `.after` interval with time since the user last engaged — 10 min inside a 20-minute hot window, then 15, 40, and 60 min once engagement is stale (also the never-engaged default). Active playback takes a 30-minute backstop rather than the hot tier, since the exempt path is already covering that case. Engagement is stamped to the app group by `WidgetEngagementStore` on foregrounding and on the leading edge of playback only.
+
+Per-day cost, from `WidgetRefreshScheduleTests`: 24 reloads untouched, 34 for one engagement, 49 for three, 61 for six. A ten-engagement day requests 81 and overruns the ceiling — inherent to decaying from engagement, and the right trade, because that user is foregrounding ten times and already getting those reloads free. The flat `.after(5 minutes)` policy this replaced requested 288/day and was simply throttled.
+
+**Staleness, rendered rather than refreshed.** `Text(playedAt, style: .relative)` counts up between entries on its own, and each timeline carries a second future-dated entry flagged stale (`WidgetStaleness`, 45 min from broadcast) so the widget can visibly step back from its claim with no reload at all. Shown in the medium and large families; the small family has no room. Empty and placeholder states are never marked stale — they have no data to be stale.
 
 ## App Store Previews
 
