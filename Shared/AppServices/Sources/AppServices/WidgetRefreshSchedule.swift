@@ -40,7 +40,7 @@ public enum WidgetRefreshSchedule {
     /// Cadence through the first couple of hours after engagement.
     public static let warmInterval: TimeInterval = 15 * 60
     /// Cadence through the rest of the user's active day.
-    public static let coolInterval: TimeInterval = 30 * 60
+    public static let coolInterval: TimeInterval = 40 * 60
     /// Cadence once engagement is stale, and for devices that have never
     /// recorded any.
     public static let coldInterval: TimeInterval = 60 * 60
@@ -57,7 +57,12 @@ public enum WidgetRefreshSchedule {
 
     // MARK: - Tier boundaries
 
-    private static let hotWindow: TimeInterval = 30 * 60
+    /// Each engagement restarts the decay, so the hot window's width is
+    /// multiplied by how often the user engages — it is the single biggest
+    /// lever on the day's total. 20 minutes buys most of the benefit (a widget
+    /// that keeps up right after the phone goes back in the pocket) for a
+    /// third less budget than 30 did.
+    private static let hotWindow: TimeInterval = 20 * 60
     private static let warmWindow: TimeInterval = 2 * 60 * 60
     private static let coolWindow: TimeInterval = 8 * 60 * 60
 

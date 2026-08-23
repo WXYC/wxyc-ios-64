@@ -30,14 +30,38 @@ private nonisolated let hour: TimeInterval = 60 * 60
 /// expression type-checker when it has to be inferred inside the macro.
 private nonisolated let decayTierCases: [(TimeInterval, TimeInterval, String)] = [
     (0, 10 * minute, "just engaged"),
-    (29 * minute, 10 * minute, "inside the hot window"),
-    (30 * minute, 15 * minute, "hot boundary is exclusive"),
+    (19 * minute, 10 * minute, "inside the hot window"),
+    (20 * minute, 15 * minute, "hot boundary is exclusive"),
     (119 * minute, 15 * minute, "inside the warm window"),
-    (2 * hour, 30 * minute, "warm boundary is exclusive"),
-    (7 * hour, 30 * minute, "inside the cool window"),
+    (2 * hour, 40 * minute, "warm boundary is exclusive"),
+    (7 * hour, 40 * minute, "inside the cool window"),
     (8 * hour, 60 * minute, "cool boundary is exclusive"),
     (24 * hour, 60 * minute, "long past any engagement"),
 ]
+
+/// Walks a simulated day, restarting the decay at each engagement, and counts
+/// the budgeted reloads the tier table would request.
+private nonisolated func reloadsRequested(overADayWith engagementHours: [TimeInterval]) -> Int {
+    let dayStart = Date(timeIntervalSince1970: 1_800_000_000)
+    let engagements = engagementHours.map { dayStart.addingTimeInterval($0 * hour) }
+    let dayEnd = dayStart.addingTimeInterval(24 * hour)
+
+    var clock = dayStart
+    var reloads = 0
+
+    while clock < dayEnd {
+        // Whichever engagement is the most recent one to have happened by now.
+        let lastEngagement = engagements.filter { $0 <= clock }.max()
+        clock = WidgetRefreshSchedule.nextRefreshDate(
+            now: clock,
+            lastEngagement: lastEngagement,
+            isPlaying: false
+        )
+        reloads += 1
+    }
+
+    return reloads
+}
 
 @Suite("Widget Refresh Schedule", .timeLimit(.minutes(1)))
 struct WidgetRefreshScheduleTests {
@@ -140,43 +164,49 @@ struct WidgetRefreshScheduleTests {
 
     // MARK: - Budget
 
-    @Test("A day of realistic engagement stays inside the reload budget")
+    @Test("A day of typical engagement stays inside the reload budget")
     func dailyReloadCountFitsBudget() {
         // WidgetKit grants roughly 40-70 budgeted reloads per widget instance
-        // per day. This walks a full simulated day, restarting the decay each
-        // time the user engages, and counts the reloads the tier table would
-        // actually request. It is the constraint the whole table exists to
-        // satisfy, so it is asserted rather than left to arithmetic in a
+        // per day. That ceiling is the constraint the whole tier table exists
+        // to satisfy, so it is asserted rather than left to arithmetic in a
         // design doc: loosening any tier fails here first.
-        let dayStart = Date(timeIntervalSince1970: 1_800_000_000)
-        let engagementOffsets: [TimeInterval] = [
-            8 * hour,    // morning launch
-            12 * hour,   // lunch check
-            18 * hour,   // evening listen
-        ]
-        let engagements: [Date] = engagementOffsets.map { dayStart.addingTimeInterval($0) }
+        //
+        // Three engagements — morning, lunch, evening — currently requests 49.
+        // The bound is deliberately tighter than the 70 ceiling so there is
+        // visible headroom for the heavier days below, which are allowed to
+        // exceed it.
+        let reloads = reloadsRequested(overADayWith: [8, 12, 18])
 
-        var clock = dayStart
-        var lastEngagement: Date?
-        var reloads = 0
-        let dayEnd = dayStart.addingTimeInterval(24 * hour)
+        #expect(reloads <= 60, "requested \(reloads) reloads/day, over the intended typical-day bound")
+    }
 
-        while clock < dayEnd {
-            // Any engagement that has occurred by now becomes the most recent one.
-            if let latest = engagements.filter({ $0 <= clock }).max() {
-                lastEngagement = latest
-            }
+    @Test("An untouched device costs almost nothing")
+    func idleDayCostsAlmostNothing() {
+        // The case the old flat 5-minute policy handled worst: a widget on a
+        // home screen page nobody visits, quietly asking for 288 reloads a day
+        // and being throttled for it.
+        let reloads = reloadsRequested(overADayWith: [])
 
-            let interval = WidgetRefreshSchedule.refreshInterval(
-                now: clock,
-                lastEngagement: lastEngagement,
-                isPlaying: false
-            )
-            clock = clock.addingTimeInterval(interval)
-            reloads += 1
-        }
+        #expect(reloads == 24)
+    }
 
-        #expect(reloads <= 70, "requested \(reloads) reloads/day, over the WidgetKit budget ceiling")
+    @Test("A heavy-engagement day overruns the ceiling, and that is the intended trade")
+    func heavyEngagementOverrunsCeilingByDesign() {
+        // Each engagement restarts the decay, so a user who opens the app ten
+        // times a day asks for more budgeted reloads than WidgetKit will grant
+        // — no tier tuning avoids that, it is inherent to decaying from
+        // engagement. It is the right trade anyway: that user is foregrounding
+        // the app ten times, and every one of those reloads is exempt from the
+        // budget (see `WidgetStateService`), so their widget is already being
+        // refreshed for free. The budgeted reloads WidgetKit declines are the
+        // ones they need least.
+        //
+        // Pinned so the overrun stays a known, bounded consequence rather than
+        // something discovered in the field.
+        let reloads = reloadsRequested(overADayWith: [7, 8, 9, 11, 13, 15, 17, 19, 21, 22])
+
+        #expect(reloads > 70)
+        #expect(reloads < 100, "requested \(reloads) reloads/day — the overrun should stay bounded")
     }
 
     @Test("The tier table never requests a reload faster than WidgetKit coalesces")
