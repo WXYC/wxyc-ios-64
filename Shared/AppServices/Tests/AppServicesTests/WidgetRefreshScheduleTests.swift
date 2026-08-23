@@ -52,10 +52,12 @@ private nonisolated func reloadsRequested(overADayWith engagementHours: [TimeInt
     while clock < dayEnd {
         // Whichever engagement is the most recent one to have happened by now.
         let lastEngagement = engagements.filter { $0 <= clock }.max()
-        clock = WidgetRefreshSchedule.nextRefreshDate(
-            now: clock,
-            lastEngagement: lastEngagement,
-            isPlaying: false
+        clock = clock.addingTimeInterval(
+            WidgetRefreshSchedule.refreshInterval(
+                now: clock,
+                lastEngagement: lastEngagement,
+                isPlaying: false
+            )
         )
         reloads += 1
     }
@@ -145,21 +147,6 @@ struct WidgetRefreshScheduleTests {
         )
 
         #expect(interval == 30 * 60)
-    }
-
-    // MARK: - Date arithmetic
-
-    @Test("nextRefreshDate offsets now by the resolved interval")
-    func nextRefreshDateAppliesInterval() {
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
-
-        let next = WidgetRefreshSchedule.nextRefreshDate(
-            now: now,
-            lastEngagement: now,
-            isPlaying: false
-        )
-
-        #expect(next == now.addingTimeInterval(10 * 60))
     }
 
     // MARK: - Budget

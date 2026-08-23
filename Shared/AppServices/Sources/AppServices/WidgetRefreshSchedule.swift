@@ -102,17 +102,4 @@ public enum WidgetRefreshSchedule {
         default: coldInterval
         }
     }
-
-    /// The date to hand WidgetKit's `.after` reload policy.
-    ///
-    /// See ``refreshInterval(now:lastEngagement:isPlaying:)`` for the parameters.
-    public static func nextRefreshDate(
-        now: Date,
-        lastEngagement: Date?,
-        isPlaying: Bool
-    ) -> Date {
-        now.addingTimeInterval(
-            refreshInterval(now: now, lastEngagement: lastEngagement, isPlaying: isPlaying)
-        )
-    }
 }
