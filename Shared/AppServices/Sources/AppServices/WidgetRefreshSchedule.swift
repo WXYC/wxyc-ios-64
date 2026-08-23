@@ -35,15 +35,16 @@ public enum WidgetRefreshSchedule {
 
     // MARK: - Tiers
 
-    /// Cadence right after the user engaged.
-    public static let hotInterval: TimeInterval = 10 * 60
-    /// Cadence through the first couple of hours after engagement.
-    public static let warmInterval: TimeInterval = 15 * 60
-    /// Cadence through the rest of the user's active day.
-    public static let coolInterval: TimeInterval = 40 * 60
-    /// Cadence once engagement is stale, and for devices that have never
-    /// recorded any.
-    public static let coldInterval: TimeInterval = 60 * 60
+    // Internal, not public: nothing outside this module reads the tiers. The
+    // widget extension calls `refreshInterval` and takes what it is given, and
+    // the tests assert against literals — `interval == hotInterval` would be
+    // tautological. `WidgetStalenessTests` is the one reader, checking the
+    // threshold sits between the cool and cold tiers.
+
+    static let hotInterval: TimeInterval = 10 * 60
+    static let warmInterval: TimeInterval = 15 * 60
+    static let coolInterval: TimeInterval = 40 * 60
+    static let coldInterval: TimeInterval = 60 * 60
 
     /// Backstop cadence while playback is active.
     ///
@@ -53,7 +54,7 @@ public enum WidgetRefreshSchedule {
     /// have already arrived. This exists only so a session that ends with the
     /// process being killed — where no foreground reload ever comes — still has
     /// a scheduled refresh pending.
-    public static let activePlaybackInterval: TimeInterval = 30 * 60
+    static let activePlaybackInterval: TimeInterval = 30 * 60
 
     // MARK: - Tier boundaries
 
@@ -70,12 +71,9 @@ public enum WidgetRefreshSchedule {
 
     /// How long to wait before the next budgeted timeline reload.
     ///
-    /// - Parameters:
-    ///   - now: The current instant.
-    ///   - lastEngagement: When the user last engaged, or `nil` if no
-    ///     engagement has ever been recorded — treated as the coldest tier,
-    ///     since there is no evidence any budget spent here would be seen.
-    ///   - isPlaying: Whether playback is currently active.
+    /// - Parameter lastEngagement: When the user last engaged, or `nil` if no
+    ///   engagement has ever been recorded — treated as the coldest tier,
+    ///   since there is no evidence any budget spent here would be seen.
     /// - Returns: The interval to pass to WidgetKit's `.after` reload policy.
     public static func refreshInterval(
         now: Date,

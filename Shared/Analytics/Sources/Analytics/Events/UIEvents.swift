@@ -172,12 +172,11 @@ public struct WidgetGetSnapshot {
 
 /// Event fired when the widget requests a timeline.
 ///
-/// Carries the refresh decision, not just the request: WidgetKit budgets each
-/// widget instance to roughly 40-70 reloads a day, and the interval the
-/// provider picked is what determines how much of that budget the request
-/// costs. Summing `refresh_interval_minutes` across a day's events is how the
-/// tier table in `WidgetRefreshSchedule` gets validated against real usage
-/// rather than the simulated days in its tests.
+/// Carries the refresh decision, not just the request: the interval the
+/// provider picked is what determines how much of the widget's reload budget
+/// the request costs. Summing `refresh_interval_minutes` across a day is how
+/// `AppServices.WidgetRefreshSchedule`'s tier table gets validated against
+/// real usage rather than the simulated days in its tests.
 @AnalyticsEvent
 public struct WidgetGetTimeline {
     public let family: String

@@ -131,42 +131,24 @@ final class Provider: AppIntentTimelineProvider, Sendable {
 
         if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.safePopFirst() {
             let recents = Array(recentItems)
-            let playedAt = nowPlayingItem.playcut.broadcastDate
 
-            let current = NowPlayingTimelineEntry(
-                nowPlayingItem: nowPlayingItem,
-                recentItems: recents,
-                family: family,
-                date: now,
-                isStale: WidgetStaleness.isStale(playedAt: playedAt, asOf: now)
-            )
-
-            // A second, future-dated entry so the widget can admit it has gone
-            // stale without spending a reload to say so: WidgetKit renders it
-            // on schedule from the timeline it already holds. In normal
-            // operation the refresh below lands first and this is never shown
-            // — it is the honest fallback for when the budget is spent.
-            if let staleDate = WidgetStaleness.staleDate(playedAt: playedAt, after: now) {
-                entries = [current, NowPlayingTimelineEntry(
-                    nowPlayingItem: nowPlayingItem,
-                    recentItems: recents,
-                    family: family,
-                    date: staleDate,
-                    isStale: true
-                )]
-            } else {
-                entries = [current]
-            }
+            entries = WidgetStaleness
+                .renderSchedule(playedAt: nowPlayingItem.playcut.broadcastDate, from: now)
+                .map { step in
+                    NowPlayingTimelineEntry(
+                        nowPlayingItem: nowPlayingItem,
+                        recentItems: recents,
+                        family: family,
+                        date: step.date,
+                        isStale: step.isStale
+                    )
+                }
         } else {
             entries = [.emptyState(family: family)]
         }
 
-        // Budget-aware, not fixed: a flat short interval asks for ~288 reloads
-        // a day against a ceiling of 40-70, so WidgetKit throttles it and the
-        // app loses all say in *when* the surviving reloads land. See
-        // `WidgetRefreshSchedule`. The far fresher updates come from the
-        // budget-exempt reloads `WidgetStateService` issues while the audio
-        // session is live.
+        // Budget-aware rather than a fixed interval — `WidgetRefreshSchedule`
+        // explains the tiers and why a flat one gets throttled.
         let engagement = WidgetEngagementStore()
         let refreshInterval = WidgetRefreshSchedule.refreshInterval(
             now: now,
