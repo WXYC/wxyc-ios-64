@@ -29,6 +29,8 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
 
                 Header(entry: entry)
 
+                freshnessLabel
+
                 Text("Recently Played")
                     .font(.body.smallCaps().bold())
                     .foregroundStyle(.white)
