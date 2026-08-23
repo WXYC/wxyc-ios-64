@@ -110,10 +110,6 @@ final class Provider: AppIntentTimelineProvider, Sendable {
 
     func timeline(for configuration: NowPlayingWidgetIntent, in context: Context) async -> Timeline<NowPlayingTimelineEntry> {
         let family = context.family
-        StructuredPostHogAnalytics.shared.capture(WidgetGetTimeline(
-            family: String(describing: family)
-        ))
-
         var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
 
         if context.isPreview {
@@ -172,11 +168,21 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         // budget-exempt reloads `WidgetStateService` issues while the audio
         // session is live.
         let engagement = WidgetEngagementStore()
-        let nextRefresh = WidgetRefreshSchedule.nextRefreshDate(
+        let refreshInterval = WidgetRefreshSchedule.refreshInterval(
             now: now,
             lastEngagement: engagement.lastEngagement,
             isPlaying: engagement.isPlaying
         )
-        return Timeline(entries: entries, policy: .after(nextRefresh))
+
+        // Captured here rather than on entry, so the event reports the
+        // decision instead of just the request — summing the interval across a
+        // day's events is how the tier table gets checked against real usage.
+        StructuredPostHogAnalytics.shared.capture(WidgetGetTimeline(
+            family: String(describing: family),
+            refreshIntervalMinutes: Int(refreshInterval / 60),
+            isStale: entries.first?.isStale ?? false
+        ))
+
+        return Timeline(entries: entries, policy: .after(now.addingTimeInterval(refreshInterval)))
     }
 }

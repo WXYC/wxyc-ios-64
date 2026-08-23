@@ -171,11 +171,27 @@ public struct WidgetGetSnapshot {
 }
 
 /// Event fired when the widget requests a timeline.
+///
+/// Carries the refresh decision, not just the request: WidgetKit budgets each
+/// widget instance to roughly 40-70 reloads a day, and the interval the
+/// provider picked is what determines how much of that budget the request
+/// costs. Summing `refresh_interval_minutes` across a day's events is how the
+/// tier table in `WidgetRefreshSchedule` gets validated against real usage
+/// rather than the simulated days in its tests.
 @AnalyticsEvent
 public struct WidgetGetTimeline {
     public let family: String
 
-    public init(family: String) {
+    /// The `.after` interval the provider scheduled, in whole minutes.
+    public let refreshIntervalMinutes: Int
+
+    /// Whether the entry rendered now was already past the staleness
+    /// threshold — i.e. the refresh arrived too late to be current.
+    public let isStale: Bool
+
+    public init(family: String, refreshIntervalMinutes: Int, isStale: Bool) {
         self.family = family
+        self.refreshIntervalMinutes = refreshIntervalMinutes
+        self.isStale = isStale
     }
 }
