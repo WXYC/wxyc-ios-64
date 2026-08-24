@@ -17,7 +17,13 @@
 //
 //  `SetValueIntent` conformance mirrors `ToggleWXYC` purely so `NowPlayingControl`'s
 //  `ControlWidgetToggle` can bind to it; `value` is otherwise unused by `perform()`,
-//  same as `ToggleWXYC`.
+//  same as `ToggleWXYC`. Unused is not the same as ignorable, though —
+//  `SetValueIntent` makes `value` a *required*, non-defaulted parameter, and
+//  WidgetKit will not fill one in: "unlike app intents you define for system
+//  functionality like Siri, widgets don't resolve parameters for app intents"
+//  (developer.apple.com/documentation/widgetkit/adding-interactivity-to-widgets-and-live-activities).
+//  Hand the system an instance with `value` unassigned and it never enters
+//  `perform()` at all. Use `init(togglingFrom:)`, never the bare `init()`.
 //
 //  Not discoverable and not an App Shortcut: this exists solely for WXYC's own
 //  widget-style UI, not for Siri/Shortcuts/Spotlight.
@@ -43,6 +49,21 @@ public struct WidgetToggleWXYC: SetValueIntent, AudioPlaybackIntent {
 
     public init(value: Bool) {
         self.value = value
+    }
+
+    /// The initializer every widget-style control must use.
+    ///
+    /// `perform()` ignores `value` — it reads live playback state instead, so
+    /// the control can't act on a stale render — but the parameter still has to
+    /// be *assigned*, because widgets never resolve parameters (see this file's
+    /// header). Taking the rendered state and flipping it here, rather than
+    /// leaving `value:` to each call site, keeps the one thing the system
+    /// checks impossible to forget: `Button(intent: WidgetToggleWXYC())`
+    /// compiles, installs, renders, and then silently does nothing when tapped.
+    ///
+    /// - Parameter isPlaying: the state the control is currently rendering.
+    public init(togglingFrom isPlaying: Bool) {
+        self.init(value: !isPlaying)
     }
 
     public func perform() async throws -> some IntentResult {
