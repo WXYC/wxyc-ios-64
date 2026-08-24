@@ -9,9 +9,10 @@
 //
 
 import SwiftUI
+import WXUI
 
 struct ArtworkLightboxView: View {
-    let image: UIImage
+    let image: PlatformImage
     let namespace: Namespace.ID
     let geometryID: String
     let isActive: Bool
@@ -36,7 +37,7 @@ struct ArtworkLightboxView: View {
                         dismiss()
                     }
                 
-                Image(uiImage: image)
+                Image(platform: image)
                     .resizable()
                     .scaledToFit()
                     .clipShape(RoundedRectangle(cornerRadius: animatedCornerRadius, style: .continuous))

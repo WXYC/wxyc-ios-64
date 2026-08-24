@@ -9,7 +9,6 @@
 import Analytics
 import AppServices
 import SwiftUI
-import UIKit
 import WXUI
 import Concerts
 import LikedSongs
@@ -47,11 +46,11 @@ extension View {
 
 /// Displays loaded artwork image
 struct LoadedArtworkView: View {
-    let artwork: UIImage
+    let artwork: PlatformImage
     let shadowYOffset: CGFloat
-    
+
     var body: some View {
-        Image(uiImage: artwork)
+        Image(platform: artwork)
             .resizable()
             .aspectRatio(contentMode: .fit)
             .clipShape(ArtworkStyle.roundedRectangle)
@@ -89,7 +88,7 @@ struct PlaycutRowView: View {
     /// The zoom-transition namespace shared with the detail cover, so this row is
     /// the source the `PlaycutDetailView` animates out of (mirrors `ConcertRow`).
     let namespace: Namespace.ID
-    let onSelect: (UIImage?) -> Void
+    let onSelect: (PlatformImage?) -> Void
 
     @State private var shadowYOffset: CGFloat = 0
 
@@ -127,7 +126,7 @@ struct PlaycutRowView: View {
         appState.artworkLoader.state(for: playcut)
     }
 
-    private var loadedArtwork: UIImage? {
+    private var loadedArtwork: PlatformImage? {
         if case .loaded(let image) = artworkState { image } else { nil }
     }
 

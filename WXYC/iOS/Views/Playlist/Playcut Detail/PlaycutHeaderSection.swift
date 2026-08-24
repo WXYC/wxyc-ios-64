@@ -18,7 +18,7 @@ import Playlist
 
 struct PlaycutHeaderSection: View {
     let playcut: Playcut
-    let artwork: UIImage?
+    let artwork: PlatformImage?
     @Binding var isLightboxActive: Bool
     let hideArtwork: Bool
     let artworkNamespace: Namespace.ID
@@ -30,7 +30,7 @@ struct PlaycutHeaderSection: View {
             // Artwork
             Button(action: onArtworkTap) {
                 if let artwork = artwork {
-                    Image(uiImage: artwork)
+                    Image(platform: artwork)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

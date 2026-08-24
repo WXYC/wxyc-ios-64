@@ -17,19 +17,18 @@ import Concerts
 import LikedSongs
 import Playlist
 import SwiftUI
-import UIKit
 import Wallpaper
 import WXUI
 
 struct PlaycutDetailView: View {
     let playcut: Playcut
-    @State private var artwork: UIImage?
+    @State private var artwork: PlatformImage?
 
     /// The artwork URL a download is already in flight for, so the two callers
     /// of ``loadArtworkIfNeeded()`` can't both start one. See that method.
     @State private var loadingArtworkURL: URL?
 
-    init(playcut: Playcut, artwork: UIImage?) {
+    init(playcut: Playcut, artwork: PlatformImage?) {
         self.playcut = playcut
         self._artwork = State(initialValue: artwork)
     }
@@ -327,7 +326,7 @@ struct PlaycutDetailView: View {
             let (data, response) = try await URLSession.shared.data(from: url)
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode),
-                  let image = UIImage(data: data) else {
+                  let image = PlatformImage(data: data) else {
                 return
             }
 
