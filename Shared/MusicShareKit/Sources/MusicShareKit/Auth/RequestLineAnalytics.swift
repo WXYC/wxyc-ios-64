@@ -189,6 +189,60 @@ public struct DeviceFingerprintInitFailedEvent: RequestLineAnalyticsEvent {
     }
 }
 
+/// Event captured once per launch, from `MusicShareKit.configure(...)`, stating
+/// how the device fingerprint resolved (#998).
+///
+/// **Emitted on success and on failure alike, and that is the whole point.**
+/// `DeviceFingerprintInitFailedEvent` above is failure-only, and a failure-only
+/// metric reads exactly like a metric that stopped reporting — its 0 rows in 30
+/// days could mean "the Keychain is fine" or "nothing is being captured at
+/// all", and there is no way to tell from the data. During the 2026-08-04
+/// PostHog quota exhaustion the org spent two weeks reading the second as the
+/// first. This event's absence is therefore always a defect, never good news.
+///
+/// **Once per launch, not once per operation.** The PostHog org is on the free
+/// tier at its six-project limit; `capture()` is a billing decision. One
+/// summary event per launch is the budget, which is why the
+/// `MusicShareKit.deviceFingerprint` accessor's inline retry deliberately does
+/// not emit a second one.
+///
+/// The fingerprint **value** never appears here. It is a stable per-device
+/// identifier and a deanonymization vector; modes and status codes are the
+/// entire permitted payload.
+///
+/// `mode` is stored as a `String` for the same macro-verbatim reason documented
+/// on `RequestLineAuthStartedEvent`.
+@AnalyticsEvent
+public struct FingerprintModeResolvedEvent: RequestLineAnalyticsEvent {
+
+    /// A ``DeviceFingerprintMode`` raw value.
+    public let mode: String
+
+    /// The status that explains this mode: the synchronizable add's failing
+    /// status on `local`, the thrown status on `failed`, and `errSecSuccess`
+    /// on `existing` and `synchronizable`, where nothing needs explaining.
+    ///
+    /// Non-optional on purpose. Every value emitted is a real `OSStatus`
+    /// returned by an operation that actually ran, and an always-present
+    /// numeric property is what PostHog needs to break the launch population
+    /// down by status without a missing-key branch.
+    public let osStatus: Int32
+
+    /// How many times `MusicShareKit.deviceFingerprint` was read before
+    /// `configure(...)` ran in this process. That path has no analytics service
+    /// to report to at the moment it happens — the configuration is where the
+    /// analytics service lives — so its total rides here instead of vanishing.
+    /// Anything above 0 means a caller is reaching the fingerprint too early
+    /// and getting `nil`.
+    public let prematureAccessCount: Int
+
+    public init(mode: DeviceFingerprintMode, osStatus: OSStatus, prematureAccessCount: Int) {
+        self.mode = mode.rawValue
+        self.osStatus = osStatus
+        self.prematureAccessCount = prematureAccessCount
+    }
+}
+
 // MARK: - Feature Flag Events
 
 /// Source of a feature flag evaluation.

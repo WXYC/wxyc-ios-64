@@ -136,6 +136,130 @@ struct DeviceFingerprintConfigurationTests {
         #expect(storage.ensureCallCount == preCount + 1)
     }
 
+    // MARK: - Resolved-mode telemetry (#998)
+
+    /// The load-bearing property of the whole event: it fires when nothing went
+    /// wrong. A failure-only metric reads identically to a metric that stopped
+    /// reporting, and that ambiguity is what hid #996 for two weeks.
+    @Test("configure() captures FingerprintModeResolvedEvent on SUCCESS, not only on failure")
+    func successCapturesResolvedMode() throws {
+        let storage = InMemoryDeviceFingerprintStorage()
+        storage.stubFingerprint = "resolved-ok"
+        storage.stubMode = .synchronizable
+        mockAnalytics.reset()
+
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
+
+        let resolved = mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self)
+        #expect(resolved.count == 1)
+        #expect(resolved.first?.mode == "synchronizable")
+        #expect(resolved.first?.osStatus == errSecSuccess)
+        // Adding a signal must not remove one: the pre-existing failure event
+        // stays failure-only.
+        #expect(mockAnalytics.typedEvents(ofType: DeviceFingerprintInitFailedEvent.self).isEmpty)
+    }
+
+    @Test("configure() captures FingerprintModeResolvedEvent(.failed) carrying the thrown OSStatus")
+    func failureCapturesResolvedMode() throws {
+        let storage = InMemoryDeviceFingerprintStorage()
+        storage.stubError = AuthenticationError.keychainError(status: errSecMissingEntitlement)
+        mockAnalytics.reset()
+
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
+
+        let resolved = mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self)
+        #expect(resolved.count == 1)
+        #expect(resolved.first?.mode == "failed")
+        #expect(resolved.first?.osStatus == -34018)
+        // Both events fire; the new one does not displace the old one.
+        #expect(mockAnalytics.typedEvents(ofType: DeviceFingerprintInitFailedEvent.self).count == 1)
+    }
+
+    @Test(
+        "Each Keychain branch reaches analytics as its own mode",
+        arguments: [
+            (KeychainScript.readHit, "existing", errSecSuccess),
+            (KeychainScript.synchronizableAdd, "synchronizable", errSecSuccess),
+            (KeychainScript.localFallback, "local", errSecMissingEntitlement),
+            (KeychainScript.everythingFails, "failed", errSecMissingEntitlement),
+        ]
+    )
+    func keychainBranchesReachAnalytics(
+        _ script: KeychainScript, _ expectedMode: String, _ expectedStatus: OSStatus
+    ) throws {
+        mockAnalytics.reset()
+
+        MusicShareKit.reconfigure(makeConfiguration(storage: script.makeStorage()))
+
+        let resolved = mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self)
+        #expect(resolved.count == 1)
+        #expect(resolved.first?.mode == expectedMode)
+        #expect(resolved.first?.osStatus == expectedStatus)
+    }
+
+    /// One summary event per launch is the budget — the PostHog org is on the
+    /// free tier at its six-project limit and came off a quota exhaustion on
+    /// 2026-08-04. Per-operation capture is not affordable.
+    @Test("The resolved-mode event is emitted once per configure, not once per fingerprint read")
+    func resolvedModeIsOncePerLaunch() throws {
+        let storage = InMemoryDeviceFingerprintStorage()
+        storage.stubFingerprint = "once-per-launch"
+        mockAnalytics.reset()
+
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
+        for _ in 0..<10 {
+            _ = MusicShareKit.deviceFingerprint
+        }
+
+        #expect(mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self).count == 1)
+    }
+
+    /// The accessor's at-most-once inline retry carries a "don't double-emit"
+    /// comment for the failure event. The per-launch mode event is bound by the
+    /// same rule.
+    @Test("The accessor's inline retry does not emit a second resolved-mode event")
+    func retryDoesNotDoubleEmit() throws {
+        let storage = InMemoryDeviceFingerprintStorage()
+        storage.stubError = AuthenticationError.keychainError(status: errSecInteractionNotAllowed)
+        mockAnalytics.reset()
+
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
+
+        storage.stubError = nil
+        storage.stubFingerprint = "recovered-after-unlock"
+        _ = MusicShareKit.deviceFingerprint
+        _ = MusicShareKit.deviceFingerprint
+
+        #expect(mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self).count == 1)
+        #expect(mockAnalytics.typedEvents(ofType: DeviceFingerprintInitFailedEvent.self).count == 1)
+    }
+
+    /// (B) The pre-configure silent nil. `MusicShareKit.deviceFingerprint`'s
+    /// `guard let config = _configuration` returns nil with no analytics
+    /// service in existence to report to — `_configuration` is where the
+    /// analytics service lives. The access is counted and the total rides on
+    /// the next launch event instead.
+    ///
+    /// The count is asserted as a lower bound, not an equality: it is a
+    /// process-wide monotonic counter and `MusicShareKitTests` runs its suites
+    /// in parallel, so another suite could contribute. A regression to "not
+    /// wired" reads as 0 and still fails here.
+    @Test("Pre-configure fingerprint reads are counted and reported on the launch event")
+    func prematureAccessesRideOnTheLaunchEvent() throws {
+        let storage = InMemoryDeviceFingerprintStorage()
+        storage.stubFingerprint = "premature-probe"
+
+        MusicShareKit.prematureFingerprintAccesses.record()
+        MusicShareKit.prematureFingerprintAccesses.record()
+        mockAnalytics.reset()
+
+        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
+
+        let resolved = mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self)
+        #expect(resolved.count == 1)
+        #expect((resolved.first?.prematureAccessCount ?? -1) >= 2)
+    }
+
     @Test("Configuration default storage is a KeychainDeviceFingerprintStorage")
     func defaultStorageType() {
         let config = MusicShareKitConfiguration(
@@ -151,5 +275,41 @@ struct DeviceFingerprintConfigurationTests {
         // production callers (WXYCApp + ShareViewController) don't have to
         // know about the new field. (Step 8 in the plan.)
         #expect(config.deviceFingerprintStorage is KeychainDeviceFingerprintStorage)
+    }
+}
+
+// MARK: - Keychain Scripts
+
+/// Canned `KeychainOperations` sequences, one per branch of
+/// `KeychainDeviceFingerprintStorage.resolve()`. Named cases rather than inline
+/// queues so the parameterized test above reads as "this branch produces that
+/// mode", and so no test here can reach the real Keychain.
+enum KeychainScript: Sendable {
+    /// A value is already persisted; no add is attempted.
+    case readHit
+    /// Nothing persisted; the synchronizable add succeeds.
+    case synchronizableAdd
+    /// Nothing persisted; the synchronizable add fails with the status #996 is
+    /// about, and the local-only add succeeds.
+    case localFallback
+    /// The read itself fails unrecoverably, so `resolve()` throws.
+    case everythingFails
+
+    func makeStorage() -> KeychainDeviceFingerprintStorage {
+        let ops = MockKeychainOperations()
+        switch self {
+        case .readHit:
+            ops.queueRead(status: errSecSuccess, data: Data(UUID().uuidString.utf8))
+        case .synchronizableAdd:
+            ops.queueRead(status: errSecItemNotFound, data: nil)
+            ops.queueAdd(status: errSecSuccess)
+        case .localFallback:
+            ops.queueRead(status: errSecItemNotFound, data: nil)
+            ops.queueAdd(status: errSecMissingEntitlement)
+            ops.queueAdd(status: errSecSuccess)
+        case .everythingFails:
+            ops.queueRead(status: errSecMissingEntitlement, data: nil)
+        }
+        return KeychainDeviceFingerprintStorage(accessGroup: nil, operations: ops)
     }
 }
