@@ -92,7 +92,7 @@ struct PlaybackStateProvider: ControlValueProvider {
     var previewValue: Bool { false }
 
     func currentValue() async throws -> Bool {
-        UserDefaults.wxyc.bool(forKey: "isPlaying")
+        UserDefaults.wxyc.bool(forKey: UserDefaults.isPlayingKey)
     }
 }
 
