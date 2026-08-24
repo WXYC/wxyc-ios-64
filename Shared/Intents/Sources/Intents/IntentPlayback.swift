@@ -10,10 +10,20 @@
 //  prepare/capture/toggle/wait sequence ToggleWXYC and WidgetToggleWXYC both
 //  need (#331).
 //
+//  Both entry points also publish the app-group playback mirror the widget's
+//  Play/Pause control renders. That belongs here rather than in
+//  `WidgetStateService`: an intent-driven launch connects no scene, so the root
+//  view's `onAppear` — the only caller of `WidgetStateService.start()` — never
+//  runs, and the key would keep its stale value while audio played. WidgetKit
+//  reloads the timeline once `perform()` returns, so writing before returning
+//  is what puts the fresh value in front of that reload.
+//
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Caching
+import Foundation
 import Logger
 import Playback
 import PlaybackCore
@@ -28,6 +38,9 @@ enum IntentPlayback {
     ///     controller. Injectable for tests (#497) — `MockAudioPlayer`
     ///     (`PlaybackTestUtilities`) isn't importable from `WXYCIntentsTests`,
     ///     so tests substitute a fake `IntentPlaybackControlling` instead.
+    ///   - widgetState: The app-group defaults holding the mirror the widget's
+    ///     Play/Pause control renders. Injectable so tests never write the
+    ///     real shared key.
     /// - Returns: Whether playback actually started before `timeout` elapsed.
     ///   `PlayWXYC` and `PlayWXYCAudio` report a friendly dialog either way and
     ///   don't need this, but `PlayMediaIntentHandler` (#829) does: without it,
@@ -39,7 +52,8 @@ enum IntentPlayback {
     static func startAndAwait(
         reason: PlaybackReason,
         timeout: Duration = .seconds(10),
-        controller: any IntentPlaybackControlling = AudioPlayerController.shared
+        controller: any IntentPlaybackControlling = AudioPlayerController.shared,
+        widgetState: UserDefaults = .wxyc
     ) async -> Bool {
         Log(.info, "\(reason)")
 
@@ -50,7 +64,9 @@ enum IntentPlayback {
 
         // Wait for playback to start before returning, keeping the intent alive
         // so iOS doesn't suspend the app before the stream connects
-        return await awaitPlaybackStart(timeout: timeout, context: reason.description) { controller.isPlaying }
+        let started = await awaitPlaybackStart(timeout: timeout, context: reason.description) { controller.isPlaying }
+        publishWidgetState(controller: controller, to: widgetState)
+        return started
     }
 
     /// Polls `isPlaying` until it becomes true or `timeout` elapses.
@@ -95,12 +111,16 @@ enum IntentPlayback {
     ///   - controller: Playback-control surface; defaults to the shared
     ///     controller. Injectable for tests (#497), the same seam
     ///     `startAndAwait` uses.
+    ///   - widgetState: The app-group defaults holding the mirror the widget's
+    ///     Play/Pause control renders. Injectable so tests never write the
+    ///     real shared key.
     @MainActor
     static func toggleAndAwait(
         reason: PlaybackReason,
         context: String,
         timeout: Duration = .seconds(10),
-        controller: any IntentPlaybackControlling = AudioPlayerController.shared
+        controller: any IntentPlaybackControlling = AudioPlayerController.shared,
+        widgetState: UserDefaults = .wxyc
     ) async {
         Log(.info, "\(context)")
 
@@ -120,5 +140,24 @@ enum IntentPlayback {
         if !wasRequested {
             await awaitPlaybackStart(timeout: timeout, context: context) { controller.isPlaying }
         }
+
+        publishWidgetState(controller: controller, to: widgetState)
+    }
+
+    /// Mirrors the controller's post-call state into the app group so the
+    /// widget's Play/Pause control renders what actually happened.
+    ///
+    /// Reads `isPlaybackRequested`, not `isPlaying`, for the same reason
+    /// `AudioPlayerController.toggle(reason:)` branches on it: a start that has
+    /// been requested but hasn't produced audio yet is still standing and still
+    /// cancellable, so the control has to offer a pause. Rendering `isPlaying`
+    /// would show "Play" through the whole connect window and turn the next tap
+    /// into a second start.
+    @MainActor
+    private static func publishWidgetState(
+        controller: any IntentPlaybackControlling,
+        to widgetState: UserDefaults
+    ) {
+        widgetState.set(controller.isPlaybackRequested, forKey: UserDefaults.isPlayingKey)
     }
 }
