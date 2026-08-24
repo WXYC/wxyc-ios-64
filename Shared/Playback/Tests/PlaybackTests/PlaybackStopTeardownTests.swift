@@ -4,7 +4,7 @@
 //
 //  Direct unit tests for the extracted `PlaybackStopTeardown` helper (#755) —
 //  the six-step teardown sequence and #665 sessionID-survival rule shared by
-//  AudioPlayerController and RadioPlayerController's `stop(reason:)`.
+//  AudioPlayerController and RadioPlayerController's `tearDown(reason:)`.
 //
 //  Created by Jake Bromberg on 08/05/26.
 //  Copyright © 2026 WXYC. All rights reserved.

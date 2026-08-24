@@ -2,7 +2,7 @@
 //  RedundantStopIdempotencyTests.swift
 //  Playback
 //
-//  Idempotency of `AudioPlayerController.stop(reason:)` (#933). A stop against
+//  Idempotency of `AudioPlayerController.tearDown(reason:)` (#933). A stop against
 //  a player with no standing intent and an idle mirror must tear nothing down
 //  a second time — at most one `player.stop()` per stop request, no duplicate
 //  `PlaybackStoppedEvent`, and no clobbering of the #665 sessionID /
@@ -247,7 +247,7 @@ struct RedundantStopIdempotencyTests {
 
         // The echo of that same stop — #932's shape. It must tear nothing down
         // and must not retire the id the pending resume is holding.
-        harness.controller.stop(reason: .interruptionBegan)
+        harness.controller.tearDown(reason: .interruptionBegan)
         await harness.waitForAsync()
 
         #expect(harness.stopCallCount == 1, "the duplicate churned the decoder")
@@ -317,7 +317,7 @@ struct RedundantStopIdempotencyTests {
         )
         #expect(controller.sessionID == listenSessionID, "#665: the id survives a route disconnect")
 
-        harness.controller.stop(reason: .routeDisconnected)
+        harness.controller.tearDown(reason: .routeDisconnected)
         await harness.waitForAsync()
 
         #expect(harness.stopCallCount == 1, "the duplicate churned the decoder")
@@ -411,7 +411,7 @@ struct RedundantStopIdempotencyTests {
         // exactly the state #933's guard short-circuits — no standing intent,
         // idle mirror — so it is the *only* stop that will ever be delivered
         // here. If the armed resume outlives it, nothing else will retire it.
-        harness.controller.stop(reason: .remotePauseCommand)
+        harness.controller.tearDown(reason: .remotePauseCommand)
         await harness.waitForAsync()
 
         // The call ends and the system offers a resume.

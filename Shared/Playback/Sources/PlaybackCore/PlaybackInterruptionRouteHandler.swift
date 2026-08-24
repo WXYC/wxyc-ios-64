@@ -62,7 +62,7 @@ public final class PlaybackInterruptionRouteHandler {
 
     /// - Parameters:
     ///   - notificationCenter: Observed for `InterruptionMessage` and `RouteChangeMessage`.
-    ///   - context: The mandatory, non-divergent state accessors (`isPlaying`, `sessionID`, `playbackDuration`, `wasPlayingBeforeRouteDisconnect`, `stop(reason:)`, `play(reason:)`) — held weakly, since this handler is owned by the same controller it reads from.
+    ///   - context: The mandatory, non-divergent state accessors (`isPlaying`, `sessionID`, `playbackDuration`, `wasPlayingBeforeRouteDisconnect`, `tearDown(reason:)`, `play(reason:)`) — held weakly, since this handler is owned by the same controller it reads from.
     ///   - analytics: Sink for the shared `PlaybackStoppedEvent` capture.
     ///   - onInterruptionReceived: Fired with the raw interruption type before the switch — e.g. for logging. Default no-op.
     ///   - onInterruptionWillStopForPlayback: Fired immediately before the shared `PlaybackStoppedEvent` capture on a `.began` that is actually stopping active playback — e.g. Radio's `InterruptionEvent` capture. Default no-op.
@@ -141,7 +141,7 @@ public final class PlaybackInterruptionRouteHandler {
                     duration: context?.playbackDuration ?? 0,
                     sessionID: context?.sessionID
                 ))
-                context?.stop(reason: .interruptionBegan)
+                context?.tearDown(reason: .interruptionBegan)
             }
             onInterruptionBeganHandled()
 
@@ -173,7 +173,7 @@ public final class PlaybackInterruptionRouteHandler {
                     duration: context?.playbackDuration ?? 0,
                     sessionID: context?.sessionID
                 ))
-                context?.stop(reason: .routeDisconnected)
+                context?.tearDown(reason: .routeDisconnected)
             }
 
         case .newDeviceAvailable:

@@ -72,7 +72,7 @@ struct ObservationIntegrationTests {
         controller.play(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
         controller.play(reason: .test)
@@ -91,7 +91,7 @@ struct ObservationIntegrationTests {
         var firstState: Bool?
 
         // Ensure we start stopped
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
         let observations = Observations {
@@ -136,7 +136,7 @@ struct ObservationIntegrationTests {
         for _ in 0..<5 {
             controller.play(reason: .test)
             try await Task.sleep(for: .milliseconds(20))
-            controller.stop(reason: .test)
+            controller.tearDown(reason: .test)
             try await Task.sleep(for: .milliseconds(20))
         }
 
@@ -151,7 +151,7 @@ struct ObservationIntegrationTests {
         var changeCount = 0
 
         // Ensure we start stopped
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
 
         let observations = Observations {
@@ -198,7 +198,7 @@ struct ObservationIntegrationTests {
         try await Task.sleep(for: .milliseconds(50))
 
         // Trigger more changes after cancellation
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
         try await Task.sleep(for: .milliseconds(50))
         controller.play(reason: .test)
         try await Task.sleep(for: .milliseconds(50))

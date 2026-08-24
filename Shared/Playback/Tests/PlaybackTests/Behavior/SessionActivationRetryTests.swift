@@ -167,7 +167,7 @@ struct SessionActivationRetryTests {
                "A generic activation failure should escalate as a single silent_startup")
         #expect(!harness.controller.isPlaying)
 
-        harness.controller.stop(reason: .test)
+        harness.controller.tearDown(reason: .test)
     }
 
     // MARK: - Stop cancels a pending retry

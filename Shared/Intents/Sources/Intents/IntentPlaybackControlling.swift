@@ -31,11 +31,12 @@ protocol IntentPlaybackControlling {
     func play(reason: PlaybackReason)
     /// See `AudioPlayerController.toggle(reason:)`.
     func toggle(reason: PlaybackReason)
-    /// See `AudioPlayerController.stopWithAnalytics(reason:)` — the stop that
-    /// also closes the listen for the #663 duration series, subject to the
-    /// one-event-per-listen predicate (#933). The intents never call the bare
-    /// `stop(reason:)`; #939 is what that costs.
-    func stopWithAnalytics(reason: PlaybackReason)
+    /// See `AudioPlayerController.stop(reason:)` — the stop that also closes
+    /// the listen for the #663 duration series, subject to the
+    /// one-event-per-listen predicate (#933). Deliberately not
+    /// `tearDown(reason:)`: an intent is a listener decision and has to be
+    /// reported as one. #939 is what taking the teardown cost the Siri pause.
+    func stop(reason: PlaybackReason)
     /// See `AudioPlayerController.isPlaying`.
     var isPlaying: Bool { get }
     /// See `AudioPlayerController.isPlaybackRequested` — the predicate

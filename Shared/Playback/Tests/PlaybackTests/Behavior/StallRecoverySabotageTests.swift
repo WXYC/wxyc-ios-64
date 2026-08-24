@@ -252,7 +252,7 @@ struct StallRecoverySabotageTests {
         #expect(fixture.controller.cpuSessionIsActive,
                 "CPU session must remain open through the holding-pattern recovery")
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 }
 

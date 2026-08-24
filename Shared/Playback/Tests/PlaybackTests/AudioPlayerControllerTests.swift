@@ -147,7 +147,7 @@ struct AudioPlayerControllerTests {
 
         // Tear intent down so the escalated recovery loop doesn't keep
         // retrying activation for the remainder of the test process.
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
     }
 
     // MARK: - Debug Snapshot
@@ -272,7 +272,7 @@ struct AudioPlayerControllerTests {
             "\(type.rawValue) produced \(mockAnalytics.startedEvents.count) play events, expected 1"
         )
 
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
     }
 
     // MARK: - Remote Command Center Tests

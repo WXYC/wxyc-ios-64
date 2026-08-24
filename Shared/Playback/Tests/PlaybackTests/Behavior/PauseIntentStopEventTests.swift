@@ -3,9 +3,9 @@
 //  Playback
 //
 //  #939: a Siri pause has to close the listen it ends, not just record that
-//  Siri was used. `AudioPlayerController.stopWithAnalytics(reason:)` is the
+//  Siri was used. `AudioPlayerController.stop(reason:)` is the
 //  one place the "capture a PlaybackStoppedEvent, then stop" rule lives —
-//  #933's dedup included — and `PauseWXYC` calling `stop(reason:)` directly
+//  #933's dedup included — and `PauseWXYC` calling `tearDown(reason:)` directly
 //  bypassed it entirely, so a Siri pause retired the #665 session id with no
 //  duration ever recorded on the #663 series. This suite pins the entry
 //  point's contract at the controller seam: `PauseWXYC.perform()` itself
@@ -39,7 +39,7 @@ struct PauseIntentStopEventTests {
         let listenSessionID = try #require(controller.sessionID, "precondition: play() mints a session id")
         try? await Task.sleep(for: .milliseconds(20))
 
-        controller.stopWithAnalytics(reason: .pauseIntent)
+        controller.stop(reason: .pauseIntent)
 
         #expect(
             harness.analyticsStopCallCount == 1,
@@ -59,7 +59,7 @@ struct PauseIntentStopEventTests {
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
 
-        controller.stopWithAnalytics(reason: .pauseIntent)
+        controller.stop(reason: .pauseIntent)
 
         #expect(
             harness.mockAnalytics.stoppedEvents.last?.source == PlaybackSource.siri.rawValue,
@@ -76,8 +76,8 @@ struct PauseIntentStopEventTests {
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
 
-        controller.stopWithAnalytics(reason: .pauseIntent)
-        controller.stopWithAnalytics(reason: .pauseIntent)
+        controller.stop(reason: .pauseIntent)
+        controller.stop(reason: .pauseIntent)
 
         #expect(
             harness.analyticsStopCallCount == 1,
@@ -92,7 +92,7 @@ struct PauseIntentStopEventTests {
 
         #expect(controller.debugState.playerState == .idle, "precondition: nothing is playing")
 
-        controller.stopWithAnalytics(reason: .pauseIntent)
+        controller.stop(reason: .pauseIntent)
 
         #expect(
             harness.analyticsStopCallCount == 0,

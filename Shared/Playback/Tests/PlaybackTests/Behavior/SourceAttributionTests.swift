@@ -6,7 +6,7 @@
 //  Verifies that PlaybackStartedEvent/PlaybackStoppedEvent carry a clean,
 //  low-cardinality `source` for a representative set of entry points, and
 //  that user pauses — which previously shipped no attribution at all — now
-//  carry the real `stop(reason:)`-derived source.
+//  carry the real `tearDown(reason:)`-derived source.
 //
 //  Created by Jake Bromberg on 07/25/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -71,7 +71,7 @@ struct SourceAttributionTests {
         // AudioPlayerController's dedicated `commandCenter.pauseCommand` target
         // and RadioPlayerController's `remotePauseOrStopCommand` both funnel
         // through the same private stop-and-capture helper `toggle(reason:)`
-        // uses (see `stopWithAnalytics(reason:)` in each controller), so
+        // uses (see `stop(reason:)` in each controller), so
         // driving this via `toggle(reason: .remotePauseCommand)` exercises the
         // identical code path a real Lock Screen/Control Center pause tap
         // would — `MPRemoteCommandEvent` has no public initializer, so the

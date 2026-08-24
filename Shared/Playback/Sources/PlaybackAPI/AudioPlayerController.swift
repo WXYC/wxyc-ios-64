@@ -128,7 +128,7 @@ public final class AudioPlayerController {
         playbackIntended && !playerState.isError
     }
 
-    /// Whether a `stop(reason:)` has any playback left to tear down (#933).
+    /// Whether a `tearDown(reason:)` has any playback left to tear down (#933).
     ///
     /// Standing intent **or** a non-idle mirror, and deliberately neither one
     /// on its own:
@@ -165,7 +165,7 @@ public final class AudioPlayerController {
     /// half is that the same stale event re-enters `attemptReconnect()` and
     /// resurrects a stopped stream.
     ///
-    /// Read by `stop(reason:)` and by `stopWithAnalytics(reason:)`, which
+    /// Read by `tearDown(reason:)` and by `stop(reason:)`, which
     /// needs the answer *before* `stop()` clears the intent it reads.
     private var hasPlaybackToTearDown: Bool {
         playbackIntended || !playerState.isIdle
@@ -351,7 +351,7 @@ public final class AudioPlayerController {
     /// analytics event so one continuous listen can be reconstructed from
     /// the event stream. Cleared in `stop()` — except for the interruption
     /// and route-disconnect reasons, which stop playback only as a prelude
-    /// to an imminent auto-resume and must preserve the id (see `stop(reason:)`).
+    /// to an imminent auto-resume and must preserve the id (see `tearDown(reason:)`).
     ///
     /// Getter is `package` so `PlaybackInterruptionRouteHandler` can read it
     /// through `PlaybackInterruptionContext` conformance (#804); the setter
@@ -678,14 +678,22 @@ public final class AudioPlayerController {
     /// - Parameter reason: Why playback was toggled (for analytics)
     public func toggle(reason: PlaybackReason) {
         if isPlaybackRequested {
-            stopWithAnalytics(reason: reason)
+            stop(reason: reason)
         } else {
             play(reason: reason)
         }
     }
 
-    /// Captures a `PlaybackStoppedEvent` — attributing `source` from `reason`
-    /// (#668) — and then stops. The free-text `reason` string is deliberately
+    /// Ends the listen: captures a `PlaybackStoppedEvent` — attributing
+    /// `source` from `reason` (#668) — and then tears playback down.
+    ///
+    /// The counterpart to `play(reason:)`, which emits on the way in, and the
+    /// method every listener-facing surface wants: `toggle(reason:)`'s stop
+    /// branch, the remote pause command, `PauseWXYC`. `tearDown(reason:)` is
+    /// the same teardown with the report omitted, for the one caller that has
+    /// already filed its own.
+    ///
+    /// The free-text `reason` string is deliberately
     /// withheld here (matches the pre-existing "user-initiated stops report a
     /// nil reason" contract), but `source` is never nil: this is what closes
     /// the "user pauses carry no attribution" gap, since every stop site
@@ -694,28 +702,30 @@ public final class AudioPlayerController {
     /// remote pause command target in `setUpRemoteCommandCenter()` so both
     /// paths stay identical.
     ///
-    /// The event is captured only when there is a listen to end (#933). The
-    /// predicate has to be read *here*, hoisted out of `stop()`, for two
-    /// reasons: the capture happens before the delegation, so a guard living
-    /// only inside `stop()` would suppress the teardown and still emit the
-    /// event; and `stop()` clears the very intent the predicate reads, so
+    /// The event is captured only when there is a listen to end (#933), and
+    /// that is the whole reason the two methods can't be one. The predicate has
+    /// to be read *here*, before the delegation: a guard living inside
+    /// `tearDown(reason:)` would suppress the teardown as well as the event —
+    /// and the teardown has to run either way, since a redundant stop is still
+    /// the only thing that retires the auto-resume state — while
+    /// `tearDown(reason:)` clears the very intent the predicate reads, so
     /// asking afterwards always answers "nothing to do". Sentry IOS-5F is what
     /// this costs otherwise — seven pause events for one listen, on the same
     /// duration series #663 is trying to make trustworthy.
     ///
-    /// `public`, not `private`, so `PauseWXYC` (WXYCIntents) can route a Siri
+    /// `public`, not `package`, so `PauseWXYC` (WXYCIntents) can route a Siri
     /// pause through the same one-event-per-listen rule instead of
     /// re-implementing the capture at the call site (#939) — a Siri pause
-    /// calling `stop(reason:)` directly closed the listen with no duration
-    /// ever reaching the #663 series. `package` doesn't reach that caller:
+    /// taking the teardown directly closed the listen with no duration ever
+    /// reaching the #663 series. `package` doesn't reach that caller:
     /// `Shared/Intents` builds as its own SwiftPM package (`WXYCIntents`),
     /// a separate package identity from `Playback` even though it depends on
     /// it, so `package`-level access here would still be invisible there.
-    public func stopWithAnalytics(reason: PlaybackReason) {
+    public func stop(reason: PlaybackReason) {
         if hasPlaybackToTearDown {
             analytics.capture(PlaybackStoppedEvent(source: reason.playbackSource, duration: playbackDuration, sessionID: sessionID))
         }
-        stop(reason: reason)
+        tearDown(reason: reason)
     }
 
     /// The body of the remote command centre's pause target.
@@ -729,7 +739,7 @@ public final class AudioPlayerController {
     /// exercising the real lock-screen path rather than an approximation of it.
     /// Mirrors `RadioPlayerController.remotePauseOrStopCommand(_:)`.
     package func handleRemotePauseCommand() {
-        stopWithAnalytics(reason: .remotePauseCommand)
+        stop(reason: .remotePauseCommand)
     }
 
     /// Start playback
@@ -820,7 +830,7 @@ public final class AudioPlayerController {
     /// an idle mirror has nothing to tear down and returns without doing it a
     /// second time — no `player.stop()` (and so no fresh `MP3StreamDecoder`),
     /// no re-run of `PlaybackStopTeardown`, and, via
-    /// `stopWithAnalytics(reason:)`, no duplicate `PlaybackStoppedEvent`.
+    /// `stop(reason:)`, no duplicate `PlaybackStoppedEvent`.
     /// Sentry IOS-5F caught seven of these in four seconds against an
     /// already-idle player; each one allocated a decoder and inflated the #663
     /// duration series.
@@ -849,8 +859,11 @@ public final class AudioPlayerController {
     /// thing standing between a failed handback and a session no other audio
     /// app can take back.
     ///
-    /// - Parameter reason: Why playback was stopped (for analytics)
-    public func stop(reason: PlaybackReason) {
+    /// - Parameter reason: Which stop this is. Not a telemetry field — this
+    ///   method emits nothing. `PlaybackStopTeardown` reads it to tell an echo
+    ///   from a new decision under the #665 session-survival rule, so passing a
+    ///   convenient value rather than the true one changes teardown behaviour.
+    public func tearDown(reason: PlaybackReason) {
         guard hasPlaybackToTearDown else {
             Log(.info, category: .playback, "Stop short-circuited (no teardown); retiring auto-resume state, rechecking handback (reason: \(reason.rawValue))")
             // Not dead code on a dead path: both of these outlive a teardown and
@@ -2057,7 +2070,7 @@ extension AudioPlayerController {
     /// Stops the heartbeat cadence. Idempotent — safe to call whether or not
     /// a heartbeat is currently running. Called on every transition away from
     /// `.playing` in `setUpPlayerObservation()`, and explicitly from
-    /// `stop(reason:)` for an immediate cancellation guarantee that doesn't
+    /// `tearDown(reason:)` for an immediate cancellation guarantee that doesn't
     /// wait on the async state-stream round-trip.
     private func stopHeartbeat() {
         heartbeat?.stop()
@@ -2653,7 +2666,7 @@ extension AudioPlayerController {
 // MARK: - PlaybackInterruptionContext Conformance (#804)
 
 #if os(iOS) || os(tvOS)
-/// `isPlaying`, `stop(reason:)`, and `play(reason:)` already satisfy this
+/// `isPlaying`, `tearDown(reason:)`, and `play(reason:)` already satisfy this
 /// protocol via the members declared above — only `sessionID`,
 /// `playbackDuration`, and `wasPlayingBeforeRouteDisconnect` needed their
 /// access level widened from `private` to `package` to be readable through

@@ -40,8 +40,14 @@ package protocol PlaybackInterruptionContext: AnyObject {
     /// as a get/set pair rather than the handler holding its own copy.
     var wasPlayingBeforeRouteDisconnect: Bool { get set }
 
-    /// Stops playback for the given reason (`.interruptionBegan` / `.routeDisconnected`).
-    func stop(reason: PlaybackReason)
+    /// Tears playback down for the given reason (`.interruptionBegan` /
+    /// `.routeDisconnected`).
+    ///
+    /// Deliberately the non-reporting half of the pair: this handler captures
+    /// its own `PlaybackStoppedEvent` immediately before each call, so routing
+    /// these through `stop(reason:)` would double-count the listen. That the
+    /// handler's predicate differs from the controller's is #938, not this.
+    func tearDown(reason: PlaybackReason)
 
     /// (Re)starts playback for the given reason (`.resumeAfterInterruption` / `.resumeAfterRouteReconnect`).
     func play(reason: PlaybackReason) throws
