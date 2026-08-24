@@ -15,7 +15,6 @@ import Artwork
 import LikedSongs
 import Playlist
 import SwiftUI
-import UIKit
 import Wallpaper
 import WXUI
 
@@ -26,7 +25,7 @@ struct LikedSongRow: View {
     /// The zoom-transition namespace shared with the detail cover, so this row is
     /// the source the `PlaycutDetailView` animates out of (mirrors `ConcertRow`).
     let namespace: Namespace.ID
-    let onSelect: (UIImage?) -> Void
+    let onSelect: (PlatformImage?) -> Void
     let onUnlike: () -> Void
 
     /// The snapshot bridged back to a `Playcut`, built once per row — it keys
@@ -40,7 +39,7 @@ struct LikedSongRow: View {
     /// flowsheet row (randomized once at init).
     private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
 
-    init(snapshot: LikedSongSnapshot, namespace: Namespace.ID, onSelect: @escaping (UIImage?) -> Void, onUnlike: @escaping () -> Void) {
+    init(snapshot: LikedSongSnapshot, namespace: Namespace.ID, onSelect: @escaping (PlatformImage?) -> Void, onUnlike: @escaping () -> Void) {
         self.snapshot = snapshot
         self.namespace = namespace
         self.onSelect = onSelect
@@ -52,7 +51,7 @@ struct LikedSongRow: View {
         appState.artworkLoader.state(for: playcut)
     }
 
-    private var loadedArtwork: UIImage? {
+    private var loadedArtwork: PlatformImage? {
         if case .loaded(let image) = artworkState { image } else { nil }
     }
 

@@ -18,7 +18,6 @@ import PartyHorn
 import PlayerHeaderView
 import Playlist
 import SwiftUI
-import UIKit
 import Wallpaper
 import WXUI
 
@@ -35,9 +34,9 @@ struct PlaycutSelection: Equatable, Identifiable {
     let transitionID: AnyHashable
 
     var playcut: Playcut { item.playcut }
-    var artwork: UIImage? { item.artwork }
+    var artwork: PlatformImage? { item.artwork }
 
-    init(playcut: Playcut, artwork: UIImage?, transitionID: AnyHashable? = nil) {
+    init(playcut: Playcut, artwork: PlatformImage?, transitionID: AnyHashable? = nil) {
         self.init(item: NowPlayingItem(playcut: playcut, artwork: artwork), transitionID: transitionID)
     }
 

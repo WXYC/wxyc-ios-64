@@ -19,8 +19,8 @@ import Logger
 import MusicShareKit
 import Playlist
 import SwiftUI
-import UIKit
 import UniformTypeIdentifiers
+import WXUI
 import WXYCIntents
 
 @_exported import struct WXYCIntents.PlayWXYC
@@ -107,7 +107,7 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
         var body: some View {
             ZStack(alignment: .bottom) {
                 if let artwork = item.artwork {
-                    Image(uiImage: artwork)
+                    Image(platform: artwork)
                         .resizable()
                         .scaledToFit()
                 }
@@ -160,7 +160,7 @@ struct AddedSongToLibrary: AppIntent {
         artistName: String,
         albumName: String?,
         streamingService: String,
-        artwork: UIImage?
+        artwork: PlatformImage?
     ) {
         self.songTitle = songTitle
         self.artistName = artistName

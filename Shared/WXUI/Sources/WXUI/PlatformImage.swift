@@ -39,3 +39,14 @@ public extension Image {
         #endif
     }
 }
+
+#if canImport(AppKit)
+public extension NSImage {
+    /// The image's `CGImage`, mirroring `UIImage.cgImage` so shared code can read
+    /// a platform image's backing `CGImage` without a per-call-site branch. Uses
+    /// the whole image as the proposed rendering rect.
+    var cgImage: CGImage? {
+        cgImage(forProposedRect: nil, context: nil, hints: nil)
+    }
+}
+#endif
