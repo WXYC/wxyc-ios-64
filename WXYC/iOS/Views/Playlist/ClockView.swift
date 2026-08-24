@@ -10,7 +10,13 @@
 //
 
 import SwiftUI
+import WXUI
+
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 /// Displays a clock glyph inline with formatted time text.
 ///
@@ -54,7 +60,7 @@ struct ClockView: View {
     }
 
     var body: some View {
-        Text("\(Image(uiImage: clockImage)) \(formattedTime)")
+        Text("\(Image(platform: clockImage)) \(formattedTime)")
     }
 
     // MARK: - Clock Image Rendering
@@ -62,48 +68,70 @@ struct ClockView: View {
     /// Renders the clock face as a template image. A white circle is drawn first,
     /// then the hand shapes are erased with `.clear` blend mode inside a
     /// transparency layer, producing see-through cutouts.
-    private var clockImage: UIImage {
+    private var clockImage: PlatformImage {
         let size = clockSize
+        #if canImport(UIKit)
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
-
         let image = renderer.image { ctx in
-            let gc = ctx.cgContext
-            let center = CGPoint(x: size / 2, y: size / 2)
-            let radius = size / 2
-            let handWidth = max(radius * 0.2, 1.0)
-            let hourLength = radius * 0.5
-            let minuteLength = radius * 0.7
-
-            let hourTip = CGPoint(
-                x: center.x + hourLength * sin(hourAngle.radians),
-                y: center.y - hourLength * cos(hourAngle.radians)
-            )
-            let minuteTip = CGPoint(
-                x: center.x + minuteLength * sin(minuteAngle.radians),
-                y: center.y - minuteLength * cos(minuteAngle.radians)
-            )
-
-            gc.beginTransparencyLayer(auxiliaryInfo: nil)
-
-            // Solid circle
-            gc.setFillColor(UIColor.white.cgColor)
-            gc.fillEllipse(in: CGRect(x: 0, y: 0, width: size, height: size))
-
-            // Punch out hands as a single stroked path: hour tip → center → minute tip
-            gc.setBlendMode(.clear)
-            gc.setStrokeColor(UIColor.white.cgColor)
-            gc.setLineWidth(handWidth)
-            gc.setLineCap(.round)
-            gc.setLineJoin(.round)
-            gc.move(to: hourTip)
-            gc.addLine(to: center)
-            gc.addLine(to: minuteTip)
-            gc.strokePath()
-
-            gc.endTransparencyLayer()
+            drawClock(in: ctx.cgContext, size: size)
         }
-
         return image.withRenderingMode(.alwaysTemplate)
+        #elseif canImport(AppKit)
+        let image = NSImage(size: NSSize(width: size, height: size))
+        image.lockFocus()
+        if let gc = NSGraphicsContext.current?.cgContext {
+            // Flip to UIKit's top-left origin so the hand-angle math reads the same.
+            gc.translateBy(x: 0, y: size)
+            gc.scaleBy(x: 1, y: -1)
+            drawClock(in: gc, size: size)
+        }
+        image.unlockFocus()
+        image.isTemplate = true
+        return image
+        #endif
+    }
+
+    /// Draws the clock face into `gc`, assuming a top-left origin: a solid white
+    /// circle, then the hour/minute hands punched out through a transparency
+    /// layer with the `.clear` blend mode. Colour is irrelevant to the template
+    /// image the caller produces (only alpha coverage survives), so this uses a
+    /// plain opaque `CGColor` rather than a platform colour type.
+    private func drawClock(in gc: CGContext, size: CGFloat) {
+        let center = CGPoint(x: size / 2, y: size / 2)
+        let radius = size / 2
+        let handWidth = max(radius * 0.2, 1.0)
+        let hourLength = radius * 0.5
+        let minuteLength = radius * 0.7
+
+        let hourTip = CGPoint(
+            x: center.x + hourLength * sin(hourAngle.radians),
+            y: center.y - hourLength * cos(hourAngle.radians)
+        )
+        let minuteTip = CGPoint(
+            x: center.x + minuteLength * sin(minuteAngle.radians),
+            y: center.y - minuteLength * cos(minuteAngle.radians)
+        )
+
+        let white = CGColor(gray: 1, alpha: 1)
+
+        gc.beginTransparencyLayer(auxiliaryInfo: nil)
+
+        // Solid circle
+        gc.setFillColor(white)
+        gc.fillEllipse(in: CGRect(x: 0, y: 0, width: size, height: size))
+
+        // Punch out hands as a single stroked path: hour tip → center → minute tip
+        gc.setBlendMode(.clear)
+        gc.setStrokeColor(white)
+        gc.setLineWidth(handWidth)
+        gc.setLineCap(.round)
+        gc.setLineJoin(.round)
+        gc.move(to: hourTip)
+        gc.addLine(to: center)
+        gc.addLine(to: minuteTip)
+        gc.strokePath()
+
+        gc.endTransparencyLayer()
     }
 }
 
