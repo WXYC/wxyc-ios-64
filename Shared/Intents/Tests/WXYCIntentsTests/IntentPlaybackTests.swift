@@ -15,10 +15,19 @@
 //  below), so an in-flight start no longer makes the wait misjudge which way
 //  the toggle went.
 //
+//  `IntentPlaybackWidgetStateTests` covers the app-group mirror both entry
+//  points write before returning. That write is the intents' own
+//  responsibility, not `WidgetStateService`'s: an intent-driven launch never
+//  connects a scene, so the root view's `onAppear` — the only thing that calls
+//  `WidgetStateService.start()` — never runs, and the key the widget's
+//  Play/Pause label reads would keep its stale value while audio played.
+//
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Caching
+import Foundation
 import PlaybackCore
 import Testing
 @testable import WXYCIntents
@@ -254,5 +263,98 @@ struct IntentPlaybackToggleAndAwaitTests {
         )
 
         #expect(controller.isPlayingPollCount == 0)
+    }
+}
+
+
+@Suite("IntentPlayback widget-state mirror")
+@MainActor
+struct IntentPlaybackWidgetStateTests {
+    /// A throwaway suite per test — the real key lives in the shared app group,
+    /// and a test must never leave the installed widget showing a state no
+    /// playback ever reached.
+    private func isolatedDefaults() -> UserDefaults {
+        UserDefaults(suiteName: "IntentPlaybackWidgetStateTests-\(UUID().uuidString)")!
+    }
+
+    @Test("toggleAndAwait publishes the started state before returning")
+    func togglePublishesStartedState() async {
+        let defaults = isolatedDefaults()
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaybackRequested = false
+        controller.onToggle = { [weak controller] in
+            controller?.isPlaybackRequested = true
+            controller?.isPlaying = true
+        }
+
+        await IntentPlayback.toggleAndAwait(
+            reason: .widgetToggle,
+            context: "test",
+            controller: controller,
+            widgetState: defaults
+        )
+
+        #expect(defaults.bool(forKey: UserDefaults.isPlayingKey))
+    }
+
+    @Test("toggleAndAwait publishes the stopped state before returning")
+    func togglePublishesStoppedState() async {
+        let defaults = isolatedDefaults()
+        defaults.set(true, forKey: UserDefaults.isPlayingKey)
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaybackRequested = true
+        controller.isPlaying = true
+        controller.onToggle = { [weak controller] in
+            controller?.isPlaybackRequested = false
+            controller?.isPlaying = false
+        }
+
+        await IntentPlayback.toggleAndAwait(
+            reason: .widgetToggle,
+            context: "test",
+            controller: controller,
+            widgetState: defaults
+        )
+
+        #expect(defaults.bool(forKey: UserDefaults.isPlayingKey) == false)
+    }
+
+    /// A start that never produced audio still leaves a standing, cancellable
+    /// request, and that is what the control has to render — the same
+    /// intent-not-`isPlaying` rule `AudioPlayerController.toggle(reason:)`
+    /// branches on. Showing "Play" here would promise a start that is already
+    /// under way and turn the next tap into a stop.
+    @Test("A timed-out start still publishes the standing request")
+    func timedOutStartPublishesStandingRequest() async {
+        let defaults = isolatedDefaults()
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaybackRequested = false
+        controller.onToggle = { [weak controller] in controller?.isPlaybackRequested = true }
+
+        await IntentPlayback.toggleAndAwait(
+            reason: .widgetToggle,
+            context: "test",
+            timeout: .milliseconds(200),
+            controller: controller,
+            widgetState: defaults
+        )
+
+        #expect(defaults.bool(forKey: UserDefaults.isPlayingKey))
+    }
+
+    @Test("startAndAwait publishes the started state before returning")
+    func startPublishesStartedState() async {
+        let defaults = isolatedDefaults()
+        let controller = FakeIntentPlaybackController()
+        controller.isPlaying = true
+        controller.isPlaybackRequested = true
+
+        await IntentPlayback.startAndAwait(
+            reason: .playIntent,
+            controller: controller,
+            widgetState: defaults
+        )
+
+        #expect(defaults.bool(forKey: UserDefaults.isPlayingKey))
     }
 }
