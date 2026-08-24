@@ -20,11 +20,12 @@ import Analytics
 import AppServices
 import Core
 import Logger
+#if canImport(MessageUI)
 import MessageUI
+#endif
 import MusicShareKit
 import Playlist
 import SwiftUI
-import UIKit
 import UniformTypeIdentifiers
 import Wallpaper
 import WXUI
@@ -37,7 +38,9 @@ struct StationView: View {
     @State private var showingMailComposer = false
     @State private var showingBugReport = false
     @State private var showingNoMailFallback = false
+    #if os(iOS)
     @State private var showingDonation = false
+    #endif
 
     /// Current audio route, shown in the "Listening" section. Owned here so the
     /// route observation lives exactly as long as the tab is on screen.
@@ -164,20 +167,24 @@ struct StationView: View {
         } message: {
             Text("If you're reporting a bug, we'll attach some debug logs to help us figure out what's going wrong. They don't include any personal info.")
         }
+        #if canImport(MessageUI)
         .sheet(isPresented: $showingMailComposer) {
             MailComposerView(subject: Self.feedbackSubject)
         }
+        #endif
         .alert("No mail app set up", isPresented: $showingNoMailFallback) {
             Button("Copy address") {
-                UIPasteboard.general.string = FeedbackMailRouter.recipient
+                Pasteboard.copy(FeedbackMailRouter.recipient)
             }
             Button("OK", role: .cancel) {}
         } message: {
             Text(FeedbackMailRouter.noMailHandlerMessage)
         }
+        #if os(iOS)
         .sheet(isPresented: $showingDonation) {
             SafariView(url: donateRow.destination)
         }
+        #endif
         .sheet(isPresented: $showingBugReport) {
             BugReportView(
                 submitter: SentryBugReportSubmitter(),
@@ -199,8 +206,13 @@ struct StationView: View {
     /// nothing can open the URL either, `openURL`'s completion reports failure
     /// and we surface the address in an alert rather than dead-ending silently.
     private func sendPlainFeedback() {
+        #if canImport(MessageUI)
+        let canSendMail = MFMailComposeViewController.canSendMail()
+        #else
+        let canSendMail = false
+        #endif
         switch FeedbackMailRouter.route(
-            canSendMail: MFMailComposeViewController.canSendMail(),
+            canSendMail: canSendMail,
             subject: Self.feedbackSubject
         ) {
         case .inAppComposer:
@@ -234,7 +246,11 @@ struct StationView: View {
     /// there on iPhone), swapping this for `openURL` is a one-line change.
     private func presentDonation() {
         StructuredPostHogAnalytics.shared.capture(DonateTapped(source: "station"))
+        #if os(iOS)
         showingDonation = true
+        #else
+        openURL(donateRow.destination)
+        #endif
     }
 
     /// Dials the request line and records the tap with a `station` source so the
@@ -394,6 +410,7 @@ struct StationRowContent: View {
     }
 }
 
+#if canImport(MessageUI)
 // MARK: - Mail Composer
 
 /// Wraps `MFMailComposeViewController` for SwiftUI presentation.
@@ -444,6 +461,7 @@ struct MailComposerView: UIViewControllerRepresentable {
         }
     }
 }
+#endif
 
 // MARK: - Fitting Text
 

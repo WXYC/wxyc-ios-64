@@ -12,7 +12,6 @@
 //
 
 import SwiftUI
-import UIKit
 import Playlist
 import WXUI
 
@@ -33,6 +32,7 @@ struct ReviewsSection: View {
 // MARK: - Review Card
 
 private struct ReviewCard: View {
+    @Environment(\.openURL) private var openURL
     let review: CriticReview
     var onLinkTapped: ((String) -> Void)?
 
@@ -76,7 +76,7 @@ private struct ReviewCard: View {
 
             Button {
                 onLinkTapped?(review.source)
-                UIApplication.shared.open(review.url)
+                openURL(review.url)
             } label: {
                 LinkButtonLabel(
                     icon: .system(name: "arrow.up.right"),
