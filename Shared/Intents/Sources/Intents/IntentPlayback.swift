@@ -2,7 +2,7 @@
 //  IntentPlayback.swift
 //  Intents
 //
-//  Shared playback-start helpers for the WXYC playback intents. PlayWXYC,
+//  Shared playback helpers for the WXYC playback intents. PlayWXYC,
 //  ToggleWXYC, and (on iOS 27) PlayWXYCAudio all need to keep the intent's
 //  perform() alive until the live stream actually connects, so iOS doesn't
 //  suspend the app first. This centralizes the poll-until-isPlaying loop that
@@ -10,8 +10,9 @@
 //  prepare/capture/toggle/wait sequence ToggleWXYC and WidgetToggleWXYC both
 //  need (#331).
 //
-//  Both entry points also publish the app-group playback mirror the widget's
-//  Play/Pause control renders. That belongs here rather than in
+//  Every entry point — including `stopAndPublish`, which `PauseWXYC` uses —
+//  publishes the app-group playback mirror the widget's Play/Pause control
+//  renders. That belongs here rather than in
 //  `WidgetStateService`: an intent-driven launch connects no scene, so the root
 //  view's `onAppear` — the only caller of `WidgetStateService.start()` — never
 //  runs, and the key would keep its stale value while audio played. WidgetKit
@@ -141,6 +142,38 @@ enum IntentPlayback {
             await awaitPlaybackStart(timeout: timeout, context: context) { controller.isPlaying }
         }
 
+        publishWidgetState(controller: controller, to: widgetState)
+    }
+
+    /// Stops playback for `reason` and publishes the result to the widget mirror.
+    ///
+    /// `PauseWXYC`'s entire effect on playback. Split out rather than left
+    /// inline there for the reason every other intent's body already is: App
+    /// Intents owns the intent instance, so the only place a fake controller
+    /// can be substituted is this seam (see `PauseWXYCTests`).
+    ///
+    /// Synchronous — `stopWithAnalytics(reason:)` tears down immediately, so
+    /// unlike a start there is nothing to keep the intent alive for.
+    ///
+    /// - Parameters:
+    ///   - reason: The `PlaybackReason` passed to `stopWithAnalytics(reason:)`.
+    ///   - context: Log prefix identifying the calling intent.
+    ///   - controller: Playback-control surface; defaults to the shared
+    ///     controller. Injectable for tests (#497), the same seam
+    ///     `startAndAwait` and `toggleAndAwait` use.
+    ///   - widgetState: The app-group defaults holding the mirror the widget's
+    ///     Play/Pause control renders. Injectable so tests never write the
+    ///     real shared key.
+    @MainActor
+    static func stopAndPublish(
+        reason: PlaybackReason,
+        context: String,
+        controller: any IntentPlaybackControlling = AudioPlayerController.shared,
+        widgetState: UserDefaults = .wxyc
+    ) {
+        Log(.info, "\(context)")
+
+        controller.stopWithAnalytics(reason: reason)
         publishWidgetState(controller: controller, to: widgetState)
     }
 
