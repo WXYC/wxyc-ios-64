@@ -34,11 +34,13 @@ public struct WidgetEngagementStore: Sendable {
     /// widget being current.
     private static let lastEngagementKey = "widget.lastEngagement"
 
-    /// Deliberately the same bare `"isPlaying"` key the widget's `PlayButton`
-    /// already binds with `@AppStorage` and `PlaybackStateProvider` already
-    /// reads — this store joins those readers rather than introducing a
-    /// parallel flag that could disagree with the glyph on screen.
-    private static let isPlayingKey = "isPlaying"
+    /// Deliberately the same key the widget's `PlayButton` binds with
+    /// `@AppStorage` and `PlaybackStateProvider` reads — this store joins
+    /// those readers rather than introducing a parallel flag that could
+    /// disagree with the glyph on screen. Named via `UserDefaults`, not
+    /// respelled as a literal, so "the same key" is enforced rather than
+    /// asserted in a comment.
+    private static let isPlayingKey = UserDefaults.isPlayingKey
 
     // MARK: - Storage
 
