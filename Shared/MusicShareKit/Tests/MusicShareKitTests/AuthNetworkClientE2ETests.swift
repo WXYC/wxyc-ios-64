@@ -86,13 +86,13 @@ struct AuthNetworkClientE2ETests {
         let client = makeClient()
         let session = try await client.signInAnonymously(baseURL: baseURL, deviceFingerprint: nil)
 
-        let jwt = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.sessionToken, deviceFingerprint: nil)
+        let minted = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.sessionToken, deviceFingerprint: nil)
 
-        let segments = jwt.split(separator: ".")
+        let segments = minted.jwt.split(separator: ".")
         #expect(segments.count == 3)
 
         // Verify the JWT payload can be decoded with an exp claim
-        let payload = try JWTPayloadDecoder.decode(jwt)
+        let payload = try JWTPayloadDecoder.decode(minted.jwt)
         #expect(payload.expiresAt > Date())
     }
 
@@ -100,10 +100,10 @@ struct AuthNetworkClientE2ETests {
     func jwtAuthenticatesAgainstSecrets() async throws {
         let client = makeClient()
         let session = try await client.signInAnonymously(baseURL: baseURL, deviceFingerprint: nil)
-        let jwt = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.sessionToken, deviceFingerprint: nil)
+        let minted = try await client.fetchJWT(baseURL: baseURL, sessionToken: session.sessionToken, deviceFingerprint: nil)
 
         var request = URLRequest(url: URL(string: "\(baseURL)/config/secrets")!)
-        request.setValue("Bearer \(jwt)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer \(minted.jwt)", forHTTPHeaderField: "Authorization")
 
         let (data, response) = try await URLSession.shared.data(for: request)
         let httpResponse = try #require(response as? HTTPURLResponse)

@@ -41,12 +41,52 @@ public protocol AuthNetworkClient: Sendable {
     ///   - sessionToken: The session token from anonymous sign-in.
     ///   - deviceFingerprint: Stable per-device UUID for the audit-trail
     ///     header. Pass `nil` to omit.
-    /// - Returns: A JWT string.
+    /// - Returns: The minted JWT, plus the raw `set-auth-token` header value
+    ///   the response carried, if any (#970).
     /// - Throws: `AuthenticationError` if the exchange fails, or
     ///   `SessionTokenProviderError.notConfigured` if `baseURL` is malformed.
     func fetchJWT(
         baseURL: String, sessionToken: String, deviceFingerprint: String?
-    ) async throws -> String
+    ) async throws -> JWTExchangeResult
+}
+
+/// Result of a `/auth/token` exchange: the minted JWT, plus whatever
+/// `set-auth-token` header value the response carried.
+///
+/// better-auth's `bearer()` plugin echoes `set-auth-token` on any response
+/// that re-issues the session cookie, including `/auth/token` once the
+/// session crosses `updateAge`. It reads like a rotation, but isn't one:
+/// verified against the better-auth 1.6.30 dist Backend-Service actually
+/// loads (`apps/auth/node_modules/better-auth`), the session `token` column
+/// is assigned once at `generateId(32)` and never rewritten — `updateSession`
+/// (`dist/api/routes/session.mjs`) uses the existing token purely as the
+/// lookup key and updates only `expiresAt`/`updatedAt`
+/// (`dist/db/internal-adapter.mjs`), and the header itself is a deterministic
+/// `HMAC(token, secret)` re-encoding of that same, unchanged token
+/// (`dist/cookies/index.mjs`) — not a new credential. `capturedSessionToken`
+/// exists so `DefaultAuthNetworkClient` has somewhere to put the header it
+/// read (and a real surface to test), but it is not a signal any caller
+/// should act on. See `AuthenticationService`'s doc comment where it's
+/// received and deliberately ignored, and issue #970's decision comment:
+/// https://github.com/WXYC/wxyc-ios-64/issues/970#issuecomment-5398772782
+public struct JWTExchangeResult: Sendable, Equatable {
+
+    /// The freshly-minted JWT bearer token.
+    public let jwt: String
+
+    /// The `set-auth-token` header value, when the response carried one.
+    /// Deliberately unused by `AuthenticationService` — see the type's doc
+    /// comment. This is a raw capture with no normalization: an
+    /// empty-valued header surfaces as `""`, not `nil` — only a genuinely
+    /// absent header produces `nil` — so a future consumer (the planned
+    /// Phase B/D2 work) must not assume `if let capturedSessionToken` alone
+    /// rules out an empty string.
+    public let capturedSessionToken: String?
+
+    public init(jwt: String, capturedSessionToken: String? = nil) {
+        self.jwt = jwt
+        self.capturedSessionToken = capturedSessionToken
+    }
 }
 
 // MARK: - Default Implementation
@@ -137,7 +177,7 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
 
     public func fetchJWT(
         baseURL: String, sessionToken: String, deviceFingerprint: String?
-    ) async throws -> String {
+    ) async throws -> JWTExchangeResult {
         guard let url = URL(string: "\(baseURL)/auth/token") else {
             throw SessionTokenProviderError.notConfigured
         }
@@ -170,7 +210,12 @@ public struct DefaultAuthNetworkClient: AuthNetworkClient {
 
         do {
             let tokenResponse = try JSONDecoder.shared.decode(JWTTokenResponse.self, from: response.data)
-            return tokenResponse.token
+            // `value(forHTTPHeaderField:)` is a case-insensitive lookup, so
+            // this captures the header however the server cases it. See
+            // `JWTExchangeResult`'s doc comment for why the value is captured
+            // but not acted on (#970).
+            let capturedSessionToken = httpResponse.value(forHTTPHeaderField: "set-auth-token")
+            return JWTExchangeResult(jwt: tokenResponse.token, capturedSessionToken: capturedSessionToken)
         } catch {
             throw AuthenticationError.invalidResponse
         }
@@ -207,6 +252,12 @@ public final class MockAuthNetworkClient: AuthNetworkClient, @unchecked Sendable
 
     /// The JWT to return from token exchange, or `nil` to throw an error.
     public var mockJWT: String?
+
+    /// The `set-auth-token` header value to surface alongside `mockJWT`, or
+    /// `nil` for the (common) header-absent case (#970). Exists to drive the
+    /// capture surface in tests — `AuthenticationService` ignores it, so
+    /// setting this should never change persisted state.
+    public var mockCapturedSessionToken: String?
 
     /// The error to throw from JWT exchange.
     public var mockJWTError: Error?
@@ -252,7 +303,7 @@ public final class MockAuthNetworkClient: AuthNetworkClient, @unchecked Sendable
 
     public func fetchJWT(
         baseURL: String, sessionToken: String, deviceFingerprint: String?
-    ) async throws -> String {
+    ) async throws -> JWTExchangeResult {
         lock.withLock {
             fetchJWTCallCount += 1
             fetchJWTSessionTokens.append(sessionToken)
@@ -264,7 +315,7 @@ public final class MockAuthNetworkClient: AuthNetworkClient, @unchecked Sendable
         }
 
         if let jwt = mockJWT {
-            return jwt
+            return JWTExchangeResult(jwt: jwt, capturedSessionToken: mockCapturedSessionToken)
         }
 
         throw AuthenticationError.networkError(URLError(.notConnectedToInternet))
@@ -277,6 +328,7 @@ public final class MockAuthNetworkClient: AuthNetworkClient, @unchecked Sendable
         mockSignInResult = nil
         mockError = nil
         mockJWT = nil
+        mockCapturedSessionToken = nil
         mockJWTError = nil
         signInCallCount = 0
         fetchJWTCallCount = 0

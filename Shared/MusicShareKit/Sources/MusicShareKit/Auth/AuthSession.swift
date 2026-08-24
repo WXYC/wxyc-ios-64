@@ -75,6 +75,15 @@ public struct AuthSession: Codable, Sendable, Equatable {
 
     /// Returns a copy of this session with a new JWT (and matching expiry).
     /// Used after `/auth/token` mints a fresh JWT for an existing session.
+    ///
+    /// Deliberately has no way to change `sessionToken`: better-auth 1.6.30
+    /// never rewrites a session's `token` column — `/auth/token`'s
+    /// `set-auth-token` response header is a deterministic re-encoding of the
+    /// same token, not a new one (#970, see `JWTExchangeResult`'s doc
+    /// comment). An optional `sessionToken` parameter here was reviewed and
+    /// removed as a silent-drop trap — a caller passing `nil` "to mean no
+    /// change" is indistinguishable from one who forgot the parameter
+    /// exists.
     public func with(jwt newJWT: String, expiresAt newExpiresAt: Date?) -> AuthSession {
         AuthSession(
             sessionToken: sessionToken,

@@ -359,9 +359,9 @@ public actor AuthenticationService: SessionTokenProvider {
     /// Mint a fresh JWT for an existing session via `/auth/token`.
     private func mintJWT(for session: AuthSession) async throws -> AuthSession {
         let jwtStartTime = CFAbsoluteTimeGetCurrent()
-        let newJWT: String
+        let minted: JWTExchangeResult
         do {
-            newJWT = try await networkClient.fetchJWT(
+            minted = try await networkClient.fetchJWT(
                 baseURL: baseURL,
                 sessionToken: session.sessionToken,
                 deviceFingerprint: MusicShareKit.deviceFingerprint
@@ -400,11 +400,15 @@ public actor AuthenticationService: SessionTokenProvider {
         // matches the user's intent in calling signOut.
         try Task.checkCancellation()
 
-        let payload = try JWTPayloadDecoder.decode(newJWT)
+        let payload = try JWTPayloadDecoder.decode(minted.jwt)
         let jwtDuration = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
         analytics.capture(RequestLineJWTExchangeEvent(success: true, durationMs: jwtDuration))
 
-        let refreshed = session.with(jwt: newJWT, expiresAt: payload.expiresAt)
+        // `minted.capturedSessionToken` is deliberately ignored: better-auth
+        // 1.6.30 never rewrites a session's token value, so there is nothing
+        // to persist here. See `JWTExchangeResult`'s doc comment and issue
+        // #970's decision comment for the verified mechanism.
+        let refreshed = session.with(jwt: minted.jwt, expiresAt: payload.expiresAt)
         do {
             try storage.save(refreshed)
         } catch {
@@ -441,9 +445,9 @@ public actor AuthenticationService: SessionTokenProvider {
         }
 
         let jwtStartTime = CFAbsoluteTimeGetCurrent()
-        let jwt: String
+        let minted: JWTExchangeResult
         do {
-            jwt = try await networkClient.fetchJWT(
+            minted = try await networkClient.fetchJWT(
                 baseURL: baseURL,
                 sessionToken: signInResult.sessionToken,
                 deviceFingerprint: fingerprint
@@ -463,13 +467,15 @@ public actor AuthenticationService: SessionTokenProvider {
         // the matching check in mintJWT for the rationale.
         try Task.checkCancellation()
 
-        let payload = try JWTPayloadDecoder.decode(jwt)
+        let payload = try JWTPayloadDecoder.decode(minted.jwt)
         let jwtDuration = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
         analytics.capture(RequestLineJWTExchangeEvent(success: true, durationMs: jwtDuration))
 
+        // `minted.capturedSessionToken` is deliberately ignored here too —
+        // same rationale as `mintJWT` above.
         let session = AuthSession(
             sessionToken: signInResult.sessionToken,
-            jwt: jwt,
+            jwt: minted.jwt,
             userId: signInResult.userId,
             createdAt: Date(),
             expiresAt: payload.expiresAt
