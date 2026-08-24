@@ -41,4 +41,16 @@ public extension UserDefaults {
     ///   in the app's entitlements. If the suite name is invalid, the app would
     ///   fail at build/signing time, not runtime.
     nonisolated(unsafe) static let wxyc = UserDefaults(suiteName: "group.wxyc.iphone")!
+
+    /// Key for the playback-state mirror the widget's Play/Pause control and
+    /// the Control Center toggle render.
+    ///
+    /// Named here rather than spelled as a literal at each site because the
+    /// writers and the readers live in different processes and different
+    /// packages — `WidgetStateService` (AppServices) and `IntentPlayback`
+    /// (WXYCIntents) write it; `PlayButton` and `PlaybackStateProvider` (the
+    /// widget extension) read it. A typo on either side is invisible: the
+    /// reader just sees `false` forever and the control sits on "Play" while
+    /// audio is coming out.
+    static let isPlayingKey = "isPlaying"
 }

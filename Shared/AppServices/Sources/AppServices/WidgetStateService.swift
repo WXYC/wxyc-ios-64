@@ -116,12 +116,12 @@ public final class WidgetStateService {
     // MARK: - Private
 
     private func clearPlaybackState() {
-        UserDefaults.wxyc.set(false, forKey: "isPlaying")
+        UserDefaults.wxyc.set(false, forKey: UserDefaults.isPlayingKey)
     }
 
     private func syncPlaybackState() {
         let isPlaying = playbackController.state.isActive
-        UserDefaults.wxyc.set(isPlaying, forKey: "isPlaying")
+        UserDefaults.wxyc.set(isPlaying, forKey: UserDefaults.isPlayingKey)
     }
 
     /// Whether a reload issued right now would be free.
@@ -171,7 +171,7 @@ public final class WidgetStateService {
                 guard !Task.isCancelled else { break }
 
                 // Update UserDefaults
-                UserDefaults.wxyc.set(isActive, forKey: "isPlaying")
+                UserDefaults.wxyc.set(isActive, forKey: UserDefaults.isPlayingKey)
 
                 // Starting playback is an act of interest; the stream ending
                 // is not, so only the leading edge restarts the widget's

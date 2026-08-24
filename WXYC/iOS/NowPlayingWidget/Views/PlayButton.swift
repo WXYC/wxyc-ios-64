@@ -18,7 +18,7 @@ import SwiftUI
 import WXYCIntents
 
 struct PlayButton: View {
-    @AppStorage("isPlaying", store: .wxyc)
+    @AppStorage(UserDefaults.isPlayingKey, store: .wxyc)
     var isPlaying: Bool = false
 
     var body: some View {
