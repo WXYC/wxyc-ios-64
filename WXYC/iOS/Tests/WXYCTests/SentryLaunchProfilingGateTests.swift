@@ -5,7 +5,7 @@
 //  Pins the policies `setUpSentry()` uses to arm app-launch profiling for
 //  WXYC/wxyc-ios-64#949: which environment gets it, how long it lasts, how many
 //  launches it may spend, and what trace sample rate its sampling decision runs
-//  at. The rationale for each lives on the member it pins, in `WXYCApp.swift`.
+//  at. The rationale for each lives on the member it pins, in `AppBootstrap.swift`.
 //
 //  Created by Jake Bromberg on 08/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -23,7 +23,7 @@ import Testing
 /// `-default-isolation=MainActor`, so a `static let` on the suite is
 /// main-actor-isolated while `@Test(arguments:)` evaluates its arguments off
 /// the main actor.
-private nonisolated let withinWindow = WXYCApp.launchProfilingExpiry.addingTimeInterval(-1)
+private nonisolated let withinWindow = AppBootstrap.launchProfilingExpiry.addingTimeInterval(-1)
 
 @Suite("Sentry app-launch profiling gate")
 struct SentryLaunchProfilingGateTests {
@@ -42,7 +42,7 @@ struct SentryLaunchProfilingGateTests {
     )
     func armsOnlyForTestFlight(environment: BuildEnvironment, expected: Bool) {
         #expect(
-            WXYCApp.shouldProfileAppLaunch(
+            AppBootstrap.shouldProfileAppLaunch(
                 environment: environment,
                 armedLaunches: 0,
                 now: withinWindow
@@ -58,14 +58,14 @@ struct SentryLaunchProfilingGateTests {
         "The budget is exclusive at its own value",
         arguments: [
             (0, true),
-            (WXYCApp.launchProfileBudget - 1, true),
-            (WXYCApp.launchProfileBudget, false),
-            (WXYCApp.launchProfileBudget + 1, false),
+            (AppBootstrap.launchProfileBudget - 1, true),
+            (AppBootstrap.launchProfileBudget, false),
+            (AppBootstrap.launchProfileBudget + 1, false),
         ]
     )
     func stopsAtTheBudget(armedLaunches: Int, expected: Bool) {
         #expect(
-            WXYCApp.shouldProfileAppLaunch(
+            AppBootstrap.shouldProfileAppLaunch(
                 environment: .testflight,
                 armedLaunches: armedLaunches,
                 now: withinWindow
@@ -78,14 +78,14 @@ struct SentryLaunchProfilingGateTests {
     @Test(
         "Profiling stops at the expiry instant, not after it",
         arguments: [
-            (WXYCApp.launchProfilingExpiry.addingTimeInterval(-1), true),
-            (WXYCApp.launchProfilingExpiry, false),
-            (WXYCApp.launchProfilingExpiry.addingTimeInterval(1), false),
+            (AppBootstrap.launchProfilingExpiry.addingTimeInterval(-1), true),
+            (AppBootstrap.launchProfilingExpiry, false),
+            (AppBootstrap.launchProfilingExpiry.addingTimeInterval(1), false),
         ]
     )
     func expires(now: Date, expected: Bool) {
         #expect(
-            WXYCApp.shouldProfileAppLaunch(
+            AppBootstrap.shouldProfileAppLaunch(
                 environment: .testflight,
                 armedLaunches: 0,
                 now: now
@@ -105,7 +105,7 @@ struct SentryLaunchProfilingGateTests {
             calendar.date(from: DateComponents(year: 2026, month: 9, day: 30))
         )
 
-        #expect(WXYCApp.launchProfilingExpiry == documented)
+        #expect(AppBootstrap.launchProfilingExpiry == documented)
     }
 
     // MARK: - Spending the budget
@@ -119,19 +119,19 @@ struct SentryLaunchProfilingGateTests {
     func budgetTerminates() {
         let defaults = InMemoryDefaults()
 
-        let armed = (0..<(WXYCApp.launchProfileBudget + 10)).map { _ in
-            WXYCApp.consumeLaunchProfileBudget(
+        let armed = (0..<(AppBootstrap.launchProfileBudget + 10)).map { _ in
+            AppBootstrap.consumeLaunchProfileBudget(
                 defaults: defaults,
                 environment: .testflight,
                 now: withinWindow
             )
         }
 
-        #expect(armed.prefix(WXYCApp.launchProfileBudget).allSatisfy { $0 })
-        #expect(armed.dropFirst(WXYCApp.launchProfileBudget).allSatisfy { !$0 })
+        #expect(armed.prefix(AppBootstrap.launchProfileBudget).allSatisfy { $0 })
+        #expect(armed.dropFirst(AppBootstrap.launchProfileBudget).allSatisfy { !$0 })
         #expect(
-            defaults.integer(forKey: WXYCApp.armedLaunchesDefaultsKey)
-                == WXYCApp.launchProfileBudget
+            defaults.integer(forKey: AppBootstrap.armedLaunchesDefaultsKey)
+                == AppBootstrap.launchProfileBudget
         )
     }
 
@@ -142,20 +142,20 @@ struct SentryLaunchProfilingGateTests {
         "A launch the gate refuses spends nothing",
         arguments: [
             (BuildEnvironment.production, withinWindow),
-            (BuildEnvironment.testflight, WXYCApp.launchProfilingExpiry),
+            (BuildEnvironment.testflight, AppBootstrap.launchProfilingExpiry),
         ]
     )
     func refusedLaunchSpendsNothing(environment: BuildEnvironment, now: Date) {
         let defaults = InMemoryDefaults()
 
-        let armed = WXYCApp.consumeLaunchProfileBudget(
+        let armed = AppBootstrap.consumeLaunchProfileBudget(
             defaults: defaults,
             environment: environment,
             now: now
         )
 
         #expect(armed == false)
-        #expect(defaults.object(forKey: WXYCApp.armedLaunchesDefaultsKey) == nil)
+        #expect(defaults.object(forKey: AppBootstrap.armedLaunchesDefaultsKey) == nil)
     }
 
     // MARK: - Trace sampling
@@ -173,6 +173,6 @@ struct SentryLaunchProfilingGateTests {
         ]
     )
     func exemptsOnlyTheLaunchProfileDecision(forNextAppLaunch: Bool, expected: Double) {
-        #expect(WXYCApp.tracesSampleRate(forNextAppLaunch: forNextAppLaunch) == expected)
+        #expect(AppBootstrap.tracesSampleRate(forNextAppLaunch: forNextAppLaunch) == expected)
     }
 }
