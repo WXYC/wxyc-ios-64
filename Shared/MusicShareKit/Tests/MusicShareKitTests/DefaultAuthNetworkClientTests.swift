@@ -360,9 +360,102 @@ struct DefaultAuthNetworkClientTests {
         let session = QueuedStubURLProtocol.makeSession()
         let client = DefaultAuthNetworkClient(session: session)
 
-        let jwt = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
+        let minted = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
 
-        #expect(jwt == "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjoxNzM1Njg5NjAwfQ.fakesig")
+        #expect(minted.jwt == "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjoxNzM1Njg5NjAwfQ.fakesig")
+    }
+
+    // MARK: - set-auth-token Capture Tests (#970)
+    //
+    // These pin extraction only. better-auth 1.6.30 never rewrites a
+    // session's token value, so nothing downstream acts on the captured
+    // value — see `JWTExchangeResult`'s doc comment and
+    // `AuthenticationServiceTests`'s "#970 set-auth-token is a no-op" suite
+    // for the persistence-side pin.
+
+    @Test("fetchJWT surfaces a set-auth-token response header as JWTExchangeResult.capturedSessionToken")
+    func fetchJWTCapturesSessionTokenHeader() async throws {
+        let session = QueuedStubURLProtocol.session { request in
+            let url = try #require(request.url)
+            let response = try #require(HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: [
+                    "Content-Type": "application/json",
+                    "set-auth-token": "captured-session-token-abc",
+                ]
+            ))
+            return (validJWTTokenResponse, response)
+        }
+        let client = DefaultAuthNetworkClient(session: session)
+
+        let minted = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
+
+        #expect(minted.jwt == "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjoxNzM1Njg5NjAwfQ.fakesig")
+        #expect(minted.capturedSessionToken == "captured-session-token-abc")
+    }
+
+    @Test("fetchJWT extracts set-auth-token case-insensitively, matching HTTP's header semantics")
+    func fetchJWTCapturesSessionTokenHeaderRegardlessOfCasing() async throws {
+        let session = QueuedStubURLProtocol.session { request in
+            let url = try #require(request.url)
+            let response = try #require(HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: [
+                    "Content-Type": "application/json",
+                    // Mixed-cased on purpose: a case-sensitive lookup here
+                    // (e.g. a switch to a raw `allHeaderFields` dictionary
+                    // subscript) would regress this to nil silently.
+                    "Set-Auth-Token": "captured-session-token-mixed-case",
+                ]
+            ))
+            return (validJWTTokenResponse, response)
+        }
+        let client = DefaultAuthNetworkClient(session: session)
+
+        let minted = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
+
+        #expect(minted.capturedSessionToken == "captured-session-token-mixed-case")
+    }
+
+    @Test("fetchJWT surfaces a nil capturedSessionToken when the response carries no set-auth-token header")
+    func fetchJWTOmitsCapturedSessionTokenWhenHeaderAbsent() async throws {
+        QueuedStubURLProtocol.setResponse(statusCode: 200, body: validJWTTokenResponse)
+
+        let session = QueuedStubURLProtocol.makeSession()
+        let client = DefaultAuthNetworkClient(session: session)
+
+        let minted = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
+
+        #expect(minted.capturedSessionToken == nil)
+    }
+
+    @Test("fetchJWT surfaces an empty-valued set-auth-token header as an empty string, not nil")
+    func fetchJWTCapturesEmptySessionTokenHeaderAsEmptyString() async throws {
+        let session = QueuedStubURLProtocol.session { request in
+            let url = try #require(request.url)
+            let response = try #require(HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: [
+                    "Content-Type": "application/json",
+                    // A present-but-empty header is a raw capture, not a
+                    // normalized one: this pins `""`, distinct from the
+                    // header-absent case above, which is `nil`.
+                    "set-auth-token": "",
+                ]
+            ))
+            return (validJWTTokenResponse, response)
+        }
+        let client = DefaultAuthNetworkClient(session: session)
+
+        let minted = try await client.fetchJWT(baseURL: "https://api.example.com", sessionToken: "tok", deviceFingerprint: nil)
+
+        #expect(minted.capturedSessionToken == "")
     }
 
     @Test("fetchJWT throws serverError for non-200 status")

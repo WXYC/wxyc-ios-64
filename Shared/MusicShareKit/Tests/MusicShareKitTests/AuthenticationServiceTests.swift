@@ -155,6 +155,108 @@ struct AuthenticationServiceTests {
         #expect(networkClient.fetchJWTSessionTokens == [expiredSession.sessionToken])
     }
 
+    // MARK: - #970 set-auth-token is a no-op
+
+    @Test("A set-auth-token header on /auth/token leaves the stored session token and the in-memory cache untouched")
+    func mintJWTIgnoresCapturedSessionTokenHeader() async throws {
+        let storage = InMemoryTokenStorage()
+        let expiredSession = makeExpiredSession()
+        try storage.save(expiredSession)
+
+        // jwtExpiresIn short enough that the very next ensureAuthenticated()
+        // treats the freshly-minted JWT as stale too, without the test
+        // sleeping — same trick saveFailureDegradesToMintNotResignIn uses.
+        let networkClient = makeNetworkClient(jwtExpiresIn: 30)
+        // A distinct value stands in for better-auth's real
+        // set-auth-token — the deterministic HMAC re-encoding of the SAME
+        // session token (#970) — so this test would catch persistence being
+        // wired back in even against that real shape.
+        networkClient.mockCapturedSessionToken = "hmac-reencoded-but-same-credential"
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        _ = try await service.ensureAuthenticated()
+
+        // Storage ("Keychain") still holds the ORIGINAL session token — the
+        // header is deliberately ignored (#970).
+        #expect(try storage.load()?.sessionToken == expiredSession.sessionToken)
+        #expect(networkClient.fetchJWTSessionTokens == [expiredSession.sessionToken])
+
+        // Clear storage so it can no longer supply a session on the next
+        // refresh — isolating the in-memory cache as the sole surviving
+        // source. THIS is the assertion that fails if anyone re-wires
+        // persistence: were `cachedSession` updated from the header, this
+        // second mint would send the captured (HMAC-reencoded) value as the
+        // session token instead of the original one.
+        try storage.delete()
+
+        _ = try await service.ensureAuthenticated()
+
+        #expect(networkClient.fetchJWTSessionTokens == [
+            expiredSession.sessionToken,
+            expiredSession.sessionToken,
+        ])
+    }
+
+    @Test("A /auth/token response without a set-auth-token header leaves the stored session token unchanged")
+    func mintJWTWithoutHeaderLeavesSessionTokenUnchanged() async throws {
+        let storage = InMemoryTokenStorage()
+        let expiredSession = makeExpiredSession()
+        try storage.save(expiredSession)
+
+        // No mockCapturedSessionToken set — mirrors a response with no
+        // set-auth-token header (the common, non-refresh case).
+        let networkClient = makeNetworkClient()
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        _ = try await service.ensureAuthenticated()
+
+        #expect(try storage.load()?.sessionToken == expiredSession.sessionToken)
+    }
+
+    @Test("A set-auth-token header on the JWT exchange during freshSignIn leaves the persisted and cached session token as the one sign-in returned")
+    func freshSignInIgnoresCapturedSessionTokenHeader() async throws {
+        let storage = InMemoryTokenStorage()
+        // Empty storage — nothing to load, so ensureAuthenticated() takes the
+        // freshSignIn() path rather than mintJWT(for:). The other #970 pin
+        // above only exercises mintJWT (its pre-seeded storage never reaches
+        // freshSignIn), so this covers the sibling leg with the identical
+        // ignore-the-header decision at a different call site.
+        let signInResult = makeSignInResult()
+
+        // jwtExpiresIn short enough that the very next ensureAuthenticated()
+        // treats the freshly-minted JWT as stale too, without the test
+        // sleeping — same trick the mintJWT pin above uses.
+        let networkClient = makeNetworkClient(signInResult: signInResult, jwtExpiresIn: 30)
+        // A distinct value stands in for better-auth's real set-auth-token —
+        // the deterministic HMAC re-encoding of the SAME session token
+        // (#970) — so this test would catch persistence being wired back in
+        // even against that real shape.
+        networkClient.mockCapturedSessionToken = "hmac-reencoded-but-same-credential-freshsignin"
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        _ = try await service.ensureAuthenticated()
+
+        // Storage holds the session token sign-in actually returned, not the
+        // captured header value.
+        #expect(try storage.load()?.sessionToken == signInResult.sessionToken)
+        #expect(networkClient.fetchJWTSessionTokens == [signInResult.sessionToken])
+
+        // Clear storage so it can no longer supply a session on the next
+        // refresh — isolating the in-memory cache as the sole surviving
+        // source. THIS is the assertion that fails if `cachedSession` picked
+        // up the captured header instead of signInResult.sessionToken: this
+        // second mint would then send the captured value as the session
+        // token instead of the one sign-in returned.
+        try storage.delete()
+
+        _ = try await service.ensureAuthenticated()
+
+        #expect(networkClient.fetchJWTSessionTokens == [
+            signInResult.sessionToken,
+            signInResult.sessionToken,
+        ])
+    }
+
     @Test("Throws error when network sign-in fails")
     func throwsOnNetworkFailure() async throws {
         let storage = InMemoryTokenStorage()
@@ -953,13 +1055,13 @@ private final class SequentialJWTMock: AuthNetworkClient, @unchecked Sendable {
         throw AuthenticationError.networkError(URLError(.notConnectedToInternet))
     }
 
-    func fetchJWT(baseURL: String, sessionToken: String, deviceFingerprint: String?) async throws -> String {
+    func fetchJWT(baseURL: String, sessionToken: String, deviceFingerprint: String?) async throws -> JWTExchangeResult {
         let outcome: Result<String, Error>? = lock.withLock {
             fetchJWTCallCount += 1
             return fetchJWTOutcomes.isEmpty ? nil : fetchJWTOutcomes.removeFirst()
         }
         switch outcome {
-        case .success(let jwt): return jwt
+        case .success(let jwt): return JWTExchangeResult(jwt: jwt)
         case .failure(let error): throw error
         case .none:
             throw AuthenticationError.networkError(URLError(.notConnectedToInternet))
@@ -996,7 +1098,7 @@ private final class GatedNetworkMock: AuthNetworkClient, @unchecked Sendable {
         return result
     }
 
-    func fetchJWT(baseURL: String, sessionToken: String, deviceFingerprint: String?) async throws -> String {
+    func fetchJWT(baseURL: String, sessionToken: String, deviceFingerprint: String?) async throws -> JWTExchangeResult {
         lock.withLock { fetchJWTCallCount += 1 }
 
         if gateJWT {
@@ -1004,7 +1106,7 @@ private final class GatedNetworkMock: AuthNetworkClient, @unchecked Sendable {
                 lock.withLock { waiters.append(cont) }
             }
         }
-        return jwtToReturn
+        return JWTExchangeResult(jwt: jwtToReturn)
     }
 
     func releaseJWT() {
