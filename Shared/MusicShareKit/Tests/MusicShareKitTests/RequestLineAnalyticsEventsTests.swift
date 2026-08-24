@@ -13,6 +13,8 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Foundation
+import Security
 import Testing
 @testable import MusicShareKit
 
@@ -51,6 +53,13 @@ private let featureFlagSourceCases: [(FeatureFlagSource, String)] = [
     (.override, "override"),
 ]
 
+private let deviceFingerprintModeCases: [(DeviceFingerprintMode, String)] = [
+    (.existing, "existing"),
+    (.synchronizable, "synchronizable"),
+    (.local, "local"),
+    (.failed, "failed"),
+]
+
 /// Every `Bool` property is exercised at both polarities. Asserting only the
 /// `true` case would pass even if the macro emitted a literal instead of
 /// reading the stored property, or if an init dropped the assignment.
@@ -73,6 +82,7 @@ struct RequestLineAnalyticsEventsTests {
         #expect(Set(tokenRefreshReasonCases.map(\.0)) == Set(TokenRefreshReason.allCases))
         #expect(Set(keychainOperationCases.map(\.0)) == Set(KeychainOperation.allCases))
         #expect(Set(featureFlagSourceCases.map(\.0)) == Set(FeatureFlagSource.allCases))
+        #expect(Set(deviceFingerprintModeCases.map(\.0)) == Set(DeviceFingerprintMode.allCases))
     }
 
     // MARK: - RequestLineAuthStartedEvent
@@ -207,6 +217,48 @@ struct RequestLineAnalyticsEventsTests {
         #expect(props["error"] as? String == "errSecInteractionNotAllowed")
         #expect(props.count == 1)
         #expect(DeviceFingerprintInitFailedEvent.name == "device_fingerprint_init_failed_event")
+    }
+
+    // MARK: - FingerprintModeResolvedEvent
+
+    @Test(
+        "FingerprintModeResolvedEvent carries the mode's raw value, the OSStatus, and the premature-access count",
+        arguments: deviceFingerprintModeCases
+    )
+    func fingerprintModeResolvedEventProperties(_ fixture: (DeviceFingerprintMode, String)) throws {
+        let event = FingerprintModeResolvedEvent(
+            mode: fixture.0,
+            osStatus: errSecMissingEntitlement,
+            prematureAccessCount: 7
+        )
+        let props = try #require(event.properties)
+
+        #expect(props["mode"] as? String == fixture.1)
+        #expect(props["os_status"] as? Int32 == -34018)
+        #expect(props["premature_access_count"] as? Int == 7)
+        #expect(props.count == 3)
+        #expect(FingerprintModeResolvedEvent.name == "fingerprint_mode_resolved_event")
+    }
+
+    /// The event must never carry anything that identifies the device. The
+    /// fingerprint is a stable per-device UUID and therefore a deanonymization
+    /// vector; modes and status codes are the entire permitted payload.
+    @Test(
+        "FingerprintModeResolvedEvent's payload carries no UUID-shaped value",
+        arguments: deviceFingerprintModeCases
+    )
+    func fingerprintModeResolvedEventOmitsTheFingerprint(
+        _ fixture: (DeviceFingerprintMode, String)
+    ) throws {
+        let event = FingerprintModeResolvedEvent(
+            mode: fixture.0,
+            osStatus: errSecSuccess,
+            prematureAccessCount: 0
+        )
+        let props = try #require(event.properties)
+
+        let strings = props.values.compactMap { $0 as? String }
+        #expect(strings.allSatisfy { UUID(uuidString: $0) == nil })
     }
 
     // MARK: - RequestLineFeatureFlagEvaluatedEvent

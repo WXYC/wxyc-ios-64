@@ -12,6 +12,7 @@ import Analytics
 import Caching
 import Core
 import Foundation
+import Security
 
 /// Configuration for MusicShareKit services.
 /// Must be set before using RequestService or ShareExtensionView.
@@ -86,6 +87,19 @@ public enum MusicShareKit {
     /// own regression test pass vacuously.
     static let configureGate = RunOnceGate()
 
+    /// Counts reads of ``deviceFingerprint`` that arrived before
+    /// `configure(_:)` ran (#998). Reported on that launch's
+    /// `FingerprintModeResolvedEvent` — see the accessor's `_configuration`
+    /// guard for why the access cannot report itself when it happens, and
+    /// ``PrematureAccessCounter`` for why reading it does not reset it.
+    ///
+    /// `internal` rather than `private` so tests can record against the same
+    /// API production uses. The accessor's guard is otherwise unreachable from
+    /// this package's test target: `_configuration` is a process global, and
+    /// once any suite in the process has configured MusicShareKit it never
+    /// returns to nil.
+    static let prematureFingerprintAccesses = PrematureAccessCounter()
+
     /// The current configuration. Fatal error if not set.
     public static var configuration: MusicShareKitConfiguration {
         guard let config = _configuration else {
@@ -130,6 +144,10 @@ public enum MusicShareKit {
     /// retry fires AT MOST ONCE per process lifetime — otherwise every
     /// authenticated request would hammer the Keychain when the device is
     /// permanently wedged (locked daemon, missing entitlement, etc.).
+    ///
+    /// Reads that arrive before `configure(...)` has run return `nil` and are
+    /// counted into ``prematureFingerprintAccesses``, which the next
+    /// `reconfigure(_:)` reports on `fingerprint_mode_resolved_event` (#998).
     public static var deviceFingerprint: String? {
         fingerprintLock.lock()
         defer { fingerprintLock.unlock() }
@@ -145,6 +163,20 @@ public enum MusicShareKit {
         }
 
         guard let config = _configuration else {
+            // The pre-configure read (#998). Until #998 this returned nil with
+            // no trace at all, which made "a caller reaches the fingerprint
+            // before configure()" an unfalsifiable hypothesis in #996.
+            //
+            // It cannot capture analytics from here: the analytics service
+            // lives on `_configuration`, which is exactly what is missing, and
+            // `MusicShareKit.configuration` would `fatalError` rather than
+            // help. So record it and let the next `reconfigure(_:)` fold the
+            // total into that launch's `FingerprintModeResolvedEvent`. The
+            // counter holds no reference to anything — no closure, no service,
+            // no cycle — and has its own lock, so taking it while
+            // `fingerprintLock` is held is a consistent ordering, never an
+            // inversion.
+            prematureFingerprintAccesses.record()
             return nil
         }
 
@@ -155,6 +187,14 @@ public enum MusicShareKit {
             // ban-evasion vector temporarily opens until next launch.
             // Analytics already captured during the eager attempt in
             // configure(); don't double-emit.
+            //
+            // `FingerprintModeResolvedEvent` is bound by the same rule, in
+            // both directions: this retry emits nothing when it fails, and
+            // emits nothing when it SUCCEEDS either. One event per launch is
+            // the budget (#998). The known cost is that a device whose eager
+            // init failed and whose retry then recovered is reported as
+            // `failed` for that launch — the mode describes what
+            // configure(...) resolved, not what the process eventually got.
             return nil
         }
         _deviceFingerprint = value
@@ -214,14 +254,36 @@ public enum MusicShareKit {
         // the iOS#351 plan. Eager init means whichever process runs configure()
         // second sees the value committed by the first via the atomic
         // add-or-reread inside ensure().
+        //
+        // This is also the once-per-launch emission site for
+        // `FingerprintModeResolvedEvent` (#998). It fires on both branches
+        // below — a resolved-mode metric that only spoke up on failure would
+        // be indistinguishable from one that had stopped reporting, which is
+        // the ambiguity that hid #996.
         fingerprintLock.lock()
         _fingerprintRetryAttempted = false  // fresh configure resets the retry budget
+        let prematureAccessCount = prematureFingerprintAccesses.count
         do {
-            _deviceFingerprint = try configuration.deviceFingerprintStorage.ensure()
+            let resolution = try configuration.deviceFingerprintStorage.resolve()
+            _deviceFingerprint = resolution.value
+            configuration.analyticsService.capture(
+                FingerprintModeResolvedEvent(
+                    mode: resolution.mode,
+                    osStatus: resolution.osStatus,
+                    prematureAccessCount: prematureAccessCount
+                )
+            )
         } catch {
             _deviceFingerprint = nil
             configuration.analyticsService.capture(
                 DeviceFingerprintInitFailedEvent(error: error.localizedDescription)
+            )
+            configuration.analyticsService.capture(
+                FingerprintModeResolvedEvent(
+                    mode: .failed,
+                    osStatus: keychainStatus(of: error),
+                    prematureAccessCount: prematureAccessCount
+                )
             )
         }
         fingerprintLock.unlock()
@@ -239,6 +301,22 @@ public enum MusicShareKit {
                 analytics: configuration.analyticsService
             )
         }
+    }
+
+    /// The `OSStatus` a failed eager init should report on
+    /// `FingerprintModeResolvedEvent`.
+    ///
+    /// `KeychainDeviceFingerprintStorage` only ever throws
+    /// `AuthenticationError.keychainError`, so the fallback is unreachable from
+    /// production; it exists because `DeviceFingerprintStorage` is a protocol
+    /// and a conformer may throw anything. When it does fire, nothing is lost:
+    /// the `DeviceFingerprintInitFailedEvent` captured alongside carries the
+    /// error's full description.
+    private static func keychainStatus(of error: Error) -> OSStatus {
+        guard case .keychainError(let status)? = error as? AuthenticationError else {
+            return errSecInternalError
+        }
+        return status
     }
 
     /// Checks if request line authentication is enabled via feature flag.

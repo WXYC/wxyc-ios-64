@@ -11,6 +11,76 @@
 import Foundation
 import Security
 
+// MARK: - Resolved Mode
+
+/// How the device fingerprint came to be available on this launch.
+///
+/// Reported once per launch as `fingerprint_mode_resolved_event` (#998). Modes
+/// and status codes are the entire permitted payload — the fingerprint value
+/// itself is a stable per-device identifier and therefore a deanonymization
+/// vector, and must never reach analytics.
+public enum DeviceFingerprintMode: String, CaseIterable, Sendable {
+
+    /// A value was already persisted and was read back; nothing was written.
+    ///
+    /// This is the steady state for every launch after the first, and it is
+    /// deliberately NOT reported as `synchronizable` or `local`. The read query
+    /// uses `kSecAttrSynchronizableAny` and does not request attributes back,
+    /// so the read genuinely cannot tell which of the two the stored item is.
+    /// Asking for the attribute would mean changing the read on the exact code
+    /// path #996 is investigating, which would perturb the measurement this
+    /// event exists to take. `existing` states the honest thing: present,
+    /// sync-ness unknown.
+    case existing
+
+    /// No value was persisted, and a fresh one was written with
+    /// `kSecAttrSynchronizable = true` — the ideal outcome. The item survives a
+    /// reinstall and syncs across the Apple ID's devices.
+    case synchronizable
+
+    /// No value was persisted, the synchronizable write failed, and the
+    /// local-only write succeeded. The item survives a reinstall on this device
+    /// but does not sync. The accompanying `OSStatus` is the synchronizable
+    /// write's failing status — the reason we are on the fallback.
+    case local
+
+    /// No fingerprint could be resolved at all. The `X-Device-Fingerprint`
+    /// header is omitted from subsequent requests.
+    case failed
+}
+
+/// The outcome of resolving the device fingerprint: the value, which branch
+/// produced it, and the `OSStatus` that explains a non-ideal outcome.
+public struct DeviceFingerprintResolution: Sendable {
+
+    /// The resolved fingerprint. Never logged, never captured.
+    public let value: String
+
+    /// Which branch produced ``value``.
+    public let mode: DeviceFingerprintMode
+
+    /// The status that explains why this mode and not a better one:
+    ///
+    /// - ``DeviceFingerprintMode/existing`` and
+    ///   ``DeviceFingerprintMode/synchronizable``: `errSecSuccess`. Nothing to
+    ///   explain — the ideal path ran.
+    /// - ``DeviceFingerprintMode/local``: the status the synchronizable add
+    ///   failed with.
+    ///
+    /// A resolution never carries ``DeviceFingerprintMode/failed``; that mode
+    /// is derived by the caller from a thrown error, whose status it reports
+    /// instead.
+    public let osStatus: OSStatus
+
+    public init(value: String, mode: DeviceFingerprintMode, osStatus: OSStatus = errSecSuccess) {
+        self.value = value
+        self.mode = mode
+        self.osStatus = osStatus
+    }
+}
+
+// MARK: - Storage Protocol
+
 /// Storage for a stable per-device fingerprint.
 ///
 /// The fingerprint is a UUIDv4 generated once per device (and synchronized
@@ -29,6 +99,17 @@ public protocol DeviceFingerprintStorage: Sendable {
     ///   subsequent add fail with an unrecoverable status. Calls do not throw
     ///   on a benign duplicate-item race (handled internally).
     func ensure() throws -> String
+
+    /// Same work as ``ensure()``, additionally reporting how the value was
+    /// resolved.
+    ///
+    /// Deliberately a requirement with no default implementation. A default
+    /// would let a future conformer inherit a mode it never actually observed,
+    /// and the entire point of #998 is that this subsystem must not be able to
+    /// report something indistinguishable from silence.
+    ///
+    /// - Throws: the same errors as ``ensure()``, under the same conditions.
+    func resolve() throws -> DeviceFingerprintResolution
 }
 
 // MARK: - Keychain Operations Seam
@@ -96,6 +177,10 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
     }
 
     public func ensure() throws -> String {
+        try resolve().value
+    }
+
+    public func resolve() throws -> DeviceFingerprintResolution {
         // Cap retries so an undocumented Keychain quirk that returns
         // errSecDuplicateItem on add AND errSecItemNotFound on the next read
         // cannot livelock us. Three iterations is a generous ceiling — in
@@ -109,7 +194,7 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
             case errSecSuccess:
                 if let data, let fingerprint = String(data: data, encoding: .utf8),
                    !fingerprint.isEmpty {
-                    return fingerprint
+                    return DeviceFingerprintResolution(value: fingerprint, mode: .existing)
                 }
                 // Found item but data is unreadable — treat as decode error.
                 throw AuthenticationError.keychainError(status: errSecDecode)
@@ -123,11 +208,15 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
 
             // 2. Generate fresh fingerprint and try to add it.
             let candidate = UUID().uuidString
-            let addStatus = addWithFallback(value: candidate)
+            let outcome = addWithFallback(value: candidate)
 
-            switch addStatus {
+            switch outcome.status {
             case errSecSuccess:
-                return candidate
+                return DeviceFingerprintResolution(
+                    value: candidate,
+                    mode: outcome.mode,
+                    osStatus: outcome.explanation
+                )
 
             case errSecDuplicateItem:
                 // Another process wrote first between our read and our add.
@@ -135,7 +224,7 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
                 continue
 
             default:
-                throw AuthenticationError.keychainError(status: addStatus)
+                throw AuthenticationError.keychainError(status: outcome.status)
             }
         }
 
@@ -144,20 +233,45 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
 
     // MARK: - Add Helper
 
+    /// Which add branch produced a status, and why.
+    ///
+    /// Exists only so `resolve()` can report a mode. `status` is exactly what
+    /// `addWithFallback` returned before #998 widened its return type, and the
+    /// two extra fields are derived from control flow that already ran — no
+    /// Keychain call was added, moved, or re-gated to produce them.
+    private struct AddOutcome {
+
+        /// The status `resolve()` branches on. Unchanged semantics.
+        let status: OSStatus
+
+        /// The branch that produced ``status``.
+        let mode: DeviceFingerprintMode
+
+        /// Why we are on that branch: the synchronizable add's failing status
+        /// when we fell back to local-only, `errSecSuccess` otherwise.
+        let explanation: OSStatus
+    }
+
     /// Attempts a synchronizable add first, falling back to local-only storage
     /// when iCloud Keychain is unavailable (simulators, devices without an
     /// iCloud account). Local persistence is better than no persistence — the
     /// fingerprint still survives a reinstall on the same device, defeating
     /// the most common ban-evasion attempt (see Risk 3 in the iOS#351 plan
     /// and the pattern established by `KeychainTokenStorage` for iOS#210).
-    private func addWithFallback(value: String) -> OSStatus {
+    private func addWithFallback(value: String) -> AddOutcome {
         let syncAttrs = addAttributesDictionary(value: value, synchronizable: true)
         let syncStatus = operations.add(syncAttrs as CFDictionary)
         if syncStatus == errSecSuccess || syncStatus == errSecDuplicateItem {
-            return syncStatus
+            return AddOutcome(status: syncStatus, mode: .synchronizable, explanation: errSecSuccess)
         }
         let localAttrs = addAttributesDictionary(value: value, synchronizable: false)
-        return operations.add(localAttrs as CFDictionary)
+        let localStatus = operations.add(localAttrs as CFDictionary)
+        // `syncStatus`, not `localStatus`: the local add's own status is what
+        // `resolve()` branches on, but the reason this device is on the
+        // fallback at all is the status the synchronizable add failed with.
+        // That is the value #996 needs — if -34018 reaches this path, this is
+        // where it becomes visible.
+        return AddOutcome(status: localStatus, mode: .local, explanation: syncStatus)
     }
 
     // MARK: - Query Builders
@@ -218,6 +332,12 @@ public final class InMemoryDeviceFingerprintStorage: DeviceFingerprintStorage,
     /// If set, `ensure()` throws this error.
     public var stubError: Error?
 
+    /// The mode `resolve()` reports. Defaults to
+    /// ``DeviceFingerprintMode/existing`` because that is what this double
+    /// models: a value that is simply already there, with no Keychain write
+    /// attempted and therefore nothing knowable about sync-ness.
+    public var stubMode: DeviceFingerprintMode = .existing
+
     private var generated: String?
     private let lock = NSLock()
 
@@ -246,11 +366,22 @@ public final class InMemoryDeviceFingerprintStorage: DeviceFingerprintStorage,
         return fresh
     }
 
+    public func resolve() throws -> DeviceFingerprintResolution {
+        // Routed through `ensure()` rather than duplicating its body so
+        // `ensureCallCount` and the stubs keep working for suites that moved
+        // to `resolve()` and suites that did not, alike.
+        let value = try ensure()
+        lock.lock()
+        defer { lock.unlock() }
+        return DeviceFingerprintResolution(value: value, mode: stubMode)
+    }
+
     public func reset() {
         lock.lock()
         defer { lock.unlock() }
         stubFingerprint = nil
         stubError = nil
+        stubMode = .existing
         generated = nil
         ensureCallCount = 0
     }
