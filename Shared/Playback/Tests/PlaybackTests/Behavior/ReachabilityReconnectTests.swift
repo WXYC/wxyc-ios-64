@@ -145,7 +145,7 @@ struct ReachabilityReconnectTests {
         #expect(fixture.mockPlayer.playCallCount == playCallsAtExhaustion,
                 "No reconnect attempt should fire while the network path is unsatisfied; saw \(fixture.mockPlayer.playCallCount - playCallsAtExhaustion) extra play call(s)")
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 2: retries promptly on the → satisfied edge
@@ -174,7 +174,7 @@ struct ReachabilityReconnectTests {
         #expect(fixture.controller.isPlaying,
                 "The reachability-triggered reconnect should reach .playing. \(fixture.controller.debugStateSnapshot)")
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 3: timed fallback still fires when satisfied but connect fails
@@ -198,7 +198,7 @@ struct ReachabilityReconnectTests {
         #expect(fixture.mockPlayer.playCallCount - playCallsAtExhaustion >= 2,
                 "The timed fallback must keep retrying when the path is satisfied but the connect fails; saw \(fixture.mockPlayer.playCallCount - playCallsAtExhaustion) attempt(s)")
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 4: flapping does not produce duplicate concurrent connects
@@ -232,7 +232,7 @@ struct ReachabilityReconnectTests {
         #expect(fixture.mockPlayer.playCallCount == playCallsWhileIdle + 1,
                 "Flapping must not launch overlapping connects; expected exactly one in-flight attempt, saw \(fixture.mockPlayer.playCallCount - playCallsWhileIdle)")
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 5: recovery tears down the holding pattern + monitor
@@ -268,7 +268,7 @@ struct ReachabilityReconnectTests {
         #expect(fixture.mockPlayer.playCallCount == playCallsAfterRecovery,
                 "A satisfied-edge after recovery must not trigger a reconnect once the holding pattern has been left")
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 6: satisfied-edge recovery is attributed in telemetry
@@ -302,7 +302,7 @@ struct ReachabilityReconnectTests {
         #expect(recoveries.first?.recoveryMethod == .reachabilityResume,
                 "A satisfied-edge recovery must be attributed .reachabilityResume; got \(String(describing: recoveries.first?.recoveryMethod))")
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 7: timed-fallback recovery is attributed in telemetry
@@ -327,7 +327,7 @@ struct ReachabilityReconnectTests {
         #expect(recoveries.first?.recoveryMethod == .holdingFallback,
                 "A timed-fallback recovery must be attributed .holdingFallback; got \(String(describing: recoveries.first?.recoveryMethod))")
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 8: nil reachability — recovery leaves the pattern, no stray reconnect
@@ -408,7 +408,7 @@ struct ReachabilityReconnectTests {
         #expect(mockPlayer.playCallCount == playCallsAfterRecovery,
                 "A stranded holding-pattern timer must not fire a reconnect once the pattern is left; saw \(mockPlayer.playCallCount - playCallsAfterRecovery) stray attempt(s)")
 
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
     }
 }
 

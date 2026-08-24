@@ -44,7 +44,7 @@ struct PlayerStateMirrorTests {
         await harness.waitForAsync()
         #expect(harness.controller.isPlaying, "precondition: the mirror tracks a genuine start")
 
-        harness.controller.stop(reason: .test)
+        harness.controller.tearDown(reason: .test)
         await harness.waitUntil { !harness.controller.isPlaying }
 
         // A `.playing` emitted before the stop, delivered after it. The player
@@ -67,7 +67,7 @@ struct PlayerStateMirrorTests {
         harness.simulatePlaybackStarted()
         await harness.waitForAsync()
 
-        harness.controller.stop(reason: .test)
+        harness.controller.tearDown(reason: .test)
         await harness.waitUntil { !harness.controller.isPlaying }
 
         harness.mockPlayer.simulateLateStateDelivery(.playing)

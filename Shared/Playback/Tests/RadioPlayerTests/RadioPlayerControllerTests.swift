@@ -209,7 +209,7 @@ struct RadioPlayerControllerTests {
             "Expected exactly one play event, got \(mockAnalytics.startedEvents.count)"
         )
 
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
     }
 
     // MARK: - Error Handling Tests

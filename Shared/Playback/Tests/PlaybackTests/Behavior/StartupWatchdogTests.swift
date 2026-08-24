@@ -132,7 +132,7 @@ struct StartupWatchdogTests {
         #expect(Self.silentStartupEvents(fixture).count == 1)
         #expect(fixture.mockPlayer.playCallCount >= 2)
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 2: first-audio disarms
@@ -150,7 +150,7 @@ struct StartupWatchdogTests {
 
         #expect(Self.silentStartupEvents(fixture).isEmpty)
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 3: reaching .playing disarms (non-MP3Streamer path)
@@ -179,7 +179,7 @@ struct StartupWatchdogTests {
 
         #expect(Self.silentStartupEvents(fixture).isEmpty)
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 4: error disarms (dedup vs the inner startup_timeout class)
@@ -198,7 +198,7 @@ struct StartupWatchdogTests {
         // pile a `silent_startup` on top for the same failed start.
         #expect(Self.silentStartupEvents(fixture).isEmpty)
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 
     // MARK: - Test 5: stop disarms
@@ -208,7 +208,7 @@ struct StartupWatchdogTests {
         let fixture = Self.makeFixture()
 
         fixture.controller.play(reason: .test)
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
 
         try? await Task.sleep(for: .milliseconds(300))
 
@@ -245,7 +245,7 @@ struct StartupWatchdogTests {
         // successful re-activation is what reaches it.
         #expect(fixture.mockPlayer.playCallCount >= 1)
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
     #endif
 
@@ -271,7 +271,7 @@ struct StartupWatchdogTests {
         #expect(fixture.mockSession.setActiveCallCount >= 5)
         #expect(fixture.controller.debugState.playbackIntended)
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
     #endif
 
@@ -303,7 +303,7 @@ struct StartupWatchdogTests {
         #expect(fixture.mockSession.setActiveCallCount >= 5)
         #expect(fixture.mockPlayer.playCallCount >= 1)
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
     #endif
 
@@ -328,7 +328,7 @@ struct StartupWatchdogTests {
 
         #expect(Self.silentStartupEvents(fixture).isEmpty)
 
-        fixture.controller.stop(reason: .test)
+        fixture.controller.tearDown(reason: .test)
     }
 }
 

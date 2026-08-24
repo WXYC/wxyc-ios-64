@@ -419,12 +419,12 @@ struct RadioPlayerControllerBackgroundBehaviorTests {
         let harness = PlayerControllerTestHarness.make(for: .radioPlayerController)
 
         // `play()` activates; `stop()` clears intent but leaves the session
-        // active — this controller's `stop(reason:)` touches the session not
+        // active — this controller's `tearDown(reason:)` touches the session not
         // at all — so backgrounding is what hands it back. This is the whole
-        // negative half of the intent guard: if `stop(reason:)` ever stopped
+        // negative half of the intent guard: if `tearDown(reason:)` ever stopped
         // clearing `playbackIntended`, every handback would be swallowed.
         try harness.controller.play(reason: .test)
-        harness.controller.stop(reason: .test)
+        harness.controller.tearDown(reason: .test)
 
         harness.mockSession.reset()
         harness.controller.handleAppDidEnterBackground()

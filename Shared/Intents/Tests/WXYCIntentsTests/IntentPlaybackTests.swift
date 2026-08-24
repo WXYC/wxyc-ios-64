@@ -173,13 +173,13 @@ final class FakeIntentPlaybackController: IntentPlaybackControlling {
         onToggle?()
     }
 
-    /// Clears both flags, mirroring the real teardown: `stop(reason:)` drops
+    /// Clears both flags, mirroring the real teardown: `tearDown(reason:)` drops
     /// `playbackIntended` and drives the player back to `.idle`. A fake that
     /// recorded the call without clearing them would let the widget-mirror
     /// tests pass against a `publishWidgetState` that never ran.
-    func stopWithAnalytics(reason: PlaybackReason) {
+    func stop(reason: PlaybackReason) {
         stoppedReasons.append(reason)
-        events.append("stopWithAnalytics")
+        events.append("stop")
         isPlaybackRequested = false
         isPlaying = false
     }

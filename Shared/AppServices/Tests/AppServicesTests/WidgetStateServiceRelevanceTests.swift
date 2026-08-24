@@ -165,6 +165,7 @@ final class MockPlaybackController: PlaybackController {
     func play(reason: PlaybackReason) throws {}
     func toggle(reason: PlaybackReason) throws {}
     func stop(reason: PlaybackReason) {}
+    func tearDown(reason: PlaybackReason) {}
 
     func makeAudioBufferStream() -> AsyncStream<AVAudioPCMBuffer> {
         AsyncStream { _ in }

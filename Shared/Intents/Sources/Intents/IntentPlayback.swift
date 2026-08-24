@@ -152,11 +152,11 @@ enum IntentPlayback {
     /// Intents owns the intent instance, so the only place a fake controller
     /// can be substituted is this seam (see `PauseWXYCTests`).
     ///
-    /// Synchronous — `stopWithAnalytics(reason:)` tears down immediately, so
+    /// Synchronous — `stop(reason:)` tears down immediately, so
     /// unlike a start there is nothing to keep the intent alive for.
     ///
     /// - Parameters:
-    ///   - reason: The `PlaybackReason` passed to `stopWithAnalytics(reason:)`.
+    ///   - reason: The `PlaybackReason` passed to `stop(reason:)`.
     ///   - context: Log prefix identifying the calling intent.
     ///   - controller: Playback-control surface; defaults to the shared
     ///     controller. Injectable for tests (#497), the same seam
@@ -173,7 +173,7 @@ enum IntentPlayback {
     ) {
         Log(.info, "\(context)")
 
-        controller.stopWithAnalytics(reason: reason)
+        controller.stop(reason: reason)
         publishWidgetState(controller: controller, to: widgetState)
     }
 

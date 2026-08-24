@@ -37,7 +37,7 @@ public protocol PlaybackController: AnyObject, Observable {
 
     /// Whether the listener has asked for audio, that request is still
     /// standing, and there is still something to cancel — set by
-    /// `play(reason:)`, cleared by `stop(reason:)` or by the stream failing.
+    /// `play(reason:)`, cleared by `tearDown(reason:)` or by the stream failing.
     ///
     /// This, not `isPlaying`, is what a play/pause control must render and act
     /// on. `isPlaying` answers whether audio is coming out, which is a
@@ -67,10 +67,28 @@ public protocol PlaybackController: AnyObject, Observable {
     /// - Throws: If playback cannot be started when toggling from stopped to playing
     func toggle(reason: PlaybackReason) throws
     
-    /// Stops playback and disconnects from stream
-    /// For live streaming, this resets the connection so resume plays live audio
-    /// - Parameter reason: Why playback was stopped (for analytics)
+    /// Ends the listen: reports it, then tears playback down.
+    ///
+    /// The counterpart to `play(reason:)`, and the one a listener-facing
+    /// surface wants — a pause button, a remote command, a Siri intent. Like
+    /// `play(reason:)` it emits, so `reason` is the attribution that reaches
+    /// the #663 duration series.
+    /// - Parameter reason: Why the listener stopped playback (for analytics)
     func stop(reason: PlaybackReason)
+
+    /// Tears playback down without reporting anything.
+    ///
+    /// For callers that have already accounted for the listen themselves —
+    /// today that is `PlaybackInterruptionRouteHandler`, which emits its own
+    /// `PlaybackStoppedEvent` before calling this. Anything else wants
+    /// `stop(reason:)`; reaching for this one silently drops a listen from the
+    /// #663 series (#939 is what that cost the Siri pause path).
+    ///
+    /// For live streaming, this resets the connection so resume plays live audio.
+    /// - Parameter reason: Which teardown this is. Not a telemetry field —
+    ///   `PlaybackStopTeardown` reads it to tell an echo from a new decision
+    ///   under the #665 session-survival rule.
+    func tearDown(reason: PlaybackReason)
     
     /// Creates a fresh stream of audio buffers for visualization.
     /// Each call returns a new stream; the previous stream's continuation is finished.
