@@ -299,7 +299,7 @@ private struct ScrollShadowModifier: ViewModifier {
             .onPreferenceChange(ScrollOffsetPreferenceKey.self) { scrollPosition in
                 // Normalize the row's midY within the screen (0 at top, 1 at
                 // bottom), then interpolate the shadow offset across that range.
-                let screenHeight = UIScreen.main.bounds.height
+                let screenHeight = ArtworkDisplayMetrics.viewportHeight
                 let normalizedPosition = min(max(scrollPosition / screenHeight, 0), 1)
                 shadowYOffset = top + (normalizedPosition * (bottom - top))
             }
