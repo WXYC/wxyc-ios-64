@@ -26,9 +26,11 @@
 
 import Analytics
 import Concerts
+import SwiftUI
+
+#if os(iOS)
 import EventKit
 import EventKitUI
-import SwiftUI
 import UIKit
 
 /// Presents the system event editor prefilled with a concert's calendar entry,
@@ -103,6 +105,7 @@ struct ConcertCalendarEditSheet: UIViewControllerRepresentable {
         }
     }
 }
+#endif
 
 extension View {
     /// Adds the "Add to Calendar" flow to a surface. Setting `trigger` to a concert
@@ -111,10 +114,16 @@ extension View {
     /// analytics ("detail" or "row"). The trigger is consumed (reset to `nil`)
     /// once handled, so re-adding the same show fires again.
     func addToCalendar(_ trigger: Binding<Concert?>, surface: String) -> some View {
+        #if os(iOS)
         modifier(AddToCalendarModifier(trigger: trigger, surface: surface))
+        #else
+        // macOS add-to-calendar is deferred; EKEventEditViewController is iOS-only.
+        self
+        #endif
     }
 }
 
+#if os(iOS)
 /// Owns the add-to-calendar presentation state so both On Tour surfaces get the
 /// access request, editor sheet, and denied-access alert from one modifier.
 private struct AddToCalendarModifier: ViewModifier {
@@ -158,3 +167,4 @@ private struct AddToCalendarModifier: ViewModifier {
         trigger = nil
     }
 }
+#endif
