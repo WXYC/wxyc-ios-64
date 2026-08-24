@@ -623,12 +623,12 @@ struct WXYCApp: App {
             // Warm the placeholder here, first, so this Task — not
             // NowPlayingInfoCenterManager.mediaItemArtwork() on the main
             // actor (reached whenever a NowPlayingItem with nil artwork
-            // arrives) — is the thread that pays for UIImage.placeholder's
+            // arrives) — is the thread that pays for PlaceholderArtwork.image's
             // first-access compositing. Whichever thread touches the
             // static let first absorbs the cost inside its swift_once; this
             // makes that thread a guarantee rather than a race (#740
             // review, finding 2).
-            _ = UIImage.placeholder
+            _ = PlaceholderArtwork.image
             let interaction = makeSiriIntentInteraction()
             await donate(interaction)
         }
@@ -681,7 +681,7 @@ struct WXYCApp: App {
     /// more indirect regression is out of this check's reach (#740 review,
     /// finding 5).
     nonisolated static func makeSiriIntentInteraction() -> INInteraction {
-        let placeholder = UIImage.placeholder
+        let placeholder = PlaceholderArtwork.image
         let artwork = INImage(imageData: placeholder.pngData()!)
         let intent = MediaIntentBuilder.makePlayMediaIntent(artwork: artwork)
         return INInteraction(intent: intent, response: nil)

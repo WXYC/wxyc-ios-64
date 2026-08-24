@@ -75,7 +75,7 @@ struct WXYCAppShortcutsTests {
 
 /// Regression coverage for #740 / Sentry IOS-3M (`CGImageRef.overlay`), IOS-14,
 /// and IOS-19 (`WXYCApp.donateSiriIntent`): a >2s app hang caused by
-/// `WXYCApp.init()` synchronously compositing `UIImage.placeholder`
+/// `WXYCApp.init()` synchronously compositing `PlaceholderArtwork.image`
 /// (CoreImage/Metal) on the main thread while building the legacy SiriKit
 /// donation. `donateSiriIntent()` now defers that work to a `Task` inside a
 /// `nonisolated` function; see `WXYCAppDonationEscapesMainActorTests` below
@@ -154,7 +154,7 @@ struct WXYCAppDonationEscapesMainActorTests {
             )
         }
 
-        #expect(isolation == nil, "donateSiriIntent()'s Task must not be main-actor isolated, or its UIImage.placeholder compositing hangs the main thread again (#740)")
+        #expect(isolation == nil, "donateSiriIntent()'s Task must not be main-actor isolated, or its PlaceholderArtwork.image compositing hangs the main thread again (#740)")
     }
 }
 
