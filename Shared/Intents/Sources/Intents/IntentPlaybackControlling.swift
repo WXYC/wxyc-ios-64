@@ -2,10 +2,10 @@
 //  IntentPlaybackControlling.swift
 //  Intents
 //
-//  The playback-control surface IntentPlayback.startAndAwait(reason:) and
-//  toggleAndAwait(reason:context:) need from AudioPlayerController.shared:
-//  prepare the session, start or toggle playback, and report the playing /
-//  requested state. AudioPlayerController is a singleton the intents call
+//  The playback-control surface IntentPlayback.startAndAwait(reason:),
+//  toggleAndAwait(reason:context:), and stopAndPublish(reason:context:) need
+//  from AudioPlayerController.shared: prepare the session, start, toggle or
+//  stop playback, and report the playing / requested state. AudioPlayerController is a singleton the intents call
 //  directly, and its own test double (MockAudioPlayer, in
 //  PlaybackTestUtilities) isn't importable from WXYCIntentsTests because that
 //  target isn't a product library. This narrow protocol is the seam tests
@@ -31,6 +31,11 @@ protocol IntentPlaybackControlling {
     func play(reason: PlaybackReason)
     /// See `AudioPlayerController.toggle(reason:)`.
     func toggle(reason: PlaybackReason)
+    /// See `AudioPlayerController.stopWithAnalytics(reason:)` — the stop that
+    /// also closes the listen for the #663 duration series, subject to the
+    /// one-event-per-listen predicate (#933). The intents never call the bare
+    /// `stop(reason:)`; #939 is what that costs.
+    func stopWithAnalytics(reason: PlaybackReason)
     /// See `AudioPlayerController.isPlaying`.
     var isPlaying: Bool { get }
     /// See `AudioPlayerController.isPlaybackRequested` — the predicate

@@ -137,6 +137,7 @@ final class FakeIntentPlaybackController: IntentPlaybackControlling {
     private(set) var prepareForPlaybackCallCount = 0
     private(set) var playedReasons: [PlaybackReason] = []
     private(set) var toggledReasons: [PlaybackReason] = []
+    private(set) var stoppedReasons: [PlaybackReason] = []
     /// Ordered record of the mutating calls, for sequence assertions.
     private(set) var events: [String] = []
     /// How many times `isPlaying` was read — the toggle tests assert on this
@@ -170,6 +171,17 @@ final class FakeIntentPlaybackController: IntentPlaybackControlling {
         toggledReasons.append(reason)
         events.append("toggle")
         onToggle?()
+    }
+
+    /// Clears both flags, mirroring the real teardown: `stop(reason:)` drops
+    /// `playbackIntended` and drives the player back to `.idle`. A fake that
+    /// recorded the call without clearing them would let the widget-mirror
+    /// tests pass against a `publishWidgetState` that never ran.
+    func stopWithAnalytics(reason: PlaybackReason) {
+        stoppedReasons.append(reason)
+        events.append("stopWithAnalytics")
+        isPlaybackRequested = false
+        isPlaying = false
     }
 }
 
