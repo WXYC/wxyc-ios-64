@@ -117,7 +117,7 @@ struct ToggleIntentTests {
         await harness.waitForAsync()
         #expect(harness.controller.isPlaybackRequested)
 
-        harness.controller.stop(reason: .test)
+        harness.controller.tearDown(reason: .test)
         await harness.waitUntil { !harness.controller.isPlaybackRequested }
         #expect(!harness.controller.isPlaybackRequested)
     }

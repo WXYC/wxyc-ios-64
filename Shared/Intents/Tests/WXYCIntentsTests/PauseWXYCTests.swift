@@ -63,10 +63,10 @@ struct PauseWXYCTests {
         #expect(controller.stoppedReasons == [.pauseIntent])
     }
 
-    /// Routes the stop through `stopWithAnalytics(reason:)`, not the bare
-    /// `stop(reason:)` underneath it. #939: a Siri pause that skips the
+    /// Routes the stop through `stop(reason:)`, not the bare
+    /// `tearDown(reason:)` underneath it. #939: a Siri pause that skips the
     /// analytics wrapper closes the listen without any duration reaching the
-    /// #663 series, and `stopWithAnalytics` is where the one-event-per-listen
+    /// #663 series, and `stop` is where the one-event-per-listen
     /// predicate (#933) lives.
     @MainActor
     @Test("perform()'s playback call goes through the analytics-capturing stop")
@@ -81,7 +81,7 @@ struct PauseWXYCTests {
             widgetState: isolatedDefaults()
         )
 
-        #expect(controller.events == ["stopWithAnalytics"])
+        #expect(controller.events == ["stop"])
     }
 
     @MainActor

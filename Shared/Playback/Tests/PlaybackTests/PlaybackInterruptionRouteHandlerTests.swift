@@ -51,7 +51,7 @@ struct PlaybackInterruptionRouteHandlerTests {
         private(set) var interruptionEndedWithoutResumeCount = 0
         private(set) var routeChangeRestartFallbackCount = 0
 
-        func stop(reason: PlaybackReason) { stopCalls.append(reason) }
+        func tearDown(reason: PlaybackReason) { stopCalls.append(reason) }
         func play(reason: PlaybackReason) throws { playCalls.append(reason) }
 
         lazy var handler = PlaybackInterruptionRouteHandler(
@@ -84,7 +84,7 @@ struct PlaybackInterruptionRouteHandlerTests {
         var sessionID: String?
         var playbackDuration: TimeInterval = 0
         var wasPlayingBeforeRouteDisconnect = false
-        func stop(reason: PlaybackReason) {}
+        func tearDown(reason: PlaybackReason) {}
         func play(reason: PlaybackReason) throws {}
     }
 

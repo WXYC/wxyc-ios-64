@@ -170,7 +170,7 @@ struct OfflineParkControllerIntegrationTests {
         #expect(mockAnalytics.typedEvents(ofType: StreamErrorEvent.self).isEmpty,
                 "A legitimately offline park must not escalate any StreamErrorEvent at either layer (#697/#699)")
 
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
         // Drain any watchdog re-arm still parked on a gate (e.g. the inner
         // watchdog's third arm, scheduled after the extended-park event fired
         // but never explicitly released) so no suspended continuation outlives

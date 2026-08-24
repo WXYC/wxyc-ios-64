@@ -29,7 +29,7 @@ struct PlayWXYCIntentTests {
     @Test("perform() starts playback")
     func performStartsPlayback() async throws {
         // Ensure we start from a stopped state
-        AudioPlayerController.shared.stop(reason: .test)
+        AudioPlayerController.shared.tearDown(reason: .test)
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(!AudioPlayerController.shared.isPlaying, "Should start in stopped state")
@@ -45,13 +45,13 @@ struct PlayWXYCIntentTests {
         #expect(AudioPlayerController.shared.isPlaying, "Intent should have started playback")
 
         // Clean up: stop playback
-        AudioPlayerController.shared.stop(reason: .test)
+        AudioPlayerController.shared.tearDown(reason: .test)
     }
 
     @Test("perform() starts playback from background")
     func performStartsPlaybackFromBackground() async throws {
         // Ensure we start from a stopped state
-        AudioPlayerController.shared.stop(reason: .test)
+        AudioPlayerController.shared.tearDown(reason: .test)
         try await Task.sleep(for: .milliseconds(200))
 
         #expect(!AudioPlayerController.shared.isPlaying, "Should start in stopped state")
@@ -88,7 +88,7 @@ struct PlayWXYCIntentTests {
         #expect(AudioPlayerController.shared.isPlaying, "Playback should continue after foregrounding")
 
         // Clean up
-        AudioPlayerController.shared.stop(reason: .test)
+        AudioPlayerController.shared.tearDown(reason: .test)
     }
 
     @Test("perform() returns correct dialog")
@@ -100,7 +100,7 @@ struct PlayWXYCIntentTests {
         #expect(result.value == "Tuning in to WXYC…", "Should return tuning message")
 
         // Clean up
-        AudioPlayerController.shared.stop(reason: .test)
+        AudioPlayerController.shared.tearDown(reason: .test)
     }
 
     @Test("perform() is idempotent when already playing")
@@ -121,7 +121,7 @@ struct PlayWXYCIntentTests {
         #expect(AudioPlayerController.shared.isPlaying == wasPlaying, "State should remain consistent")
 
         // Clean up
-        AudioPlayerController.shared.stop(reason: .test)
+        AudioPlayerController.shared.tearDown(reason: .test)
     }
 }
 

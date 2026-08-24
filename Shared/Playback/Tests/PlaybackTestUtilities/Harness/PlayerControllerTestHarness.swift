@@ -35,7 +35,7 @@ public extension PlaybackController {
     }
 
     func stop() {
-        stop(reason: .test)
+        tearDown(reason: .test)
     }
 }
 
@@ -354,7 +354,7 @@ public final class PlayerControllerTestHarness {
     /// that resets mid-flight sees a phantom `setActive(false, …)` in its
     /// counters.
     public func reset() async {
-        controller.stop(reason: .test)
+        controller.tearDown(reason: .test)
         await waitUntil({ self.sessionDeactivationSettled })
         mockPlayer.reset()
         mockSession.reset()

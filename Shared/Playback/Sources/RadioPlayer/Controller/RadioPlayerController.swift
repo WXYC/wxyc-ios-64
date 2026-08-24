@@ -207,14 +207,21 @@ public final class RadioPlayerController: PlaybackController {
     /// `AudioPlayerController.toggle(reason:)`.
     public func toggle(reason: PlaybackReason) throws {
         if self.isPlaybackRequested {
-            stopWithAnalytics(reason: reason)
+            stop(reason: reason)
         } else {
             try self.play(reason: reason)
         }
     }
 
-    /// Captures a `PlaybackStoppedEvent` — attributing `source` from `reason`
-    /// (#668) — and then stops. The free-text `reason` string is deliberately
+    /// Ends the listen: captures a `PlaybackStoppedEvent` — attributing
+    /// `source` from `reason` (#668) — and then tears playback down.
+    ///
+    /// Unlike `AudioPlayerController`'s, this capture is unconditional — there
+    /// is no one-event-per-listen predicate here at all. The two controllers
+    /// disagreeing about when a listen ends is #938; this rename only makes
+    /// the disagreement visible by giving both methods the same name.
+    ///
+    /// The free-text `reason` string is deliberately
     /// withheld here (matches the pre-existing "user-initiated stops report a
     /// nil reason" contract), but `source` is never nil: every stop site
     /// knows its `PlaybackReason` even when it doesn't want to surface the
@@ -222,9 +229,9 @@ public final class RadioPlayerController: PlaybackController {
     /// `remotePauseOrStopCommand`, `remoteTogglePlayPauseCommand`'s stop
     /// branch, so all three paths stay identical — some of which are gated
     /// behind a real `MPRemoteCommandEvent` a unit test can't construct.
-    private func stopWithAnalytics(reason: PlaybackReason) {
+    public func stop(reason: PlaybackReason) {
         analytics.capture(PlaybackStoppedEvent(source: reason.playbackSource, duration: playbackTimer.duration(), sessionID: sessionID))
-        self.stop(reason: reason)
+        self.tearDown(reason: reason)
     }
 
     public func play(reason: PlaybackReason) throws {
@@ -264,12 +271,12 @@ public final class RadioPlayerController: PlaybackController {
     /// guard added for #933 — a redundant stop there was expensive, and here it
     /// is mostly not. Two of that guard's three costs cannot arise in this
     /// controller as a matter of structure: it drives an `AVPlayer`, so there
-    /// is no decoder to churn, and its `stop(reason:)` touches the audio
+    /// is no decoder to churn, and its `tearDown(reason:)` touches the audio
     /// session not at all (#778).
     ///
     /// The third — double-counting `PlaybackStoppedEvent` — is contingent
     /// rather than structural, and that distinction is the whole reason this
-    /// note exists. `remotePauseOrStopCommand` reaches `stopWithAnalytics`
+    /// note exists. `remotePauseOrStopCommand` reaches `stop`
     /// with no intent check ahead of it, and the iOS/tvOS initializers default
     /// `remoteCommandCenter` to `MPRemoteCommandCenter.shared()`, so on iOS
     /// that path is compiled, armed, and registered against the process-global
@@ -284,8 +291,11 @@ public final class RadioPlayerController: PlaybackController {
     /// double-counts, so add the guard when a consumer actually receives
     /// remote commands rather than treating this paragraph as the guard.
     ///
-    /// - Parameter reason: Why playback was stopped (for analytics)
-    public func stop(reason: PlaybackReason) {
+    /// - Parameter reason: Which stop this is. Not a telemetry field — this
+    ///   method emits nothing. `PlaybackStopTeardown` reads it to tell an echo
+    ///   from a new decision under the #665 session-survival rule, so passing a
+    ///   convenient value rather than the true one changes teardown behaviour.
+    public func tearDown(reason: PlaybackReason) {
         // Shared six-step teardown (#755): cancels the reconnect, resets
         // backoff, stops the heartbeat (an immediate cancellation guarantee
         // rather than waiting on the async state-stream round-trip below to
@@ -397,7 +407,7 @@ public final class RadioPlayerController: PlaybackController {
     /// event so one continuous listen can be reconstructed from the event
     /// stream. Cleared in `stop()` — except for the interruption and
     /// route-disconnect reasons, which stop playback only as a prelude to an
-    /// imminent auto-resume and must preserve the id (see `stop(reason:)`).
+    /// imminent auto-resume and must preserve the id (see `tearDown(reason:)`).
     ///
     /// Getter is `package` so `PlaybackInterruptionRouteHandler` can read it
     /// through `PlaybackInterruptionContext` conformance (#804); the setter
@@ -573,7 +583,7 @@ private extension RadioPlayerController {
 
     /// Stops the heartbeat cadence. Idempotent. Called on every transition
     /// away from `.playing` in `setUpPlayerStateObservation()`, and
-    /// explicitly from `stop(reason:)` for an immediate cancellation
+    /// explicitly from `tearDown(reason:)` for an immediate cancellation
     /// guarantee.
     func stopHeartbeat() {
         heartbeat?.stop()
@@ -629,8 +639,8 @@ private extension RadioPlayerController {
     /// would *introduce* here, not one it would inherit.
     ///
     /// #773's visible symptom came from the blocking call in
-    /// `AudioPlayerController.stop(reason:)`, on the pause-button tap path.
-    /// This controller's `stop(reason:)` touches the session not at all, so
+    /// `AudioPlayerController.tearDown(reason:)`, on the pause-button tap path.
+    /// This controller's `tearDown(reason:)` touches the session not at all, so
     /// that half of #773 has no counterpart here.
     ///
     /// Nothing reaches this today, on any platform. `WXYCApp` and `WXYCTVApp`
@@ -654,7 +664,7 @@ private extension RadioPlayerController {
     ///   the session a pending `play()` had just activated whenever the user
     ///   backgrounded right after hitting play. `playbackIntended` covers that
     ///   window. It is broader than the window, not equal to it: it is set in
-    ///   `play(reason:)` and cleared only in `stop(reason:)`, so it also
+    ///   `play(reason:)` and cleared only in `tearDown(reason:)`, so it also
     ///   survives a stall and a backoff exhaustion. Holding the session across
     ///   a dead stream is deliberate and is what
     ///   `handleApplicationWillEnterForeground()` below relies on to recover.
@@ -705,7 +715,7 @@ private extension RadioPlayerController {
     ///   discard backoff progress, and emit a spurious playback-start.
     ///
     /// With no intent on record there is nothing to reconcile. The
-    /// `stopWithAnalytics(reason: .foregroundNotPlaying)` that used to run
+    /// `stop(reason: .foregroundNotPlaying)` that used to run
     /// here fired on every foreground transition of an idle app, stopping an
     /// already-stopped player and emitting a stop event for a listen that had
     /// already ended.
@@ -744,14 +754,14 @@ private extension RadioPlayerController {
     }
 
     func remotePauseOrStopCommand(_: MPRemoteCommandEvent) -> MPRemoteCommandHandlerStatus {
-        stopWithAnalytics(reason: .remotePauseCommand)
+        stop(reason: .remotePauseCommand)
 
         return .success
     }
 
     /// Delegates to `toggle(reason:)` rather than repeating its branch, for the
     /// same reason `remotePauseOrStopCommand` routes through
-    /// `stopWithAnalytics`: this path is gated behind a real
+    /// `stop`: this path is gated behind a real
     /// `MPRemoteCommandEvent` a unit test can't construct, so any logic that
     /// lives here is logic nothing can check. It previously branched on
     /// `radioPlayer.isPlaying`, which meant the lock screen and the on-screen
@@ -773,7 +783,7 @@ private extension RadioPlayerController {
 #if os(iOS) || os(tvOS)
 extension RadioPlayerController: PlaybackInterruptionContext {
     /// `isPlaying`, `sessionID`, `wasPlayingBeforeRouteDisconnect`,
-    /// `stop(reason:)`, and `play(reason:)` are satisfied by the members
+    /// `tearDown(reason:)`, and `play(reason:)` are satisfied by the members
     /// declared above (the first three widened from `private` to `package`
     /// so `PlaybackInterruptionRouteHandler` can read/write them through this
     /// conformance). `playbackDuration` has no controller-owned equivalent —

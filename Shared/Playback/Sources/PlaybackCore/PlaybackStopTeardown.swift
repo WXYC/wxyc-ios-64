@@ -6,7 +6,7 @@
 //  implementation: cancel the in-flight reconnect, reset backoff, stop the
 //  heartbeat, clear playback intent, and apply the sessionID-survival rule.
 //  Extracted from AudioPlayerController and RadioPlayerController, whose
-//  `stop(reason:)` bodies duplicated this sequence — and the comment below —
+//  `tearDown(reason:)` bodies duplicated this sequence — and the comment below —
 //  verbatim (#755).
 //
 //  Created by Jake Bromberg on 08/05/26.
@@ -22,7 +22,7 @@ import Foundation
 /// as `inout` for the value-type fields this mutates directly, and as
 /// closures for the reference-type side effects it can't own itself.
 public enum PlaybackStopTeardown {
-    /// Runs the six-step teardown for a `stop(reason:)` call.
+    /// Runs the six-step teardown for a `tearDown(reason:)` call.
     ///
     /// - Parameters:
     ///   - reason: Why playback was stopped.
