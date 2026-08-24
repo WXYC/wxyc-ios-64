@@ -13,12 +13,15 @@ import Metadata
 import Playlist
 
 struct StreamingButton: View {
+    @Environment(\.openURL) private var openURL
     let service: MusicService
     let url: URL?
     let isLoading: Bool
     var onTap: ((MusicService) -> Void)?
 
+    #if os(iOS)
     @State private var showingSafari = false
+    #endif
 
     /// `url`, gated on actually belonging to `service` — a `spotify_url` field
     /// holding a Deezer (or spoofed) host renders no button rather than a
@@ -42,17 +45,23 @@ struct StreamingButton: View {
             if let url = gatedURL {
                 Button {
                     onTap?(service)
+                    #if os(iOS)
                     if service.opensInBrowser {
                         showingSafari = true
                     } else {
-                        UIApplication.shared.open(url)
+                        openURL(url)
                     }
+                    #else
+                    openURL(url)
+                    #endif
                 } label: {
                     linkLabel(backgroundFill: AnyShapeStyle(service.color))
                 }
+                #if os(iOS)
                 .sheet(isPresented: $showingSafari) {
                     SafariView(url: url)
                 }
+                #endif
             } else {
                 linkLabel(backgroundFill: AnyShapeStyle(service.color.opacity(0.3)))
                     .opacity(isLoading ? 0.5 : 0.3)

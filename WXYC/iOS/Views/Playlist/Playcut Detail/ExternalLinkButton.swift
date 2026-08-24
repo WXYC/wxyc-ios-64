@@ -10,6 +10,7 @@ import SwiftUI
 import Playlist
 
 struct ExternalLinkButton: View {
+    @Environment(\.openURL) private var openURL
     let title: String
     let imageName: String
     let url: URL
@@ -18,7 +19,7 @@ struct ExternalLinkButton: View {
     var body: some View {
         Button {
             onTap?(title)
-            UIApplication.shared.open(url)
+            openURL(url)
         } label: {
             LinkButtonLabel(
                 icon: .custom(name: imageName, bundle: .playlist),
