@@ -24,8 +24,10 @@
 //
 
 import Concerts
-import LinkPresentation
 import SwiftUI
+
+#if os(iOS)
+import LinkPresentation
 import UIKit
 
 /// A `UIViewControllerRepresentable` that shows the system share sheet for a
@@ -113,6 +115,7 @@ final class ConcertActivityItemSource: NSObject, UIActivityItemSource {
         return metadata
     }
 }
+#endif
 
 extension View {
     /// Presents the concert share sheet whenever `concert` becomes non-nil, and
@@ -120,6 +123,11 @@ extension View {
     /// chrome button and the row context menu — drive it through this modifier so
     /// they share one presentation path and one bare-URL payload.
     func concertShareSheet(concert: Binding<Concert?>) -> some View {
+        #if os(iOS)
         sheet(item: concert) { ConcertShareSheet(concert: $0) }
+        #else
+        // PR G presents an NSSharingServicePicker (MacSharingServicePicker) here.
+        self
+        #endif
     }
 }
