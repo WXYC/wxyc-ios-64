@@ -132,14 +132,9 @@ If a runner ever does build something shipping, the phase will fail it — delib
 - Widget refresh budget: 40-70 updates/day, per widget *instance*
 - Background refresh scheduled every 15 minutes
 
-WXYC turns over 10-15 playcuts an hour, so the budget cannot track the flowsheet play-for-play. Widget freshness is built from two layers instead, one of which costs no reloads.
+WXYC turns over 10-15 playcuts an hour, so the budget cannot track the flowsheet play-for-play. The timeline asks for a flat `.after(5 minutes)` reload and is throttled once the day's budget is spent; the freshness that actually reaches the user comes from the budget-exempt path below.
 
 **Budget-exempt reloads.** WidgetKit doesn't charge a reload while the containing app is in the foreground *or* holds an active audio session. `WidgetStateService` takes every reload that qualifies and declines every one that doesn't, so a listener's widget tracks the flowsheet change-for-change for free, while an idle backgrounded app spends nothing. Both conditions are in `reloadsAreExemptFromBudget`; `WidgetReloading` is the seam that makes them testable, since `WidgetCenter` silently no-ops under test.
-
-**Budgeted timeline reloads.** `WidgetRefreshSchedule` decays the `.after` interval with time since the user last engaged — 10 min inside a 20-minute hot window, then 15, 40, and 60 min once engagement is stale (also the never-engaged default). Active playback takes a 30-minute backstop rather than the hot tier, since the exempt path is already covering that case. Engagement is stamped to the app group by `WidgetEngagementStore` on foregrounding and on the leading edge of playback only.
-
-Per-day cost is derived, not recorded here — `reloadsRequested(overADayWith:)` in `WidgetRefreshScheduleTests` walks a simulated day for a given set of engagement hours and returns the count, and the suite asserts the bounds that matter (an untouched day exactly, a typical day under a deliberately tight ceiling, a heavy day over it). Run that helper for the current numbers rather than trusting a figure written down elsewhere. A heavy-engagement day is *expected* to overrun the WidgetKit ceiling: that is inherent to decaying from engagement, and it is the right trade, because such a user is foregrounding often enough that the exempt path is already covering them. The flat `.after(5 minutes)` policy this replaced asked for one reload every five minutes regardless and was simply throttled.
-
 
 ## App Store Previews
 

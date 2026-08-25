@@ -143,23 +143,10 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             entries = [.emptyState(family: family)]
         }
 
-        // Budget-aware rather than a fixed interval — `WidgetRefreshSchedule`
-        // explains the tiers and why a flat one gets throttled.
-        let engagement = WidgetEngagementStore()
-        let refreshInterval = WidgetRefreshSchedule.refreshInterval(
-            now: now,
-            lastEngagement: engagement.lastEngagement,
-            isPlaying: engagement.isPlaying
-        )
-
-        // Captured here rather than on entry, so the event reports the
-        // decision instead of just the request — summing the interval across a
-        // day's events is how the tier table gets checked against real usage.
         StructuredPostHogAnalytics.shared.capture(WidgetGetTimeline(
-            family: String(describing: family),
-            refreshIntervalMinutes: Int(refreshInterval / 60)
+            family: String(describing: family)
         ))
 
-        return Timeline(entries: entries, policy: .after(now.addingTimeInterval(refreshInterval)))
+        return Timeline(entries: entries, policy: .after(now.addingTimeInterval(5 * 60)))
     }
 }

@@ -40,7 +40,6 @@ public final class WidgetStateService {
     private let playlistService: PlaylistService
     private let relevanceUpdater: any WidgetRelevanceUpdating
     private let reloader: any WidgetReloading
-    private let engagementStore: WidgetEngagementStore
     private var isForegrounded = false
     private var playbackObservationTask: Task<Void, Never>?
     private var playlistObservationTask: Task<Void, Never>?
@@ -50,14 +49,12 @@ public final class WidgetStateService {
         playbackController: any PlaybackController,
         playlistService: PlaylistService,
         relevanceUpdater: any WidgetRelevanceUpdating = SystemWidgetRelevanceUpdater(),
-        reloader: any WidgetReloading = SystemWidgetReloader(),
-        engagementStore: WidgetEngagementStore = WidgetEngagementStore()
+        reloader: any WidgetReloading = SystemWidgetReloader()
     ) {
         self.playbackController = playbackController
         self.playlistService = playlistService
         self.relevanceUpdater = relevanceUpdater
         self.reloader = reloader
-        self.engagementStore = engagementStore
 
         // Listen for app termination to clear playback state
         #if canImport(UIKit) && !os(watchOS)
@@ -107,7 +104,6 @@ public final class WidgetStateService {
 
         // When returning to foreground, sync state and reload widgets
         if foregrounded && !wasForegrounded {
-            engagementStore.recordEngagement()
             syncPlaybackState()
             reloadWidgets()
         }
@@ -130,7 +126,7 @@ public final class WidgetStateService {
     /// app is in the foreground *or* holds an active audio session. Both
     /// describe a user who is present, which is exactly when the widget is
     /// worth updating — so the app takes every free reload and declines every
-    /// budgeted one, leaving the budget to ``WidgetRefreshSchedule``.
+    /// budgeted one.
     ///
     /// The audio-session half matters most: a listener has the app alive in
     /// the background receiving live flowsheet updates, and before this the
@@ -172,13 +168,6 @@ public final class WidgetStateService {
 
                 // Update UserDefaults
                 UserDefaults.wxyc.set(isActive, forKey: UserDefaults.isPlayingKey)
-
-                // Starting playback is an act of interest; the stream ending
-                // is not, so only the leading edge restarts the widget's
-                // refresh decay.
-                if isActive {
-                    self.engagementStore.recordEngagement()
-                }
 
                 // Update Smart Stack relevance hints
                 await self.updateWidgetRelevance(isActive: isActive)

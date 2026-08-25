@@ -171,21 +171,11 @@ public struct WidgetGetSnapshot {
 }
 
 /// Event fired when the widget requests a timeline.
-///
-/// Carries the refresh decision, not just the request: the interval the
-/// provider picked is what determines how much of the widget's reload budget
-/// the request costs. Summing `refresh_interval_minutes` across a day is how
-/// `AppServices.WidgetRefreshSchedule`'s tier table gets validated against
-/// real usage rather than the simulated days in its tests.
 @AnalyticsEvent
 public struct WidgetGetTimeline {
     public let family: String
 
-    /// The `.after` interval the provider scheduled, in whole minutes.
-    public let refreshIntervalMinutes: Int
-
-    public init(family: String, refreshIntervalMinutes: Int) {
+    public init(family: String) {
         self.family = family
-        self.refreshIntervalMinutes = refreshIntervalMinutes
     }
 }
