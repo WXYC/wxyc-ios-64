@@ -64,10 +64,27 @@ struct WXYCApp: App {
         // Enable battery monitoring for thermal context
         DeviceContext.enableBatteryMonitoring()
 
+        // Analytics FIRST, and specifically before MusicShareKit.configure(...)
+        // below — the order is load-bearing, not stylistic (#1002).
+        // PostHogSDK.capture gates on a private isEnabled() that only becomes
+        // true inside AnalyticsBootstrap.start -> PostHogSDK.shared.setup, and
+        // it DISCARDS calls made before that rather than queueing them. Since
+        // configure(...) eagerly resolves the device fingerprint and captures
+        // fingerprint_mode_resolved_event, the old order dropped that event on
+        // every launch — and a zero reading for it is what wrongly cleared
+        // "fingerprint init is failing" from #996. Pinned by
+        // LaunchSequenceOrderingTests.
+        AppBootstrap.setUpAnalytics()
+
         // Configure MusicShareKit for RequestService. The keychainAccessGroup
         // must match what the Share Extension passes so a session cached by
         // one target is readable by the other (issue #336). Dropping it
         // silently regresses to per-process keychain storage.
+        //
+        // Stays eager, and stays below setUpAnalytics(): eagerness is what
+        // closes the cross-process first-launch race on the fingerprint
+        // (Race A in #351), so the fix for #1002 was to raise analytics, never
+        // to defer this.
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,
@@ -76,8 +93,7 @@ struct WXYCApp: App {
             analyticsService: StructuredPostHogAnalytics.shared
         ))
 
-        // Analytics, Sentry, and error reporting setup
-        AppBootstrap.setUpAnalytics()
+        // Sentry and error reporting setup
         AppBootstrap.setUpSentry()
         AppBootstrap.setUpErrorReporting()
         StructuredPostHogAnalytics.shared.capture(AppLaunch(
