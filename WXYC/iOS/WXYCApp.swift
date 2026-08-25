@@ -64,8 +64,15 @@ struct WXYCApp: App {
         // Enable battery monitoring for thermal context
         DeviceContext.enableBatteryMonitoring()
 
-        // Analytics FIRST, and specifically before MusicShareKit.configure(...)
-        // below — the order is load-bearing, not stylistic (#1002).
+        // Analytics before anything below it that captures — the order is
+        // load-bearing, not stylistic (#1002).
+        //
+        // "First in this body" is NOT "first in the launch". Swift evaluates
+        // stored-property defaults before an initializer's first statement, so
+        // `appState = Singletonia.shared` above has already run by the time we
+        // get here, and every feature-flag read on that path resolves to nil
+        // against an un-setup SDK. Nothing that can be done inside this body
+        // fixes that; see #1004.
         // PostHogSDK.capture gates on a private isEnabled() that only becomes
         // true inside AnalyticsBootstrap.start -> PostHogSDK.shared.setup, and
         // it DISCARDS calls made before that rather than queueing them. Since
