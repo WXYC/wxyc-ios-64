@@ -21,36 +21,14 @@ struct NowPlayingTimelineEntry: TimelineEntry {
     let recentItems: [NowPlayingItem]
     let family: WidgetFamily
 
-    /// When the displayed playcut aired, or `nil` for the placeholder and
-    /// empty states, which have no broadcast to age from.
-    ///
-    /// Drives the "played N minutes ago" label, which SwiftUI keeps counting
-    /// up on its own — the widget's only continuously-honest surface between
-    /// timeline entries, and the one that costs no reload.
-    let playedAt: Date?
-
-    /// Whether this entry should present its data as possibly out of date.
-    ///
-    /// Set on the trailing, future-dated entry `Provider` appends. See
-    /// ``WidgetStaleness``.
-    let isStale: Bool
-
-    /// - Parameters:
-    ///   - date: When this entry should be rendered. Defaults to now, which is
-    ///     what every entry but the trailing stale one wants.
-    ///   - isStale: Whether to render as possibly out of date.
     init(
         nowPlayingItem: NowPlayingItem,
         recentItems: [NowPlayingItem],
-        family: WidgetFamily,
-        date: Date = .now,
-        isStale: Bool = false
+        family: WidgetFamily
     ) {
-        self.date = date
+        self.date = .now
         self.artist = nowPlayingItem.playcut.artistName
         self.songTitle = nowPlayingItem.playcut.songTitle
-        self.playedAt = nowPlayingItem.playcut.broadcastDate
-        self.isStale = isStale
 
         if let artwork = nowPlayingItem.artwork {
             self.artwork = Image(uiImage: artwork)
@@ -83,10 +61,6 @@ struct NowPlayingTimelineEntry: TimelineEntry {
     }
     
     /// Private initializer for creating entries with raw values (used for empty state)
-    ///
-    /// These entries carry no playcut, so `playedAt` is `nil` and they are
-    /// never stale: dimming "no data yet" would present it as stale data,
-    /// which is a different and wronger message.
     private init(artist: String, songTitle: String, artwork: SwiftUI.Image?, recentItems: [NowPlayingItem], family: WidgetFamily) {
         self.date = .now
         self.artist = artist
@@ -94,8 +68,6 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.artwork = artwork
         self.recentItems = recentItems
         self.family = family
-        self.playedAt = nil
-        self.isStale = false
     }
 }
 

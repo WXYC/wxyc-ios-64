@@ -132,7 +132,7 @@ If a runner ever does build something shipping, the phase will fail it — delib
 - Widget refresh budget: 40-70 updates/day, per widget *instance*
 - Background refresh scheduled every 15 minutes
 
-WXYC turns over 10-15 playcuts an hour, so the budget cannot track the flowsheet play-for-play. Widget freshness is built from three layers instead, two of which cost no reloads.
+WXYC turns over 10-15 playcuts an hour, so the budget cannot track the flowsheet play-for-play. Widget freshness is built from two layers instead, one of which costs no reloads.
 
 **Budget-exempt reloads.** WidgetKit doesn't charge a reload while the containing app is in the foreground *or* holds an active audio session. `WidgetStateService` takes every reload that qualifies and declines every one that doesn't, so a listener's widget tracks the flowsheet change-for-change for free, while an idle backgrounded app spends nothing. Both conditions are in `reloadsAreExemptFromBudget`; `WidgetReloading` is the seam that makes them testable, since `WidgetCenter` silently no-ops under test.
 
@@ -140,7 +140,6 @@ WXYC turns over 10-15 playcuts an hour, so the budget cannot track the flowsheet
 
 Per-day cost is derived, not recorded here — `reloadsRequested(overADayWith:)` in `WidgetRefreshScheduleTests` walks a simulated day for a given set of engagement hours and returns the count, and the suite asserts the bounds that matter (an untouched day exactly, a typical day under a deliberately tight ceiling, a heavy day over it). Run that helper for the current numbers rather than trusting a figure written down elsewhere. A heavy-engagement day is *expected* to overrun the WidgetKit ceiling: that is inherent to decaying from engagement, and it is the right trade, because such a user is foregrounding often enough that the exempt path is already covering them. The flat `.after(5 minutes)` policy this replaced asked for one reload every five minutes regardless and was simply throttled.
 
-**Staleness, rendered rather than refreshed.** `WidgetStaleness.renderSchedule(playedAt:from:)` returns the entries a timeline should carry: one dated now, and — while that expiry is still ahead — a second dated at it and flagged stale. WidgetKit renders the second from the timeline it already holds, so the widget steps back from its claim with no reload at all. Age is measured from the playcut's broadcast time, not from when the timeline was built. The label pairs it with `Text("\(playedAt, style: .relative) ago")`, which keeps counting up between entries; the literal " ago" is load-bearing, because `.relative` renders the magnitude with no direction and "12 min" beside a track title reads as the song's length. Shown in the medium and large families; the small family has no room. Empty and placeholder states are never marked stale — they have no data to be stale.
 
 ## App Store Previews
 

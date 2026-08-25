@@ -38,8 +38,7 @@ public enum WidgetRefreshSchedule {
     // Internal, not public: nothing outside this module reads the tiers. The
     // widget extension calls `refreshInterval` and takes what it is given, and
     // the tests assert against literals — `interval == hotInterval` would be
-    // tautological. `WidgetStalenessTests` is the one reader, checking the
-    // threshold sits between the cool and cold tiers.
+    // tautological.
 
     static let hotInterval: TimeInterval = 10 * 60
     static let warmInterval: TimeInterval = 15 * 60

@@ -184,13 +184,8 @@ public struct WidgetGetTimeline {
     /// The `.after` interval the provider scheduled, in whole minutes.
     public let refreshIntervalMinutes: Int
 
-    /// Whether the entry rendered now was already past the staleness
-    /// threshold — i.e. the refresh arrived too late to be current.
-    public let isStale: Bool
-
-    public init(family: String, refreshIntervalMinutes: Int, isStale: Bool) {
+    public init(family: String, refreshIntervalMinutes: Int) {
         self.family = family
         self.refreshIntervalMinutes = refreshIntervalMinutes
-        self.isStale = isStale
     }
 }

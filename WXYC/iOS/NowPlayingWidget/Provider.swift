@@ -132,17 +132,13 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.safePopFirst() {
             let recents = Array(recentItems)
 
-            entries = WidgetStaleness
-                .renderSchedule(playedAt: nowPlayingItem.playcut.broadcastDate, from: now)
-                .map { step in
-                    NowPlayingTimelineEntry(
-                        nowPlayingItem: nowPlayingItem,
-                        recentItems: recents,
-                        family: family,
-                        date: step.date,
-                        isStale: step.isStale
-                    )
-                }
+            entries = [
+                NowPlayingTimelineEntry(
+                    nowPlayingItem: nowPlayingItem,
+                    recentItems: recents,
+                    family: family
+                )
+            ]
         } else {
             entries = [.emptyState(family: family)]
         }
@@ -161,8 +157,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         // day's events is how the tier table gets checked against real usage.
         StructuredPostHogAnalytics.shared.capture(WidgetGetTimeline(
             family: String(describing: family),
-            refreshIntervalMinutes: Int(refreshInterval / 60),
-            isStale: entries.first?.isStale ?? false
+            refreshIntervalMinutes: Int(refreshInterval / 60)
         ))
 
         return Timeline(entries: entries, policy: .after(now.addingTimeInterval(refreshInterval)))

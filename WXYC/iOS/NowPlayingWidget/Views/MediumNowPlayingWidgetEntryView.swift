@@ -34,8 +34,6 @@ struct MediumNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                         spacing: nil
                     ) { EmptyView() }
 
-                    freshnessLabel
-
                     PlayButton()
                 }
             }
