@@ -92,50 +92,6 @@ struct WidgetStateServiceReloadTests {
         await harness.reloader.waitForCallCount(before + 1)
         #expect(harness.reloader.callCount > before)
     }
-
-    // MARK: - Engagement recording
-
-    @Test("Foregrounding records an engagement timestamp")
-    func foregroundingRecordsEngagement() async throws {
-        let harness = Harness()
-        #expect(harness.engagement.lastEngagement == nil)
-
-        harness.service.setForegrounded(true)
-
-        #expect(harness.engagement.lastEngagement != nil)
-    }
-
-    @Test("Starting playback records an engagement timestamp")
-    func playbackStartRecordsEngagement() async throws {
-        let harness = Harness()
-        harness.service.start()
-        await harness.settle()
-        #expect(harness.engagement.lastEngagement == nil)
-
-        harness.playback.state = .playing
-
-        await harness.waitForEngagement()
-        #expect(harness.engagement.lastEngagement != nil)
-    }
-
-    @Test("Stopping playback does not stamp a fresh engagement")
-    func playbackStopDoesNotRecordEngagement() async throws {
-        // Engagement means the user did something. A stream ending — or the
-        // app being torn down — is not an act of interest, and stamping it
-        // would hold the widget in the hot tier for 30 minutes after the user
-        // walked away.
-        let harness = Harness()
-        harness.playback.state = .playing
-        harness.service.start()
-
-        await harness.waitForEngagement()
-        let stamped = try #require(harness.engagement.lastEngagement)
-
-        harness.playback.state = .idle
-        await harness.settle()
-
-        #expect(harness.engagement.lastEngagement == stamped)
-    }
 }
 
 // MARK: - Harness
@@ -146,17 +102,11 @@ struct WidgetStateServiceReloadTests {
 private final class Harness {
     let reloader = MockWidgetReloader()
     let playback = MockPlaybackController()
-    let engagement: WidgetEngagementStore
     let fetcher = MockPlaylistFetcher()
     let playlistService: PlaylistService
     let service: WidgetStateService
 
     init() {
-        // A per-harness `InMemoryDefaults`, never `UserDefaults.wxyc`: that
-        // suite is a process-global app group shared with every other test
-        // target, and an engagement stamp leaking out of here would quietly
-        // change another suite's tier.
-        engagement = WidgetEngagementStore(storage: InMemoryDefaults())
         playlistService = PlaylistService(
             fetcher: fetcher,
             interval: 60,
@@ -166,8 +116,7 @@ private final class Harness {
             playbackController: playback,
             playlistService: playlistService,
             relevanceUpdater: MockWidgetRelevanceUpdater(),
-            reloader: reloader,
-            engagementStore: engagement
+            reloader: reloader
         )
     }
 
@@ -182,17 +131,6 @@ private final class Harness {
         let id = UInt64(abs(songTitle.hashValue % 100_000) + 1)
         fetcher.playlistToReturn = .stub(playcuts: [.stub(id: id, songTitle: songTitle)])
         _ = await playlistService.fetchAndCachePlaylist()
-    }
-
-    /// Yields until an engagement has been stamped.
-    ///
-    /// Engagement and reloads are written by the same observation, but not
-    /// atomically — waiting on the reload counter to stand in for the stamp
-    /// races the two.
-    func waitForEngagement() async {
-        while engagement.lastEngagement == nil {
-            await Task.yield()
-        }
     }
 
     /// Yields enough times for any already-scheduled observation delivery to run.
