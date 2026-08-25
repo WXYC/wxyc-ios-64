@@ -23,8 +23,12 @@ import Synchronization
 /// suite in a parallel test run happened to read it first.
 ///
 /// State lives in a `Mutex` rather than an `NSLock`, per `docs/swift-style.md`,
-/// and rather than an `Atomic` because `count` and `record()` must agree on a
-/// single value even though nothing here is `await`-ed.
+/// matching the `Mutex`-in-a-`final class Sendable` shape of `RunOnceGate` next
+/// door. An `Atomic<Int>` would be the more precise primitive by that same
+/// ladder — a monotonic counter maintains no invariant across its two members —
+/// but at this frequency (`record()` only on the pre-`configure(_:)` branch,
+/// `count` read once per launch) an uncontended `Mutex` costs nothing worth
+/// the divergence from the neighbouring file.
 final class PrematureAccessCounter: Sendable {
     private let value = Mutex(0)
 

@@ -89,27 +89,37 @@ public struct DeviceFingerprintResolution: Sendable {
 /// reinstalling the app on the same Apple ID.
 public protocol DeviceFingerprintStorage: Sendable {
 
-    /// Returns the device fingerprint, generating and persisting one if needed.
+    /// Returns the device fingerprint and how it was resolved, generating and
+    /// persisting one if needed.
     ///
     /// First call generates a UUIDv4 and writes it to the Keychain. Subsequent
     /// calls (within the same process or across processes / launches) return
     /// the persisted value.
     ///
+    /// The sole requirement, deliberately with no default implementation. A
+    /// default would let a future conformer inherit a mode it never actually
+    /// observed, and the entire point of #998 is that this subsystem must not
+    /// be able to report something indistinguishable from silence.
+    ///
     /// - Throws: `AuthenticationError.keychainError` when both the read and the
     ///   subsequent add fail with an unrecoverable status. Calls do not throw
     ///   on a benign duplicate-item race (handled internally).
-    func ensure() throws -> String
-
-    /// Same work as ``ensure()``, additionally reporting how the value was
-    /// resolved.
-    ///
-    /// Deliberately a requirement with no default implementation. A default
-    /// would let a future conformer inherit a mode it never actually observed,
-    /// and the entire point of #998 is that this subsystem must not be able to
-    /// report something indistinguishable from silence.
-    ///
-    /// - Throws: the same errors as ``ensure()``, under the same conditions.
     func resolve() throws -> DeviceFingerprintResolution
+}
+
+extension DeviceFingerprintStorage {
+
+    /// The resolved fingerprint, discarding how it was resolved.
+    ///
+    /// Derived rather than a requirement: ``resolve()`` strictly subsumes it,
+    /// so a conformer that implemented both could make the two disagree with
+    /// nothing to catch it. The mode is the part a conformer can legitimately
+    /// vary, and it stays dynamically dispatched.
+    ///
+    /// - Throws: the same errors as ``resolve()``, under the same conditions.
+    public func ensure() throws -> String {
+        try resolve().value
+    }
 }
 
 // MARK: - Keychain Operations Seam
@@ -176,10 +186,6 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
         self.account = account
     }
 
-    public func ensure() throws -> String {
-        try resolve().value
-    }
-
     public func resolve() throws -> DeviceFingerprintResolution {
         // Cap retries so an undocumented Keychain quirk that returns
         // errSecDuplicateItem on add AND errSecItemNotFound on the next read
@@ -244,12 +250,19 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
         /// The status `resolve()` branches on. Unchanged semantics.
         let status: OSStatus
 
+        /// The synchronizable add's failing status, or `nil` if it succeeded
+        /// and we never fell back. This is the one bit that distinguishes the
+        /// two branches, so `mode` and `explanation` derive from it rather
+        /// than being assigned alongside it — `(.local, errSecSuccess)` and
+        /// `(.synchronizable, -34018)` are not representable.
+        let syncFailure: OSStatus?
+
         /// The branch that produced ``status``.
-        let mode: DeviceFingerprintMode
+        var mode: DeviceFingerprintMode { syncFailure == nil ? .synchronizable : .local }
 
         /// Why we are on that branch: the synchronizable add's failing status
         /// when we fell back to local-only, `errSecSuccess` otherwise.
-        let explanation: OSStatus
+        var explanation: OSStatus { syncFailure ?? errSecSuccess }
     }
 
     /// Attempts a synchronizable add first, falling back to local-only storage
@@ -262,16 +275,16 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
         let syncAttrs = addAttributesDictionary(value: value, synchronizable: true)
         let syncStatus = operations.add(syncAttrs as CFDictionary)
         if syncStatus == errSecSuccess || syncStatus == errSecDuplicateItem {
-            return AddOutcome(status: syncStatus, mode: .synchronizable, explanation: errSecSuccess)
+            return AddOutcome(status: syncStatus, syncFailure: nil)
         }
         let localAttrs = addAttributesDictionary(value: value, synchronizable: false)
         let localStatus = operations.add(localAttrs as CFDictionary)
-        // `syncStatus`, not `localStatus`: the local add's own status is what
-        // `resolve()` branches on, but the reason this device is on the
-        // fallback at all is the status the synchronizable add failed with.
-        // That is the value #996 needs — if -34018 reaches this path, this is
-        // where it becomes visible.
-        return AddOutcome(status: localStatus, mode: .local, explanation: syncStatus)
+        // `syncFailure` is `syncStatus`, not `localStatus`: the local add's own
+        // status is what `resolve()` branches on, but the reason this device is
+        // on the fallback at all is the status the synchronizable add failed
+        // with. That is the value #996 needs — if -34018 reaches this path,
+        // this is where it becomes visible.
+        return AddOutcome(status: localStatus, syncFailure: syncStatus)
     }
 
     // MARK: - Query Builders
@@ -326,7 +339,8 @@ public final class InMemoryDeviceFingerprintStorage: DeviceFingerprintStorage,
     /// is generated on the first call and reused on subsequent calls.
     public var stubFingerprint: String?
 
-    /// Number of times `ensure()` was called.
+    /// Number of times the value was resolved, through either `ensure()` or
+    /// ``resolve()``.
     public private(set) var ensureCallCount: Int = 0
 
     /// If set, `ensure()` throws this error.
@@ -343,7 +357,10 @@ public final class InMemoryDeviceFingerprintStorage: DeviceFingerprintStorage,
 
     public init() {}
 
-    public func ensure() throws -> String {
+    /// The protocol's sole requirement, so this is where the stub logic lives.
+    /// `ensure()` reaches it through the protocol extension, which is what
+    /// keeps `ensureCallCount` accurate from either entry point.
+    public func resolve() throws -> DeviceFingerprintResolution {
         lock.lock()
         defer { lock.unlock() }
 
@@ -353,26 +370,17 @@ public final class InMemoryDeviceFingerprintStorage: DeviceFingerprintStorage,
             throw stubError
         }
 
+        let value: String
         if let stubFingerprint {
-            return stubFingerprint
+            value = stubFingerprint
+        } else if let generated {
+            value = generated
+        } else {
+            let fresh = UUID().uuidString
+            generated = fresh
+            value = fresh
         }
 
-        if let generated {
-            return generated
-        }
-
-        let fresh = UUID().uuidString
-        generated = fresh
-        return fresh
-    }
-
-    public func resolve() throws -> DeviceFingerprintResolution {
-        // Routed through `ensure()` rather than duplicating its body so
-        // `ensureCallCount` and the stubs keep working for suites that moved
-        // to `resolve()` and suites that did not, alike.
-        let value = try ensure()
-        lock.lock()
-        defer { lock.unlock() }
         return DeviceFingerprintResolution(value: value, mode: stubMode)
     }
 

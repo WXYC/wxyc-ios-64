@@ -236,29 +236,15 @@ struct RequestLineAnalyticsEventsTests {
         #expect(props["mode"] as? String == fixture.1)
         #expect(props["os_status"] as? Int32 == -34018)
         #expect(props["premature_access_count"] as? Int == 7)
-        #expect(props.count == 3)
         #expect(FingerprintModeResolvedEvent.name == "fingerprint_mode_resolved_event")
-    }
 
-    /// The event must never carry anything that identifies the device. The
-    /// fingerprint is a stable per-device UUID and therefore a deanonymization
-    /// vector; modes and status codes are the entire permitted payload.
-    @Test(
-        "FingerprintModeResolvedEvent's payload carries no UUID-shaped value",
-        arguments: deviceFingerprintModeCases
-    )
-    func fingerprintModeResolvedEventOmitsTheFingerprint(
-        _ fixture: (DeviceFingerprintMode, String)
-    ) throws {
-        let event = FingerprintModeResolvedEvent(
-            mode: fixture.0,
-            osStatus: errSecSuccess,
-            prematureAccessCount: 0
-        )
-        let props = try #require(event.properties)
-
-        let strings = props.values.compactMap { $0 as? String }
-        #expect(strings.allSatisfy { UUID(uuidString: $0) == nil })
+        // The exhaustive count is the privacy guard, and the reason it is an
+        // exact `==` rather than a lower bound: the event must never carry
+        // anything that identifies the device, and the fingerprint is a stable
+        // per-device UUID and therefore a deanonymization vector. Modes and
+        // status codes are the entire permitted payload, so a fourth property
+        // appearing here fails this test until someone justifies it.
+        #expect(props.count == 3)
     }
 
     // MARK: - RequestLineFeatureFlagEvaluatedEvent
