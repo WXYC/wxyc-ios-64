@@ -256,37 +256,44 @@ public enum MusicShareKit {
         // add-or-reread inside ensure().
         //
         // This is also the once-per-launch emission site for
-        // `FingerprintModeResolvedEvent` (#998). It fires on both branches
-        // below — a resolved-mode metric that only spoke up on failure would
-        // be indistinguishable from one that had stopped reporting, which is
-        // the ambiguity that hid #996.
+        // `FingerprintModeResolvedEvent` (#998). The do/catch below decides
+        // only WHAT to report; the single capture after it is what makes
+        // "exactly one event per configure, on every path" true by
+        // construction rather than by convention. A resolved-mode metric that
+        // only spoke up on failure would be indistinguishable from one that
+        // had stopped reporting, which is the ambiguity that hid #996.
         fingerprintLock.lock()
         _fingerprintRetryAttempted = false  // fresh configure resets the retry budget
         let prematureAccessCount = prematureFingerprintAccesses.count
+        let mode: DeviceFingerprintMode
+        let osStatus: OSStatus
+        var initFailure: String?
         do {
             let resolution = try configuration.deviceFingerprintStorage.resolve()
             _deviceFingerprint = resolution.value
-            configuration.analyticsService.capture(
-                FingerprintModeResolvedEvent(
-                    mode: resolution.mode,
-                    osStatus: resolution.osStatus,
-                    prematureAccessCount: prematureAccessCount
-                )
-            )
+            (mode, osStatus) = (resolution.mode, resolution.osStatus)
         } catch {
             _deviceFingerprint = nil
-            configuration.analyticsService.capture(
-                DeviceFingerprintInitFailedEvent(error: error.localizedDescription)
-            )
-            configuration.analyticsService.capture(
-                FingerprintModeResolvedEvent(
-                    mode: .failed,
-                    osStatus: keychainStatus(of: error),
-                    prematureAccessCount: prematureAccessCount
-                )
-            )
+            initFailure = error.localizedDescription
+            (mode, osStatus) = (.failed, keychainStatus(of: error))
         }
         fingerprintLock.unlock()
+
+        // Captured outside the lock: `PostHogSDK.capture` is synchronous down
+        // to a disk write, and every `deviceFingerprint` reader contends on
+        // `fingerprintLock`. Nothing below touches the guarded globals.
+        if let initFailure {
+            configuration.analyticsService.capture(
+                DeviceFingerprintInitFailedEvent(error: initFailure)
+            )
+        }
+        configuration.analyticsService.capture(
+            FingerprintModeResolvedEvent(
+                mode: mode,
+                osStatus: osStatus,
+                prematureAccessCount: prematureAccessCount
+            )
+        )
 
         // Initialize auth service if auth is configured
         if let authBaseURL = configuration.authBaseURL {

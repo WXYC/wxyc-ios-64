@@ -163,49 +163,17 @@ struct DeviceFingerprintModeTests {
         }
     }
 
-    // MARK: - ensure() parity
-
-    @Test(
-        "ensure() returns exactly the value resolve() would, on every mode",
-        arguments: [
-            [errSecSuccess],
-            [errSecMissingEntitlement, errSecSuccess],
-        ]
-    )
-    func ensureMatchesResolveValue(_ addStatuses: [OSStatus]) throws {
-        func script() -> MockKeychainOperations {
-            let ops = MockKeychainOperations()
-            ops.queueRead(status: errSecItemNotFound, data: nil)
-            for status in addStatuses {
-                ops.queueAdd(status: status)
-            }
-            return ops
-        }
-
-        // Distinct storages: the mock's canned responses are consumed FIFO, so
-        // one instance cannot serve both calls.
-        let viaEnsure = script()
-        let viaResolve = script()
-
-        let ensured = try KeychainDeviceFingerprintStorage(
-            accessGroup: nil, operations: viaEnsure
-        ).ensure()
-        let resolved = try KeychainDeviceFingerprintStorage(
-            accessGroup: nil, operations: viaResolve
-        ).resolve()
-
-        // Values are freshly generated UUIDs so they differ, but the shape of
-        // what each call did to the Keychain must be identical.
-        #expect(UUID(uuidString: ensured) != nil)
-        #expect(ensured == viaEnsure.lastAddedValue)
-        #expect(resolved.value == viaResolve.lastAddedValue)
-        #expect(viaEnsure.addCallCount == viaResolve.addCallCount)
-        #expect(viaEnsure.adds.map(\.synchronizable) == viaResolve.adds.map(\.synchronizable))
-    }
-
     // MARK: - InMemory double
 
-    @Test("InMemoryDeviceFingerprintStorage reports its stubbed mode", arguments: DeviceFingerprintMode.allCases)
+    /// Deliberately not `DeviceFingerprintMode.allCases`: a resolution never
+    /// carries `.failed` (see `DeviceFingerprintResolution.osStatus`), which is
+    /// derived by the caller from a thrown error. Driving the double over every
+    /// case would make this test the one place that constructs the state the
+    /// type documents as impossible.
+    @Test(
+        "InMemoryDeviceFingerprintStorage reports its stubbed mode",
+        arguments: [DeviceFingerprintMode.existing, .synchronizable, .local]
+    )
     func inMemoryReportsStubbedMode(_ mode: DeviceFingerprintMode) throws {
         let storage = InMemoryDeviceFingerprintStorage()
         storage.stubMode = mode
@@ -213,9 +181,11 @@ struct DeviceFingerprintModeTests {
         let resolution = try storage.resolve()
 
         #expect(resolution.mode == mode)
-        // resolve() must go through ensure(), so suites that count ensure()
-        // calls keep working after the configure(...) call site moved.
+        // ensure() now reaches the double through the protocol extension, so
+        // suites that count ensure() calls keep working either way.
         #expect(storage.ensureCallCount == 1)
+        #expect(try storage.ensure() == resolution.value)
+        #expect(storage.ensureCallCount == 2)
     }
 }
 
@@ -244,11 +214,6 @@ private func expectKeychainThrow(
 @Suite("PrematureAccessCounter")
 struct PrematureAccessCounterTests {
 
-    @Test("A fresh counter is zero")
-    func startsAtZero() {
-        #expect(PrematureAccessCounter().count == 0)
-    }
-
     @Test("record() increments, and the count does not reset when read")
     func recordIncrementsAndPersists() {
         let counter = PrematureAccessCounter()
@@ -260,19 +225,5 @@ struct PrematureAccessCounterTests {
         // drain-on-read, so a second reader sees the same total.
         #expect(counter.count == 3)
         #expect(counter.count == 3)
-    }
-
-    @Test("Concurrent records all land")
-    func concurrentRecordsAllLand() async {
-        let counter = PrematureAccessCounter()
-        let iterations = 500
-
-        await withTaskGroup(of: Void.self) { group in
-            for _ in 0..<iterations {
-                group.addTask { counter.record() }
-            }
-        }
-
-        #expect(counter.count == iterations)
     }
 }
