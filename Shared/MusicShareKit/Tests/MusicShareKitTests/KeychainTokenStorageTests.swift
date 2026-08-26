@@ -239,10 +239,12 @@ struct KeychainTokenStorageTests {
 
     @Test("baseQuery includes kSecAttrAccessGroup when accessGroup is set")
     func baseQueryIncludesAccessGroupWhenSet() {
-        // Must match AppConfiguration.keychainAccessGroup; the pin lives in
-        // AppConfigurationTests.keychainAccessGroupMatchesEntitlement. We
-        // don't import AppServices here to avoid a cross-package test dep.
-        let group = "92V374HC38.group.wxyc.iphone"
+        // An arbitrary well-formed group, NOT the production one. This test
+        // is about query construction, so the value only has to round-trip.
+        // Pinning the real group here would be actively harmful: it varies by
+        // target (see KeychainAccessGroup), and a literal that looks
+        // authoritative is what #996 was built out of.
+        let group = "ABCDE12345.group.example.test"
         let storage = KeychainTokenStorage(
             service: testService,
             account: testAccount,
