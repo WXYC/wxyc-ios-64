@@ -70,14 +70,16 @@ public actor AppConfiguration {
     /// diverge. See ``KeychainAccessGroup`` for the full account of #996 and
     /// why a constant here could not be made correct.
     ///
-    /// - Important: This is **not** a shared group. `$(AppIdentifierPrefix)`
-    ///   expands to `Q43UJWVEZV` in the app and `92V374HC38` in every
-    ///   extension, so the app and the Share Extension resolve to different
-    ///   groups and cannot read each other's items. That is a property of the
-    ///   App IDs, not of this code — a common group is unreachable without a
-    ///   new main-app App ID. Do not document sharing here again without
-    ///   checking that the prefixes have actually been aligned.
-    public static let keychainAccessGroup: String? = KeychainAccessGroup.resolve()
+    /// - Important: This is scoped **per target**, not shared.
+    ///   `$(AppIdentifierPrefix)` expands to `Q43UJWVEZV` in the app and
+    ///   `92V374HC38` in every extension, so the two resolve to different
+    ///   groups and cannot read each other's items as configured today.
+    ///   A shared group *is* reachable — on iOS the unprefixed app group
+    ///   `group.wxyc.iphone` is itself a valid keychain access group — but
+    ///   adopting it needs the Share Extension's entitlement wired first and
+    ///   has a macOS exception. Tracked in #1008; don't assume sharing works
+    ///   until it closes.
+    public static let keychainAccessGroup: String? = KeychainAccessGroup.current
 
     /// Hardcoded defaults for when the network is unavailable.
     ///

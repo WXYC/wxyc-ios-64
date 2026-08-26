@@ -135,5 +135,7 @@
 	<false/>
 	<key>WXYC_BUILD_TYPE</key>
 	<string>$(CONFIGURATION)</string>
+	<key>WXYCKeychainAccessGroup</key>
+	<string>$(AppIdentifierPrefix)group.wxyc.iphone</string>
 </dict>
 </plist>

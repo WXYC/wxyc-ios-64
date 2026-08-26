@@ -265,7 +265,7 @@ struct KeychainTokenStorageTests {
     /// regress one of them and only this test would catch it.
     @Test("baseQuery sets both kSecAttrSynchronizable and kSecAttrAccessGroup when both are configured")
     func baseQueryIncludesBothSyncAndAccessGroup() {
-        let group = "92V374HC38.group.wxyc.iphone"
+        let group = "ABCDE12345.group.example.test"
         let storage = KeychainTokenStorage(
             service: testService,
             account: testAccount,

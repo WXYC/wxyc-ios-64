@@ -27,7 +27,8 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
     /// The account name for the anonymous session.
     private let account: String
 
-    /// The Keychain access group for sharing between app and extensions.
+    /// The Keychain access group to scope items to, or `nil` for the process
+    /// default. Per-target, not shared — see `MusicShareKitConfiguration`.
     private let accessGroup: String?
 
     /// Whether to sync the token via iCloud Keychain.
@@ -41,8 +42,10 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
     /// Creates a new Keychain token storage.
     ///
     /// - Parameters:
-    ///   - accessGroup: The Keychain access group for sharing between targets.
-    ///                  Pass `nil` for app-only storage. Format: `$(TeamID).group.name`
+    ///   - accessGroup: The Keychain access group to scope items to. Pass
+    ///                  `nil` to use the process default. Format is
+    ///                  `<App ID prefix>.<group name>`; the prefix is not
+    ///                  necessarily the Team ID (#996).
     ///   - synchronizable: Whether to sync via iCloud Keychain. Defaults to `true`.
     ///                      When `true`, saves fall back to non-synchronizable storage if
     ///                      iCloud Keychain is unavailable (e.g., simulators).

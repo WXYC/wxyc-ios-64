@@ -24,9 +24,14 @@ public struct MusicShareKitConfiguration {
     /// Required for authenticated requests when the feature flag is enabled.
     public let authBaseURL: String?
 
-    /// The Keychain access group for sharing tokens between app and extensions.
-    /// Format: `$(TeamID).group.name` (e.g., `92V374HC38.group.wxyc.iphone`).
-    /// Pass `nil` for app-only storage.
+    /// The Keychain access group to scope tokens to, or `nil` for the
+    /// process default.
+    ///
+    /// Format is `<App ID prefix>.<group name>`. The App ID prefix is **not**
+    /// necessarily the Team ID — assuming it was is what caused #996 — so do
+    /// not write a literal here. Callers pass
+    /// `AppConfiguration.keychainAccessGroup`, which reads the value the build
+    /// system expanded; see `KeychainAccessGroup` for the full account.
     public let keychainAccessGroup: String?
 
     /// Provider for checking feature flag values.
@@ -42,8 +47,10 @@ public struct MusicShareKitConfiguration {
 
     /// Storage for the stable per-device fingerprint sent as `X-Device-Fingerprint`
     /// on authenticated requests. Defaults to `KeychainDeviceFingerprintStorage`
-    /// scoped to the same `keychainAccessGroup` as `KeychainTokenStorage`, so
-    /// main-app and share-extension see the same value.
+    /// scoped to the same `keychainAccessGroup` as `KeychainTokenStorage`.
+    /// Note that this does **not** currently mean main app and share extension
+    /// see the same value — their App ID prefixes differ, so each resolves to
+    /// its own group. Tracked in #1008.
     public let deviceFingerprintStorage: any DeviceFingerprintStorage
 
     public init(
