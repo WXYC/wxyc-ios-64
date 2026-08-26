@@ -59,14 +59,14 @@ struct AppConfigurationTests {
         #expect(AppConfiguration.defaults.donateEnabled == false)
     }
 
-    @Test("keychainAccessGroup matches the entitlement format")
-    func keychainAccessGroupMatchesEntitlement() {
-        // Must exactly match the resolved value of
-        // $(AppIdentifierPrefix)group.wxyc.iphone in every target's
-        // keychain-access-groups entitlement. Mismatch silently breaks
-        // session sharing between the main app and Share Extension (issue #336).
-        #expect(AppConfiguration.keychainAccessGroup == "92V374HC38.group.wxyc.iphone")
-    }
+    // `keychainAccessGroup` is deliberately not pinned to a literal here.
+    //
+    // It used to be, and the pin is what let #996 ship: the assertion compared
+    // one hand-written copy of the group against another hand-written copy of
+    // the same group, which holds for any value — including the wrong one it
+    // was actually pinning. The real group is `$(AppIdentifierPrefix)`-derived
+    // and differs per target, so no literal can be right everywhere. Coverage
+    // now lives in KeychainAccessGroupTests, against the resolver.
 
     // MARK: - Network Fetch
 

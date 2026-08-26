@@ -61,13 +61,23 @@ public actor AppConfiguration {
     /// The Sentry DSN for crash reporting. Safe to embed (Sentry documents that DSNs are not secrets).
     public static let sentryDsn = "https://cf27cd29a02232e1a0f2682c7138119b@o4510807758143488.ingest.us.sentry.io/4510982175784960"
 
-    /// The Keychain access group shared between the main app and Share Extension.
+    /// The Keychain access group to scope items to, or `nil` to use the
+    /// process default.
     ///
-    /// Used so a session cached by one target is readable by the other. Must match the
-    /// `keychain-access-groups` entitlement on every target that calls `MusicShareKit.configure(...)`.
-    /// Format is `<TeamID>.<group-name>`; `$(AppIdentifierPrefix)` resolves to the team ID at
-    /// build time in entitlement plists, but code references need it expanded literally.
-    public static let keychainAccessGroup = "92V374HC38.group.wxyc.iphone"
+    /// Resolved from the running process's own entitlement rather than written
+    /// down, because the correct value differs per target: the App ID prefix is
+    /// not the Team ID, and `org.wxyc.iphoneapp` is old enough that the two
+    /// diverge. See ``KeychainAccessGroup`` for the full account of #996 and
+    /// why a constant here could not be made correct.
+    ///
+    /// - Important: This is **not** a shared group. `$(AppIdentifierPrefix)`
+    ///   expands to `Q43UJWVEZV` in the app and `92V374HC38` in every
+    ///   extension, so the app and the Share Extension resolve to different
+    ///   groups and cannot read each other's items. That is a property of the
+    ///   App IDs, not of this code — a common group is unreachable without a
+    ///   new main-app App ID. Do not document sharing here again without
+    ///   checking that the prefixes have actually been aligned.
+    public static let keychainAccessGroup: String? = KeychainAccessGroup.resolve()
 
     /// Hardcoded defaults for when the network is unavailable.
     ///
