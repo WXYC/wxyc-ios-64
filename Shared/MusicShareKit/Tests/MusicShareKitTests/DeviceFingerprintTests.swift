@@ -215,13 +215,13 @@ struct DeviceFingerprintTests {
             ops.queueAdd(status: errSecSuccess)
 
             let storage = KeychainDeviceFingerprintStorage(
-                accessGroup: "92V374HC38.group.wxyc.iphone", operations: ops
+                accessGroup: "ABCDE12345.group.example.test", operations: ops
             )
 
             _ = try storage.ensure()
 
-            #expect(ops.lastReadAccessGroup == "92V374HC38.group.wxyc.iphone")
-            #expect(ops.adds.first?.accessGroup == "92V374HC38.group.wxyc.iphone")
+            #expect(ops.lastReadAccessGroup == "ABCDE12345.group.example.test")
+            #expect(ops.adds.first?.accessGroup == "ABCDE12345.group.example.test")
         }
     }
 

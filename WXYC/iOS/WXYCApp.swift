@@ -83,10 +83,11 @@ struct WXYCApp: App {
         // LaunchSequenceOrderingTests.
         AppBootstrap.setUpAnalytics()
 
-        // Configure MusicShareKit for RequestService. The keychainAccessGroup
-        // must match what the Share Extension passes so a session cached by
-        // one target is readable by the other (issue #336). Dropping it
-        // silently regresses to per-process keychain storage.
+        // Configure MusicShareKit for RequestService. keychainAccessGroup is
+        // read from Info.plist, where the build system expands the same
+        // variable that produces the entitlement — never write a literal here
+        // (issue #996). It is per-target, so it does NOT currently give the
+        // Share Extension a shared view of the session; see #1008.
         //
         // Stays eager, and stays below setUpAnalytics(): eagerness is what
         // closes the cross-process first-launch race on the fingerprint

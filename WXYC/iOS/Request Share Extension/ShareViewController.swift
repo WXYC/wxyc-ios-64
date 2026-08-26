@@ -22,9 +22,11 @@ class ShareViewController: UIViewController {
         super.viewDidLoad()
         Log(.info, "ShareViewController viewDidLoad started")
 
-        // Configure MusicShareKit. Pass keychainAccessGroup so this extension
-        // shares its anonymous-auth session with the main app via the keychain
-        // group declared in ShareExtension.entitlements (issue #336).
+        // Configure MusicShareKit. keychainAccessGroup resolves to nil in this
+        // target today: ShareExtension.entitlements is referenced zero times in
+        // project.pbxproj (#905), so the extension holds no keychain entitlement
+        // and gets the process default. That means it does NOT share the main
+        // app's session — see #1008 before assuming otherwise.
         //
         // Safe to call on every presentation: configure(_:) is a once-per-
         // process no-op after its first call (#956), so the extension keeps

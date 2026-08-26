@@ -59,14 +59,9 @@ struct AppConfigurationTests {
         #expect(AppConfiguration.defaults.donateEnabled == false)
     }
 
-    // `keychainAccessGroup` is deliberately not pinned to a literal here.
-    //
-    // It used to be, and the pin is what let #996 ship: the assertion compared
-    // one hand-written copy of the group against another hand-written copy of
-    // the same group, which holds for any value — including the wrong one it
-    // was actually pinning. The real group is `$(AppIdentifierPrefix)`-derived
-    // and differs per target, so no literal can be right everywhere. Coverage
-    // now lives in KeychainAccessGroupTests, against the resolver.
+    // `keychainAccessGroup` is deliberately not pinned to a literal here — see
+    // KeychainAccessGroup for why the pin that used to live here couldn't fail.
+    // Coverage is in KeychainAccessGroupTests.
 
     // MARK: - Network Fetch
 
