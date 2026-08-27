@@ -11,7 +11,6 @@
 
 import Analytics
 import Foundation
-import Logger
 
 /// Owns the text a listener types into the Request Line and the one-shot send
 /// that follows.
@@ -88,13 +87,16 @@ public final class RequestLineComposer {
             failure = nil
             return .sent
         } catch {
-            let cause = (error as? RequestServiceError).map(RequestLineFailure.init) ?? .boothUnreachable
-            ErrorReporting.shared.report(
-                error,
-                context: "RequestLine",
-                category: .ui,
-                additionalData: ["failureCause": cause.analyticsValue]
-            )
+            let cause = RequestLineFailure(error)
+            var additionalData = ["failure_cause": cause.analyticsName]
+            if case .boothRejected(let statusCode) = cause {
+                additionalData["status_code"] = String(statusCode)
+            }
+            // Reported through the injected `analytics` — not the
+            // process-global `ErrorReporting.shared` — so the split this
+            // exists to measure is observable by a test against
+            // `MockStructuredAnalytics` rather than unpinned.
+            analytics.captureError(error, context: "RequestLine", category: "UI", additionalData: additionalData)
             failure = cause
             return .failed
         }
