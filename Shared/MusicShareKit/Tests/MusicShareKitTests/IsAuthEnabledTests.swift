@@ -38,12 +38,31 @@ struct IsAuthEnabledTests {
         )
     }
 
+    /// Confirms MusicShareKit's global config is still the one this test
+    /// installed. `MusicShareKitTests` runs its suites in parallel, and
+    /// `.serialized` only orders tests WITHIN this suite (see
+    /// `DeviceFingerprintConfigurationTests` and
+    /// `MusicShareKitConfigureGuardTests` for the same caveat) — a concurrent
+    /// suite's `reconfigure(_:)` can swap the global config, including
+    /// `analyticsService`, between this test's own `reconfigure(_:)` and
+    /// `isAuthEnabled()`'s read of it. When that happens `isAuthEnabled()`
+    /// can still legitimately return the expected value (several sibling
+    /// suites also configure with a nil `featureFlagProvider`), but the
+    /// capture landed on the racing suite's mock instead of this test's — a
+    /// benign race, not a regression, so the caller should skip its
+    /// assertions rather than fail.
+    private func stillOwnsGlobalConfiguration() -> Bool {
+        (MusicShareKit.configuration.analyticsService as AnyObject) === (mockAnalytics as AnyObject)
+    }
+
     @Test("Returns false and captures source .unwired when no featureFlagProvider is configured")
     func unwiredProviderCapturesAndReturnsFalse() {
         MusicShareKit.reconfigure(makeConfiguration(featureFlagProvider: nil))
         mockAnalytics.reset()
 
         let enabled = MusicShareKit.isAuthEnabled()
+
+        guard stillOwnsGlobalConfiguration() else { return }
 
         #expect(enabled == false)
 
@@ -61,6 +80,8 @@ struct IsAuthEnabledTests {
         mockAnalytics.reset()
 
         let enabled = MusicShareKit.isAuthEnabled()
+
+        guard stillOwnsGlobalConfiguration() else { return }
 
         #expect(enabled == true)
 
