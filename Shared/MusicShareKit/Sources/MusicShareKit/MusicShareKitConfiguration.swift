@@ -335,21 +335,32 @@ public enum MusicShareKit {
 
     /// Checks if request line authentication is enabled via feature flag.
     ///
+    /// A pure forward to `RequestLineAuthFeature.isEnabled(...)`, which owns
+    /// the full 3-step priority order documented on that type — including
+    /// step 3, "no provider was wired" — so every return path is captured in
+    /// telemetry with no branch needed here (#1012).
+    ///
+    /// `configuration` is read once into a local rather than through three
+    /// separate property accesses on the static `configuration`: it is a
+    /// computed static unwrapping a `nonisolated(unsafe)` var, so reading it
+    /// once per collaborator would let a `reconfigure(_:)` landing mid-call
+    /// hand this call collaborators from different configurations (#848).
+    ///
+    /// Not captured in the Share Extension process: `PostHogSDK.setup` is
+    /// never called there. Analytics bootstrap only runs from
+    /// `AppBootstrap.swift`, `WatchXYCApp.swift`, and `WXYCTVApp.swift` —
+    /// `ShareViewController.viewDidLoad` calls `configure(...)` but never
+    /// bootstraps analytics — so `RequestLineFeatureFlagEvaluatedEvent` is
+    /// inert on that call site even though `ShareExtensionView` reaches this
+    /// function via `RequestService.sendRequest` (#1012).
+    ///
     /// - Returns: `true` if authentication should be used, `false` otherwise.
     public static func isAuthEnabled() -> Bool {
-        guard let provider = configuration.featureFlagProvider else {
-            // No provider was wired at configure(...) time. Captured here so
-            // "unwired" reads distinctly from "the flag evaluated false" in
-            // telemetry, instead of both collapsing into the same absence (#1012).
-            configuration.analyticsService.capture(
-                RequestLineFeatureFlagEvaluatedEvent(enabled: false, source: .unwired)
-            )
-            return false
-        }
+        let config = configuration
         return RequestLineAuthFeature.isEnabled(
-            featureFlagProvider: provider,
-            defaults: configuration.defaults,
-            analytics: configuration.analyticsService
+            featureFlagProvider: config.featureFlagProvider,
+            defaults: config.defaults,
+            analytics: config.analyticsService
         )
     }
 }

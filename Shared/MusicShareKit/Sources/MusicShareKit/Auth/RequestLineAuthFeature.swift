@@ -33,13 +33,22 @@ public enum RequestLineAuthFeature {
 
     /// Checks whether request line authentication is enabled.
     ///
+    /// Owns the full 3-step priority order documented on this type,
+    /// including step 3: `featureFlagProvider` is optional because "no
+    /// provider was wired at `configure(...)` time" is that step, not a
+    /// guard a caller implements separately. Every path captures a
+    /// `RequestLineFeatureFlagEvaluatedEvent`, so an unwired build is
+    /// attributable in telemetry rather than reading identically to a
+    /// disabled flag (#1012).
+    ///
     /// - Parameters:
-    ///   - featureFlagProvider: Provider for feature flag values.
+    ///   - featureFlagProvider: Provider for feature flag values, or `nil`
+    ///     if none was wired — falls through to step 3.
     ///   - defaults: Defaults storage for debug override.
     ///   - analytics: Analytics service for tracking flag evaluation.
     /// - Returns: `true` if authentication should be used, `false` otherwise.
     public static func isEnabled(
-        featureFlagProvider: FeatureFlagProvider,
+        featureFlagProvider: FeatureFlagProvider?,
         defaults: DefaultsStorage,
         analytics: AnalyticsService
     ) -> Bool {
@@ -53,6 +62,18 @@ public enum RequestLineAuthFeature {
         }
 
         // 2. Check PostHog feature flag
+        guard let featureFlagProvider else {
+            // 3. No provider was wired at configure(...) time. Captured here
+            // so "unwired" reads distinctly from "the flag evaluated false"
+            // in telemetry, instead of both collapsing into the same
+            // absence (#1012).
+            analytics.capture(RequestLineFeatureFlagEvaluatedEvent(
+                enabled: false,
+                source: .unwired
+            ))
+            return false
+        }
+
         let enabled = featureFlagProvider.getFeatureFlag(featureFlagKey) as? Bool ?? false
         analytics.capture(RequestLineFeatureFlagEvaluatedEvent(
             enabled: enabled,
