@@ -249,6 +249,11 @@ public struct FingerprintModeResolvedEvent: RequestLineAnalyticsEvent {
 public enum FeatureFlagSource: String, CaseIterable, Sendable {
     case flag
     case override
+    /// No `FeatureFlagProvider` was configured, so the flag could not be
+    /// evaluated at all. Distinguishes "the app was never wired for feature
+    /// flags" from "the flag evaluated false" — see `isAuthEnabled()`'s guard
+    /// branch, the only capture site for this case.
+    case unwired
 }
 
 /// Event captured when the feature flag is evaluated.

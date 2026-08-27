@@ -338,6 +338,12 @@ public enum MusicShareKit {
     /// - Returns: `true` if authentication should be used, `false` otherwise.
     public static func isAuthEnabled() -> Bool {
         guard let provider = configuration.featureFlagProvider else {
+            // No provider was wired at configure(...) time. Captured here so
+            // "unwired" reads distinctly from "the flag evaluated false" in
+            // telemetry, instead of both collapsing into the same absence (#1012).
+            configuration.analyticsService.capture(
+                RequestLineFeatureFlagEvaluatedEvent(enabled: false, source: .unwired)
+            )
             return false
         }
         return RequestLineAuthFeature.isEnabled(
