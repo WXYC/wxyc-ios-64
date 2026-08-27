@@ -203,6 +203,74 @@ struct PlaycutMetadataResolutionTests {
             "Backend's finished enrichment outranks whatever the proxy fuzzy-matched"
         )
     }
+
+    // MARK: - Streaming-section pending state
+
+    @Test("Nothing has reported yet, so the streaming section is pending")
+    func streamingPendingBeforeEitherProducerReports() {
+        let resolution = PlaycutMetadataResolution()
+
+        #expect(resolution.isStreamingPending(canBeRepaired: true))
+        #expect(resolution.isStreamingPending(canBeRepaired: false), "The initial resolve is still outstanding either way")
+    }
+
+    @Test("An empty initial resolve on a still-enriching row stays pending")
+    func emptyInitialResolveOnEnrichingRowStaysPending() {
+        // The bug this exists for: the proxy answers a `pending` row with the
+        // base label and no streaming URLs, `isLoading` flips false, and all
+        // five tiles drop to the same treatment they use for "this service
+        // genuinely has no link" — while a repair is still on its way.
+        var resolution = PlaycutMetadataResolution()
+        resolution.recordInitial(PlaycutMetadata(album: AlbumMetadata(label: "Planet Mu")))
+
+        #expect(!resolution.isLoading, "Precondition: the initial resolve has landed")
+        #expect(!resolution.metadata.streaming.hasAny, "Precondition: it carried no streaming URLs")
+        #expect(
+            resolution.isStreamingPending(canBeRepaired: true),
+            "A row Backend is still enriching must not render as though it has no links"
+        )
+    }
+
+    @Test("An empty initial resolve on a row that can never be repaired is not pending")
+    func emptyInitialResolveOnTerminalRowIsNotPending() {
+        // Terminal rows and rows with no `metadata_status` at all (v1 feeds,
+        // the Liked tab's synthesized playcuts) open no repair subscription,
+        // so nothing further is coming and the empty state is the truth.
+        var resolution = PlaycutMetadataResolution()
+        resolution.recordInitial(PlaycutMetadata(album: AlbumMetadata(label: "Planet Mu")))
+
+        #expect(!resolution.isStreamingPending(canBeRepaired: false))
+    }
+
+    @Test("An initial resolve carrying links is never pending")
+    func populatedInitialResolveIsNotPending() {
+        var resolution = PlaycutMetadataResolution()
+        resolution.recordInitial(proxyResolvedMetadata)
+
+        #expect(proxyResolvedMetadata.streaming.hasAny, "Precondition: the fixture carries streaming URLs")
+        #expect(
+            !resolution.isStreamingPending(canBeRepaired: true),
+            "Links already in hand render as links, repairable row or not"
+        )
+    }
+
+    @Test("A repair that lands with no links settles the section")
+    func emptyRepairSettlesTheSection() {
+        // `canBeRepaired` is derived from the playcut snapshot captured at
+        // row-tap time, which stays `pending` forever — nothing writes back to
+        // it (see `PlaycutDetailView`'s repair-task comment). So the repair
+        // itself has to be what ends the pending state, or a row that enriches
+        // to a genuine no-match would spin indefinitely.
+        var resolution = PlaycutMetadataResolution()
+        resolution.recordInitial(PlaycutMetadata(album: AlbumMetadata(label: "Planet Mu")))
+        resolution.recordRepair(PlaycutMetadata(album: AlbumMetadata(label: "Planet Mu", releaseYear: 2023)))
+
+        #expect(!resolution.metadata.streaming.hasAny, "Precondition: Backend finished with no streaming URLs")
+        #expect(
+            !resolution.isStreamingPending(canBeRepaired: true),
+            "Backend has spoken; the empty state is now the answer"
+        )
+    }
 }
 
 // MARK: - Coalescing
