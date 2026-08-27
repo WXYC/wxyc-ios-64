@@ -52,72 +52,76 @@ struct RequestLineSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            RequestLinePresenceLabel(requestLine: requestLine)
+        // A fixed-height detent has to budget for the tallest combination of
+        // failure copy, Dynamic Type size, and the request TextField's own
+        // `lineLimit(1...3)` growth — three independently-growing things
+        // chasing one magic number. `.medium`/`.large` are system-measured
+        // instead, and the ScrollView is the backstop for whatever still
+        // doesn't fit: content scrolls rather than clipping "Dial a DJ" off
+        // the bottom edge.
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                RequestLinePresenceLabel(requestLine: requestLine)
 
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Make a request")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Make a request")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.secondary)
 
-                TextField("Song title and artist", text: $composer.text, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .focused($composerFocused)
-                    .lineLimit(1...3)
-                    .padding(12)
-                    .background(.quaternary, in: .rect(cornerRadius: 12))
+                    TextField("Song title and artist", text: $composer.text, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .autocorrectionDisabled()
+                        .focused($composerFocused)
+                        .lineLimit(1...3)
+                        .padding(12)
+                        .background(.quaternary, in: .rect(cornerRadius: 12))
 
-                if let failure = composer.failure {
-                    RequestLineFailureLabel(failure: failure)
+                    if let failure = composer.failure {
+                        RequestLineFailureLabel(failure: failure)
+                    }
+
+                    Button {
+                        Task { await send() }
+                    } label: {
+                        HStack {
+                            if composer.isSending {
+                                ProgressView().tint(.white)
+                            }
+                            Text("Send to the booth").bold()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(accent)
+                    .disabled(!composer.canSend)
                 }
+                .animation(.default, value: composer.failure)
+
+                Divider()
 
                 Button {
-                    Task { await send() }
+                    placeCall()
                 } label: {
-                    HStack {
-                        if composer.isSending {
-                            ProgressView().tint(.white)
+                    Label {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Dial a DJ").bold()
+                            Text("(919) 962-8989")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
                         }
-                        Text("Send to the booth").bold()
+                    } icon: {
+                        Image(systemName: "phone.fill")
+                            .foregroundStyle(.green)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(accent)
-                .disabled(!composer.canSend)
+                .buttonStyle(.plain)
             }
-            .animation(.default, value: composer.failure)
-
-            Divider()
-
-            Button {
-                placeCall()
-            } label: {
-                Label {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Dial a DJ").bold()
-                        Text("(919) 962-8989")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                } icon: {
-                    Image(systemName: "phone.fill")
-                        .foregroundStyle(.green)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-
-            Spacer(minLength: 0)
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // The detent is fixed, so the inline failure row has to be budgeted
-        // for — otherwise it pushes the "Dial a DJ" row past the bottom edge.
-        // 440 covers the two-line `.authUnavailable` copy at default Dynamic Type.
-        .presentationDetents([.height(composer.failure == nil ? 380 : 440)])
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("requestLineSheet")
         .onAppear {
@@ -155,13 +159,14 @@ struct RequestLineSheet: View {
 /// HUD raised behind it.
 ///
 /// The composer classifies the cause; this view owns the copy, since the copy
-/// has to fit the layout budgeted for it (see the sheet's `presentationDetents`).
+/// has to fit the layout the sheet can offer it — see the sheet's `ScrollView`.
 struct RequestLineFailureLabel: View {
     let failure: RequestLineFailure
 
     /// The leading clause is semibold, the rest regular, in one `Text` — the
     /// row is already `.font(.footnote).foregroundStyle(.orange)`. Every case
-    /// already states "wasn't sent", so VoiceOver reads it once, from here.
+    /// that reached the booth without the request landing already states
+    /// "wasn't sent", so VoiceOver reads it once, from here.
     private var message: Text {
         switch failure {
         case .authUnavailable:
@@ -170,10 +175,23 @@ struct RequestLineFailureLabel: View {
         case .boothUnreachable:
             Text("Couldn't reach the booth.").fontWeight(.semibold)
                 + Text(" Your request wasn't sent — try again.")
+        case .boothRejected(let statusCode) where Self.isTransientRejection(statusCode):
+            // 429 (the sign-in/request limiter) and 5xx (booth-side trouble)
+            // are transient — rewording won't fix either, unlike a genuine
+            // content rejection, so telling the listener to reword during an
+            // outage or a rate-limit burst would be actively misleading.
+            Text("The booth is having trouble right now.").fontWeight(.semibold)
+                + Text(" Try again in a moment.")
         case .boothRejected:
+            // The booth did answer here, so unlike the two cases above, the
+            // request was sent — there's nothing to say it wasn't.
             Text("The booth turned that one down.").fontWeight(.semibold)
                 + Text(" Try rewording your request.")
         }
+    }
+
+    private static func isTransientRejection(_ statusCode: Int) -> Bool {
+        statusCode == 429 || (500...599).contains(statusCode)
     }
 
     var body: some View {
@@ -232,6 +250,8 @@ struct RequestLinePresenceLabel: View {
         RequestLinePresenceLabel(requestLine: RequestLine(onAir: .dj("DJ HOUNDSTOOTH")))
         RequestLineFailureLabel(failure: .authUnavailable)
         RequestLineFailureLabel(failure: .boothUnreachable)
+        RequestLineFailureLabel(failure: .boothRejected(statusCode: 400))
+        RequestLineFailureLabel(failure: .boothRejected(statusCode: 429))
         RequestLineFailureLabel(failure: .boothRejected(statusCode: 500))
     }
     .padding(24)
