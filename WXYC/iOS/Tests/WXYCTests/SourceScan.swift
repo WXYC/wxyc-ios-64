@@ -38,7 +38,7 @@ enum SourceScan {
     static func boundedLines(
         of url: URL,
         start startPredicate: (String) -> Bool,
-        startNotFoundMessage: String,
+        startNotFoundMessage: Comment,
         open: Character,
         close: Character
     ) throws -> [String] {
@@ -46,10 +46,11 @@ enum SourceScan {
             .split(separator: "\n", omittingEmptySubsequences: false)
             .map { $0.trimmingCharacters(in: .whitespaces) }
 
-        let start = try #require(
-            all.firstIndex(where: startPredicate),
-            startNotFoundMessage
-        )
+        // Resolved before `#require` rather than inside it: the macro expansion
+        // captures its argument expression, which a non-escaping closure
+        // parameter cannot survive ("may allow it to escape").
+        let startIndex = all.firstIndex(where: startPredicate)
+        let start = try #require(startIndex, startNotFoundMessage)
 
         // Brace/paren-count from `start` to its matching close so a later,
         // unrelated `open`/`close` pair can't be mistaken for this one's.
