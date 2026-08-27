@@ -125,7 +125,7 @@ extension DeviceFingerprintStorage {
 // MARK: - Keychain Operations Seam
 
 /// Narrow seam over `SecItemCopyMatching` / `SecItemAdd` so unit tests can
-/// drive the cross-process duplicate-item race deterministically without a
+/// drive the same-process duplicate-item race deterministically without a
 /// real Keychain (which requires an entitled signed host).
 internal protocol KeychainOperations: Sendable {
     func copyMatching(_ query: CFDictionary) -> (status: OSStatus, data: Data?)
@@ -150,10 +150,12 @@ internal struct DefaultKeychainOperations: KeychainOperations {
 /// Keychain-backed device fingerprint storage.
 ///
 /// Uses an atomic add-or-reread loop (D3 in the iOS#351 plan) to close the
-/// cross-process race where the main app and share extension first-launch
-/// simultaneously: both observe an empty Keychain, both try to write, the
-/// second one's `SecItemAdd` returns `errSecDuplicateItem`, and we reread to
-/// pick up whichever value the Keychain daemon committed first.
+/// same-process duplicate-item race: two calls into this type race to write
+/// the first fingerprint, the second one's `SecItemAdd` returns
+/// `errSecDuplicateItem`, and we reread to pick up whichever value the
+/// Keychain daemon committed first. The main app and share extension cannot
+/// contend for this item — differing App ID prefixes put them in distinct
+/// Keychain access groups (see #1008).
 public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
 
     private let accessGroup: String?

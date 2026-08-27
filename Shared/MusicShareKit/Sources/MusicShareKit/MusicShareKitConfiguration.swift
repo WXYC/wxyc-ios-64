@@ -255,14 +255,11 @@ public enum MusicShareKit {
         // service so the fingerprint header is available on the very first
         // /sign-in/anonymous call.
         //
-        // Eager (vs. lazy) is load-bearing: lazy initialization would let the
-        // main app and share extension first-launch concurrently, both observe
-        // an empty Keychain on their first read, and both write — Race A in
-        // the iOS#351 plan. Eager init means whichever process runs configure()
-        // second sees the value committed by the first via the atomic
-        // add-or-reread inside ensure().
-        //
-        // This is also the once-per-launch emission site for
+        // Eager (vs. lazy) is load-bearing independent of any cross-process
+        // concern: the main app and share extension resolve to distinct
+        // Keychain access groups (differing App ID prefixes — see #1008), so
+        // they can never observe or contend for the same item. This is
+        // instead the once-per-launch emission site for
         // `FingerprintModeResolvedEvent` (#998). The do/catch below decides
         // only WHAT to report; the single capture after it is what makes
         // "exactly one event per configure, on every path" true by
