@@ -108,9 +108,9 @@ struct DeviceFingerprintTests {
         @Test("errSecDuplicateItem on add triggers reread of the winning value")
         func duplicateRaceRereads() throws {
             let ops = MockKeychainOperations()
-            // First read: empty (both processes race here).
+            // First read: empty (nothing persisted yet).
             ops.queueRead(status: errSecItemNotFound, data: nil)
-            // First add: another process beat us.
+            // First add: an iCloud-synced write from another device landed first.
             ops.queueAdd(status: errSecDuplicateItem)
             // Loop iteration 2 reread: returns the winner's value.
             let winner = UUID().uuidString
@@ -316,7 +316,7 @@ struct DeviceFingerprintTests {
 // MARK: - Mock Keychain Operations
 
 /// Records every read and add against the seam, and serves canned responses
-/// in FIFO order so tests can script a sequence of cross-process race outcomes.
+/// in FIFO order so tests can script a sequence of add-or-reread race outcomes.
 final class MockKeychainOperations: KeychainOperations, @unchecked Sendable {
 
     struct AddRecord {

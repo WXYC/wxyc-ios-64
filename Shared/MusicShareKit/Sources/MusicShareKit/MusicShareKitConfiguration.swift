@@ -143,9 +143,10 @@ public enum MusicShareKit {
 
     /// The stable per-device fingerprint, or `nil` if it could not be loaded.
     ///
-    /// Eager init in `configure(...)` is the authoritative path that closes
-    /// the cross-process race (D3 in the iOS#351 plan). The inline retry here
-    /// is a defensive backstop for the narrow window where `configure()` ran
+    /// Eager init in `configure(...)` (see `reconfigure(_:)`) is the
+    /// authoritative path — it is what makes the fingerprint available before
+    /// the very first `/sign-in/anonymous` call. The inline retry here is a
+    /// defensive backstop for the narrow window where `configure()` ran
     /// pre-first-unlock (e.g., a background-launched share extension) and the
     /// actual request happens after the user has unlocked the device. The
     /// retry fires AT MOST ONCE per process lifetime — otherwise every
@@ -255,17 +256,24 @@ public enum MusicShareKit {
         // service so the fingerprint header is available on the very first
         // /sign-in/anonymous call.
         //
-        // Eager (vs. lazy) is load-bearing independent of any cross-process
-        // concern: the main app and share extension resolve to distinct
-        // Keychain access groups (differing App ID prefixes — see #1008), so
-        // they can never observe or contend for the same item. This is
-        // instead the once-per-launch emission site for
-        // `FingerprintModeResolvedEvent` (#998). The do/catch below decides
-        // only WHAT to report; the single capture after it is what makes
-        // "exactly one event per configure, on every path" true by
-        // construction rather than by convention. A resolved-mode metric that
-        // only spoke up on failure would be indistinguishable from one that
-        // had stopped reporting, which is the ambiguity that hid #996.
+        // Eager (vs. lazy) is load-bearing for the reason above alone: the
+        // header must exist before that first request. It is not a defense
+        // against cross-process contention with the Share Extension — that
+        // target carries no Keychain access group today
+        // (`ShareExtension.entitlements` is unreferenced in project.pbxproj,
+        // #905), which makes contention un-configured, not structurally ruled
+        // out. See `KeychainAccessGroup` for the full account and #1008 for
+        // whether it gets wired up.
+        //
+        // Eagerness also does not produce the once-per-launch guarantee on
+        // `FingerprintModeResolvedEvent` (#998) below — `configure(_:)`'s
+        // `configureGate.runOnce` (#956) plus the single unconditional capture
+        // after the do/catch do that regardless of when resolution runs. The
+        // do/catch below decides only WHAT to report; the single capture after
+        // it is what makes "exactly one event per configure, on every path"
+        // true by construction rather than by convention. A resolved-mode
+        // metric that only spoke up on failure would be indistinguishable from
+        // one that had stopped reporting, which is the ambiguity that hid #996.
         fingerprintLock.lock()
         _fingerprintRetryAttempted = false  // fresh configure resets the retry budget
         let prematureAccessCount = prematureFingerprintAccesses.count
