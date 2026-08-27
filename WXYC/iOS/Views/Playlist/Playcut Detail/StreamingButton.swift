@@ -63,8 +63,21 @@ struct StreamingButton: View {
                 }
                 #endif
             } else {
+                // Two different meanings share this placeholder, and before
+                // wxyc-ios-64#1018 they were separated by a 0.2 opacity step —
+                // which is to say not separated at all. `isLoading` here means
+                // "Backend is still enriching this row and a link may yet
+                // appear"; its absence means "this service has no link for this
+                // record". The redaction is what makes the first read as work
+                // in progress rather than as an answer.
                 linkLabel(backgroundFill: AnyShapeStyle(service.color.opacity(0.3)))
-                    .opacity(isLoading ? 0.5 : 0.3)
+                    .opacity(0.3)
+                    .redacted(reason: isLoading ? .placeholder : [])
+                    .accessibilityLabel(
+                        isLoading
+                            ? "\(service.displayName), still loading"
+                            : "\(service.displayName), unavailable"
+                    )
             }
         }
     }

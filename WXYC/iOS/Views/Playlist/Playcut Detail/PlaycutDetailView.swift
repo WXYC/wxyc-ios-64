@@ -37,6 +37,21 @@ struct PlaycutDetailView: View {
     /// on-appear resolve and the enrichment repair can land in either order
     /// without either degrading the card (#812).
     @State private var resolution = PlaycutMetadataResolution()
+
+    /// Bounds how long the streaming section is willing to say "still working".
+    ///
+    /// `canBeRepaired` is derived from the row-tap snapshot and never goes
+    /// false, and the only other thing that settles the section is a repair
+    /// actually arriving — so an offline device, a poll that fails for the
+    /// card's lifetime, or a row Backend leaves stuck in `enriching` would
+    /// leave it pending forever. Before #1018 the section settled wrongly;
+    /// without this it would not settle at all, which is a worse failure.
+    ///
+    /// Sized off the enrichment path's own worst case rather than a feel: the
+    /// CDC lane's cold non-library resolution runs 4-20s on prod, bounded by
+    /// LML's 25s hard cap and Backend's 29s client abort, so a repair that has
+    /// not landed by 45s is not coming on this card's watch.
+    @State private var enrichmentWaitExpired = false
     @State private var expandedBio = false
     @State private var isLightboxActive = false
     @State private var showLightboxContainer = false
@@ -143,7 +158,15 @@ struct PlaycutDetailView: View {
                 if metadata.hasStreamingLinks || !resolution.isLoading {
                     StreamingLinksSection(
                         metadata: metadata,
-                        isLoading: resolution.isLoading,
+                        // Not `resolution.isLoading`: that goes false the moment
+                        // the on-appear resolve reports, including when it
+                        // reports nothing because the row is still enriching
+                        // server-side — which renders five "no link here" tiles
+                        // over a repair that is still coming.
+                        isLoading: resolution.isStreamingPending(
+                            canBeRepaired: PlaycutMetadataResolver.shouldObserveEnrichment(for: playcut)
+                                && !enrichmentWaitExpired
+                        ),
                         onServiceTapped: { service in
                             StructuredPostHogAnalytics.shared.capture(StreamingLinkTapped(
                                 service: service.displayName,
@@ -230,6 +253,11 @@ struct PlaycutDetailView: View {
         // keeps a row that can never be repaired from opening a playlist
         // subscription and holding the polling loop alive for the cover's
         // lifetime.
+        .task {
+            guard PlaycutMetadataResolver.shouldObserveEnrichment(for: playcut) else { return }
+            try? await Task.sleep(for: .seconds(45))
+            enrichmentWaitExpired = true
+        }
         .task {
             guard PlaycutMetadataResolver.shouldObserveEnrichment(for: playcut) else { return }
             let playlists = appState.playlistService.updates()

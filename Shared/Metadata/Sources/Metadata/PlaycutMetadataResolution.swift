@@ -54,6 +54,36 @@ public struct PlaycutMetadataResolution: Sendable, Equatable {
         initial == nil && repaired == nil
     }
 
+    /// Whether the streaming section should still read as "working on it"
+    /// rather than as "this record isn't on these services".
+    ///
+    /// ``isLoading`` alone is the wrong predicate for that section, because it
+    /// only asks whether *either* producer has reported. The on-appear resolve
+    /// of a row Backend is still enriching reports promptly and reports
+    /// nothing: the proxy answers a `pending` row with its base columns and no
+    /// streaming URLs. `isLoading` flips false, and all five tiles drop to the
+    /// same 0.3-opacity treatment they use for a service that genuinely has no
+    /// link — while the ``recordRepair(_:)`` that will fill them is still in
+    /// flight. The two states are visually identical and mean opposite things.
+    ///
+    /// - Parameter canBeRepaired: `PlaycutMetadataResolver.shouldObserveEnrichment(for:)`
+    ///   for the card's playcut — whether a repair can still arrive at all.
+    ///   Passed in rather than derived because this type deliberately knows
+    ///   nothing about the row it was accumulated for.
+    ///
+    /// A repair landing is what ends the pending state, not the row's status
+    /// going terminal. `canBeRepaired` is computed from the playcut snapshot
+    /// captured at row-tap time, and nothing writes back to that snapshot (see
+    /// `PlaycutDetailView`'s repair task), so it stays `true` for the life of
+    /// the card. Keying on ``repaired`` instead means a row that enriches to a
+    /// genuine no-match settles into the empty state exactly once Backend has
+    /// said so, rather than spinning forever.
+    public func isStreamingPending(canBeRepaired: Bool) -> Bool {
+        if isLoading { return true }
+        guard repaired == nil, canBeRepaired else { return false }
+        return !metadata.streaming.hasAny
+    }
+
     /// Records the on-appear resolve. Safe to call after a repair has landed;
     /// it fills gaps rather than overwriting.
     public mutating func recordInitial(_ metadata: PlaycutMetadata) {
