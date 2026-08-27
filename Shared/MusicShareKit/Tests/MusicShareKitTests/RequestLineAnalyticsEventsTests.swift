@@ -51,6 +51,7 @@ private let keychainOperationCases: [(KeychainOperation, String)] = [
 private let featureFlagSourceCases: [(FeatureFlagSource, String)] = [
     (.flag, "flag"),
     (.override, "override"),
+    (.unwired, "unwired"),
 ]
 
 private let deviceFingerprintModeCases: [(DeviceFingerprintMode, String)] = [
