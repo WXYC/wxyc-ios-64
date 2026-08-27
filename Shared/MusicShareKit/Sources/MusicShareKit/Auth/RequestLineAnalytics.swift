@@ -251,8 +251,9 @@ public enum FeatureFlagSource: String, CaseIterable, Sendable {
     case override
     /// No `FeatureFlagProvider` was configured, so the flag could not be
     /// evaluated at all. Distinguishes "the app was never wired for feature
-    /// flags" from "the flag evaluated false" — see `isAuthEnabled()`'s guard
-    /// branch, the only capture site for this case.
+    /// flags" from "the flag evaluated false" — see
+    /// `RequestLineAuthFeature.isEnabled(featureFlagProvider:defaults:analytics:)`'s
+    /// step 3, the only capture site for this case.
     case unwired
 }
 
