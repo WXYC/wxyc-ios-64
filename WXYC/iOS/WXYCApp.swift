@@ -90,9 +90,10 @@ struct WXYCApp: App {
         // Share Extension a shared view of the session; see #1008.
         //
         // Stays eager, and stays below setUpAnalytics(): eagerness is what
-        // closes the cross-process first-launch race on the fingerprint
-        // (Race A in #351), so the fix for #1002 was to raise analytics, never
-        // to defer this.
+        // guarantees fingerprint_mode_resolved_event fires once per launch
+        // and that the fingerprint header is available on the first
+        // /sign-in/anonymous call, so the fix for #1002 was to raise
+        // analytics, never to defer this.
         MusicShareKit.configure(MusicShareKitConfiguration(
             requestOMaticURL: AppConfiguration.defaults.requestOMaticUrl,
             authBaseURL: AppConfiguration.defaults.apiBaseUrl,
