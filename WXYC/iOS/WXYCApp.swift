@@ -151,7 +151,6 @@ struct WXYCApp: App {
                     RootTabView()
                         .environment(appState)
                         .environment(\.playlistService, appState.playlistService)
-                        .forceLightStatusBar()
                         .crossfadeColorSchemeTransitions()
                         .modifier(AppLifecycleModifier(appState: appState))
 
