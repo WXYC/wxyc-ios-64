@@ -56,10 +56,14 @@ set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
 REPO_ROOT="${SCRIPT_DIR:h}"
+source "${REPO_ROOT}/scripts/lib/simulator.zsh"
 cd "$REPO_ROOT"
 
 BASE_REF="origin/master"
-SIMULATOR="name=iPhone 17"
+# Resolved at run time rather than hardcoded — see scripts/lib/simulator.zsh
+# for why a committed simulator identifier is a constant with an expiry date.
+# Empty here; filled after arg parsing so an explicit --simulator costs nothing.
+SIMULATOR=""
 DRY_RUN=0
 FORCE_FULL=0
 SKIP_SPM=0
@@ -123,6 +127,9 @@ while (( $# > 0 )); do
     esac
 done
 
+if [[ -z "$SIMULATOR" ]]; then
+    SIMULATOR=$(resolve_default_simulator_or_die) || exit 1
+fi
 DESTINATION="platform=iOS Simulator,${SIMULATOR}"
 
 # ---------------------------------------------------------------------------
