@@ -187,5 +187,54 @@ struct RequestLineAuthFeatureTests {
             #expect(props["source"] as? String == "override")
         }
     }
+
+    // MARK: - Unwired Provider Tests (#1012)
+
+    /// A missing `featureFlagProvider` is `isEnabled`'s own step 3, not a
+    /// guard the caller implements — see the type's doc comment. Before this,
+    /// the only capture site for "no provider was wired" lived in
+    /// `MusicShareKit.isAuthEnabled()`'s guard branch, reachable only through
+    /// `MusicShareKit`'s process-global config; testing it there cost ~92
+    /// lines of `.serialized` suite plus a race-ownership guard. Widening
+    /// `featureFlagProvider` to optional moves the case into this function's
+    /// own collaborators-as-parameters shape, so it costs a few lines here
+    /// instead.
+    @Test("Returns false and captures source .unwired when featureFlagProvider is nil")
+    func returnsFalseAndCapturesUnwiredWhenProviderIsNil() {
+        let defaults = InMemoryDefaults()
+        mockAnalytics.reset()
+
+        let enabled = RequestLineAuthFeature.isEnabled(
+            featureFlagProvider: nil,
+            defaults: defaults,
+            analytics: mockAnalytics
+        )
+
+        #expect(enabled == false)
+
+        let events = mockAnalytics.typedEvents(ofType: RequestLineFeatureFlagEvaluatedEvent.self)
+        #expect(events.count == 1)
+        #expect(events.first?.enabled == false)
+        #expect(events.first?.source == "unwired")
+    }
+
+    @Test("Debug override still takes precedence when featureFlagProvider is nil")
+    func overrideTakesPrecedenceWhenProviderIsNil() {
+        let defaults = InMemoryDefaults()
+        RequestLineAuthFeature.setOverride(true, defaults: defaults)
+        mockAnalytics.reset()
+
+        let enabled = RequestLineAuthFeature.isEnabled(
+            featureFlagProvider: nil,
+            defaults: defaults,
+            analytics: mockAnalytics
+        )
+
+        #expect(enabled == true)
+
+        let events = mockAnalytics.typedEvents(ofType: RequestLineFeatureFlagEvaluatedEvent.self)
+        #expect(events.count == 1)
+        #expect(events.first?.source == "override")
+    }
 }
 

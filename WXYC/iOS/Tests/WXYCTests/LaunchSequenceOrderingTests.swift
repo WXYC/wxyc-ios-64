@@ -45,58 +45,30 @@ struct LaunchSequenceOrderingTests {
 
     private static let analyticsCall = "AppBootstrap.setUpAnalytics()"
 
-    /// The trimmed code lines of `WXYCApp.init()`'s body, located relative to
-    /// this file so the test moves with the target rather than depending on a
-    /// bundle resource.
+    /// The trimmed, comment-stripped code lines of `WXYCApp.init()`'s body,
+    /// via `SourceScan.boundedLines` — see that type for the block-comment
+    /// refusal guard and why depth-matching beats a fixed line count. Located
+    /// relative to this file so the test moves with the target rather than
+    /// depending on a bundle resource.
     ///
-    /// Line comments are dropped before matching. Both call sites are
-    /// documented with comments that name the very calls this test searches
-    /// for, so a naive scan finds the prose above the code and reports the
-    /// opposite of the truth — this test failed against the fixed file until
-    /// it learned to skip comments.
+    /// Both call sites this test searches for are documented with comments
+    /// that name the very calls, so a naive scan finds the prose above the
+    /// code and reports the opposite of the truth — this test failed against
+    /// the fixed file until it learned to skip `//` lines.
     private static func initBodyLines() throws -> [String] {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()  // WXYCTests
             .deletingLastPathComponent()  // Tests
             .deletingLastPathComponent()  // iOS
             .appendingPathComponent("WXYCApp.swift")
-        let all = try String(contentsOf: url, encoding: .utf8)
-            .split(separator: "\n", omittingEmptySubsequences: false)
-            .map(String.init)
 
-        let start = try #require(
-            all.firstIndex { $0.trimmingCharacters(in: .whitespaces) == "init() {" },
-            "Couldn't find `init() {` in WXYCApp.swift — the scan below would pass vacuously."
+        return try SourceScan.boundedLines(
+            of: url,
+            start: { $0 == "init() {" },
+            startNotFoundMessage: "Couldn't find `init() {` in WXYCApp.swift — the scan below would pass vacuously.",
+            open: "{",
+            close: "}"
         )
-
-        // Brace-count to the matching close so a `.capture(` in some later
-        // method can't be mistaken for one on the launch path.
-        var depth = 0
-        var end = all.count
-        for index in start..<all.count {
-            let line = all[index].trimmingCharacters(in: .whitespaces)
-            guard !line.hasPrefix("//") else { continue }
-            depth += line.filter { $0 == "{" }.count
-            depth -= line.filter { $0 == "}" }.count
-            if depth == 0 {
-                end = index
-                break
-            }
-        }
-
-        let body = all[start...min(end, all.count - 1)]
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-
-        // This test reasons about `//` only. A block comment inside `init()`
-        // could hide a call from the scan, or contribute a line that looks
-        // like one — either way the result stops meaning anything, so refuse
-        // rather than report a number that isn't true.
-        #expect(
-            !body.contains { $0.contains("/*") },
-            "WXYCApp.init() now contains a block comment. This test only strips `//` lines, so its result is no longer trustworthy — teach it to skip block comments before relying on it again."
-        )
-
-        return body.filter { !$0.hasPrefix("//") }
     }
 
     @Test("Analytics is started before anything on the launch path captures")
