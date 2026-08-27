@@ -127,6 +127,23 @@ struct RequestLineComposerTests {
         #expect(composer.failure == nil)
     }
 
+    // MARK: - Failure classification
+
+    // Pins the mapping in iOS#1011: the cause the listener sees must be
+    // assertable as a case, not by matching the copy the view renders.
+    @Test(
+        "Each RequestServiceError classifies to the failure the listener should be told about",
+        arguments: requestServiceErrorClassifications
+    )
+    func classifiesEachRequestServiceError(error: RequestServiceError, expected: RequestLineFailure) async {
+        let (composer, _, _) = makeComposer(result: .failure(error))
+        composer.text = "Back, Baby by Jessica Pratt"
+
+        _ = await composer.send()
+
+        #expect(composer.failure == expected)
+    }
+
     // MARK: - Double-send guard
 
     @Test("A send already in flight blocks a second one")
@@ -151,6 +168,17 @@ struct RequestLineComposerTests {
         #expect(await sender.invocationCount == 1)
     }
 }
+
+/// Extracted from the `@Test(arguments:)` call above — a large tuple array
+/// inline blows the type-checker.
+nonisolated let requestServiceErrorClassifications: [(RequestServiceError, RequestLineFailure)] = [
+    (.authenticationFailed(URLError(.notConnectedToInternet)), .authUnavailable),
+    (.serverError(statusCode: 500), .boothRejected(statusCode: 500)),
+    (.serverError(statusCode: 429), .boothRejected(statusCode: 429)),
+    (.invalidResponse, .boothUnreachable),
+    (.encodingFailed, .boothUnreachable),
+    (.networkError(URLError(.timedOut)), .boothUnreachable),
+]
 
 // MARK: - Test doubles
 

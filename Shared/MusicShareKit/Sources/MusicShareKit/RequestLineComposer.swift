@@ -32,9 +32,9 @@ public final class RequestLineComposer {
     /// True while a send is in flight.
     public private(set) var isSending = false
 
-    /// User-facing copy for a send that didn't land, or `nil` when there's
-    /// nothing to report. Displayed inline, next to the composer.
-    public private(set) var failure: String?
+    /// Why a send didn't land, or `nil` when there's nothing to report.
+    /// Displayed inline, next to the composer.
+    public private(set) var failure: RequestLineFailure?
 
     private let requestSender: any RequestSending
     private let analytics: any AnalyticsService
@@ -88,8 +88,14 @@ public final class RequestLineComposer {
             failure = nil
             return .sent
         } catch {
-            ErrorReporting.shared.report(error, context: "RequestLine", category: .ui)
-            failure = "Couldn't reach the booth. Try again."
+            let cause = (error as? RequestServiceError).map(RequestLineFailure.init) ?? .boothUnreachable
+            ErrorReporting.shared.report(
+                error,
+                context: "RequestLine",
+                category: .ui,
+                additionalData: ["failureCause": cause.analyticsValue]
+            )
+            failure = cause
             return .failed
         }
     }
