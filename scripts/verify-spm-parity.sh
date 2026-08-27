@@ -166,9 +166,13 @@ set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
 REPO_ROOT="${SCRIPT_DIR:h}"
+source "${REPO_ROOT}/scripts/lib/simulator.zsh"
 cd "$REPO_ROOT"
 
-SIMULATOR="id=B49BE311-B868-4E8B-AE14-85C159CAD776"
+# Resolved at run time rather than hardcoded — see scripts/lib/simulator.zsh
+# for why a committed simulator identifier is a constant with an expiry date.
+# Empty here; filled after arg parsing so an explicit --simulator costs nothing.
+SIMULATOR=""
 DERIVED_DATA=".build/dd-verify-parity"
 TOLERANCE=0
 DRY_RUN=0
@@ -232,6 +236,9 @@ while (( $# > 0 )); do
     esac
 done
 
+if [[ -z "$SIMULATOR" ]]; then
+    SIMULATOR=$(resolve_default_simulator_or_die) || exit 1
+fi
 DESTINATION="platform=iOS Simulator,${SIMULATOR}"
 
 # --derived-data accepts a repo-relative path (the default) or an absolute

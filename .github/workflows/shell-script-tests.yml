@@ -80,3 +80,6 @@ jobs:
 
       - name: Sentry dSYM upload regression suite
         run: zsh scripts/tests/test-upload-debug-symbols.sh
+
+      - name: Simulator-resolution regression suite
+        run: zsh scripts/tests/test-simulator-resolution.sh

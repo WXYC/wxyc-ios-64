@@ -27,7 +27,7 @@ Read the relevant topic doc before doing work in that area.
 - SwiftUI backed up by `@Observable` classes for shared data.
 - Do not introduce third-party frameworks without asking first.
 - Avoid UIKit unless requested.
-- There is no "iPhone 16 Pro" simulator. Simulator B49BE311-B868-4E8B-AE14-85C159CAD776 should be available. Check the available simulators if not.
+- Never hardcode a simulator name or UUID — both are local to one machine and one Xcode version, and a stale one fails several minutes into a build as `Unable to find a device matching the provided destination specifier`, which reads like a broken script. Resolve one at run time: `xcrun simctl list devices available`, or `source scripts/lib/simulator.zsh && resolve_default_simulator`. `scripts/test-affected.sh` and `scripts/verify-spm-parity.sh` already do this and take `--simulator` to override.
 
 ## Coding style
 

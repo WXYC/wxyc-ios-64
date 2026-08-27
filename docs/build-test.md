@@ -65,7 +65,7 @@ Prefer `scripts/test-affected.sh --full` over invoking `xcodebuild test -scheme 
 
 ```bash
 TEST_RUNNER_WXYC_SKIP_KNOWN_FLAKES=1 xcodebuild test -scheme WXYC \
-    -destination 'platform=iOS Simulator,id=<UUID>' \
+    -destination "platform=iOS Simulator,$(source scripts/lib/simulator.zsh && resolve_default_simulator)" \
     -skip-testing:WXYCUITests
 ```
 
@@ -77,14 +77,17 @@ Note that `scripts/test-affected.sh` does **not** set the flake-skip var itself 
 ## Building
 
 ```bash
-# After cloning, initialize the Wallpaper submodule
+# After cloning — AND after `git worktree add`, which does not inherit
+# submodules from the main working tree. Without this, package resolution
+# fails before anything compiles: "the package manifest at
+# 'Shared/Wallpaper/Package.swift' cannot be accessed".
 git submodule update --init --recursive
 
 # Build for device
 xcodebuild -scheme WXYC -destination 'generic/platform=iOS'
 
 # Build for simulator
-xcodebuild -scheme WXYC -destination 'platform=iOS Simulator,name=iPhone Air'
+xcodebuild -scheme WXYC -destination "platform=iOS Simulator,$(source scripts/lib/simulator.zsh && resolve_default_simulator)"
 ```
 
 ## The Xcode 27 Beta Toolchain
@@ -122,7 +125,7 @@ RUN_E2E=1 swift test --package-path Shared/MusicShareKit --filter AuthNetworkCli
 # xcodebuild test (sim): needs TEST_RUNNER_ prefix — xcodebuild strips it
 # when forwarding to the simulator test runner.
 TEST_RUNNER_RUN_E2E=1 xcodebuild test -scheme WXYC \
-    -destination 'platform=iOS Simulator,name=iPhone Air' \
+    -destination "platform=iOS Simulator,$(source scripts/lib/simulator.zsh && resolve_default_simulator)" \
     -only-testing:'PlaybackTests/AudioEnginePlayer Tests'
 ```
 
@@ -132,5 +135,5 @@ See `WXYC/iOS/Tests/WXYCUITests/README.md` for UI test documentation.
 
 ```bash
 # Run UI tests
-xcodebuild test -scheme WXYC -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -only-testing:WXYCUITests
+xcodebuild test -scheme WXYC -destination "platform=iOS Simulator,$(source scripts/lib/simulator.zsh && resolve_default_simulator)" -only-testing:WXYCUITests
 ```

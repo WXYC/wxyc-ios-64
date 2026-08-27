@@ -39,6 +39,12 @@ set -uo pipefail
 SCRIPT_DIR="${0:A:h}"
 REPO_ROOT="${SCRIPT_DIR:h:h}"
 REAL_SCRIPT="${REPO_ROOT}/scripts/test-affected.sh"
+REAL_SIM_LIB="${REPO_ROOT}/scripts/lib/simulator.zsh"
+
+if [[ ! -f "$REAL_SIM_LIB" ]]; then
+    echo "Cannot find scripts/lib/simulator.zsh at $REAL_SIM_LIB" >&2
+    exit 2
+fi
 
 if [[ ! -f "$REAL_SCRIPT" ]]; then
     echo "Cannot find scripts/test-affected.sh at $REAL_SCRIPT" >&2
@@ -64,8 +70,11 @@ git -C "$FIXTURE" commit -q -m "root commit"
 BASE_SHA=$(git -C "$FIXTURE" rev-parse HEAD)
 git -C "$FIXTURE" update-ref refs/remotes/origin/master "$BASE_SHA"
 
-mkdir -p "$FIXTURE/.github/scripts" "$FIXTURE/scripts"
+mkdir -p "$FIXTURE/.github/scripts" "$FIXTURE/scripts" "$FIXTURE/scripts/lib"
 cp "$REAL_SCRIPT" "$FIXTURE/scripts/test-affected.sh"
+# test-affected.sh sources this for its run-time simulator default; the fixture
+# is a bare git repo, so the dependency has to be copied alongside it.
+cp "$REAL_SIM_LIB" "$FIXTURE/scripts/lib/simulator.zsh"
 chmod +x "$FIXTURE/scripts/test-affected.sh"
 
 cat > "$FIXTURE/.github/scripts/affected-tests.sh" <<'STUB'
@@ -153,8 +162,11 @@ echo "root" > "$FIXTURE2/README.md"
 git -C "$FIXTURE2" add README.md
 git -C "$FIXTURE2" commit -q -m "root commit"
 
-mkdir -p "$FIXTURE2/.github/scripts" "$FIXTURE2/scripts"
+mkdir -p "$FIXTURE2/.github/scripts" "$FIXTURE2/scripts" "$FIXTURE2/scripts/lib"
 cp "$REAL_SCRIPT" "$FIXTURE2/scripts/test-affected.sh"
+# test-affected.sh sources this for its run-time simulator default; the fixture
+# is a bare git repo, so the dependency has to be copied alongside it.
+cp "$REAL_SIM_LIB" "$FIXTURE2/scripts/lib/simulator.zsh"
 chmod +x "$FIXTURE2/scripts/test-affected.sh"
 
 cat > "$FIXTURE2/.github/scripts/affected-tests.sh" <<'STUB2'
