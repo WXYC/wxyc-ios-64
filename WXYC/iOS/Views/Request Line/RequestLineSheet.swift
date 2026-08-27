@@ -69,7 +69,7 @@ struct RequestLineSheet: View {
                     .background(.quaternary, in: .rect(cornerRadius: 12))
 
                 if let failure = composer.failure {
-                    RequestLineFailureLabel(message: failure)
+                    RequestLineFailureLabel(failure: failure)
                 }
 
                 Button {
@@ -116,7 +116,8 @@ struct RequestLineSheet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         // The detent is fixed, so the inline failure row has to be budgeted
         // for — otherwise it pushes the "Dial a DJ" row past the bottom edge.
-        .presentationDetents([.height(composer.failure == nil ? 380 : 424)])
+        // 440 covers the two-line `.authUnavailable` copy at default Dynamic Type.
+        .presentationDetents([.height(composer.failure == nil ? 380 : 440)])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("requestLineSheet")
         .onAppear {
@@ -152,16 +153,39 @@ struct RequestLineSheet: View {
 /// sheet rather than in the confirmation HUD because the sheet stays up on
 /// failure — so the listener can retry without retyping — and would occlude a
 /// HUD raised behind it.
+///
+/// The composer classifies the cause; this view owns the copy, since the copy
+/// has to fit the layout budgeted for it (see the sheet's `presentationDetents`).
 struct RequestLineFailureLabel: View {
-    let message: String
+    let failure: RequestLineFailure
+
+    /// The leading clause is semibold, the rest regular, in one `Text` — the
+    /// row is already `.font(.footnote).foregroundStyle(.orange)`. Every case
+    /// already states "wasn't sent", so VoiceOver reads it once, from here.
+    private var message: Text {
+        switch failure {
+        case .authUnavailable:
+            Text("Couldn't connect to WXYC.").fontWeight(.semibold)
+                + Text(" Your request wasn't sent — try again in a moment.")
+        case .boothUnreachable:
+            Text("Couldn't reach the booth.").fontWeight(.semibold)
+                + Text(" Your request wasn't sent — try again.")
+        case .boothRejected:
+            Text("The booth turned that one down.").fontWeight(.semibold)
+                + Text(" Try rewording your request.")
+        }
+    }
 
     var body: some View {
-        Label(message, systemImage: "exclamationmark.triangle.fill")
-            .font(.footnote)
-            .foregroundStyle(.orange)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .transition(.opacity)
-            .accessibilityLabel("\(message) Your request was not sent.")
+        Label {
+            message
+        } icon: {
+            Image(systemName: "exclamationmark.triangle.fill")
+        }
+        .font(.footnote)
+        .foregroundStyle(.orange)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .transition(.opacity)
     }
 }
 
@@ -206,7 +230,9 @@ struct RequestLinePresenceLabel: View {
 #Preview("Send failed") {
     VStack(spacing: 22) {
         RequestLinePresenceLabel(requestLine: RequestLine(onAir: .dj("DJ HOUNDSTOOTH")))
-        RequestLineFailureLabel(message: "Couldn't reach the booth. Try again.")
+        RequestLineFailureLabel(failure: .authUnavailable)
+        RequestLineFailureLabel(failure: .boothUnreachable)
+        RequestLineFailureLabel(failure: .boothRejected(statusCode: 500))
     }
     .padding(24)
 }

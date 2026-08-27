@@ -107,6 +107,30 @@ struct RequestServiceTests {
         #expect(networkClient.fetchJWTCallCount == 1)
         #expect(networkClient.signInCallCount == 0)
     }
+
+    // Pins the 2026-08-27 decision (iOS#1011): the request line hard-fails on
+    // an auth failure rather than falling back to an unauthenticated POST.
+    // A future well-meaning "fall back so the listener isn't blocked" change
+    // would make this test fail by having the network session observe a call.
+    @Test("No request is sent when authentication cannot be established")
+    func noRequestSentWhenAuthenticationFails() async {
+        let networkClient = MockAuthNetworkClient()
+        networkClient.mockError = URLError(.notConnectedToInternet)
+        let authService = AuthenticationService(
+            storage: InMemoryTokenStorage(),
+            networkClient: networkClient,
+            baseURL: "https://auth.example.com",
+            analytics: MockStructuredAnalytics()
+        )
+
+        let session = NeverCalledSession()
+        let service = RequestService(session: session, authService: authService)
+
+        await #expect(throws: RequestServiceError.self) {
+            try await service.sendRequest(message: "la paradoja by Juana Molina")
+        }
+        #expect(await session.invocationCount == 0)
+    }
 }
 
 /// `RequestSession` that 401s the first request — but only after simulating a
@@ -157,6 +181,17 @@ private func makeRequestTestJWT(sub: String) -> String {
     let exp = Int(Date().addingTimeInterval(3600).timeIntervalSince1970)
     let payload = base64urlEncode(Data("{\"sub\":\"\(sub)\",\"exp\":\(exp)}".utf8))
     return "\(header).\(payload).fakesignature"
+}
+
+/// `RequestSession` that fails the test if it is ever asked to send a
+/// request — the double for asserting a request never leaves the device.
+private actor NeverCalledSession: RequestSession {
+    private(set) var invocationCount = 0
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        invocationCount += 1
+        throw URLError(.unknown)
+    }
 }
 
 /// In-memory `RequestSession` that records the last request and returns a 200 response.
