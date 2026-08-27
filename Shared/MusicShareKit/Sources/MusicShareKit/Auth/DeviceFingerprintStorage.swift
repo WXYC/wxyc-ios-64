@@ -125,8 +125,9 @@ extension DeviceFingerprintStorage {
 // MARK: - Keychain Operations Seam
 
 /// Narrow seam over `SecItemCopyMatching` / `SecItemAdd` so unit tests can
-/// drive the same-process duplicate-item race deterministically without a
-/// real Keychain (which requires an entitled signed host).
+/// drive the add-or-reread race documented on
+/// ``KeychainDeviceFingerprintStorage`` deterministically, without a real
+/// Keychain (which requires an entitled signed host).
 internal protocol KeychainOperations: Sendable {
     func copyMatching(_ query: CFDictionary) -> (status: OSStatus, data: Data?)
     func add(_ attributes: CFDictionary) -> OSStatus
@@ -149,13 +150,17 @@ internal struct DefaultKeychainOperations: KeychainOperations {
 
 /// Keychain-backed device fingerprint storage.
 ///
-/// Uses an atomic add-or-reread loop (D3 in the iOS#351 plan) to close the
-/// same-process duplicate-item race: two calls into this type race to write
-/// the first fingerprint, the second one's `SecItemAdd` returns
-/// `errSecDuplicateItem`, and we reread to pick up whichever value the
-/// Keychain daemon committed first. The main app and share extension cannot
-/// contend for this item — differing App ID prefixes put them in distinct
-/// Keychain access groups (see #1008).
+/// Uses an atomic add-or-reread loop (D3 in the iOS#351 plan). The item is
+/// written with `kSecAttrSynchronizable = true`, so the loop's live trigger
+/// is securityd committing an iCloud-Keychain-synced copy of this item from
+/// another device between our read and our add — not a same-process race.
+/// Both production call sites serialize on a single lock in `MusicShareKit`
+/// (`reconfigure(_:)` and the `deviceFingerprint` accessor each hold it
+/// around their call into this type), so two in-process callers can never
+/// both be inside `resolve()` at once; the second one to run always reads
+/// back `.existing`. A `SecItemAdd` here returning `errSecDuplicateItem` is
+/// that other device's write landing mid-resolve, and rereading picks up
+/// whichever value it committed.
 public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
 
     private let accessGroup: String?
@@ -227,8 +232,8 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
                 )
 
             case errSecDuplicateItem:
-                // Another process wrote first between our read and our add.
-                // Loop back to read the value that did win.
+                // An iCloud-synced write from another device landed between
+                // our read and our add. Loop back to read the value that won.
                 continue
 
             default:
