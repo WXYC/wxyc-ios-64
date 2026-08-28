@@ -1,0 +1,44 @@
+WXYC iOS — Release Notes
+Version 3.2 (RC 3)
+Range: v3.2-RC2 (2026-07-21) → v3.2-RC3 (2026-07-24)
+
+Distilled from the 51 commits since RC2, filtered to what a listener actually experiences. Internal refactors, CI, tests, API code-generation, and debug-gated work are excluded. RC3's headline additions are the new app icon and system-wide Spotlight/Siri discovery for On Tour.
+
+
+========================================================================
+APP STORE VERSION (scannable)
+========================================================================
+
+What's new in 3.2
+
+A fresh look — WXYC has a brand-new plasma app icon across iPhone, iPad, Mac, and Apple TV.
+
+On Tour — A whole new tab for discovering upcoming Triangle-area concerts by the artists WXYC actually plays. Browse a poster-first list grouped by month, filter by date, venue, and genre, and open a rich detail view with a venue map, an artist bio, and a ticket link. Share any show as a link or add it straight to your calendar. A "Heard on WXYC" shelf highlights shows by artists in the station's rotation, and a Box Office ticket appears in the playlist when an artist you're hearing has a show coming up.
+
+Spotlight & Siri — Search WXYC concerts, venues, artists, and now-playing tracks right from Spotlight, ask Siri about tours near you, and add a show to your calendar by voice.
+
+Liked Songs — Tap the heart on any track to save it, with a little celebration. Your new Liked tab keeps everything you've hearted, right on your device.
+
+Rock-solid streaming — A major overhaul of the audio engine means far fewer dropouts: the stream now automatically reconnects when it stalls, recovers from silent buffering, and handles switching between headphones, CarPlay, and Bluetooth more gracefully.
+
+Plus a redesigned tab bar tinted to your theme, a smooth crossfade between light and dark mode, reliable album artwork in the app and widgets, and dozens of stability fixes.
+
+
+========================================================================
+FULLER BREAKDOWN (for internal notes / TestFlight)
+========================================================================
+
+NEW
+- App icon — the new plasma design replaces the iOS/iPadOS/macOS icon and rebuilds the tvOS brand assets; the redundant watchOS icon set was retired.
+- Spotlight & Siri for On Tour — concerts, venues, and artists are indexed as system entities: search a show or venue in Spotlight, ask Siri for tours near you, add a show to your calendar by voice, and open a show with an "Open Concert" shortcut. Concerts are re-donated and evicted as their status changes.
+- Spotlight & Siri for the station — now-playing tracks, artists, DJs, shows, labels, and releases are surfaced as searchable entities with album-art thumbnails; opening a track result scrolls the playlist right to it.
+- WXYC logo above the Station tab header.
+
+IMPROVED
+- "Heard on WXYC" — the For You shelf is rebranded, and the looser "similar artist" tier is removed, so the shelf is strictly artists the station actually plays. Station picks are ordered by their recommendation rank.
+- Artist-bio header lifted out of its card on the concert detail for a cleaner layout.
+- App Store preview storyboard refreshed for the four-tab 3.2 surface.
+
+FIXED
+- Deep-linked playlist scroll now waits for the timeline to lay out before jumping to the tapped track.
+- Quieter diagnostics: per-frame debug logging no longer floods Sentry.

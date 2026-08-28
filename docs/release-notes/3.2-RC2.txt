@@ -1,0 +1,43 @@
+WXYC iOS — Release Notes
+Version 3.2 (RC 2)
+Range: v3.2-RC1 (2026-07-19) → v3.2-RC2 (2026-07-21)
+
+Distilled from the 40 commits since RC1, filtered to what a listener actually experiences. Internal refactors, CI, tests, and debug-gated tuning benches are excluded. RC2 is a polish pass on top of RC1 — the big 3.2 features are unchanged; this build sharpens On Tour, Liked, and the For You shelf.
+
+
+========================================================================
+APP STORE VERSION (scannable)
+========================================================================
+
+What's new in 3.2
+
+On Tour — A whole new tab for discovering upcoming Triangle-area concerts by the artists WXYC actually plays. Browse a poster-first list grouped by month, filter by date, venue, and genre, and open a rich detail view with a venue map, an artist bio, and a ticket link. Share any show as a link or add it straight to your calendar. A "For You" shelf highlights shows matched to the station's rotation, and a Box Office ticket appears in the playlist when an artist you're hearing has a show coming up.
+
+Liked Songs — Tap the heart on any track to save it, with a little celebration. Your new Liked tab keeps everything you've hearted, right on your device.
+
+Rock-solid streaming — A major overhaul of the audio engine means far fewer dropouts: the stream now automatically reconnects when it stalls, recovers from silent buffering, and handles switching between headphones, CarPlay, and Bluetooth more gracefully.
+
+Plus a redesigned tab bar tinted to your theme, a smooth crossfade between light and dark mode, reliable album artwork in the app and widgets, and dozens of stability fixes.
+
+
+========================================================================
+FULLER BREAKDOWN (for internal notes / TestFlight)
+========================================================================
+
+NEW
+- Share a show — send any concert as a canonical wxyc.org/shows link; recipients open straight to the poster detail, or to a "passed show" keepsake if it's already happened.
+- Add to Calendar — add a concert to your calendar from the show detail or a list row, with the event set in the station's time zone.
+- Artist bios — the concert detail now carries a short bio for the headliner.
+- "Not interested" — dismiss a show from the For You shelf via the overflow menu.
+
+IMPROVED
+- On Tour list is now grouped into month sections.
+- For You shelf: station-affinity recommendations retitled "WXYC recommends," equal-height cards, and corrected horizontal alignment.
+- Liked: a tuned heart celebration fires when you like a track, and the Liked row layout now matches the flowsheet.
+- Request Line: the "Say Hi" chip is reworded as a clearer Request affordance.
+
+FIXED
+- HTTPS universal links (including shared show links) now route to the right screen.
+- Concert-detail ticket no longer overlaps the headliner text.
+- For You cards no longer shift left when they appear.
+- Concurrent On Tour loads are coalesced onto a single fetch.
