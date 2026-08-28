@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Activities — Concept Mockups</title>
+<!--
+  PROTOTYPE — throwaway. Delete or absorb once a direction wins.
+
+  Question this answers: what would a WXYC Live Activity actually LOOK like, across all
+  four presentations the system demands, and which concepts survive contact with the shape?
+
+  STARTING POSITION (verified 2026-08-07, master):
+    · No ActivityKit anywhere in the tree. `NSSupportsLiveActivities` is absent from
+      `WXYC/iOS/Assets/Info.plist` — this is greenfield, not a partial implementation.
+    · `UIBackgroundModes = ['audio', 'fetch']` (same plist). THE load-bearing fact: while
+      someone is listening, the process is alive, so a listening-session activity updates
+      LOCALLY. No APNs, no push budget, no backend work.
+    · `Shared/Playlist/Sources/Playlist/V2/LiveFsEvent.swift` — the live-fs SSE stream
+      already delivers `.insert` / `.update` / `.refetch` at track granularity. An activity
+      fed off `PlaylistService.updates()` is strictly fresher than the widget, which sits on
+      a 5-minute timeline policy (`WXYC/iOS/NowPlayingWidget/Provider.swift`, `.after(fiveMinutes)`).
+    · NO push infrastructure exists. `registerForRemoteNotifications` appears NOWHERE in
+      the repo; the only notification path is DEBUG-gated `UNUserNotificationCenter`
+      (`WXYC/iOS/UserNotificationTourAlertScheduler.swift`). Everything below marked
+      PUSH-GATED needs APNs + `Activity.pushToStartTokenUpdates` first.
+
+  RESEARCH, 2026-08-07 — three findings that reshaped this file. Sources at the bottom.
+
+    (1) APP REVIEW IS NOT THE OBSTACLE. The three guidelines that touch this are 2.5.16
+        (widgets/extensions/notifications must relate to your app's content), 2.5.18 (no
+        DISPLAY ADVERTISING in extensions/notifications/widgets), and 4.5.4 (push must not
+        be used for promotions or direct marketing "unless customers have explicitly opted
+        in … and you provide a method in your app for a user to opt out"). Editorial
+        metadata about the song on the air is content, not promotion. No pattern of Live
+        Activity rejections in the audio category turned up in search — weak evidence, but
+        it is the evidence there is. TWO elements DO brush the rules and are called out
+        per-concept below: the ticket CTA (2.5.18-adjacent) and anything push-started (4.5.4).
+
+    (2) THE HIG IS THE OBSTACLE, and it pre-refuses the "use it to carry extra metadata"
+        idea in as many words:
+          · "Offer a Live Activity for tasks and live events that have a defined beginning
+             and end."
+          · "Don't offer a Live Activity for a task that exceeds eight hours, and always end
+             a Live Activity immediately after the task completes or the event ends."
+          · "PRESENT ONLY THE MOST ESSENTIAL CONTENT. People appreciate getting a summary and
+             key bits of information about an ongoing task or event; THEY DON'T EXPECT TO
+             RECEIVE A LOT OF DETAILS or to perform actions in a Live Activity."
+        Not a rejection risk — a design-intent statement. A dense card loses the
+        glanceability that makes the API work at all.
+        Duration, firmed up by an Apple DTS engineer (Aug 2025, forums thread 797676):
+        8 hours ACTIVE + 4 hours of Lock Screen residue = 12 hours total; the Dynamic Island
+        clears the instant the activity ends.
+
+    (3) THE NOW PLAYING CARD IS ITSELF A LIVE ACTIVITY. Apple's own user documentation:
+        "When you play music, a movie, or other media on your iPhone, you can control these
+        LIVE ACTIVITIES using the playback controls on your Lock Screen." So a now-playing
+        card from this app would not merely sit NEAR redundant system UI — it would be a
+        second Live Activity, from the same app, about the same audio, stacked in the same
+        region. The redundancy is STRUCTURAL, not cosmetic. Concept 1 was re-cut because of
+        this finding; see below.
+
+  THE FILTER that came out of (2) and (3). A fact earns a place on the card only if it is:
+        a. absent from the system Now Playing card, AND
+        b. time-sensitive (it expires, or it changes on its own), AND
+        c. actionable (there is something to do about it).
+    PASSES — the DJ on the board · the tour join · the Like button (an action, not a fact).
+    FAILS  — label, year, catalog number, critic review, rotation flag. All true, all
+             interesting, none time-sensitive. They already live in the app, the widget,
+             and Spotlight. The filter is the whole reason concept 1 is no longer a
+             now-playing card.
+
+  THE FIVE CONCEPTS, and the codebase each one is already sitting on:
+    1  The Booth     `OnAir` tri-state + `LikedSongsStore` + `Playcut.upcomingShow`.
+                     RE-CUT from a now-playing card after finding (3). The activity's
+                     lifetime is now THE DJ'S SHOW — which is precisely the "defined
+                     beginning and end" the HIG asks for, runs 2-3 hours (no ceiling
+                     problem), and has a human name on it. Under `.automation` the booth is
+                     empty, so there is no event and no activity; under `.unknown` we never
+                     guess. The tri-state IS the lifecycle.
+                     Also replaces the DEBUG-only tour notification (`TourAlertPlanner.swift`)
+                     with a non-interruptive state change on a card already on screen.
+    2  Doors         `ConcertCalendarEvent`, `VenueCoordinate`, `ShowStatus`,
+                     `BoxOfficeTicketPresenter`. Saving a show currently produces a
+                     calendar entry and then silence.
+    3  Fund Drive    Nothing exists. PUSH-GATED. The archetypal ActivityKit shape, and
+                     the thing that would justify building APNs once.
+    4  Sleep Timer   Nothing exists. `Text(timerInterval:)` renders a live countdown at
+                     ZERO update cost — the activity IS the whole feature.
+    5  Request       `RequestLine` + the in-flight confirmation work (#742/#743). The
+                     "it played" detection rides the same live-fs stream.
+
+  EVERY CONCEPT IS DRAWN IN TWO STATES. That is the point of the exercise: a Live Activity
+  earns its place only if it CHANGES while you are not looking at it. Press S (or the
+  toggle) to flip each concept to its second state. A concept whose two states look the
+  same does not deserve the API.
+
+  GEOMETRY — honest about what is measured and what is approximated:
+    · Dynamic Island idle pill: 126 × 37.33 pt, 11pt from the top edge. Apple-published,
+      exact, drawn 1px = 1pt.
+    · Lock Screen presentation: capped at 160pt tall by the system; corner radius is
+      system-applied via `ContainerRelativeShape` (~22pt here). Cap is real, radius is eyeballed.
+    · Expanded island: ~371pt wide, also capped at 160pt tall. Width approximated.
+    · Phone body: 393pt wide (iPhone 15/16 class), matching the other studies in this folder.
+    · Everything else — paddings, type sizes — is a designer's guess, NOT measured from a
+      running activity. Do not port these numbers into Swift without checking on device.
+
+  WHAT THIS FILE DOES NOT SETTLE:
+    · Whether concept 1 survives even re-cut. The mock still draws the system Now Playing
+      card underneath, faded, so the overlap stays visible rather than argued about — but
+      now the card above it leads with the DJ, not the song, so the two are answering
+      different questions. Look at it and decide.
+    · The 8-hour ceiling vs. an all-day fund drive. A DJ's show and a sleep timer fit
+      comfortably; a drive does not, and needs a re-arm strategy rather than one activity.
+    · Request→playcut matching (#5's second state) is fuzzy; identity resolution is
+      server-side in LML. The mock shows the happy path only.
+
+  SOURCES: developer.apple.com/app-store/review/guidelines · developer.apple.com/design/
+  human-interface-guidelines/live-activities · developer.apple.com/forums/thread/797676
+  (DTS on duration) · support.apple.com iPhone Lock Screen guide (Now Playing described as
+  a Live Activity) · developer.apple.com/videos/play/wwdc2025/278 (CarPlay via
+  `supplementalActivityFamilies`; also Mac menu bar and Watch Smart Stack, no visionOS).
+
+  Run:  open docs/ideas/live-activities.html
+  Keys: 1-5 pick a concept · arrow-left/right cycle · S flips state · W cycles wallpaper
+-->
+<style>
+  :root {
+    --signal: #ff453a;
+    --wxyc: #d1709f;              /* AccentColor.colorset, display-p3 (0.820, 0.441, 0.664) */
+    --ink: rgba(255,255,255,0.96);
+    --muted: rgba(255,255,255,0.55);
+    --faint: rgba(255,255,255,0.32);
+    --hair: rgba(255,255,255,0.14);
+    --page: #08080c;
+    --live-bg: rgba(30,30,34,0.72);   /* system material behind a lock-screen activity */
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(900px 600px at 10% -8%, #2a1a42 0%, transparent 55%),
+      radial-gradient(800px 700px at 96% 4%, #10404a 0%, transparent 50%),
+      var(--page);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    padding: 36px clamp(16px, 4vw, 56px) 90px;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead { max-width: 1180px; margin: 0 auto 26px; }
+  .masthead h1 { font-size: clamp(22px, 3.2vw, 31px); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 10px; }
+  .masthead p { color: var(--muted); max-width: 78ch; margin: 0 0 8px; }
+  .masthead strong { color: var(--ink); font-weight: 600; }
+  .masthead code { font: 12.5px/1 ui-monospace, "SF Mono", Menlo, monospace; color: #9be7c4; background: rgba(255,255,255,0.06); padding: 2px 5px; border-radius: 4px; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 20px; }
+  .lbl { color: var(--faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.13em; font-weight: 700; }
+  .seg { display: inline-flex; background: rgba(255,255,255,0.05); border: 1px solid var(--hair); border-radius: 999px; padding: 3px; }
+  .seg button {
+    appearance: none; border: 0; background: transparent; color: var(--muted);
+    font: inherit; font-size: 13px; padding: 6px 13px; border-radius: 999px; cursor: pointer;
+    transition: background 0.18s, color 0.18s; white-space: nowrap;
+  }
+  .seg button[aria-pressed="true"] { background: rgba(255,255,255,0.15); color: var(--ink); }
+  .seg button .num { color: var(--faint); font-size: 11px; margin-right: 5px; }
+  .seg button[aria-pressed="true"] .num { color: var(--wxyc); }
+  .statebtn[aria-pressed="true"] { background: var(--wxyc) !important; color: #16070f !important; font-weight: 600; }
+
+  /* ---------- concept header ---------- */
+  .concept-head { max-width: 1180px; margin: 30px auto 18px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .concept-head h2 { font-size: 21px; font-weight: 750; letter-spacing: -0.01em; margin: 0; }
+  .pill {
+    font: 700 10.5px/1 system-ui; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 5px 9px; border-radius: 6px;
+  }
+  .pill.local { background: rgba(52,199,89,0.16); color: #5fe08c; }
+  .pill.push  { background: rgba(255,159,10,0.16); color: #ffb340; }
+  .pill.clean { background: rgba(255,255,255,0.09); color: rgba(255,255,255,0.72); }
+  .pill.strain { background: rgba(255,69,58,0.15); color: #ff7a70; }
+  .concept-head .sub { color: var(--muted); font-size: 13.5px; margin: 0; flex-basis: 100%; max-width: 82ch; }
+  .statelabel { margin-left: auto; font: 600 12px/1 ui-monospace, monospace; color: var(--wxyc); letter-spacing: 0.04em; }
+
+  /* ---------- layout ---------- */
+  .stage { display: grid; gap: 26px; max-width: 1180px; margin: 0 auto;
+           grid-template-columns: 393px minmax(300px, 1fr); align-items: start; }
+  @media (max-width: 940px) { .stage { grid-template-columns: 1fr; } }
+  .col { display: flex; flex-direction: column; gap: 26px; }
+  .surface { }
+  .surface > .cap {
+    display: flex; align-items: center; gap: 8px; margin: 0 2px 9px;
+    font: 700 11px/1 system-ui; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint);
+  }
+  .surface > .cap em { font-style: normal; color: var(--muted); letter-spacing: 0.02em; text-transform: none; font-weight: 500; font-size: 11.5px; }
+
+  /* ---------- lock screen phone ---------- */
+  .phone {
+    width: 393px; height: 640px; border-radius: 46px; position: relative; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.10);
+    box-shadow: 0 30px 70px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .wp0 { background: linear-gradient(165deg, #3b1d5c 0%, #16213e 45%, #06070f 100%); }
+  .wp1 { background: linear-gradient(160deg, #0d3b3b 0%, #123a5c 40%, #050810 100%); }
+  .wp2 { background: linear-gradient(180deg, #efe6da 0%, #cbb9a6 50%, #8d7f74 100%); }
+  .wp2 .lock-clock, .wp2 .lock-date { color: #1c1a17; text-shadow: none; }
+  .phone .island-slot { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); z-index: 5; }
+  .lock-date { position: absolute; top: 72px; width: 100%; text-align: center; font: 500 15px/1 system-ui; color: rgba(255,255,255,0.82); letter-spacing: 0.01em; }
+  .lock-clock { position: absolute; top: 92px; width: 100%; text-align: center; font: 200 78px/1 system-ui; letter-spacing: -0.02em; color: #fff; text-shadow: 0 2px 20px rgba(0,0,0,0.25); }
+  .lock-stack { position: absolute; left: 14px; right: 14px; top: 210px; display: flex; flex-direction: column; gap: 10px; }
+  .lock-foot { position: absolute; bottom: 26px; left: 0; right: 0; display: flex; justify-content: space-between; padding: 0 44px; }
+  .lock-foot i { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,0.13); backdrop-filter: blur(8px); display: block; }
+  .home-ind { position: absolute; bottom: 9px; left: 50%; transform: translateX(-50%); width: 134px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.55); }
+
+  /* the live activity container itself */
+  .la {
+    border-radius: 22px; background: var(--live-bg);
+    -webkit-backdrop-filter: blur(26px) saturate(1.5); backdrop-filter: blur(26px) saturate(1.5);
+    border: 0.5px solid rgba(255,255,255,0.10); padding: 13px 15px; color: #fff;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.30);
+    max-height: 160px; overflow: hidden;             /* the system's real cap */
+  }
+  .la.tall { max-height: 160px; }
+  .la-hdr { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; }
+  .la-hdr .glyph { width: 15px; height: 15px; color: var(--wxyc); flex: none; }
+  .la-hdr .app { font: 600 11.5px/1 system-ui; color: rgba(255,255,255,0.62); letter-spacing: 0.02em; }
+  .la-hdr .right { margin-left: auto; font: 600 11.5px/1 ui-monospace, monospace; color: rgba(255,255,255,0.52); }
+  .la-hdr .right.live { color: var(--signal); display: flex; align-items: center; gap: 5px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 7px var(--signal); animation: pulse 1.3s ease-in-out infinite; display: inline-block; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .row { display: flex; align-items: center; gap: 12px; }
+  .art { width: 52px; height: 52px; border-radius: 9px; flex: none; position: relative; overflow: hidden; }
+  .art.sm { width: 38px; height: 38px; border-radius: 7px; }
+  .art.xs { width: 22px; height: 22px; border-radius: 5px; }
+  .art-molina  { background: linear-gradient(135deg, #e05a3c 0%, #7a2350 55%, #24123a 100%); }
+  .art-pratt   { background: linear-gradient(140deg, #d9c48a 0%, #96683f 50%, #40261c 100%); }
+  .art-chuqui  { background: linear-gradient(135deg, #3fd6c8 0%, #2a5ec9 55%, #16123c 100%); }
+  .art-yanya   { background: linear-gradient(150deg, #f0a3c0 0%, #a24a86 50%, #2c1030 100%); }
+  .art-stereo  { background: linear-gradient(135deg, #ffd166 0%, #ef6f4a 55%, #6a1f3a 100%); }
+  .art-duke    { background: linear-gradient(140deg, #6f8fc9 0%, #33406e 55%, #10131f 100%); }
+  .meta { min-width: 0; flex: 1; }
+  .title { font: 600 15px/1.25 system-ui; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .artist { font: 400 13.5px/1.3 system-ui; color: rgba(255,255,255,0.62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub2 { font: 400 11.5px/1.3 system-ui; color: rgba(255,255,255,0.42); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+  /* interactive controls (real ones are Buttons bound to App Intents) */
+  .btn {
+    appearance: none; border: 0; cursor: pointer; flex: none;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,0.13); color: #fff;
+    display: grid; place-items: center; transition: transform 0.12s, background 0.18s;
+  }
+  .btn:active { transform: scale(0.92); }
+  .btn svg { width: 19px; height: 19px; }
+  .btn.liked { background: rgba(255,55,95,0.22); color: #ff375f; }
+  .btn.wide { width: auto; height: 32px; border-radius: 16px; padding: 0 14px; font: 600 13px/1 system-ui; gap: 6px; display: inline-flex; align-items: center; }
+  .btn.accent { background: var(--wxyc); color: #1a0a12; font-weight: 700; }
+  .btn.ghost { background: rgba(255,255,255,0.11); }
+
+  .divider { height: 0.5px; background: rgba(255,255,255,0.13); margin: 11px -15px 10px; }
+
+  /* the tour-join row — the state change that replaces the DEBUG notification */
+  .joinrow { display: flex; align-items: center; gap: 9px; }
+  .joinrow .tix { width: 15px; height: 15px; color: var(--wxyc); flex: none; }
+  .joinrow .txt { font: 500 12.5px/1.3 system-ui; color: rgba(255,255,255,0.80); min-width: 0; flex: 1;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .joinrow .txt b { font-weight: 700; color: #fff; }
+  .enter { animation: slideIn 0.42s cubic-bezier(0.2, 0.9, 0.25, 1); }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
+
+  /* progress + countdown primitives */
+  .bar { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.15); overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--wxyc), #ffb84d); transition: width 0.5s ease; }
+  .bar.goal > i { background: linear-gradient(90deg, #34c759, #a3e635); }
+  .figures { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .figures .big { font: 700 26px/1 system-ui; letter-spacing: -0.02em; }
+  .figures .of { font: 500 13px/1 system-ui; color: rgba(255,255,255,0.5); }
+  .figures .right { margin-left: auto; font: 600 12px/1 ui-monospace, monospace; color: rgba(255,255,255,0.55); }
+  .count { font: 250 40px/1 system-ui; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .count.sm { font-size: 27px; }
+  .count.warn { color: #ffb340; }
+
+  /* system Now Playing card, drawn for the redundancy argument */
+  .npcard {
+    border-radius: 22px; background: rgba(22,22,26,0.60);
+    -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px);
+    border: 0.5px solid rgba(255,255,255,0.07); padding: 13px 15px;
+    opacity: 0.62;
+  }
+  .npcard .scrub { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2); margin-top: 11px; position: relative; }
+  .npcard .scrub i { position: absolute; inset: 0 62% 0 0; background: rgba(255,255,255,0.62); border-radius: 2px; }
+  .npcard .times { display: flex; justify-content: space-between; font: 500 10px/1 ui-monospace, monospace; color: rgba(255,255,255,0.4); margin-top: 5px; }
+  .redundancy-note {
+    font: 500 11.5px/1.45 system-ui; color: #ffb340; background: rgba(255,159,10,0.10);
+    border: 1px solid rgba(255,159,10,0.22); border-radius: 9px; padding: 8px 10px; margin: 0 2px;
+  }
+
+  /* ---------- dynamic island ---------- */
+  .island-bay {
+    background: linear-gradient(180deg, #14141a 0%, #0b0b10 100%);
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 20px;
+    padding: 22px 16px 18px; display: flex; flex-direction: column; gap: 7px; align-items: center;
+  }
+  .island-bay .note { font: 500 11.5px/1.4 system-ui; color: var(--faint); text-align: center; max-width: 46ch; }
+  .island {
+    background: #000; color: #fff; border-radius: 999px;
+    display: flex; align-items: center; overflow: hidden;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.6);
+    transition: width 0.34s cubic-bezier(0.2,0.9,0.25,1), height 0.34s cubic-bezier(0.2,0.9,0.25,1);
+  }
+  .island.idle    { width: 126px; height: 37.33px; }      /* measured: Apple-published */
+  .island.compact { height: 37.33px; padding: 0 13px; gap: 0; }
+  .island.minimal { width: 37.33px; height: 37.33px; justify-content: center; }
+  .island.expanded { width: 371px; border-radius: 42px; padding: 15px 17px 14px; flex-direction: column; align-items: stretch; max-height: 160px; }
+  .cutout { width: 76px; height: 30px; flex: none; }      /* sensor region the compact views flank */
+  .cmp-lead, .cmp-trail { display: flex; align-items: center; gap: 5px; font: 600 12px/1 system-ui; }
+  .cmp-lead { max-width: 60px; }
+  .cmp-trail { max-width: 76px; justify-content: flex-end; font-variant-numeric: tabular-nums; }
+  .cmp-trail .eq { display: flex; align-items: flex-end; gap: 2px; height: 13px; }
+  .cmp-trail .eq i { width: 2.5px; background: var(--wxyc); border-radius: 1px; animation: eq 0.9s ease-in-out infinite; }
+  .cmp-trail .eq i:nth-child(2) { animation-delay: 0.15s; }
+  .cmp-trail .eq i:nth-child(3) { animation-delay: 0.32s; }
+  .cmp-trail .eq i:nth-child(4) { animation-delay: 0.48s; }
+  @keyframes eq { 0%,100% { height: 4px; } 50% { height: 13px; } }
+  .exp-top { display: flex; align-items: flex-start; gap: 12px; }
+  .exp-lead { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .exp-trail { flex: none; text-align: right; }
+  .exp-center { text-align: center; }
+  .exp-bottom { margin-top: 12px; display: flex; align-items: center; gap: 9px; }
+  .minimal-glyph { width: 17px; height: 17px; color: var(--wxyc); }
+
+  /* ---------- smart stack / watch ---------- */
+  .stack-row { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .smartstack {
+    width: 172px; height: 172px; border-radius: 26px; padding: 13px;
+    background: rgba(28,28,32,0.86); border: 0.5px solid rgba(255,255,255,0.10);
+    display: flex; flex-direction: column; box-shadow: 0 14px 34px rgba(0,0,0,0.45);
+  }
+  .watch {
+    width: 172px; height: 210px; border-radius: 40px; padding: 30px 12px 12px;
+    background: #000; border: 5px solid #22232a; box-shadow: 0 14px 34px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+  .watch .wtime { position: absolute; }
+  .mini-cap { font: 600 10.5px/1 system-ui; color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+
+  /* ---------- notes panel ---------- */
+  .notes {
+    background: rgba(255,255,255,0.035); border: 1px solid var(--hair); border-radius: 16px;
+    padding: 18px 20px;
+  }
+  .notes h3 { font: 700 11px/1 system-ui; letter-spacing: 0.13em; text-transform: uppercase; color: var(--faint); margin: 0 0 12px; }
+  .notes dl { margin: 0; display: grid; grid-template-columns: 96px 1fr; gap: 9px 14px; align-items: baseline; }
+  .notes dt { font: 600 11.5px/1.4 system-ui; color: var(--muted); }
+  .notes dd { margin: 0; font: 400 13px/1.5 system-ui; color: rgba(255,255,255,0.84); }
+  .notes dd code { font: 11.5px/1 ui-monospace, "SF Mono", Menlo, monospace; color: #9be7c4; }
+  .notes dd em { font-style: normal; color: #ffb340; }
+  .notes .verdict { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--hair);
+                    font: 400 13px/1.55 system-ui; color: rgba(255,255,255,0.82); }
+  .notes .verdict b { color: #fff; }
+
+  /* ---------- the filter (research artifact) ---------- */
+  .filterbox {
+    margin-top: 22px; border: 1px solid var(--hair); border-radius: 14px;
+    background: rgba(255,255,255,0.035); padding: 16px 18px;
+  }
+  .filterbox h3 { font: 700 11px/1 system-ui; letter-spacing: 0.13em; text-transform: uppercase; color: var(--faint); margin: 0 0 10px; }
+  .filterbox p { margin: 0 0 12px; font-size: 13px; color: rgba(255,255,255,0.80); max-width: 82ch; }
+  .filterbox p b { color: #fff; }
+  .fgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 22px; }
+  .fcol .h { font: 700 10.5px/1 system-ui; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 7px; }
+  .fcol.pass .h { color: #5fe08c; }
+  .fcol.fail .h { color: #ff7a70; }
+  .fcol ul { margin: 0; padding-left: 16px; }
+  .fcol li { font-size: 12.5px; line-height: 1.55; color: rgba(255,255,255,0.72); }
+  .fcol li b { color: #fff; font-weight: 600; }
+  .fquote {
+    margin: 0 0 14px; padding: 9px 13px; border-left: 2px solid var(--wxyc);
+    font: italic 400 13px/1.5 system-ui; color: rgba(255,255,255,0.78);
+  }
+  .fquote span { font-style: normal; color: var(--faint); font-size: 11.5px; display: block; margin-top: 5px; }
+
+  .footnote { max-width: 1180px; margin: 44px auto 0; padding-top: 22px; border-top: 1px solid var(--hair);
+              color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .footnote b { color: var(--ink); }
+  .footnote code { font: 12px/1 ui-monospace, Menlo, monospace; color: #9be7c4; }
+  .kbd { display: inline-block; font: 600 11px/1 ui-monospace, monospace; background: rgba(255,255,255,0.10);
+         border: 1px solid var(--hair); border-radius: 5px; padding: 3px 6px; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <h1>Live Activities — five concepts, four presentations, two states each</h1>
+  <p class="lede">Nothing here exists yet: <code>NSSupportsLiveActivities</code> is absent from the Info.plist and ActivityKit appears nowhere in the tree. But <strong>the app already declares the <code>audio</code> background mode</strong>, so while someone is listening the process is alive and the live-fs SSE stream can drive an activity <strong>locally</strong> — no APNs, no push budget. That splits these five concepts cleanly into <span class="pill local">local</span> and <span class="pill push">push-gated</span>.</p>
+  <p>Each concept is drawn in <strong>two states</strong>, because a Live Activity earns its place only if it changes while you are not looking at it. Flip the state and watch what moves.</p>
+
+  <div class="filterbox">
+    <h3>The filter — added 2026-08-07 after reading the HIG</h3>
+    <p class="fquote">“Present only the most essential content. People appreciate getting a summary and key bits of information about an ongoing task or event; <b>they don’t expect to receive a lot of details</b> or to perform actions in a Live Activity.”
+      <span>Apple, Human Interface Guidelines — Live Activities. Apple has pre-refused the idea of using this surface as a metadata channel. Not a rejection risk; a design-intent statement.</span></p>
+    <p>So the question is not <em>what else could we show</em>. A fact earns a place on the card only if it is <b>(a) absent from the system Now Playing card</b>, <b>(b) time-sensitive</b> — it expires or changes on its own — and <b>(c) actionable</b>. All three, not two.</p>
+    <div class="fgrid">
+      <div class="fcol pass">
+        <div class="h">Passes</div>
+        <ul>
+          <li><b>The DJ on the board</b> — changes hourly, human, nowhere in the NP card</li>
+          <li><b>The tour join</b> — expires, has a deadline, has a button</li>
+          <li><b>The Like button</b> — an action, not a fact</li>
+        </ul>
+      </div>
+      <div class="fcol fail">
+        <div class="h">Fails</div>
+        <ul>
+          <li><b>Label, year, catalog number</b> — true, static, already in the app</li>
+          <li><b>Critic review, rotation flag</b> — interesting, not time-sensitive</li>
+          <li><b>Track title as the headline</b> — the NP card owns it (see below)</li>
+        </ul>
+      </div>
+      <div class="fcol">
+        <div class="h" style="color:var(--wxyc)">The structural finding</div>
+        <ul>
+          <li>Apple’s own docs call the Lock Screen media card <b>a Live Activity</b>. A now-playing card here would be a <b>second</b> Live Activity, same app, same audio, same stack. Concept 1 was re-cut because of this.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <span class="lbl">Concept</span>
+    <div class="seg" id="conceptSeg"></div>
+    <span class="lbl">State</span>
+    <div class="seg"><button class="statebtn" id="stateBtn" aria-pressed="false">second state</button></div>
+    <span class="lbl">Wallpaper</span>
+    <div class="seg" id="wpSeg">
+      <button data-wp="0" aria-pressed="true">night</button>
+      <button data-wp="1" aria-pressed="false">deep</button>
+      <button data-wp="2" aria-pressed="false">light</button>
+    </div>
+  </div>
+</div>
+
+<div class="concept-head">
+  <h2 id="cName"></h2>
+  <span class="pill" id="cPill"></span>
+  <span class="pill" id="cFit"></span>
+  <span class="statelabel" id="cState"></span>
+  <p class="sub" id="cSub"></p>
+</div>
+
+<div class="stage">
+  <!-- LEFT: lock screen in context -->
+  <div class="col">
+    <div class="surface">
+      <div class="cap">Lock Screen <em>— 160pt cap, system material, <code>ContainerRelativeShape</code></em></div>
+      <div class="phone wp0" id="phone">
+        <div class="island-slot"><div class="island idle"></div></div>
+        <div class="lock-date">Friday, September 12</div>
+        <div class="lock-clock">9:41</div>
+        <div class="lock-stack" id="lockStack"></div>
+        <div class="lock-foot"><i></i><i></i></div>
+        <div class="home-ind"></div>
+      </div>
+    </div>
+    <div class="redundancy-note" id="redundancy" hidden></div>
+  </div>
+
+  <!-- RIGHT: island + stack + notes -->
+  <div class="col">
+    <div class="surface">
+      <div class="cap">Dynamic Island <em>— idle pill measured at 126 × 37.33pt; compact views flank the sensor cutout</em></div>
+      <div class="island-bay">
+        <div class="note" style="margin-bottom:4px">COMPACT — what you see while another app is frontmost</div>
+        <div id="islandCompact"></div>
+        <div class="note" style="margin-top:14px;margin-bottom:4px">MINIMAL — when a second activity is running, you get a circle</div>
+        <div class="island minimal" id="islandMinimal"></div>
+        <div class="note" style="margin-top:14px;margin-bottom:4px">EXPANDED — long-press. Four regions: leading, trailing, center, bottom.</div>
+        <div id="islandExpanded"></div>
+      </div>
+    </div>
+
+    <div class="surface">
+      <div class="cap">Smart Stack &amp; Watch <em>— iOS 18 mirrors activities to the wrist for free; <code>.supplementalActivityFamily(.small)</code> tailors it</em></div>
+      <div class="stack-row">
+        <div>
+          <div class="mini-cap">StandBy / Smart Stack</div>
+          <div class="smartstack" id="smartstack"></div>
+        </div>
+        <div>
+          <div class="mini-cap">Apple Watch</div>
+          <div class="watch" id="watch"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes" id="notes"></div>
+  </div>
+</div>
+
+<div class="footnote">
+  <p><b>How to read these.</b> The Lock Screen mock still draws the <b>system Now Playing card underneath</b> concept 1, because that is the honest objection — and the research made it sharper than expected. Apple's own user documentation calls that media card a <b>Live Activity</b>, so a now-playing card from this app would be a <em>second</em> Live Activity, same app, same audio, same stack. The re-cut concept 1 leads with the DJ and the time left in their show, which is a question nothing else on the device answers.</p>
+  <p><b>What the research changed.</b> Three things. (1) <b>App Review is not the obstacle</b> — 2.5.16, 2.5.18 and 4.5.4 do not bite editorial metadata; only the ticket CTA and anything push-started need care. (2) <b>The HIG is</b>, and it pre-refuses a dense card: <em>“they don't expect to receive a lot of details.”</em> Hence the filter above. (3) <b>Scope beats density</b> — the way to earn the surface is to give the card a real event to be about (a show, a countdown, a timer) and let the metadata ride along as context.</p>
+  <p><b>What the numbers mean.</b> The island's 126 × 37.33pt idle pill and the 160pt Lock Screen cap are real system constraints, drawn 1px = 1pt. Duration is confirmed by Apple DTS (Aug 2025): <b>8 hours active + 4 hours Lock Screen residue = 12 total</b>, Dynamic Island cleared at 8. Everything else — paddings, type ramp, the 371pt expanded width — is a designer's guess. Do not port them into Swift without checking on device.</p>
+  <p><b>Reach, confirmed.</b> iOS 26 renders Live Activities on the <b>CarPlay home screen</b> via <code>supplementalActivityFamilies</code>, reusing the Lock Screen view, plus the <b>Mac menu bar</b> and the <b>Watch Smart Stack</b>. visionOS is the only holdout. An earlier draft of this file hedged on CarPlay; it should not have.</p>
+  <p><b>Keys.</b> <span class="kbd">1</span>–<span class="kbd">5</span> pick a concept · <span class="kbd">←</span> <span class="kbd">→</span> cycle · <span class="kbd">S</span> flips state · <span class="kbd">W</span> cycles wallpaper.</p>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ icons */
+const I = {
+  antenna: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 12v9"/><path d="M8.5 8.5a5 5 0 0 1 7 0"/><path d="M5.5 5.5a9 9 0 0 1 13 0"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>`,
+  heart: (f) => `<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M20.8 6.6a5 5 0 0 0-8.8-2.1A5 5 0 0 0 3.2 6.6c0 4.6 6.2 8.6 8.8 11 2.6-2.4 8.8-6.4 8.8-11z"/></svg>`,
+  pause: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1.4"/><rect x="13.5" y="5" width="4" height="14" rx="1.4"/></svg>`,
+  play: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4c0 .8.9 1.3 1.6.9l11-7.2c.6-.4.6-1.4 0-1.8l-11-7.2c-.7-.4-1.6.1-1.6.9z"/></svg>`,
+  ticket: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 8.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1.2a2.3 2.3 0 0 0 0 4.6v1.2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1.2a2.3 2.3 0 0 0 0-4.6z"/><path d="M14 7v10" stroke-dasharray="2 2.4"/></svg>`,
+  pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>`,
+  moon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>`,
+  plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg>`,
+  x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+  heartPulse: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.8 6.6a5 5 0 0 0-8.8-2.1A5 5 0 0 0 3.2 6.6c0 4.6 6.2 8.6 8.8 11 2.6-2.4 8.8-6.4 8.8-11z"/></svg>`,
+  mic: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.8l4.6 4.4L19 6.6"/></svg>`,
+  sparkle: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9z"/></svg>`,
+};
+const eq = `<span class="eq"><i></i><i></i><i></i><i></i></span>`;
+const cutout = `<span class="cutout"></span>`;
+
+/* --------------------------------------------------- concept definitions */
+/* Fixture data is WXYC-canonical (docs/test-fixtures.md): Juana Molina, Jessica Pratt,
+   Chuquimamani-Condori, Nilüfer Yanya. DJ handles are invented, not real staff. */
+
+const CONCEPTS = [
+  /* ========================================================== 1. THE BOOTH */
+  /* Re-cut 2026-08-07. Was a now-playing card; the research killed that framing.
+     The activity is now scoped to THE DJ'S SHOW — a real event with a beginning and an
+     end, 2-3 hours long, with a human name on it. The song rides underneath as context. */
+  {
+    key: 'booth', name: 'The Booth', mode: 'local', fit: 'clean',
+    sub: 'Was “On Air”, and was a now-playing card until the research killed that framing. It now leads with <strong>who is on the board</strong> and lives exactly as long as their show — which is precisely the “defined beginning and end” the HIG asks for. The song is context, not content: the Now Playing card already owns the track title, and it is a Live Activity too.',
+    states: ['DJ on the air', 'artist is on tour'],
+    stateLabel: ['song rides underneath', 'tour join replaces it ▸'],
+    lock(s) {
+      return `
+      <div class="la enter">
+        <div class="la-hdr">
+          <span class="glyph">${I.antenna}</span>
+          <span class="app">WXYC 89.3 FM</span>
+          <span class="right live"><span class="dot"></span>ON AIR</span>
+        </div>
+        <div class="row" style="align-items:flex-start">
+          <div class="meta">
+            <div style="font:700 20px/1.15 system-ui;letter-spacing:-0.02em">DJ Cardinal</div>
+            <div class="artist" style="margin-top:3px">Freeform · until 2:00 PM</div>
+          </div>
+          <div style="text-align:right;flex:none">
+            <div class="count sm" style="font-size:23px">1:12</div>
+            <div style="font:400 10.5px/1.3 system-ui;color:rgba(255,255,255,0.42);margin-top:2px">left in show</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        ${s
+          ? `<div class="joinrow enter">
+               <span class="tix">${I.ticket}</span>
+               <span class="txt"><b>Nilüfer Yanya</b> · Cat’s Cradle · Sun Sep 14</span>
+               <button class="btn wide accent">Tickets</button>
+             </div>`
+          : `<div class="joinrow">
+               <div class="art xs art-molina"></div>
+               <span class="txt">Juana Molina — <b>la paradoja</b></span>
+               <button class="btn" style="width:32px;height:32px" onclick="this.classList.toggle('liked');this.innerHTML=I.heart(this.classList.contains('liked'))">${I.heart(false)}</button>
+             </div>`}
+      </div>
+      <div class="npcard">
+        <div class="row">
+          <div class="art sm art-molina"></div>
+          <div class="meta">
+            <div class="title" style="font-size:14px">la paradoja</div>
+            <div class="artist" style="font-size:12.5px">WXYC 89.3 FM</div>
+          </div>
+          <button class="btn" style="width:34px;height:34px">${I.pause}</button>
+        </div>
+        <div class="scrub"><i></i></div>
+        <div class="times"><span>LIVE</span><span>—</span></div>
+      </div>`;
+    },
+    compact: (s) => ({
+      lead: `<span style="width:19px;height:19px;color:var(--wxyc)">${s ? I.ticket : I.antenna}</span>`,
+      trail: `<span>1:12</span>`
+    }),
+    minimal: (s) => `<span class="minimal-glyph">${s ? I.ticket : I.antenna}</span>`,
+    expanded(s) {
+      return `
+        <div class="exp-top">
+          <div class="exp-lead" style="flex-direction:column;align-items:flex-start;gap:2px">
+            <div style="font:700 17px/1.15 system-ui;letter-spacing:-0.01em">DJ Cardinal</div>
+            <div style="font:400 11.5px/1.3 system-ui;color:rgba(255,255,255,0.5)">Freeform · until 2:00 PM</div>
+          </div>
+          <div class="exp-trail">
+            <div style="font:600 11px/1 system-ui;color:var(--signal);display:flex;align-items:center;gap:5px;justify-content:flex-end"><span class="dot"></span>ON AIR</div>
+            <div style="font:600 15px/1.2 system-ui;margin-top:4px;font-variant-numeric:tabular-nums">1:12</div>
+          </div>
+        </div>
+        <div class="exp-bottom">
+          ${s
+            ? `<span style="width:15px;height:15px;color:var(--wxyc);flex:none">${I.ticket}</span>
+               <span style="font:500 12px/1.3 system-ui;color:rgba(255,255,255,0.78);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Nilüfer Yanya · Cat’s Cradle · Sep 14</span>
+               <button class="btn wide accent">Tickets</button>`
+            : `<div class="art xs art-molina"></div>
+               <span style="font:500 12px/1.3 system-ui;color:rgba(255,255,255,0.72);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Juana Molina — la paradoja</span>
+               <button class="btn" style="width:34px;height:34px">${I.heart(false)}</button>
+               <button class="btn" style="width:34px;height:34px">${I.pause}</button>`}
+        </div>`;
+    },
+    stack: (s) => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <span style="width:13px;height:13px;color:var(--wxyc)">${I.antenna}</span>
+        <span style="font:600 10.5px/1 system-ui;color:var(--signal)">ON AIR</span>
+      </div>
+      <div style="font:700 17px/1.15 system-ui;letter-spacing:-0.01em">DJ Cardinal</div>
+      <div style="font:400 11.5px/1.35 system-ui;color:rgba(255,255,255,0.55);margin-top:3px">Freeform · until 2:00 PM</div>
+      <div class="count sm" style="font-size:22px;margin-top:9px">1:12</div>
+      <div style="margin-top:auto;font:500 10.5px/1.3 system-ui;color:${s?'var(--wxyc)':'rgba(255,255,255,0.42)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s?'▸ Cat’s Cradle Sep 14':'Juana Molina'}</div>`,
+    watch: (s) => `
+      <div style="font:600 10px/1 system-ui;color:var(--signal);letter-spacing:0.08em;margin-bottom:7px">● ON AIR</div>
+      <div style="font:700 15px/1.15 system-ui">DJ Cardinal</div>
+      <div style="font:400 11px/1.3 system-ui;color:rgba(255,255,255,0.5);margin-top:2px">Freeform</div>
+      <div class="count sm" style="font-size:20px;margin-top:7px;margin-bottom:auto">1:12</div>
+      ${s?`<div style="font:600 10.5px/1.25 system-ui;color:var(--wxyc)">Cat’s Cradle · Sep 14</div>`
+         :`<div style="font:400 10.5px/1.25 system-ui;color:rgba(255,255,255,0.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Juana Molina</div>`}`,
+    redundancy: 'The faded card below is the <b>system Now Playing card</b> — and Apple’s own documentation calls that a <b>Live Activity</b> too. So the old version of this concept was not merely <em>near</em> redundant UI, it was a second Live Activity from the same app about the same audio in the same stack. The re-cut is the fix: the card above now answers <b>“who is on the board and for how long”</b>, which the NP card cannot answer at all, and lets the track title stay where it already lives.',
+    notes: {
+      'Feeds on': '<code>PlaylistService.updates()</code> over the live-fs SSE stream. The show countdown is <code>Text(timerInterval:)</code> — free.',
+      'Reuses': '<code>OnAir</code> tri-state · <code>LikedSongsStore</code> · <code>Playcut.upcomingShow</code>. <em>The tri-state IS the lifecycle:</em> <code>.dj</code> starts it, <code>.automation</code> ends it (empty booth = no event), <code>.unknown</code> never starts it.',
+      'New code': 'An <code>ActivityAttributes</code>, a <code>ToggleLikeIntent</code>, four layouts. No backend, no APNs.',
+      'Ends when': 'The DJ signs off. <em>A show runs 2-3 hours, so the 8-hour ceiling stops being a problem</em> — that was the old session-scoped design’s worst flaw.',
+      'Policy': 'Clean on the HIG’s primary test (defined beginning and end). The <b>ticket CTA</b> is the one element a reviewer could read against 2.5.18 — defensible as editorial (own feature, no ad network, no paid placement, no cut taken), but be deliberate about it.',
+      'Risk': 'The state flip <em>replaces</em> the song row rather than adding a third — the card cannot hold both inside 160pt. Cost: no Like button while a tour join is showing. That is the filter working (a catchable show outranks a track title), but it is a real loss.'
+    },
+    verdict: '<b>Survives, re-cut.</b> As a now-playing card it was a duplicate of system UI. As a card about <em>who is in the booth and how long they have left</em>, it answers a question nothing else on the device answers — and it inherits a lifecycle from the tri-state instead of inventing one.'
+  },
+
+  /* ============================================================= 2. DOORS */
+  {
+    key: 'doors', name: 'Doors', mode: 'local', fit: 'clean',
+    sub: 'A saved show currently produces a calendar entry and then silence. This is the API’s home turf — a bounded countdown to a real event, with the venue, the route, and the ticket state all already modeled in the Concerts package.',
+    states: ['counting down', 'status flips to sold out'],
+    stateLabel: ['on sale ▸', 'SOLD OUT'],
+    lock(s) {
+      return `
+      <div class="la enter">
+        <div class="la-hdr">
+          <span class="glyph">${I.ticket}</span>
+          <span class="app">WXYC · On Tour</span>
+          <span class="right">${s ? '<span style="color:#ff9f0a">SOLD OUT</span>' : 'Doors 8:00 PM'}</span>
+        </div>
+        <div class="row">
+          <div class="art art-pratt"></div>
+          <div class="meta">
+            <div class="title">Jessica Pratt</div>
+            <div class="artist">Cat’s Cradle Back Room · Carrboro</div>
+            <div class="sub2">${s ? 'Sold out — venue may release holds' : 'Doors in 2 hr 14 min · 12 min drive'}</div>
+          </div>
+          <div style="text-align:right;flex:none">
+            <div class="count sm">${s ? '—' : '2:14'}</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="joinrow">
+          <button class="btn wide ghost">${I.pin} Directions</button>
+          ${s ? `<button class="btn wide ghost">Waitlist</button>`
+               : `<button class="btn wide accent">${I.ticket} Tickets</button>`}
+          <span style="margin-left:auto;font:500 11px/1 system-ui;color:rgba(255,255,255,0.4)">${s?'status changed 4m ago':'8 tickets left'}</span>
+        </div>
+      </div>`;
+    },
+    compact: (s) => ({
+      lead: `<span style="width:18px;height:18px;color:var(--wxyc)">${I.ticket}</span>`,
+      trail: `<span style="${s?'color:#ff9f0a':''}">${s ? 'sold out' : '2:14'}</span>`
+    }),
+    minimal: () => `<span class="minimal-glyph">${I.ticket}</span>`,
+    expanded(s) {
+      return `
+        <div class="exp-top">
+          <div class="exp-lead">
+            <div class="art sm art-pratt"></div>
+            <div class="meta">
+              <div class="title" style="font-size:14px">Jessica Pratt</div>
+              <div class="artist" style="font-size:12px">Cat’s Cradle Back Room</div>
+            </div>
+          </div>
+          <div class="exp-trail">
+            <div class="count sm" style="font-size:22px;${s?'color:#ff9f0a':''}">${s?'—':'2:14'}</div>
+            <div style="font:400 10.5px/1.3 system-ui;color:rgba(255,255,255,0.45);margin-top:2px">${s?'sold out':'until doors'}</div>
+          </div>
+        </div>
+        <div class="exp-bottom">
+          <button class="btn wide ghost">${I.pin} Directions</button>
+          ${s?`<button class="btn wide ghost">Waitlist</button>`:`<button class="btn wide accent">Tickets</button>`}
+        </div>`;
+    },
+    stack: (s) => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span style="width:13px;height:13px;color:var(--wxyc)">${I.ticket}</span>
+        <span style="font:600 10.5px/1 system-ui;color:var(--faint)">TONIGHT</span>
+      </div>
+      <div class="count sm" style="${s?'color:#ff9f0a;font-size:20px':''}">${s?'SOLD OUT':'2:14'}</div>
+      <div style="font:600 13px/1.25 system-ui;margin-top:8px">Jessica Pratt</div>
+      <div style="font:400 11.5px/1.3 system-ui;color:rgba(255,255,255,0.55)">Cat’s Cradle Back Room</div>
+      <div style="margin-top:auto;font:500 10.5px/1 system-ui;color:rgba(255,255,255,0.42)">${s?'holds may open':'doors 8:00 PM'}</div>`,
+    watch: (s) => `
+      <div style="font:600 10px/1 system-ui;color:var(--faint);letter-spacing:0.08em;margin-bottom:6px">DOORS</div>
+      <div class="count sm" style="font-size:24px;${s?'color:#ff9f0a':''}">${s?'sold out':'2:14'}</div>
+      <div style="font:600 12px/1.2 system-ui;margin-top:6px">Jessica Pratt</div>
+      <div style="font:400 11px/1.25 system-ui;color:rgba(255,255,255,0.5);margin-bottom:auto">Cat’s Cradle</div>
+      <button class="btn wide ghost" style="align-self:flex-start">${I.pin}</button>`,
+    notes: {
+      'Feeds on': 'A concert the user already saved. The countdown is <code>Text(timerInterval:)</code> — the system renders it, so <em>ticking costs zero updates</em>.',
+      'Reuses': '<code>ConcertCalendarEvent</code> · <code>VenueCoordinate</code> · <code>ShowStatus</code> · <code>BoxOfficeTicketPresenter</code> for the CTA copy.',
+      'New code': 'A start hook on the calendar-save path, plus a status refresh. Still local — you know the date at save time.',
+      'Ends when': 'Doors, plus a grace window. Well inside the 8-hour ceiling if it starts ~4 hours out.',
+      'Policy': 'The cleanest fit on the page — a countdown to a real event is the HIG’s own example category. Local-only, so 4.5.4 never applies. Same ticket-CTA caveat as concept 1, and here it is even easier to defend: the user saved this show themselves.',
+      'Risk': 'A status flip to <code>soldOut</code> or <code>cancelled</code> mid-countdown needs a fetch, which is only possible while the app runs — <em>a background-refresh miss leaves stale “on sale” on a lock screen.</em>'
+    },
+    verdict: '<b>Second.</b> The most conventional fit in the app and the one users would least be surprised by. The state flip on the right is where the design work actually is: a card that says “on sale” for a sold-out show is worse than no card.'
+  },
+
+  /* ======================================================== 3. FUND DRIVE */
+  {
+    key: 'drive', name: 'Fund Drive', mode: 'push', fit: 'strain',
+    sub: 'Nothing like this exists in the app. It is also the single strongest argument for building APNs once: a fund drive is exactly the bounded, live-updating, community event ActivityKit was designed around, and a Lock Screen presence reaches people who are listening but not looking.',
+    states: ['climbing', 'goal hit'],
+    stateLabel: ['$18,240 of $25,000', 'GOAL ▸ celebration'],
+    lock(s) {
+      return `
+      <div class="la enter">
+        <div class="la-hdr">
+          <span class="glyph">${s ? I.sparkle : I.heartPulse}</span>
+          <span class="app">WXYC Fall Fund Drive</span>
+          <span class="right ${s?'':'live'}">${s ? '<span style="color:#5fe08c">GOAL MET</span>' : '<span class="dot"></span>6:12 left'}</span>
+        </div>
+        <div class="figures">
+          <span class="big">${s ? '$25,410' : '$18,240'}</span>
+          <span class="of">of $25,000</span>
+          <span class="right">${s ? '102%' : '73%'}</span>
+        </div>
+        <div class="bar ${s?'goal':''}"><i style="width:${s?100:73}%"></i></div>
+        <div class="divider"></div>
+        <div class="joinrow">
+          <span class="txt">${s ? '<b>Thank you.</b> Chapel Hill did it in 6 hours.' : '<b>412 listeners</b> have given today'}</span>
+          <button class="btn wide accent">${s ? 'Give anyway' : 'Donate'}</button>
+        </div>
+      </div>`;
+    },
+    compact: (s) => ({
+      lead: `<span style="width:18px;height:18px;color:${s?'#5fe08c':'var(--wxyc)'}">${s?I.sparkle:I.heartPulse}</span>`,
+      trail: `<span style="${s?'color:#5fe08c':''}">${s ? '102%' : '73%'}</span>`
+    }),
+    minimal: (s) => `<span class="minimal-glyph" style="${s?'color:#5fe08c':''}">${s?I.sparkle:I.heartPulse}</span>`,
+    expanded(s) {
+      return `
+        <div class="exp-top">
+          <div class="exp-lead" style="flex-direction:column;align-items:flex-start;gap:2px">
+            <div style="font:700 22px/1 system-ui;letter-spacing:-0.02em">${s?'$25,410':'$18,240'}</div>
+            <div style="font:400 11.5px/1.3 system-ui;color:rgba(255,255,255,0.5)">of $25,000 goal</div>
+          </div>
+          <div class="exp-trail">
+            <div style="font:600 13px/1 system-ui;${s?'color:#5fe08c':'color:var(--signal)'}">${s?'GOAL MET':'6:12 left'}</div>
+            <div style="font:400 10.5px/1.3 system-ui;color:rgba(255,255,255,0.45);margin-top:3px">412 donors</div>
+          </div>
+        </div>
+        <div style="margin-top:11px" class="bar ${s?'goal':''}"><i style="width:${s?100:73}%"></i></div>
+        <div class="exp-bottom" style="margin-top:11px">
+          <button class="btn wide accent" style="flex:1;justify-content:center">${s?'Give anyway':'Donate'}</button>
+          <button class="btn wide ghost">${I.antenna} Listen</button>
+        </div>`;
+    },
+    stack: (s) => `
+      <div style="font:600 10.5px/1 system-ui;color:var(--faint);letter-spacing:0.09em;margin-bottom:9px">FUND DRIVE</div>
+      <div style="font:700 24px/1 system-ui;letter-spacing:-0.02em">${s?'$25,410':'$18,240'}</div>
+      <div style="font:400 11px/1.3 system-ui;color:rgba(255,255,255,0.5);margin-bottom:11px">of $25,000</div>
+      <div class="bar ${s?'goal':''}"><i style="width:${s?100:73}%"></i></div>
+      <div style="margin-top:auto;font:600 11px/1 system-ui;color:${s?'#5fe08c':'var(--signal)'}">${s?'goal met':'6:12 remaining'}</div>`,
+    watch: (s) => `
+      <div style="font:600 10px/1 system-ui;color:var(--faint);letter-spacing:0.08em;margin-bottom:6px">FUND DRIVE</div>
+      <div style="font:700 20px/1 system-ui">${s?'$25,410':'$18,240'}</div>
+      <div style="font:400 10.5px/1.3 system-ui;color:rgba(255,255,255,0.5);margin-bottom:9px">of $25,000</div>
+      <div class="bar ${s?'goal':''}" style="height:6px"><i style="width:${s?100:73}%"></i></div>
+      <div style="margin-top:auto;font:600 10.5px/1 system-ui;color:${s?'#5fe08c':'var(--signal)'}">${s?'goal met':'6:12 left'}</div>`,
+    notes: {
+      'Feeds on': '<em>APNs. None of this exists.</em> Needs a token registry, an ActivityKit push payload, and <code>Activity.pushToStartTokenUpdates</code> to reach phones that are not already in the app.',
+      'Reuses': 'Nothing yet — no donation surface in the tree. <code>PartyHorn</code> is sitting right there for the in-app goal celebration.',
+      'New code': 'The most of any concept: backend emitter, token storage, a donation destination, and the activity itself.',
+      'Ends when': 'The drive does. <em>The 8-hour ceiling is a real constraint for an all-day drive</em> — plan on re-arming, or scope the activity to one shift. (8h active + 4h Lock Screen residue = 12h total; Dynamic Island clears at 8.)',
+      'Policy': '<em>The only concept on this page with a hard compliance gate.</em> A donation ask delivered by push is exactly what <b>4.5.4</b> governs: “not… for promotions or direct marketing purposes unless customers have explicitly opted in… and you provide a method in your app for a user to opt out.” <b>Build the opt-in and the opt-out before the first push ever fires.</b> A nonprofit’s own drive is not third-party advertising under 2.5.18, but do not test that by making it look like an ad.',
+      'Risk': 'Reaching someone who never opted in feels like an ad — and under 4.5.4 it is also a violation. Push-to-start must come from an in-app affordance, never silent.'
+    },
+    verdict: '<b>Do it once, deliberately.</b> This is the concept that justifies the APNs investment, and the investment then unlocks on-sale drops, live remotes, and the 2027 anniversary. But it is a project, not a feature — do not start here.'
+  },
+
+  /* ======================================================== 4. SLEEP TIMER */
+  {
+    key: 'sleep', name: 'Sleep Timer', mode: 'local', fit: 'clean',
+    sub: 'There is no sleep timer in the app today. Live Activities are unusually good at this shape: the countdown is <code>Text(timerInterval:)</code>, which the system renders locally at zero update cost, and +15 / Cancel are two App Intents. The activity is not a companion to the feature — it <em>is</em> the feature’s interface.',
+    states: ['28 minutes left', 'final minute'],
+    stateLabel: ['28:14', '0:47 ▸ fading out'],
+    lock(s) {
+      return `
+      <div class="la enter">
+        <div class="la-hdr">
+          <span class="glyph">${I.moon}</span>
+          <span class="app">WXYC · Sleep Timer</span>
+          <span class="right">${s ? '<span style="color:#ffb340">fading out</span>' : 'stops at 11:29 PM'}</span>
+        </div>
+        <div class="row">
+          <div style="flex:1">
+            <div class="count ${s?'warn':''}">${s ? '0:47' : '28:14'}</div>
+            <div class="sub2" style="margin-top:4px">${s ? 'volume ramping down' : 'Juana Molina — la paradoja'}</div>
+          </div>
+          <button class="btn">${I.plus}</button>
+          <button class="btn">${I.x}</button>
+        </div>
+      </div>`;
+    },
+    compact: (s) => ({
+      lead: `<span style="width:17px;height:17px;color:${s?'#ffb340':'var(--wxyc)'}">${I.moon}</span>`,
+      trail: `<span style="${s?'color:#ffb340':''}">${s ? '0:47' : '28:14'}</span>`
+    }),
+    minimal: (s) => `<span class="minimal-glyph" style="${s?'color:#ffb340':''}">${I.moon}</span>`,
+    expanded(s) {
+      return `
+        <div class="exp-top">
+          <div class="exp-lead" style="align-items:baseline">
+            <div class="count sm ${s?'warn':''}" style="font-size:30px">${s?'0:47':'28:14'}</div>
+            <div style="font:400 11.5px/1.3 system-ui;color:rgba(255,255,255,0.5)">${s?'fading out':'until sleep'}</div>
+          </div>
+          <div class="exp-trail">
+            <div style="width:19px;height:19px;color:${s?'#ffb340':'var(--wxyc)'};margin-left:auto">${I.moon}</div>
+          </div>
+        </div>
+        <div class="exp-bottom">
+          <button class="btn wide ghost" style="flex:1;justify-content:center">${I.plus} 15 min</button>
+          <button class="btn wide ghost" style="flex:1;justify-content:center">${I.x} Cancel</button>
+        </div>`;
+    },
+    stack: (s) => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <span style="width:13px;height:13px;color:${s?'#ffb340':'var(--wxyc)'}">${I.moon}</span>
+        <span style="font:600 10.5px/1 system-ui;color:var(--faint)">SLEEP</span>
+      </div>
+      <div class="count ${s?'warn':''}" style="font-size:34px">${s?'0:47':'28:14'}</div>
+      <div style="font:400 11px/1.35 system-ui;color:rgba(255,255,255,0.5);margin-top:6px">${s?'fading out':'stops at 11:29 PM'}</div>
+      <button class="btn wide ghost" style="align-self:flex-start;margin-top:auto">${I.plus} 15</button>`,
+    watch: (s) => `
+      <div style="font:600 10px/1 system-ui;color:var(--faint);letter-spacing:0.08em;margin-bottom:8px">SLEEP TIMER</div>
+      <div class="count ${s?'warn':''}" style="font-size:30px">${s?'0:47':'28:14'}</div>
+      <div style="font:400 10.5px/1.3 system-ui;color:rgba(255,255,255,0.5);margin-bottom:auto;margin-top:5px">${s?'fading out':'11:29 PM'}</div>
+      <button class="btn wide ghost" style="align-self:flex-start">${I.plus} 15</button>`,
+    notes: {
+      'Feeds on': 'Nothing. <code>Text(timerInterval:)</code> is rendered by the system — <em>the activity ticks with the app fully suspended and consumes no updates at all.</em>',
+      'Reuses': '<code>AudioPlayerController</code> for the stop, and the existing <code>PauseWXYC</code> intent shape for the buttons.',
+      'New code': 'A timer model, two App Intents, one layout family. The smallest build on this page.',
+      'Ends when': 'The timer fires. <em>An 8-hour “sleep in the morning” timer would clip against the ceiling</em>, but no real sleep timer is that long.',
+      'Policy': 'Unimpeachable. A timer is the least arguable “task with a defined beginning and end” there is, it duplicates no system UI, and it touches no push rule. <em>It is also the one card that can carry now-playing text as a subtitle without anyone asking why</em> — the timer is the reason the card exists; the metadata just rides along.',
+      'Risk': 'Almost none. The failure mode is a stale card if the audio session dies independently — end the activity from the same teardown path.'
+    },
+    verdict: '<b>The cheapest real win here.</b> A feature people already want from a radio app at night, where the Live Activity is not decoration but the entire UI — and it needs no network at all.'
+  },
+
+  /* =========================================================== 5. REQUEST */
+  {
+    key: 'request', name: 'Request', mode: 'local', fit: 'clean',
+    sub: 'A short-lived activity that spans the gap between sending a request and hearing it. The payoff state on the right is a moment no other radio app has — and the live-fs stream is what makes client-side detection possible at all.',
+    states: ['sent, waiting', 'it is on the air'],
+    stateLabel: ['sent to DJ Cardinal', 'ON THE AIR ▸'],
+    lock(s) {
+      return `
+      <div class="la enter">
+        <div class="la-hdr">
+          <span class="glyph">${s ? I.antenna : I.mic}</span>
+          <span class="app">WXYC · Request Line</span>
+          <span class="right ${s?'live':''}">${s ? '<span class="dot"></span>ON AIR NOW' : 'sent 6 min ago'}</span>
+        </div>
+        <div class="row">
+          <div class="art ${s?'art-chuqui':'art-chuqui'}" style="${s?'':'opacity:0.45'}"></div>
+          <div class="meta">
+            <div class="title">Call Your Name</div>
+            <div class="artist">Chuquimamani-Condori</div>
+            <div class="sub2" style="${s?'color:var(--wxyc)':''}">${s ? 'DJ Cardinal played your request' : 'waiting — DJ Cardinal has it'}</div>
+          </div>
+          ${s ? `<button class="btn liked">${I.heart(true)}</button>`
+              : `<div style="width:40px;height:40px;display:grid;place-items:center;color:rgba(255,255,255,0.35)">${I.check}</div>`}
+        </div>
+        ${s ? `<div class="divider"></div>
+        <div class="joinrow enter">
+          <span class="txt">Saved to your Liked songs</span>
+          <button class="btn wide ghost">Share</button>
+        </div>` : ''}
+      </div>`;
+    },
+    compact: (s) => ({
+      lead: `<span style="width:18px;height:18px;color:${s?'var(--signal)':'var(--wxyc)'}">${s?I.antenna:I.mic}</span>`,
+      trail: s ? eq : `<span style="color:rgba(255,255,255,0.55)">sent</span>`
+    }),
+    minimal: (s) => `<span class="minimal-glyph" style="${s?'color:var(--signal)':''}">${s?I.antenna:I.mic}</span>`,
+    expanded(s) {
+      return `
+        <div class="exp-top">
+          <div class="exp-lead">
+            <div class="art sm art-chuqui" style="${s?'':'opacity:0.45'}"></div>
+            <div class="meta">
+              <div class="title" style="font-size:14px">Call Your Name</div>
+              <div class="artist" style="font-size:12px">Chuquimamani-Condori</div>
+            </div>
+          </div>
+          <div class="exp-trail">
+            <div style="font:600 11px/1 system-ui;color:${s?'var(--signal)':'rgba(255,255,255,0.5)'};display:flex;align-items:center;gap:5px;justify-content:flex-end">
+              ${s?'<span class="dot"></span>ON AIR':'sent'}
+            </div>
+            <div style="font:400 10.5px/1.3 system-ui;color:rgba(255,255,255,0.42);margin-top:3px">DJ Cardinal</div>
+          </div>
+        </div>
+        <div class="exp-bottom">
+          ${s ? `<span style="font:500 12px/1.3 system-ui;color:rgba(255,255,255,0.72);flex:1">They played it. Saved to Liked.</span>
+                 <button class="btn wide accent">Share</button>`
+              : `<span style="font:500 12px/1.3 system-ui;color:rgba(255,255,255,0.55);flex:1">Waiting for it to hit the flowsheet…</span>`}
+        </div>`;
+    },
+    stack: (s) => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">
+        <span style="width:13px;height:13px;color:${s?'var(--signal)':'var(--wxyc)'}">${s?I.antenna:I.mic}</span>
+        <span style="font:600 10.5px/1 system-ui;color:${s?'var(--signal)':'var(--faint)'}">${s?'ON AIR':'REQUEST SENT'}</span>
+      </div>
+      <div style="font:600 13px/1.25 system-ui">Call Your Name</div>
+      <div style="font:400 11.5px/1.3 system-ui;color:rgba(255,255,255,0.55)">Chuquimamani-Condori</div>
+      <div style="margin-top:auto;font:500 11px/1.35 system-ui;color:${s?'var(--wxyc)':'rgba(255,255,255,0.42)'}">${s?'DJ Cardinal played it':'waiting…'}</div>`,
+    watch: (s) => `
+      <div style="font:600 10px/1 system-ui;color:${s?'var(--signal)':'var(--faint)'};letter-spacing:0.08em;margin-bottom:7px">${s?'● ON AIR':'REQUEST SENT'}</div>
+      <div style="font:600 13px/1.2 system-ui">Call Your Name</div>
+      <div style="font:400 11px/1.3 system-ui;color:rgba(255,255,255,0.5);margin-bottom:auto">Chuquimamani-Condori</div>
+      <div style="font:500 10.5px/1.25 system-ui;color:${s?'var(--wxyc)':'rgba(255,255,255,0.4)'}">${s?'they played it':'waiting…'}</div>`,
+    notes: {
+      'Feeds on': 'The same live-fs SSE stream — watch <code>.insert</code> events for a row matching the request while the app is alive.',
+      'Reuses': '<code>RequestLine</code> presence · the in-flight confirmation work (#742/#743) · <code>LikedSongsStore</code> for the auto-save.',
+      'New code': 'A matcher, and an activity that starts on send.',
+      'Ends when': 'The match lands, or a timeout. <em>Most requests will never match</em> — the timeout path is the common case and must not feel like failure.',
+      'Policy': 'Clean, and the shortest-lived card here. Bounded by construction (send → play, or timeout), user-initiated by definition, no push. The thing to police is honesty, not compliance.',
+      'Risk': '<em>Matching is fuzzy and identity resolution lives server-side in LML.</em> A false positive (“they played it” when they didn’t) is worse than staying quiet. Under confirmed automation <code>RequestLine.boothIsOpen</code> is false and this must never start.'
+    },
+    verdict: '<b>Delightful, and the riskiest.</b> The payoff state is the single most charming thing on this page, but it rests on fuzzy matching. Ship it only behind a high-confidence match, and let silence be the default.'
+  }
+];
+
+/* ------------------------------------------------------------- rendering */
+let ci = 0, alt = false, wp = 0;
+
+const $ = (id) => document.getElementById(id);
+
+function renderSeg() {
+  $('conceptSeg').innerHTML = CONCEPTS.map((c, i) =>
+    `<button data-i="${i}" aria-pressed="${i===ci}"><span class="num">${i+1}</span>${c.name}</button>`).join('');
+  $('conceptSeg').querySelectorAll('button').forEach(b =>
+    b.onclick = () => { ci = +b.dataset.i; render(); });
+}
+
+function render() {
+  const c = CONCEPTS[ci];
+  renderSeg();
+
+  $('cName').textContent = c.name;
+  $('cPill').textContent = c.mode === 'local' ? 'local updates' : 'push-gated';
+  $('cPill').className = 'pill ' + c.mode;
+  $('cFit').textContent = c.fit === 'clean' ? 'HIG: clean fit' : 'HIG: strains';
+  $('cFit').className = 'pill ' + c.fit;
+  $('cFit').title = c.fit === 'clean'
+    ? 'Has a defined beginning and end, and fits inside eight hours.'
+    : 'Exceeds the eight-hour guidance and/or carries a push-compliance gate.';
+  $('cSub').innerHTML = c.sub;
+  $('cState').textContent = c.stateLabel[alt ? 1 : 0];
+  $('stateBtn').textContent = c.states[alt ? 1 : 0];
+  $('stateBtn').setAttribute('aria-pressed', alt);
+
+  $('lockStack').innerHTML = c.lock(alt);
+
+  const cmp = c.compact(alt);
+  $('islandCompact').innerHTML =
+    `<div class="island compact"><span class="cmp-lead">${cmp.lead}</span>${cutout}<span class="cmp-trail">${cmp.trail}</span></div>`;
+  $('islandMinimal').innerHTML = c.minimal(alt);
+  $('islandExpanded').innerHTML = `<div class="island expanded">${c.expanded(alt)}</div>`;
+
+  $('smartstack').innerHTML = c.stack(alt);
+  $('watch').innerHTML = c.watch(alt);
+
+  const r = $('redundancy');
+  if (c.redundancy) { r.innerHTML = c.redundancy; r.hidden = false; } else { r.hidden = true; }
+
+  $('notes').innerHTML =
+    `<h3>What it costs, what it breaks</h3><dl>` +
+    Object.entries(c.notes).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('') +
+    `</dl><div class="verdict">${c.verdict}</div>`;
+
+  $('phone').className = 'phone wp' + wp;
+  $('wpSeg').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', +b.dataset.wp === wp));
+}
+
+$('stateBtn').onclick = () => { alt = !alt; render(); };
+$('wpSeg').querySelectorAll('button').forEach(b => b.onclick = () => { wp = +b.dataset.wp; render(); });
+
+addEventListener('keydown', (e) => {
+  if (e.key >= '1' && e.key <= String(CONCEPTS.length)) { ci = +e.key - 1; render(); }
+  else if (e.key === 'ArrowRight') { ci = (ci + 1) % CONCEPTS.length; render(); }
+  else if (e.key === 'ArrowLeft') { ci = (ci - 1 + CONCEPTS.length) % CONCEPTS.length; render(); }
+  else if (e.key.toLowerCase() === 's') { alt = !alt; render(); }
+  else if (e.key.toLowerCase() === 'w') { wp = (wp + 1) % 3; render(); }
+});
+
+render();
+</script>
+</body>
+</html>

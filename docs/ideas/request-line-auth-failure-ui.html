@@ -1,0 +1,172 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Request Line — auth failure UI</title>
+<style>
+  :root{
+    --accent:#4bb8e0; --sheet:#1c1c1e; --page:#0b0b0d; --field:#2c2c2e;
+    --text:#f2f2f7; --secondary:#98989f; --sep:#38383a; --warn:#ff9f0a; --green:#30d158;
+    --font:-apple-system,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--text);font-family:var(--font);padding:40px 28px 72px}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.3px;margin:0 0 6px}
+  .lede{color:var(--secondary);font-size:15px;line-height:1.55;max-width:70ch;margin:0 0 32px}
+  .grid{display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start}
+  .col{width:330px}
+  .cap{font-size:13px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--secondary);margin:0 0 4px}
+  .cap.rec{color:var(--green)}
+  .note{font-size:13px;line-height:1.5;color:var(--secondary);margin:10px 2px 0}
+  .h{font-size:11px;color:#6b6b70;margin:6px 2px 0;font-variant-numeric:tabular-nums}
+
+  /* sheet */
+  .sheet{background:var(--sheet);border-radius:20px 20px 0 0;padding:0 0 18px;position:relative;
+         box-shadow:0 -1px 0 rgba(255,255,255,.07) inset, 0 18px 50px rgba(0,0,0,.55);overflow:hidden}
+  .grab{width:36px;height:5px;border-radius:3px;background:#48484e;margin:8px auto 0}
+  .body{padding:16px 24px 0}
+  .title{font-size:21px;font-weight:700;letter-spacing:-.2px;margin:0}
+  .pres{display:flex;align-items:center;gap:7px;margin-top:6px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:none}
+  .pres span{font-size:14px;color:var(--secondary)}
+  .sub{font-size:14px;font-weight:700;color:var(--secondary);margin:22px 0 10px}
+  .field{background:var(--field);border-radius:12px;padding:12px;font-size:16px;line-height:1.3}
+  .fail{display:flex;gap:7px;align-items:flex-start;margin-top:10px;font-size:13px;color:var(--warn);line-height:1.35}
+  .fail svg{flex:none;margin-top:1px}
+  .fail .strong{color:var(--warn)}
+  .send{margin-top:10px;background:var(--accent);color:#00232e;border-radius:12px;
+        text-align:center;font-size:17px;font-weight:700;padding:13px}
+  .rule{height:1px;background:var(--sep);margin:22px 0}
+  .dial{display:flex;align-items:center;gap:12px}
+  .dial .t{font-size:17px;font-weight:700;line-height:1.2}
+  .dial .n{font-size:13px;color:var(--secondary)}
+  .retry{margin-left:auto;color:var(--accent);font-weight:700;font-size:13px;white-space:nowrap}
+  .retrybtn{margin-top:10px;border:1.5px solid var(--accent);color:var(--accent);border-radius:12px;
+            text-align:center;font-size:16px;font-weight:700;padding:11px}
+  .diff{background:#141416;border:1px solid var(--sep);border-radius:10px;padding:12px 14px;margin-top:12px;
+        font:12.5px/1.6 "SF Mono",ui-monospace,Menlo,monospace;color:#c9c9ce;white-space:pre-wrap}
+  .del{color:#ff6b6b} .add{color:#5ddc7a}
+</style>
+
+<h1>Request Line — the auth-failure surface</h1>
+<p class="lede">Three options for <b>#1011</b>, against today’s sheet. All four are the same component
+(<code>RequestLineFailureLabel</code> inside <code>RequestLineSheet</code>); only the copy and the row’s
+contents differ. Sheet heights are the real <code>presentationDetents</code> values — the detent is fixed,
+so anything added to the failure row has to be budgeted for or it pushes “Dial a DJ” past the bottom edge.</p>
+
+<div class="grid">
+
+  <!-- BASELINE -->
+  <div class="col">
+    <p class="cap">Today — baseline</p>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="body">
+        <p class="title">The Request Line</p>
+        <div class="pres"><i class="dot"></i><span>DJ HOUNDSTOOTH is at the controls</span></div>
+        <p class="sub">Make a request</p>
+        <div class="field">la paradoja — Juana Molina</div>
+        <div class="fail">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="#ff9f0a"><path d="M8 1.2 15.3 14H.7L8 1.2Zm0 4.1a.72.72 0 0 0-.72.78l.24 3.2a.48.48 0 0 0 .96 0l.24-3.2A.72.72 0 0 0 8 5.3Zm0 5.3a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg>
+          <span>Couldn’t reach the booth. Try again.</span>
+        </div>
+        <div class="send">Send to the booth</div>
+        <div class="rule"></div>
+        <div class="dial">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="#30d158"><path d="M4.2 1.5c.5-.2 1 0 1.3.4l1.2 2c.3.4.2 1-.2 1.3l-1 .8c.6 1.4 1.7 2.5 3.1 3.1l.8-1c.3-.4.9-.5 1.3-.2l2 1.2c.4.3.6.8.4 1.3l-.6 1.5c-.2.5-.7.8-1.2.7C6.6 13.9 2.1 9.4 1.3 4.3c-.1-.5.2-1 .7-1.2l2.2-1.6Z"/></svg>
+          <div><div class="t">Dial a DJ</div><div class="n">(919) 962-8989</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="h">detent 424 pt</p>
+    <p class="note">Asserts a cause it doesn’t know. On an auth failure ROM was never contacted, so this
+    sentence is false — and it misdirects anyone who reports it.</p>
+  </div>
+
+  <!-- A -->
+  <div class="col">
+    <p class="cap">A — stop claiming a cause</p>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="body">
+        <p class="title">The Request Line</p>
+        <div class="pres"><i class="dot"></i><span>DJ HOUNDSTOOTH is at the controls</span></div>
+        <p class="sub">Make a request</p>
+        <div class="field">la paradoja — Juana Molina</div>
+        <div class="fail">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="#ff9f0a"><path d="M8 1.2 15.3 14H.7L8 1.2Zm0 4.1a.72.72 0 0 0-.72.78l.24 3.2a.48.48 0 0 0 .96 0l.24-3.2A.72.72 0 0 0 8 5.3Zm0 5.3a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg>
+          <span>Your request wasn’t sent. Try again.</span>
+        </div>
+        <div class="send">Send to the booth</div>
+        <div class="rule"></div>
+        <div class="dial">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="#30d158"><path d="M4.2 1.5c.5-.2 1 0 1.3.4l1.2 2c.3.4.2 1-.2 1.3l-1 .8c.6 1.4 1.7 2.5 3.1 3.1l.8-1c.3-.4.9-.5 1.3-.2l2 1.2c.4.3.6.8.4 1.3l-.6 1.5c-.2.5-.7.8-1.2.7C6.6 13.9 2.1 9.4 1.3 4.3c-.1-.5.2-1 .7-1.2l2.2-1.6Z"/></svg>
+          <div><div class="t">Dial a DJ</div><div class="n">(919) 962-8989</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="h">detent 424 pt — unchanged</p>
+    <p class="note">One string, zero layout change, zero new state. Honest, but every failure still reads
+    the same, so the listener can’t tell a transient auth blip from a real outage.</p>
+  </div>
+
+  <!-- B -->
+  <div class="col">
+    <p class="cap rec">B — name the failure ✔ recommended</p>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="body">
+        <p class="title">The Request Line</p>
+        <div class="pres"><i class="dot"></i><span>DJ HOUNDSTOOTH is at the controls</span></div>
+        <p class="sub">Make a request</p>
+        <div class="field">la paradoja — Juana Molina</div>
+        <div class="fail">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="#ff9f0a"><path d="M8 1.2 15.3 14H.7L8 1.2Zm0 4.1a.72.72 0 0 0-.72.78l.24 3.2a.48.48 0 0 0 .96 0l.24-3.2A.72.72 0 0 0 8 5.3Zm0 5.3a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg>
+          <span><b class="strong">Couldn’t connect to WXYC.</b> Your request wasn’t sent — try again in a moment.</span>
+        </div>
+        <div class="send">Send to the booth</div>
+        <div class="rule"></div>
+        <div class="dial">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="#30d158"><path d="M4.2 1.5c.5-.2 1 0 1.3.4l1.2 2c.3.4.2 1-.2 1.3l-1 .8c.6 1.4 1.7 2.5 3.1 3.1l.8-1c.3-.4.9-.5 1.3-.2l2 1.2c.4.3.6.8.4 1.3l-.6 1.5c-.2.5-.7.8-1.2.7C6.6 13.9 2.1 9.4 1.3 4.3c-.1-.5.2-1 .7-1.2l2.2-1.6Z"/></svg>
+          <div><div class="t">Dial a DJ</div><div class="n">(919) 962-8989</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="h">detent 440 pt — two-line failure row</p>
+    <p class="note">Distinct copy per cause, one row shape. “in a moment” is the honest hint for the dominant
+    failure (a 429, a cold Keychain) and is what makes the still-live Send button read as the remedy.</p>
+    <div class="diff">enum RequestLineFailure {
+  case <span class="add">authUnavailable</span>   <span class="del">// new</span>
+  case boothUnreachable
+  case boothRejected(Int)
+}</div>
+  </div>
+
+  <!-- C -->
+  <div class="col">
+    <p class="cap">C — explicit Retry control</p>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="body">
+        <p class="title">The Request Line</p>
+        <div class="pres"><i class="dot"></i><span>DJ HOUNDSTOOTH is at the controls</span></div>
+        <p class="sub">Make a request</p>
+        <div class="field">la paradoja — Juana Molina</div>
+        <div class="fail">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="#ff9f0a"><path d="M8 1.2 15.3 14H.7L8 1.2Zm0 4.1a.72.72 0 0 0-.72.78l.24 3.2a.48.48 0 0 0 .96 0l.24-3.2A.72.72 0 0 0 8 5.3Zm0 5.3a.85.85 0 1 0 0 1.7.85.85 0 0 0 0-1.7Z"/></svg>
+          <span><b class="strong">Couldn’t connect to WXYC.</b> Your request wasn’t sent.</span>
+          <span class="retry">Retry</span>
+        </div>
+        <div class="send">Send to the booth</div>
+        <div class="rule"></div>
+        <div class="dial">
+          <svg width="17" height="17" viewBox="0 0 16 16" fill="#30d158"><path d="M4.2 1.5c.5-.2 1 0 1.3.4l1.2 2c.3.4.2 1-.2 1.3l-1 .8c.6 1.4 1.7 2.5 3.1 3.1l.8-1c.3-.4.9-.5 1.3-.2l2 1.2c.4.3.6.8.4 1.3l-.6 1.5c-.2.5-.7.8-1.2.7C6.6 13.9 2.1 9.4 1.3 4.3c-.1-.5.2-1 .7-1.2l2.2-1.6Z"/></svg>
+          <div><div class="t">Dial a DJ</div><div class="n">(919) 962-8989</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="h">detent 440 pt</p>
+    <p class="note"><b>Two controls that do the same thing</b>, six points apart. “Retry” and “Send to the
+    booth” both call <code>composer.send()</code> — the second button buys discoverability the first already has,
+    and adds a tap target that must be suppressed on 403 or it becomes a ban probe.</p>
+  </div>
+
+</div>

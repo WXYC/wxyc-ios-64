@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AirPlay — Route Picker Placement Studies</title>
+<!--
+  PROTOTYPE — throwaway. Delete or absorb once a direction wins.
+
+  Question this answers: where does an AirPlay route control go in the player header?
+
+  Today the app ALREADY opts into AirPlay 2 — `AudioPlayerController.swift:623` sets
+  `.playback` with `policy: .longFormAudio`, and `WXYC/iOS/Assets/Info.plist` declares
+  `AVInitialRouteSharingPolicy = LongFormAudio`. `DelayBuffer` already compensates the
+  visualizer for `AVAudioSession.outputLatency` on a remote route. What's missing is not
+  capability — audio already reaches AirPlay 2 speakers via Control Center — it is
+  DISCOVERABILITY. There is no `AVRoutePickerView` anywhere in the codebase, so the only
+  way to move audio to a speaker is to leave the app.
+
+  The cost is concrete and measurable: `VisualizerConstants.barAmount` is FIXED at 16, so
+  any width the route control takes is width squeezed out of every LCD bar — the app's
+  signature element. Each variant below reports its real computed bar width, using the
+  actual formula from `LCDSpectrumAnalyzerView.swift:76`:
+
+      barWidth = (canvasWidth - 2*inset - 3.5*(16-1)) / 16
+
+  Five placements over the real header geometry (393pt phone, 12pt card padding, 50pt play
+  glyph + 4pt trailing, 75pt visualizer height), all live:
+
+    Now — No control        today's header — flip to it to feel the baseline bar width
+    A — Trailing glyph      route button at the trailing edge, mirroring play. LCD narrows.
+    B — LCD overlay         button floats over the visualizer's top-right. LCD keeps width.
+    C — Utility row         control moves below the LCD, next to the time-shift bar.
+    D — Station tab row     a real StationRow. Header untouched. Names the route.
+    E — Glyph + named chip  A's inline glyph, plus a route-name chip on the second row
+                            that appears only while connected.
+
+  FINDING that reshaped this (2026-08-04): `AVRoutePickerView` exposes NO way to present
+  the picker programmatically — it is itself the button and handles its own tap. So any
+  placement built on an action closure (D, and C's labelled row) has no closure to call.
+  The three workarounds, none clean:
+    (a) `picker.subviews.compactMap { $0 as? UIButton }.first?.sendActions(for: .touchUpInside)`
+        — depends on undocumented view hierarchy; fails SILENTLY into a dead row.
+    (b) stretch a real picker across the row with `tintColor = .clear`, draw the row
+        content underneath — MEASURED AND VERIFIED, see below. Still breaks StationRow's
+        `.accessibilityElement(children: .ignore)` + explicit-label contract
+        (StationView.swift:300-302), which must be merged by hand.
+    (c) swap the chevron for a picker — WORST: `.contentShape(.rect)` (line 295) makes the
+        whole row swallow taps while only the ~30pt accessory does anything. Drawn in D.
+  MEASURED 2026-08-04 (iOS 27.0 sim, iPhone 17, throwaway SwiftPM probe) — option (b)
+  works, so the "simulate a tap" question is moot:
+    · At row size 329×54 the picker's internal `UIButton` is (0, 1.8, 329×52.3) — it FILLS
+      the bounds. `hitTest` returns that UIButton at 100% of sampled x positions.
+    · It tracks the picker at every width tested: 44 → 44, 160 → 160, 329 → 329.
+    · `tintColor = .clear` renders 0 of 159,894 px, vs 2.15% for the default tint.
+  So a stretched, clear-tinted picker with your own content drawn underneath receives a
+  GENUINE touch across the whole row — no traversal, no undocumented structure, no silent
+  failure. The remaining cost of (b) is purely the accessibility merge.
+
+  (Q2 — whether `accessibilityActivate()` or `sendActions` works — stayed INCONCLUSIVE:
+  a SwiftPM test target has no host app, so `sendActions` logs "UIApp is nil". Moot now.)
+
+  The row's other strength is as STATUS — `AVAudioSession.currentRoute.outputs.first?
+  .portName` plus the `routeChangeNotification` stream the header already runs
+  (PlayerHeaderView.swift:100), which needs no UIKit at all.
+
+  Toggle CONNECTED to see how each placement carries the "where is my audio going" state —
+  `AVRoutePickerView` highlights its glyph in `activeTintColor` on an active route, so the
+  picker and the indicator can be the same control.
+
+  Run:  open docs/ideas/airplay-route-discoverability.html
+  Keys: arrow-left / arrow-right cycle variants · C toggles connected · P toggles playing.
+
+  NOTE: the LCD is rendered from the real constants (accent hue 23°, sat 0.75, 16 bars ×
+  8 segments, gaps 3.5/5.5, glow radius 3, active 1.24× / inactive 0.90×) so bar-width
+  comparisons are honest. The AirPlay glyph is a hand-drawn approximation of SF Symbol
+  `airplayaudio`.
+
+  RECOMMENDATION (for discussion, not a decision): A + D, splitting control from status.
+  A is the CONTROL: it costs the LCD ~23% of its bar width — the real price and the thing
+  to argue about — but it is the only placement simultaneously at the moment of intent,
+  conventional enough to need no teaching, and able to double as the active-route
+  indicator via `activeTintColor`. D is the STATUS: display-only, so it sidesteps the
+  no-present-API finding entirely, stays pure SwiftUI, and is the only surface that names
+  the destination at rest. Together they cost one UIViewRepresentable and one row.
+  E folds D's naming into the header instead, at the cost of a header that changes height
+  on connect. B preserves the LCD but puts a system-tinted control on top of the one
+  surface with its own accent theming.
+
+  BLOCKER worth deciding before any of this: `AVRoutePickerView` is UIKit. There is no
+  SwiftUI equivalent, so this needs a `UIViewRepresentable`, and CLAUDE.md says avoid
+  UIKit unless requested. See the "What this costs" panel at the bottom.
+-->
+<style>
+  :root {
+    --bg-1:#303c72; --bg-2:#40498e; --bg-3:#af3e79; --bg-4:#b64949; --bg-5:#b34876;
+    --page:#101120; --page-2:#171a30;
+    --ink:#ffffff; --ink-dim:rgba(255,255,255,0.72); --ink-faint:rgba(255,255,255,0.46);
+    --glass-line:rgba(255,255,255,0.15);
+    --live:#34c759;
+    --accent:#ff8940;
+    --ok:#4fd6c8;
+    --warn:#ffcc66;
+    --bad:#ff6b6b;
+    --ease:cubic-bezier(.32,.72,.33,1);
+  }
+  * { box-sizing:border-box; }
+  html { background:var(--page); }
+  body {
+    margin:0; padding:0 0 64px;
+    font:14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 700px at 15% -10%, #241f3d 0%, transparent 60%),
+      radial-gradient(900px 600px at 95% 10%, #2b1c33 0%, transparent 55%),
+      var(--page);
+    min-height:100vh;
+  }
+
+  /* ---------- chrome ---------- */
+  header.top {
+    position:sticky; top:0; z-index:50;
+    padding:18px 24px 14px;
+    background:rgba(16,17,32,0.86);
+    backdrop-filter:blur(20px);
+    border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  h1 { margin:0 0 2px; font-size:17px; font-weight:650; letter-spacing:-0.01em; }
+  .sub { margin:0 0 14px; font-size:12.5px; color:var(--ink-faint); }
+  .sub code { color:var(--ink-dim); background:rgba(255,255,255,0.07); padding:1px 5px; border-radius:4px; font-size:11.5px; }
+
+  .controls { display:flex; flex-wrap:wrap; gap:18px; align-items:center; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; }
+  .tab {
+    appearance:none; border:1px solid var(--glass-line); background:rgba(255,255,255,0.05);
+    color:var(--ink-dim); padding:6px 12px; border-radius:9px; cursor:pointer;
+    font:inherit; font-size:12.5px; transition:all .18s var(--ease); white-space:nowrap;
+  }
+  .tab:hover { background:rgba(255,255,255,0.10); color:var(--ink); }
+  .tab[aria-selected="true"] { background:var(--ink); color:#12131f; border-color:var(--ink); font-weight:600; }
+  .tab .k { opacity:.55; font-weight:600; margin-right:5px; }
+  .tab[aria-selected="true"] .k { opacity:.45; }
+
+  .toggles { display:flex; gap:8px; margin-left:auto; }
+  .toggle {
+    appearance:none; border:1px solid var(--glass-line); background:rgba(255,255,255,0.05);
+    color:var(--ink-faint); padding:6px 12px; border-radius:9px; cursor:pointer;
+    font:inherit; font-size:12.5px; transition:all .18s var(--ease);
+    display:flex; align-items:center; gap:7px;
+  }
+  .toggle:hover { background:rgba(255,255,255,0.10); }
+  .toggle .dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,0.25); transition:all .18s var(--ease); }
+  .toggle[aria-pressed="true"] { color:var(--ink); border-color:rgba(79,214,200,0.5); background:rgba(79,214,200,0.10); }
+  .toggle[aria-pressed="true"] .dot { background:var(--ok); box-shadow:0 0 8px var(--ok); }
+
+  /* ---------- stage ---------- */
+  .stage {
+    display:flex; gap:40px; align-items:flex-start; justify-content:center;
+    padding:40px 24px 0; flex-wrap:wrap;
+  }
+
+  .phone-wrap { display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .phone-label { font-size:11.5px; color:var(--ink-faint); letter-spacing:.04em; text-transform:uppercase; font-weight:600; }
+  .phone {
+    width:393px; height:440px; border-radius:44px; padding:14px 0 0;
+    position:relative; overflow:hidden;
+    border:1px solid rgba(255,255,255,0.14);
+    box-shadow:0 30px 70px rgba(0,0,0,0.55), 0 0 0 10px rgba(255,255,255,0.03);
+    background:
+      radial-gradient(600px 420px at 12% 8%,  var(--bg-1) 0%, transparent 62%),
+      radial-gradient(520px 400px at 88% 4%,  var(--bg-2) 0%, transparent 58%),
+      radial-gradient(560px 460px at 78% 62%, var(--bg-3) 0%, transparent 60%),
+      radial-gradient(520px 420px at 18% 88%, var(--bg-4) 0%, transparent 58%),
+      var(--bg-5);
+  }
+  .status {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:0 30px 10px; font-size:13px; font-weight:600; color:var(--ink); opacity:.92;
+  }
+  .status .right { display:flex; gap:6px; align-items:center; font-size:11px; letter-spacing:.06em; }
+
+  .screen { padding:6px 16px 0; }
+
+  /* on-air banner, for context only */
+  .onair {
+    display:flex; align-items:center; gap:9px;
+    padding:9px 13px; margin-bottom:8px;
+    border-radius:12px;
+    background:rgba(52,199,89,0.13);
+    border:1px solid rgba(52,199,89,0.30);
+  }
+  .onair .pip { width:7px; height:7px; border-radius:50%; background:var(--live); box-shadow:0 0 9px var(--live); animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.42} }
+  .onair .who { font-size:13px; font-weight:600; }
+  .onair .cap { font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; }
+
+  /* ---------- the player header card (the subject) ---------- */
+  .card {
+    padding:12px; border-radius:12px;
+    background:rgba(255,196,140,0.16);
+    box-shadow:inset 0 0 10px rgba(0,0,0,0.30);
+    backdrop-filter:blur(3px);
+    transition:padding .3s var(--ease);
+  }
+  .card-row { display:flex; align-items:center; }
+
+  .play {
+    width:50px; height:50px; margin-right:4px; flex:0 0 auto;
+    border:none; background:none; padding:0; cursor:pointer; color:#fff;
+  }
+  .play svg { width:50px; height:50px; display:block; }
+
+  .viz { padding:16px; flex:1 1 auto; min-width:0; position:relative; transition:padding .3s var(--ease); }
+  .viz canvas { display:block; width:100%; height:75px; }
+
+  /* route control */
+  .route {
+    flex:0 0 auto; width:44px; height:44px; border:none; background:none; padding:0;
+    cursor:pointer; display:grid; place-items:center;
+    color:rgba(255,255,255,0.78);
+    transition:color .22s var(--ease), transform .22s var(--ease);
+  }
+  .route:hover { transform:scale(1.06); color:#fff; }
+  .route svg { width:26px; height:26px; display:block; }
+  .route.connected { color:var(--accent); filter:drop-shadow(0 0 7px rgba(255,137,64,0.65)); }
+
+  .route.overlay {
+    position:absolute; top:2px; right:2px; width:34px; height:34px;
+    border-radius:9px; background:rgba(0,0,0,0.28);
+    backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,0.12);
+  }
+  .route.overlay svg { width:19px; height:19px; }
+
+  /* second row */
+  .row2 { display:flex; align-items:center; gap:10px; margin-top:8px; }
+  .scrub { flex:1 1 auto; height:4px; border-radius:2px; background:rgba(255,255,255,0.22); position:relative; }
+  .scrub::after { content:""; position:absolute; inset:0 34% 0 0; border-radius:2px; background:rgba(255,255,255,0.72); }
+  .scrub-knob { position:absolute; right:34%; top:50%; width:11px; height:11px; margin:-5.5px -5.5px 0 0; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+
+  .route-row {
+    display:flex; align-items:center; gap:8px; width:100%;
+    padding:7px 10px; border-radius:9px; cursor:pointer;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.10);
+    color:var(--ink-dim); font:inherit; font-size:12.5px; text-align:left;
+    transition:all .22s var(--ease);
+  }
+  .route-row:hover { background:rgba(255,255,255,0.13); }
+  .route-row.connected { color:var(--accent); border-color:rgba(255,137,64,0.42); background:rgba(255,137,64,0.13); }
+  .route-row svg { width:17px; height:17px; flex:0 0 auto; }
+  .route-row .name { font-weight:600; }
+  .route-row .arrow { margin-left:auto; opacity:.5; font-size:11px; }
+
+  .chip {
+    display:flex; align-items:center; gap:6px;
+    padding:5px 11px 5px 9px; border-radius:999px;
+    background:rgba(255,137,64,0.17); border:1px solid rgba(255,137,64,0.42);
+    color:var(--accent); font-size:11.5px; font-weight:600; white-space:nowrap;
+    cursor:pointer;
+    animation:chipIn .32s var(--ease);
+  }
+  .chip svg { width:14px; height:14px; }
+  @keyframes chipIn { from { opacity:0; transform:translateY(-5px) scale(.94); } to { opacity:1; transform:none; } }
+
+  /* station tab mock */
+  .station-section { margin-top:14px; }
+  .station-cap { font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.07em; margin:0 0 7px 4px; font-weight:600; }
+  .station-card { border-radius:12px; overflow:hidden; background:rgba(255,255,255,0.09); border:1px solid rgba(255,255,255,0.10); }
+  /* faithful to StationRow: 30pt icon tile, title + subtitle, trailing chevron */
+  .station-row { display:flex; align-items:center; gap:12px; padding:12px 14px; position:relative; }
+  .station-row + .station-row { border-top:1px solid rgba(255,255,255,0.08); }
+  .station-icon { width:30px; height:30px; border-radius:8px; display:grid; place-items:center; flex:0 0 auto; }
+  .station-icon svg { width:15px; height:15px; }
+  .station-text { display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .station-title { font-size:15px; color:#fff; line-height:1.25; }
+  .station-sub { font-size:11.5px; color:rgba(255,255,255,0.55); }
+  .station-row.connected .station-sub { color:var(--accent); font-weight:600; }
+  .station-chev { margin-left:auto; font-size:12px; color:rgba(255,255,255,0.4); flex:0 0 auto; }
+
+  /* the (c) failure mode, drawn */
+  .hit-real, .hit-implied { position:absolute; border-radius:7px; pointer-events:none; }
+  .hit-implied { inset:4px; border:1px dashed rgba(255,255,255,0.30); }
+  .hit-real { top:6px; bottom:6px; right:8px; width:34px; border:1.5px dashed var(--bad); background:rgba(255,107,107,0.12); }
+  .hit-key { display:flex; gap:14px; margin-top:8px; padding:0 2px; font-size:10.5px; color:var(--ink-faint); }
+  .hit-key span { display:flex; align-items:center; gap:5px; }
+  .hit-key i { width:13px; height:9px; border-radius:3px; display:inline-block; }
+  .hit-key i.a { border:1px dashed rgba(255,255,255,0.35); }
+  .hit-key i.b { border:1.5px dashed var(--bad); background:rgba(255,107,107,0.12); }
+
+  .fade-list { margin-top:14px; opacity:.5; }
+  .fade-row { display:flex; gap:11px; align-items:center; padding:9px 2px; }
+  .fade-art { width:38px; height:38px; border-radius:6px; background:rgba(255,255,255,0.16); flex:0 0 auto; }
+  .fade-lines { flex:1 1 auto; }
+  .fade-l1 { height:8px; width:62%; border-radius:4px; background:rgba(255,255,255,0.30); margin-bottom:6px; }
+  .fade-l2 { height:7px; width:40%; border-radius:4px; background:rgba(255,255,255,0.18); }
+
+  /* ---------- notes ---------- */
+  .notes {
+    max-width:430px; padding-top:6px;
+  }
+  .notes h2 { margin:0 0 4px; font-size:19px; letter-spacing:-0.01em; }
+  .notes .verdict {
+    display:inline-block; font-size:10.5px; font-weight:700; letter-spacing:.07em;
+    text-transform:uppercase; padding:3px 9px; border-radius:6px; margin-bottom:14px;
+  }
+  .v-rec  { background:rgba(79,214,200,0.16); color:var(--ok); border:1px solid rgba(79,214,200,0.4); }
+  .v-alt  { background:rgba(255,204,102,0.14); color:var(--warn); border:1px solid rgba(255,204,102,0.36); }
+  .v-no   { background:rgba(255,107,107,0.14); color:var(--bad); border:1px solid rgba(255,107,107,0.34); }
+  .v-base { background:rgba(255,255,255,0.09); color:var(--ink-faint); border:1px solid var(--glass-line); }
+
+  .notes p { margin:0 0 12px; color:var(--ink-dim); font-size:13.5px; }
+  .notes code { background:rgba(255,255,255,0.08); padding:1px 5px; border-radius:4px; font-size:12px; color:#ffd9bd; }
+
+  .metric {
+    display:flex; gap:14px; margin:16px 0;
+    padding:13px 15px; border-radius:11px;
+    background:rgba(255,255,255,0.05); border:1px solid var(--glass-line);
+  }
+  .metric .m { flex:1 1 0; }
+  .metric .m-label { font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-faint); font-weight:600; margin-bottom:3px; }
+  .metric .m-val { font-size:20px; font-weight:660; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
+  .metric .m-sub { font-size:11px; color:var(--ink-faint); margin-top:1px; }
+  .m-val.good { color:var(--ok); }
+  .m-val.warn { color:var(--warn); }
+  .m-val.bad  { color:var(--bad); }
+
+  .pros { list-style:none; padding:0; margin:0 0 14px; }
+  .pros li { display:flex; gap:9px; padding:5px 0; font-size:13px; color:var(--ink-dim); align-items:flex-start; }
+  .pros li::before { flex:0 0 auto; width:15px; font-weight:700; }
+  .pros li.p::before { content:"+"; color:var(--ok); }
+  .pros li.c::before { content:"−"; color:var(--bad); }
+
+  .cost {
+    max-width:900px; margin:44px auto 0; padding:22px 26px;
+    border-radius:14px; background:rgba(255,255,255,0.04);
+    border:1px solid var(--glass-line);
+  }
+  .cost h3 { margin:0 0 12px; font-size:15px; }
+  .cost p { margin:0 0 11px; color:var(--ink-dim); font-size:13.5px; }
+  .cost code { background:rgba(255,255,255,0.08); padding:1px 5px; border-radius:4px; font-size:12px; color:#ffd9bd; }
+  .cost pre {
+    margin:12px 0; padding:14px 16px; border-radius:10px; overflow-x:auto;
+    background:rgba(0,0,0,0.34); border:1px solid rgba(255,255,255,0.08);
+    font:12px/1.65 ui-monospace, "SF Mono", Menlo, monospace; color:#e6e6f0;
+  }
+  .cost pre .kw { color:#ff9ec7; } .cost pre .ty { color:#8fd3ff; }
+  .cost pre .st { color:#ffd9a0; } .cost pre .cm { color:#7d829e; }
+  .hint { text-align:center; margin:30px 0 0; font-size:11.5px; color:var(--ink-faint); }
+  kbd {
+    background:rgba(255,255,255,0.10); border:1px solid rgba(255,255,255,0.16);
+    border-bottom-width:2px; border-radius:5px; padding:1px 6px;
+    font:inherit; font-size:11px;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>AirPlay — route picker placement</h1>
+  <p class="sub">
+    The app already opts in (<code>policy: .longFormAudio</code>) — audio reaches AirPlay 2 speakers today via Control Center.
+    Missing is an in-app control. <code>barAmount</code> is fixed at 16, so every point the control takes is squeezed out of the LCD.
+  </p>
+  <div class="controls">
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div class="toggles">
+      <button class="toggle" id="tPlay"  aria-pressed="true"><span class="dot"></span>Playing</button>
+      <button class="toggle" id="tConn"  aria-pressed="false"><span class="dot"></span>Connected</button>
+    </div>
+  </div>
+</header>
+
+<div class="stage">
+  <div class="phone-wrap">
+    <div class="phone-label" id="phoneLabel">Station tab</div>
+    <div class="phone">
+      <div class="status">
+        <span>2:15</span>
+        <span class="right">WXYC 89.3</span>
+      </div>
+      <div class="screen">
+        <div class="onair">
+          <span class="pip"></span>
+          <div>
+            <div class="cap">On air</div>
+            <div class="who">Ezra &amp; the Night Shift</div>
+          </div>
+        </div>
+        <div id="cardHost"></div>
+        <div id="belowHost"></div>
+        <div class="fade-list" id="fadeList">
+          <div class="fade-row"><div class="fade-art"></div><div class="fade-lines"><div class="fade-l1"></div><div class="fade-l2"></div></div></div>
+          <div class="fade-row"><div class="fade-art"></div><div class="fade-lines"><div class="fade-l1"></div><div class="fade-l2"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h2 id="nTitle">—</h2>
+    <div class="verdict" id="nVerdict">—</div>
+    <p id="nBody">—</p>
+    <div class="metric">
+      <div class="m">
+        <div class="m-label">LCD bar width</div>
+        <div class="m-val" id="mBar">—</div>
+        <div class="m-sub" id="mBarSub">—</div>
+      </div>
+      <div class="m">
+        <div class="m-label">Header height</div>
+        <div class="m-val" id="mH">—</div>
+        <div class="m-sub" id="mHSub">—</div>
+      </div>
+    </div>
+    <ul class="pros" id="nPros"></ul>
+  </div>
+</div>
+
+<div class="cost">
+  <h3>What this costs, regardless of placement</h3>
+  <p>
+    <code>AVRoutePickerView</code> is UIKit — there is no SwiftUI equivalent on any current SDK, so every
+    variant here needs a <code>UIViewRepresentable</code>. CLAUDE.md says avoid UIKit unless requested, so
+    this is an explicit exception to sign off on, not an implementation detail to bury.
+  </p>
+  <pre><span class="cm">// Shared/PlayerHeaderView — needs #if os(iOS) / #if os(macOS) branches;</span>
+<span class="cm">// AVRoutePickerView does not exist on tvOS or watchOS.</span>
+<span class="kw">struct</span> <span class="ty">RoutePickerButton</span>: <span class="ty">UIViewRepresentable</span> {
+    <span class="kw">var</span> tint: <span class="ty">Color</span>
+    <span class="kw">var</span> activeTint: <span class="ty">Color</span>
+
+    <span class="kw">func</span> makeUIView(context: <span class="ty">Context</span>) -> <span class="ty">AVRoutePickerView</span> {
+        <span class="kw">let</span> view = <span class="ty">AVRoutePickerView</span>()
+        view.prioritizesVideoDevices = <span class="kw">false</span>
+        view.accessibilityIdentifier = <span class="st">"airPlayRouteButton"</span>
+        <span class="kw">return</span> view
+    }
+
+    <span class="kw">func</span> updateUIView(<span class="kw">_</span> view: <span class="ty">AVRoutePickerView</span>, context: <span class="ty">Context</span>) {
+        view.tintColor = <span class="ty">UIColor</span>(tint)
+        view.activeTintColor = <span class="ty">UIColor</span>(activeTint)   <span class="cm">// the "connected" state, for free</span>
+    }
+}</pre>
+  <p>
+    <strong>Theming risk.</strong> <code>PlaybackControlsView</code> applies
+    <code>.brightness(-appearance.playbackDarkness)</code>, <code>.opacity(appearance.playbackAlpha)</code> and
+    <code>.blendMode(appearance.playbackBlendMode)</code> from <code>WallpaperTheme</code>. Those composite a
+    representable, but a system-drawn glyph under a non-normal blend mode is exactly the thing that looks right
+    in one wallpaper theme and wrong in another. Tints can be synced from <code>appearance.accentColor</code>;
+    the blend mode needs a real visual pass across themes.
+  </p>
+  <p>
+    <strong>Don't gate on route availability.</strong> <code>AVRouteDetector.multipleRoutesDetected</code> would
+    let the button hide when no targets exist. Resist it — a control that appears and vanishes is worse for
+    discoverability than one that is always present, and route detection triggers active network discovery, so
+    it would also need scoping to the header's visible lifetime to avoid a background power drain.
+  </p>
+  <p>
+    <strong>macOS gap.</strong> <code>AudioPlayerController.outputLatency</code> is
+    <code>#if os(iOS) || os(tvOS)</code> and returns <code>0</code> otherwise — so on the in-flight native macOS
+    target the visualizer has no AirPlay latency compensation to begin with.
+  </p>
+</div>
+
+<p class="hint">
+  <kbd>←</kbd> <kbd>→</kbd> cycle variants · <kbd>C</kbd> connected · <kbd>P</kbd> playing
+</p>
+
+<script>
+// ---------------------------------------------------------------------------
+// Real constants, mirrored from the Swift so the bar-width numbers are honest.
+// LCDSpectrumAnalyzerView.swift + VisualizerDataSource.swift + AccentColorEnvironment.swift
+// ---------------------------------------------------------------------------
+const BAR_COUNT   = 16;      // VisualizerConstants.barAmount
+const SEGMENTS    = 8;       // LCDSpectrumAnalyzerView segmentsPerBar default
+const H_GAP       = 3.5;
+const V_GAP       = 5.5;
+const GLOW_RADIUS = 3;
+const INSET       = GLOW_RADIUS + 1;
+
+const ACCENT_HUE  = 23 / 360;   // LCDAccentHueKey.defaultValue
+const ACCENT_SAT  = 0.75;
+const ACCENT_BRT  = 1.0;
+const ACTIVE_MULT = 1.24;       // LCDActiveBrightnessKey.defaultValue
+const INACTIVE_M  = 0.90;       // dark-mode inactive multiplier
+const MIN_OFFSET  = { h:0, s:0, b:-0.10 };  // HSBOffset.defaultMin  (top segments)
+const MAX_OFFSET  = { h:0, s:0, b: 0.00 };  // HSBOffset.defaultMax  (bottom segments)
+
+// Header geometry at 393pt device width.
+const DEVICE_W   = 393;
+const PAGE_PAD   = 16;   // .screen horizontal padding
+const CARD_PAD   = 12;   // PlayerHeaderView .padding(12)
+const PLAY_W     = 50 + 4;
+const VIZ_PAD    = 16;   // VisualizerTimelineView .padding()
+const VIZ_H      = 75;
+const ROUTE_W    = 44;
+
+const CARD_CONTENT = DEVICE_W - PAGE_PAD * 2 - CARD_PAD * 2;   // 337
+const BASE_CANVAS  = CARD_CONTENT - PLAY_W - VIZ_PAD * 2;      // 251
+
+function barWidthFor(canvasW) {
+  const drawing = canvasW - INSET * 2;
+  return (drawing - H_GAP * (BAR_COUNT - 1)) / BAR_COUNT;
+}
+const BASE_BAR = barWidthFor(BASE_CANVAS);
+
+// ---------------------------------------------------------------------------
+// HSB -> CSS, matching SwiftUI's Color(hue:saturation:brightness:) clamping.
+// ---------------------------------------------------------------------------
+function hsb(h, s, b, a = 1) {
+  h = ((h % 1) + 1) % 1;
+  s = Math.max(0, Math.min(1, s));
+  b = Math.max(0, Math.min(1, b));
+  const i = Math.floor(h * 6), f = h * 6 - i;
+  const p = b * (1 - s), q = b * (1 - f * s), t = b * (1 - (1 - f) * s);
+  let r, g, bl;
+  switch (i % 6) {
+    case 0: r=b; g=t; bl=p; break;
+    case 1: r=q; g=b; bl=p; break;
+    case 2: r=p; g=b; bl=t; break;
+    case 3: r=p; g=q; bl=b; break;
+    case 4: r=t; g=p; bl=b; break;
+    default:r=b; g=p; bl=q; break;
+  }
+  const c = v => Math.round(v * 255);
+  return `rgba(${c(r)},${c(g)},${c(bl)},${a})`;
+}
+
+function segmentColor(isActive, segmentIndex) {
+  const progress = segmentIndex / Math.max(SEGMENTS - 1, 1);
+  const off = {
+    h: MAX_OFFSET.h + (MIN_OFFSET.h - MAX_OFFSET.h) * progress,
+    s: MAX_OFFSET.s + (MIN_OFFSET.s - MAX_OFFSET.s) * progress,
+    b: MAX_OFFSET.b + (MIN_OFFSET.b - MAX_OFFSET.b) * progress,
+  };
+  const baseH = ACCENT_HUE + off.h / 360;
+  const baseS = ACCENT_SAT + off.s;
+  const baseB = ACCENT_BRT + off.b;
+  const mult  = isActive ? ACTIVE_MULT : INACTIVE_M;
+  // Inactive segments get an alpha knock-down here that the Swift achieves via the
+  // translucent header background sitting behind them — mockup-only, for legibility.
+  return hsb(baseH, baseS, mult * baseB, isActive ? 1 : 0.30);
+}
+function glowColor(segmentIndex) {
+  const progress = segmentIndex / Math.max(SEGMENTS - 1, 1);
+  const b = ACCENT_BRT + (MIN_OFFSET.b * progress);
+  return hsb(ACCENT_HUE, ACCENT_SAT, 1.5 * b, 0.6);
+}
+
+const ACTIVE_COLORS   = Array.from({length:SEGMENTS}, (_,i) => segmentColor(true,  i));
+const INACTIVE_COLORS = Array.from({length:SEGMENTS}, (_,i) => segmentColor(false, i));
+const GLOW_COLORS     = Array.from({length:SEGMENTS}, (_,i) => glowColor(i));
+
+// ---------------------------------------------------------------------------
+// LCD renderer — mirrors the Canvas draw loop in LCDSpectrumAnalyzerView.
+// ---------------------------------------------------------------------------
+function drawLCD(canvas, levels) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w) return;
+  if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+    canvas.width = w * dpr; canvas.height = h * dpr;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const rect = { x:INSET, y:INSET, w:w - INSET*2, h:h - INSET*2 };
+  const barW = (rect.w - H_GAP * (BAR_COUNT - 1)) / BAR_COUNT;
+  const segH = (rect.h - V_GAP * (SEGMENTS - 1)) / SEGMENTS;
+  const radius = Math.min(barW, segH) * 0.2;
+
+  for (let bar = 0; bar < BAR_COUNT; bar++) {
+    const activeSegments = Math.round(levels[bar] * SEGMENTS);
+    const x = rect.x + bar * (barW + H_GAP);
+
+    for (let seg = 0; seg < SEGMENTS; seg++) {
+      const isActive = seg < activeSegments;
+      const y = rect.y + rect.h - (seg + 1) * (segH + V_GAP) + V_GAP;
+
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, y, barW, segH, radius);
+      else ctx.rect(x, y, barW, segH);
+
+      if (isActive) {
+        ctx.save();
+        ctx.shadowColor = GLOW_COLORS[seg];
+        ctx.shadowBlur = GLOW_RADIUS * 2.2;
+        ctx.fillStyle = ACTIVE_COLORS[seg];
+        ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.fillStyle = INACTIVE_COLORS[seg];
+        ctx.fill();
+      }
+    }
+  }
+}
+
+// Fake spectrum with per-bar inertia, so it reads like the real analyzer.
+const levels = new Array(BAR_COUNT).fill(0);
+const targets = new Array(BAR_COUNT).fill(0);
+let frame = 0;
+function tickLevels(playing) {
+  frame++;
+  for (let i = 0; i < BAR_COUNT; i++) {
+    if (!playing) { targets[i] = 0; }
+    else if (frame % 7 === 0 || Math.random() < 0.04) {
+      // low bars louder, a gentle tilt like real program material
+      const tilt = 1 - (i / BAR_COUNT) * 0.55;
+      targets[i] = Math.max(0, Math.min(1, (0.28 + Math.random() * 0.72) * tilt));
+    }
+    const d = targets[i] - levels[i];
+    levels[i] += d * (d > 0 ? 0.45 : 0.10);   // fast attack, slow decay
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Glyphs
+// ---------------------------------------------------------------------------
+const PLAY_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.6A10.4 10.4 0 1 0 12 22.4 10.4 10.4 0 0 0 12 1.6Zm-2 6.2 7 4.2-7 4.2Z"/></svg>`;
+const PAUSE_SVG = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1.6A10.4 10.4 0 1 0 12 22.4 10.4 10.4 0 0 0 12 1.6ZM10.6 8v8H9V8Zm4.4 0v8h-1.6V8Z"/></svg>`;
+// Approximation of SF Symbol `airplayaudio`: broadcast arcs over a triangle.
+const AIRPLAY_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+  <path d="M6.6 16.4a7.6 7.6 0 0 1 10.8 0"/>
+  <path d="M3.6 13.2a11.9 11.9 0 0 1 16.8 0"/>
+  <path d="M12 13.4 16.2 20.4H7.8Z" fill="currentColor" stroke="none"/>
+</svg>`;
+
+// ---------------------------------------------------------------------------
+// Variants
+// ---------------------------------------------------------------------------
+const VARIANTS = [
+  {
+    key: 'Now', name: 'No control',
+    label: 'Station tab — today',
+    verdict: ['v-base', 'Baseline'],
+    canvas: BASE_CANVAS,
+    height: CARD_PAD * 2 + VIZ_H + VIZ_PAD * 2,
+    body: `Today's header. Play glyph, then the full-width LCD. There is no route control anywhere in the app — moving audio to a speaker means leaving for Control Center, and nothing in the app tells you the audio is already going somewhere else. Flip between this and A to feel exactly what the button costs.`,
+    pros: [
+      ['p', 'LCD gets every available point — 16 bars at their widest.'],
+      ['c', 'AirPlay is invisible. Capability exists; nobody finds it.'],
+      ['c', 'No indication of where audio is currently routed.'],
+    ],
+  },
+  {
+    key: 'A', name: 'Trailing glyph',
+    label: 'Route button at the trailing edge',
+    verdict: ['v-rec', 'Recommended'],
+    canvas: BASE_CANVAS - ROUTE_W,
+    height: CARD_PAD * 2 + VIZ_H + VIZ_PAD * 2,
+    body: `Play anchors the leading edge, route anchors the trailing edge, LCD between them. The glyph is deliberately lighter than play — 26pt inside a 44pt target against play's 50pt — because routing is secondary to transport and the sizing should say so. Toggle CONNECTED: <code>AVRoutePickerView</code> tints itself with <code>activeTintColor</code> on an active route, so the picker and the "where is my audio going" indicator are the same control.`,
+    pros: [
+      ['p', 'At the moment of intent — you are already looking at the player.'],
+      ['p', 'Conventional placement; needs no tip card to teach.'],
+      ['p', 'Doubles as the active-route indicator for free.'],
+      ['c', `LCD bars lose ~23% of their width. This is the real price.`],
+      ['c', 'Needs a UIViewRepresentable (see below).'],
+    ],
+  },
+  {
+    key: 'B', name: 'LCD overlay',
+    label: 'Floating over the visualizer',
+    verdict: ['v-alt', 'Preserves the LCD'],
+    canvas: BASE_CANVAS,
+    height: CARD_PAD * 2 + VIZ_H + VIZ_PAD * 2,
+    body: `The button floats in the visualizer's top-right corner, so the LCD keeps every point of its width. The problem is what it floats on: the LCD is the one surface with its own accent-hue, brightness and glow theming (<code>lcdAccentColor</code>, <code>lcdHSBOffsets</code>, <code>lcdActiveBrightness</code>), and a system-tinted control sitting on top of it will never track those. It also puts a tap target over the debug-tap area.`,
+    pros: [
+      ['p', 'Zero cost to bar width — full 16-bar display.'],
+      ['c', 'System control layered over the app-themed signature surface.'],
+      ['c', 'Needs its own scrim to stay legible over bright segments.'],
+      ['c', 'Competes with the existing debug tap target on the visualizer.'],
+    ],
+  },
+  {
+    key: 'C', name: 'Utility row',
+    label: 'Below the LCD, with the scrub bar',
+    verdict: ['v-alt', 'Costs height'],
+    canvas: BASE_CANVAS,
+    height: CARD_PAD * 2 + VIZ_H + VIZ_PAD * 2 + 8 + 30,
+    body: `The route control moves to the second row of the header's VStack, sharing space with <code>TimeShiftScrubBar</code>. The LCD keeps its full width and the control gets room for a label. But that row is conditional today — <code>supportsTimeShift &amp;&amp; isPlaying</code> — so the header would either grow permanently or the control would come and go with playback state, which is the disappearing-affordance problem again.`,
+    pros: [
+      ['p', 'LCD untouched; room for a text label next to the glyph.'],
+      ['c', 'Header grows ~38pt taller, pushing the playlist down.'],
+      ['c', 'Shares a row that only exists when time-shift is supported and playing.'],
+      ['c', 'Reads as secondary chrome rather than a peer of play.'],
+    ],
+  },
+  {
+    key: 'D', name: 'Station tab row',
+    label: 'A StationSection row',
+    verdict: ['v-rec', 'Recommended — as status'],
+    canvas: BASE_CANVAS,
+    height: CARD_PAD * 2 + VIZ_H + VIZ_PAD * 2,
+    body: `Rendered in the real <code>StationRow</code> idiom (<code>StationView.swift:259</code>). Its advantage over every other variant: it can NAME the destination — "Kitchen HomePod" — where a tinted glyph only signals "somewhere else". Toggle CONNECTED. <strong>The tap needed settling</strong>, because <code>StationRow</code> is a <code>Button(action:)</code> and <code>AVRoutePickerView</code> has no present-the-picker API. Measured 2026-08-04: the picker's internal <code>UIButton</code> FILLS its bounds (329×54 → button at 329×52.3, <code>hitTest</code> live at 100% of sampled points) and <code>tintColor = .clear</code> renders 0 px. So option (b) is real — a stretched invisible picker takes a genuine touch. The dashed boxes show what option (c) would have cost instead.`,
+    pros: [
+      ['p', 'Names the route. The only variant that answers "which speaker?" at rest.'],
+      ['p', 'No header changes; LCD fully intact; existing section pattern.'],
+      ['p', 'As pure STATUS it needs no UIKit — portName + routeChangeNotification.'],
+      ['p', 'MEASURED: a stretched clear-tinted picker takes real taps across the row.'],
+      ['c', 'Tappable version still needs StationRow’s a11y contract merged by hand.'],
+      ['c', 'No existing section fits — needs a new one for a single row.'],
+      ['c', 'Away from the moment of intent; browsable discovery only.'],
+    ],
+  },
+  {
+    key: 'E', name: 'Glyph + named chip',
+    label: 'Inline glyph, chip when connected',
+    verdict: ['v-alt', 'A, plus "which speaker?"'],
+    canvas: BASE_CANVAS - ROUTE_W,
+    height: CARD_PAD * 2 + VIZ_H + VIZ_PAD * 2,
+    body: `A's inline glyph, plus a route-name chip that appears on a second row only while connected. Idle, it is identical to A — same footprint, same bar width. Connected, it answers the question the bare glyph cannot: <em>which</em> speaker. The cost is a header that changes height when a route connects, which will animate against the playlist below it.`,
+    pros: [
+      ['p', 'Idle footprint identical to A — same bar width.'],
+      ['p', 'Names the destination instead of just signalling "somewhere".'],
+      ['p', 'Chip is a second, larger tap target back into the picker.'],
+      ['c', 'Header height changes on connect; the list below shifts.'],
+      ['c', 'Route names can be long ("Kitchen HomePod mini") — needs truncation.'],
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// State + render
+// ---------------------------------------------------------------------------
+let current = 1;               // default to the recommendation
+let playing = true;
+let connected = false;
+
+const tabsEl   = document.getElementById('tabs');
+const cardHost = document.getElementById('cardHost');
+const belowHost= document.getElementById('belowHost');
+const fadeList = document.getElementById('fadeList');
+
+VARIANTS.forEach((v, i) => {
+  const b = document.createElement('button');
+  b.className = 'tab';
+  b.setAttribute('role', 'tab');
+  b.innerHTML = `<span class="k">${v.key}</span>${v.name}`;
+  b.onclick = () => { current = i; render(); };
+  tabsEl.appendChild(b);
+});
+
+function routeButton(cls) {
+  return `<button class="route ${cls} ${connected ? 'connected' : ''}"
+            title="${connected ? 'Playing on Kitchen HomePod' : 'Choose an output'}">${AIRPLAY_SVG}</button>`;
+}
+
+function buildCard() {
+  const v = VARIANTS[current];
+  const showScrub = playing;
+
+  let trailing = '';
+  let overlay = '';
+  let row2 = '';
+
+  if (v.key === 'A' || v.key === 'E') trailing = routeButton('');
+  if (v.key === 'B') overlay = routeButton('overlay');
+
+  if (v.key === 'C') {
+    row2 = `<div class="row2">
+      ${showScrub ? `<div class="scrub"><div class="scrub-knob"></div></div>` : ''}
+      <button class="route-row ${connected ? 'connected' : ''}" style="width:auto;">
+        ${AIRPLAY_SVG}<span class="name">${connected ? 'Kitchen HomePod' : 'Output'}</span>
+      </button>
+    </div>`;
+  } else if (v.key === 'E' && connected) {
+    row2 = `<div class="row2">
+      ${showScrub ? `<div class="scrub"><div class="scrub-knob"></div></div>` : ''}
+      <div class="chip">${AIRPLAY_SVG}Kitchen HomePod</div>
+    </div>`;
+  } else if (showScrub) {
+    row2 = `<div class="row2"><div class="scrub"><div class="scrub-knob"></div></div></div>`;
+  }
+
+  cardHost.innerHTML = `
+    <div class="card">
+      <div class="card-row">
+        <button class="play">${playing ? PAUSE_SVG : PLAY_SVG}</button>
+        <div class="viz">${overlay}<canvas id="lcd"></canvas></div>
+        ${trailing}
+      </div>
+      ${row2}
+    </div>`;
+
+  // Variant D renders in the real StationRow idiom (StationView.swift:259) —
+  // 30pt icon tile, title + subtitle, trailing chevron — so it is judged on its
+  // own terms rather than as a generic settings row.
+  belowHost.innerHTML = v.key === 'D' ? `
+    <div class="station-section">
+      <div class="station-cap">Listening</div>
+      <div class="station-card">
+        <div class="station-row ${connected ? 'connected' : ''}">
+          <div class="hit-implied"></div>
+          <div class="hit-real"></div>
+          <div class="station-icon" style="background:${connected ? '#ff8940' : '#5b6ef5'}">
+            <span style="color:#fff; display:grid; place-items:center;">${AIRPLAY_SVG}</span>
+          </div>
+          <div class="station-text">
+            <div class="station-title">Play on a speaker</div>
+            <div class="station-sub">${connected ? 'Kitchen HomePod' : 'This iPhone'}</div>
+          </div>
+          <div class="station-chev">›</div>
+        </div>
+        <div class="station-row">
+          <div class="station-icon" style="background:#7d5bf5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 12h4l3-7 3 14 3-7h3"/></svg>
+          </div>
+          <div class="station-text">
+            <div class="station-title">Stream quality</div>
+            <div class="station-sub">High — 128 kbps</div>
+          </div>
+          <div class="station-chev">›</div>
+        </div>
+      </div>
+      <div class="hit-key">
+        <span><i class="a"></i>what the row implies is tappable</span>
+        <span><i class="b"></i>what actually is, via option (c)</span>
+      </div>
+    </div>` : '';
+
+  fadeList.style.display = v.key === 'D' ? 'none' : '';
+}
+
+function render() {
+  const v = VARIANTS[current];
+
+  [...tabsEl.children].forEach((b, i) =>
+    b.setAttribute('aria-selected', String(i === current)));
+  document.getElementById('phoneLabel').textContent = v.label;
+
+  buildCard();
+
+  // notes
+  document.getElementById('nTitle').textContent = `${v.key} — ${v.name}`;
+  const vd = document.getElementById('nVerdict');
+  vd.className = 'verdict ' + v.verdict[0];
+  vd.textContent = v.verdict[1];
+  document.getElementById('nBody').innerHTML = v.body;
+
+  // metrics — computed from the real formula, not asserted
+  const canvasW = v.canvas;
+  const bw = barWidthFor(canvasW);
+  const deltaPct = ((bw - BASE_BAR) / BASE_BAR) * 100;
+  const mBar = document.getElementById('mBar');
+  mBar.textContent = bw.toFixed(1) + 'pt';
+  mBar.className = 'm-val ' + (deltaPct === 0 ? 'good' : deltaPct > -15 ? 'warn' : 'bad');
+  document.getElementById('mBarSub').textContent =
+    deltaPct === 0 ? `unchanged · ${canvasW}pt canvas`
+                   : `${deltaPct.toFixed(0)}% vs baseline ${BASE_BAR.toFixed(1)}pt`;
+
+  const h = (v.key === 'E' && connected) ? v.height + 38 : v.height;
+  const baseH = VARIANTS[0].height;
+  const mH = document.getElementById('mH');
+  mH.textContent = Math.round(h) + 'pt';
+  mH.className = 'm-val ' + (h === baseH ? 'good' : 'warn');
+  document.getElementById('mHSub').textContent =
+    h === baseH ? 'unchanged' : `+${Math.round(h - baseH)}pt vs baseline`;
+
+  const ul = document.getElementById('nPros');
+  ul.innerHTML = '';
+  v.pros.forEach(([kind, text]) => {
+    const li = document.createElement('li');
+    li.className = kind;
+    li.textContent = text;
+    ul.appendChild(li);
+  });
+
+  document.getElementById('tPlay').setAttribute('aria-pressed', String(playing));
+  document.getElementById('tConn').setAttribute('aria-pressed', String(connected));
+}
+
+document.getElementById('tPlay').onclick = () => { playing = !playing; render(); };
+document.getElementById('tConn').onclick = () => { connected = !connected; render(); };
+
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { current = (current + 1) % VARIANTS.length; render(); }
+  else if (e.key === 'ArrowLeft') { current = (current - 1 + VARIANTS.length) % VARIANTS.length; render(); }
+  else if (e.key.toLowerCase() === 'c') { connected = !connected; render(); }
+  else if (e.key.toLowerCase() === 'p') { playing = !playing; render(); }
+});
+
+function loop() {
+  tickLevels(playing);
+  const c = document.getElementById('lcd');
+  if (c) drawLCD(c, levels);
+  requestAnimationFrame(loop);
+}
+
+render();
+loop();
+</script>
+</body>
+</html>
