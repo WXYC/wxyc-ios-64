@@ -11,7 +11,7 @@
           "glass" : true,
           "image-name" : "logo.png",
           "name" : "logo",
-          "opacity" : 0.9,
+          "opacity" : 1,
           "position" : {
             "scale" : 0.23,
             "translation-in-points" : [
@@ -28,7 +28,7 @@
       "specular" : true,
       "translucency" : {
         "enabled" : true,
-        "value" : 0.25
+        "value" : 0.5
       }
     },
     {
@@ -37,7 +37,14 @@
           "blend-mode" : "multiply",
           "image-name" : "simulator_screenshot_DE89997B-7F5E-456E-BFEF-93C433B2CED3.png",
           "name" : "simulator_screenshot_DE89997B-7F5E-456E-BFEF-93C433B2CED3",
-          "opacity" : 1
+          "opacity" : 1,
+          "position" : {
+            "scale" : 0.3,
+            "translation-in-points" : [
+              0,
+              0
+            ]
+          }
         }
       ],
       "opacity" : 1,
