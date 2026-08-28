@@ -89,7 +89,11 @@ public final class RequestLineComposer {
         } catch {
             let cause = RequestLineFailure(error)
             var additionalData = ["failure_cause": cause.analyticsName]
-            if case .boothRejected(let statusCode) = cause {
+            // Taken from the error, not from `cause`. Nothing on screen
+            // varies with the status — that is what keeps a ban unprobeable
+            // — but the status is still worth having in PostHog, so the two
+            // sources are deliberately separate.
+            if case .serverError(let statusCode) = error as? RequestServiceError {
                 additionalData["status_code"] = String(statusCode)
             }
             // Reported through the injected `analytics` — not the

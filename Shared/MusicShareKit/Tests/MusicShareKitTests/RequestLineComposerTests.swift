@@ -146,19 +146,24 @@ struct RequestLineComposerTests {
 
     // A shadow-banned listener is on the unauthenticated path (the whole
     // install base today), so ROM's ban response reaches this as a 403 with
-    // no JWT — the same shape as a real outage. Rendering "the booth turned
-    // that one down" for it would hand the ban away in the copy, which is
-    // exactly the ban-probe-by-copy the 2026-08-27 correction to iOS#1011
-    // rejected. This must classify indistinguishably from a transport
-    // failure, not as a booth rejection.
-    @Test("A 403 classifies as boothUnreachable, not boothRejected")
-    func classifies403AsBoothUnreachable() async {
-        let (composer, _, _) = makeComposer(result: .failure(.serverError(statusCode: 403)))
+    // no JWT — the same shape as a real outage. Any status that classified
+    // apart from a transport failure would hand the ban away in the copy,
+    // which is exactly the ban-probe-by-copy the 2026-08-27 correction to
+    // iOS#1011 rejected. Every answered status must be indistinguishable
+    // from an unanswered one, so this asserts identity across the set
+    // rather than one row at a time.
+    @Test(
+        "Every server status classifies identically to a transport failure",
+        arguments: [403, 400, 429, 500, 502]
+    )
+    func everyServerStatusIsIndistinguishable(statusCode: Int) async {
+        let (composer, _, _) = makeComposer(result: .failure(.serverError(statusCode: statusCode)))
         composer.text = "Back, Baby by Jessica Pratt"
 
         _ = await composer.send()
 
         #expect(composer.failure == .boothUnreachable)
+        #expect(composer.failure == RequestLineFailure(RequestServiceError.networkError(URLError(.timedOut))))
     }
 
     // Folding the `?? .boothUnreachable` fallback into `RequestLineFailure`
@@ -176,7 +181,7 @@ struct RequestLineComposerTests {
 
     // Pins the wire strings in iOS#1011: a fleet-wide rename flatlined a
     // PostHog series exactly this way in 3.2. The bare case name is the
-    // value — not the interpolated `"boothRejected(500)"` the first attempt
+    // value — not a status-interpolated string like the first attempt
     // shipped — so a `failure_cause` breakdown stays one series instead of
     // fragmenting per HTTP status.
     @Test(
@@ -185,7 +190,7 @@ struct RequestLineComposerTests {
             (RequestServiceError.authenticationFailed(URLError(.notConnectedToInternet)), "authUnavailable"),
             (RequestServiceError.invalidResponse, "boothUnreachable"),
             (RequestServiceError.serverError(statusCode: 403), "boothUnreachable"),
-            (RequestServiceError.serverError(statusCode: 500), "boothRejected"),
+            (RequestServiceError.serverError(statusCode: 500), "boothUnreachable"),
         ]
     )
     func reportsFailureCauseAsBareCaseName(error: RequestServiceError, expectedCause: String) async throws {
@@ -198,9 +203,11 @@ struct RequestLineComposerTests {
         #expect(event.additionalData?["failure_cause"] == expectedCause)
     }
 
-    // The status code is useful, but only under its own key — folding it
-    // into `failure_cause` is exactly what fragments the breakdown.
-    @Test("A boothRejected failure carries its status code under a separate key")
+    // The status code stays measurable even though nothing on screen varies
+    // with it: it rides under its own key, taken from the error rather than
+    // from the failure case, so collapsing the cases costs no telemetry.
+    // Folding it into `failure_cause` is what would fragment the breakdown.
+    @Test("A server status is reported under its own key while the cause stays flat")
     func reportsStatusCodeUnderItsOwnKey() async throws {
         let (composer, _, analytics) = makeComposer(result: .failure(.serverError(statusCode: 502)))
         composer.text = "Back, Baby by Jessica Pratt"
@@ -208,8 +215,23 @@ struct RequestLineComposerTests {
         _ = await composer.send()
 
         let event = try #require(analytics.errorEvents.last)
-        #expect(event.additionalData?["failure_cause"] == "boothRejected")
+        #expect(event.additionalData?["failure_cause"] == "boothUnreachable")
         #expect(event.additionalData?["status_code"] == "502")
+    }
+
+    // The 403 a ban arrives as is worth telling apart in PostHog even though
+    // it must not be tellable apart on screen. The split lives entirely in
+    // the status key.
+    @Test("A ban's 403 is separable in telemetry despite being flat on screen")
+    func banStatusIsSeparableInTelemetry() async throws {
+        let (composer, _, analytics) = makeComposer(result: .failure(.serverError(statusCode: 403)))
+        composer.text = "Back, Baby by Jessica Pratt"
+
+        _ = await composer.send()
+
+        let event = try #require(analytics.errorEvents.last)
+        #expect(event.additionalData?["status_code"] == "403")
+        #expect(composer.failure == .boothUnreachable)
     }
 
     // A cause that doesn't carry a status code must not grow one — a
@@ -254,8 +276,8 @@ struct RequestLineComposerTests {
 /// inline blows the type-checker.
 private nonisolated let requestServiceErrorClassifications: [(RequestServiceError, RequestLineFailure)] = [
     (.authenticationFailed(URLError(.notConnectedToInternet)), .authUnavailable),
-    (.serverError(statusCode: 500), .boothRejected(statusCode: 500)),
-    (.serverError(statusCode: 429), .boothRejected(statusCode: 429)),
+    (.serverError(statusCode: 500), .boothUnreachable),
+    (.serverError(statusCode: 429), .boothUnreachable),
     (.serverError(statusCode: 403), .boothUnreachable),
     (.invalidResponse, .boothUnreachable),
     (.encodingFailed, .boothUnreachable),

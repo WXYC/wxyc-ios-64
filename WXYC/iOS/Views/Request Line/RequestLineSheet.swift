@@ -164,9 +164,16 @@ struct RequestLineFailureLabel: View {
     let failure: RequestLineFailure
 
     /// The leading clause is semibold, the rest regular, in one `Text` — the
-    /// row is already `.font(.footnote).foregroundStyle(.orange)`. Every case
-    /// that reached the booth without the request landing already states
-    /// "wasn't sent", so VoiceOver reads it once, from here.
+    /// row is already `.font(.footnote).foregroundStyle(.orange)`. Both cases
+    /// state "wasn't sent" once, so VoiceOver reads it once, from here.
+    ///
+    /// Neither case tells the listener anything about what the booth said,
+    /// because a request is never declined: there is no channel for a DJ to
+    /// turn one down, and the only rejection ROM can return that isn't
+    /// transient is for an empty message the composer refuses to send in the
+    /// first place. What a `403` does mean is that the listener is
+    /// shadow-banned, which is precisely what copy must not reveal — so
+    /// every answered status reads the same as an unanswered one.
     private var message: Text {
         switch failure {
         case .authUnavailable:
@@ -174,24 +181,8 @@ struct RequestLineFailureLabel: View {
                 + Text(" Your request wasn't sent — try again in a moment.")
         case .boothUnreachable:
             Text("Couldn't reach the booth.").fontWeight(.semibold)
-                + Text(" Your request wasn't sent — try again.")
-        case .boothRejected(let statusCode) where Self.isTransientRejection(statusCode):
-            // 429 (the sign-in/request limiter) and 5xx (booth-side trouble)
-            // are transient — rewording won't fix either, unlike a genuine
-            // content rejection, so telling the listener to reword during an
-            // outage or a rate-limit burst would be actively misleading.
-            Text("The booth is having trouble right now.").fontWeight(.semibold)
-                + Text(" Try again in a moment.")
-        case .boothRejected:
-            // The booth did answer here, so unlike the two cases above, the
-            // request was sent — there's nothing to say it wasn't.
-            Text("The booth turned that one down.").fontWeight(.semibold)
-                + Text(" Try rewording your request.")
+                + Text(" Your request wasn't sent — try again in a moment.")
         }
-    }
-
-    private static func isTransientRejection(_ statusCode: Int) -> Bool {
-        statusCode == 429 || (500...599).contains(statusCode)
     }
 
     var body: some View {
@@ -250,9 +241,6 @@ struct RequestLinePresenceLabel: View {
         RequestLinePresenceLabel(requestLine: RequestLine(onAir: .dj("DJ HOUNDSTOOTH")))
         RequestLineFailureLabel(failure: .authUnavailable)
         RequestLineFailureLabel(failure: .boothUnreachable)
-        RequestLineFailureLabel(failure: .boothRejected(statusCode: 400))
-        RequestLineFailureLabel(failure: .boothRejected(statusCode: 429))
-        RequestLineFailureLabel(failure: .boothRejected(statusCode: 500))
     }
     .padding(24)
 }
