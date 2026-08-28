@@ -2,7 +2,7 @@
 //  ClockView.swift
 //  WXYC
 //
-//  Displays a flowsheet entry's timestamp as monospaced time text.
+//  Displays a flowsheet entry's timestamp as caption text.
 //
 //  Created by Jake Bromberg on 01/29/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -10,7 +10,7 @@
 
 import SwiftUI
 
-/// Displays the formatted time for a flowsheet entry as monospaced text.
+/// Displays the formatted time for a flowsheet entry.
 struct ClockView: View {
     /// Timestamp in milliseconds since epoch.
     let timeCreated: UInt64
@@ -25,7 +25,7 @@ struct ClockView: View {
 
     var body: some View {
         Text("\(formattedTime)")
-            .font(.system(.caption2, design: .monospaced))
+            .font(.system(.caption))
     }
 }
 
