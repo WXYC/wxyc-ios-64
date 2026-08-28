@@ -55,7 +55,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7D10437EC0EA6CBA5D9C60D0"
             BuildableName = "WatchXYC.app"
-            BlueprintName = "WatchXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -72,7 +71,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "7D10437EC0EA6CBA5D9C60D0"
             BuildableName = "WatchXYC.app"
-            BlueprintName = "WatchXYC"
             ReferencedContainer = "container:WXYC.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
