@@ -154,6 +154,62 @@ struct MainActorMessageTests {
         let received = await task.value
         #expect(received == titles)
     }
+
+    @Test("Plain messages(of:for:) overload delivers a posted message")
+    @MainActor
+    func plainOverloadDeliversMessage() async {
+        let center = NotificationCenter()
+
+        // Making the iterator registers the observer synchronously, so a post
+        // that follows cannot be missed. This is the pattern callers use when
+        // they need registration to happen before a known post.
+        var iterator = center.messages(for: UIUpdateMessage.self).makeAsyncIterator()
+
+        center.post(UIUpdateMessage(title: "plain"), subject: nil as TestController?)
+
+        let received = await iterator.next()
+        #expect(received?.title == "plain")
+    }
+
+    @Test("Plain messages(of:for:) overload honors subject filtering")
+    @MainActor
+    func plainOverloadFiltersBySubject() async {
+        let center = NotificationCenter()
+        let targetController = TestController()
+        let otherController = TestController()
+
+        var iterator = center.messages(
+            of: targetController,
+            for: UIUpdateMessage.self
+        ).makeAsyncIterator()
+
+        center.post(UIUpdateMessage(title: "wrong"), subject: otherController)
+        center.post(UIUpdateMessage(title: "correct"), subject: targetController)
+
+        let received = await iterator.next()
+        #expect(received?.title == "correct")
+    }
+
+    @Test("Plain messages(of:for:) overload buffers messages posted before iteration")
+    @MainActor
+    func plainOverloadBuffersBeforeIteration() async {
+        let center = NotificationCenter()
+        let titles = ["first", "second", "third"]
+
+        var iterator = center.messages(for: UIUpdateMessage.self).makeAsyncIterator()
+
+        for title in titles {
+            center.post(UIUpdateMessage(title: title), subject: nil as TestController?)
+        }
+
+        var received: [String] = []
+        for _ in titles {
+            guard let message = await iterator.next() else { break }
+            received.append(message.title)
+        }
+
+        #expect(received == titles)
+    }
 }
 
 // MARK: - Test Fixtures

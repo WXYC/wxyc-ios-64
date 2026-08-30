@@ -103,6 +103,34 @@ public extension NotificationCenter {
         }
     }
 
+    /// Returns an async sequence of messages matching the given type and optional subject.
+    ///
+    /// The observer is registered when iteration begins — that is, inside
+    /// `makeAsyncIterator()` — and is removed when the iterator is discarded. A caller
+    /// that must not miss a message posted immediately after setup should make the
+    /// iterator eagerly rather than relying on a `for await` loop having started:
+    ///
+    /// ```swift
+    /// var iterator = center.messages(for: MyMessage.self).makeAsyncIterator()
+    /// center.post(MyMessage(), subject: subject)  // cannot be missed
+    /// let message = await iterator.next()
+    /// ```
+    ///
+    /// Prefer this over `addMainActorObserver(of:for:using:)` for long-lived
+    /// observation: cancelling the enclosing `Task` removes the observer, replacing
+    /// the manual token-plus-`deinit` bookkeeping the closure form requires.
+    ///
+    /// - Parameters:
+    ///   - subject: The object to filter messages by, or `nil` to receive all messages of this type.
+    ///   - messageType: The type of message to observe.
+    /// - Returns: An `AsyncSequence` that yields messages as they are posted.
+    func messages<M: MainActorNotificationMessage>(
+        of subject: M.Subject? = nil,
+        for messageType: M.Type
+    ) -> MainActorNotificationMessageSequence<M> where M.Subject: AnyObject {
+        MainActorNotificationMessageSequence(center: self, subject: subject)
+    }
+
     /// Returns an async sequence with a callback that fires when the observer is registered.
     ///
     /// This variant is useful for tests that need to synchronize with observer registration.
