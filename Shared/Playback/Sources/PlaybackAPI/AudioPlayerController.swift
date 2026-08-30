@@ -395,7 +395,7 @@ public final class AudioPlayerController {
     /// each maintaining a duplicated copy. Populated by `setUpNotifications()`.
     @ObservationIgnored private var interruptionRouteHandler: PlaybackInterruptionRouteHandler?
     #endif
-    @ObservationIgnored private nonisolated(unsafe) var commandTargets: [Any] = []
+    @ObservationIgnored private nonisolated(unsafe) var commandTargets = RemoteCommandTargetRegistry()
 
     @ObservationIgnored private var eventTask: Task<Void, Never>?
     @ObservationIgnored private var stateObservationTask: Task<Void, Never>?
@@ -1608,36 +1608,33 @@ public final class AudioPlayerController {
 
         // Play command
         commandCenter.playCommand.isEnabled = true
-        let playTarget = commandCenter.playCommand.addTarget { [weak self] _ in
+        commandTargets.register(commandCenter.playCommand) { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
                 self.play(reason: .remotePlayCommand)
             }
             return .success
         }
-        commandTargets.append(playTarget)
 
         // Pause command
         commandCenter.pauseCommand.isEnabled = true
-        let pauseTarget = commandCenter.pauseCommand.addTarget { [weak self] _ in
+        commandTargets.register(commandCenter.pauseCommand) { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
                 self.handleRemotePauseCommand()
             }
             return .success
         }
-        commandTargets.append(pauseTarget)
 
         // Toggle play/pause command
         commandCenter.togglePlayPauseCommand.isEnabled = true
-        let toggleTarget = commandCenter.togglePlayPauseCommand.addTarget { [weak self] _ in
+        commandTargets.register(commandCenter.togglePlayPauseCommand) { [weak self] _ in
             guard let self else { return .commandFailed }
             Task { @MainActor in
                 self.toggle(reason: .remoteToggleCommand)
             }
             return .success
         }
-        commandTargets.append(toggleTarget)
 
         // Disable unsupported commands
         commandCenter.stopCommand.isEnabled = false
@@ -1650,7 +1647,7 @@ public final class AudioPlayerController {
         if player is TimeShiftablePlayer {
             commandCenter.skipBackwardCommand.isEnabled = true
             commandCenter.skipBackwardCommand.preferredIntervals = [15]
-            let skipBackTarget = commandCenter.skipBackwardCommand.addTarget { [weak self] event in
+            commandTargets.register(commandCenter.skipBackwardCommand) { [weak self] event in
                 guard let self,
                       let skipEvent = event as? MPSkipIntervalCommandEvent else {
                     return .commandFailed
@@ -1661,11 +1658,10 @@ public final class AudioPlayerController {
                 }
                 return .success
             }
-            commandTargets.append(skipBackTarget)
 
             commandCenter.skipForwardCommand.isEnabled = true
             commandCenter.skipForwardCommand.preferredIntervals = [15]
-            let skipFwdTarget = commandCenter.skipForwardCommand.addTarget { [weak self] event in
+            commandTargets.register(commandCenter.skipForwardCommand) { [weak self] event in
                 guard let self,
                       let skipEvent = event as? MPSkipIntervalCommandEvent else {
                     return .commandFailed
@@ -1676,10 +1672,9 @@ public final class AudioPlayerController {
                 }
                 return .success
             }
-            commandTargets.append(skipFwdTarget)
 
             commandCenter.changePlaybackPositionCommand.isEnabled = true
-            let positionTarget = commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+            commandTargets.register(commandCenter.changePlaybackPositionCommand) { [weak self] event in
                 guard let self,
                       let positionEvent = event as? MPChangePlaybackPositionCommandEvent else {
                     return .commandFailed
@@ -1690,7 +1685,6 @@ public final class AudioPlayerController {
                 }
                 return .success
             }
-            commandTargets.append(positionTarget)
         } else {
             commandCenter.skipForwardCommand.isEnabled = false
             commandCenter.skipBackwardCommand.isEnabled = false
@@ -1699,13 +1693,11 @@ public final class AudioPlayerController {
     }
 
     private func removeRemoteCommandTargets() {
-        guard let commandCenter = remoteCommandCenter else { return }
-
-        for target in commandTargets {
-            commandCenter.playCommand.removeTarget(target)
-            commandCenter.pauseCommand.removeTarget(target)
-            commandCenter.togglePlayPauseCommand.removeTarget(target)
-        }
+        // Each target is removed from the command that issued it. The previous
+        // version sent every token to the same three commands, which silently
+        // no-ops for a token from a fourth — so the skip-backward, skip-forward,
+        // and change-playback-position targets registered for a time-shiftable
+        // player were never removed at all.
         commandTargets.removeAll()
     }
     #endif

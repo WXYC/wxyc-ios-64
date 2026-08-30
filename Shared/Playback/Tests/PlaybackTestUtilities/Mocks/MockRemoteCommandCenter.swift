@@ -99,6 +99,7 @@ public final class MockRemoteCommandCenter: RemoteCommandCenterProtocol {
     public var mockTogglePlayPauseCommand: MockRemoteCommand { _togglePlayPauseCommand }
     public var mockSkipForwardCommand: MockRemoteCommand { _skipForwardCommand }
     public var mockSkipBackwardCommand: MockRemoteCommand { _skipBackwardCommand }
+    public var mockChangePlaybackPositionCommand: MockRemoteCommand { _changePlaybackPositionCommand }
 
     public func reset() {
         _playCommand.reset()
