@@ -51,7 +51,6 @@ struct WidgetStateServiceTerminationTests {
             playlistService: makeTerminationTestPlaylistService(),
             relevanceUpdater: MockWidgetRelevanceUpdater()
         )
-        _ = service  // retain so the termination observer stays registered
 
         // Simulate an active session persisted to the app-group defaults (init
         // clears it, so set it after construction), then let the OS post its
@@ -78,6 +77,52 @@ struct WidgetStateServiceTerminationTests {
         await drainMainQueue()
 
         #expect(defaults.bool(forKey: "isPlaying") == false)
+
+        // The observer captures the service weakly, so the service has to be kept
+        // alive across the post by this test. `_ = service` does not do that — it
+        // is a discard, and ARC is free to release immediately after the last use.
+        // Until the weak capture landed, this test passed only because the
+        // observer's strong capture leaked every service into the process-global
+        // `NotificationCenter`, which is the bug it now guards against.
+        withExtendedLifetime(service) {}
+    }
+
+    @Test("Termination observer does not retain the service")
+    func terminationObserverDoesNotRetainService() async throws {
+        let defaults = UserDefaults.wxyc
+        let originalIsPlaying = defaults.object(forKey: "isPlaying")
+        defer {
+            if let originalIsPlaying {
+                defaults.set(originalIsPlaying, forKey: "isPlaying")
+            } else {
+                defaults.removeObject(forKey: "isPlaying")
+            }
+        }
+
+        let relevanceUpdater = MockWidgetRelevanceUpdater()
+        weak var weakService: WidgetStateService?
+
+        do {
+            let service = WidgetStateService(
+                playbackController: MockPlaybackController(),
+                playlistService: makeTerminationTestPlaylistService(),
+                relevanceUpdater: relevanceUpdater
+            )
+            weakService = service
+
+            // `init` spawns an unstructured Task that holds `service` strongly
+            // until it completes. Wait for the single relevance call it makes,
+            // so the only remaining reference is the local one going out of scope.
+            await relevanceUpdater.waitForCallCount(1)
+        }
+
+        // Let the completed init Task drop its strong reference.
+        await Task.yield()
+
+        // `NotificationCenter.default` is process-global: a termination observer
+        // that captures the service strongly keeps every instance ever built
+        // alive for the life of the process, including one per test suite.
+        #expect(weakService == nil)
     }
 }
 

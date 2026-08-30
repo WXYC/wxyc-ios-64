@@ -56,16 +56,24 @@ public final class WidgetStateService {
         self.relevanceUpdater = relevanceUpdater
         self.reloader = reloader
 
-        // Listen for app termination to clear playback state
+        // Listen for app termination to clear playback state.
+        //
+        // The capture must be weak. `NotificationCenter.default` is process-global
+        // and retains the observer block, so a strong capture keeps every instance
+        // ever constructed alive for the life of the process — and, because the
+        // token below is stored on `self`, forms a reference cycle that stops
+        // `deinit` from ever running. This stays a closure rather than becoming a
+        // `messages(of:for:)` loop: registration has to complete before `init`
+        // returns, and a `Task` body would not start until after.
         #if canImport(UIKit) && !os(watchOS)
         appTerminationObservation = NotificationCenter.default
-            .addMainActorObserver(of: UIApplication.shared, for: ApplicationWillTerminateMessage.self) { _ in
-                self.clearPlaybackState()
+            .addMainActorObserver(of: UIApplication.shared, for: ApplicationWillTerminateMessage.self) { [weak self] _ in
+                self?.clearPlaybackState()
             }
         #elseif canImport(AppKit)
         appTerminationObservation = NotificationCenter.default
-            .addMainActorObserver(of: NSApplication.shared, for: ApplicationWillTerminateMessage.self) { _ in
-                self.clearPlaybackState()
+            .addMainActorObserver(of: NSApplication.shared, for: ApplicationWillTerminateMessage.self) { [weak self] _ in
+                self?.clearPlaybackState()
             }
         #endif
 
@@ -80,7 +88,9 @@ public final class WidgetStateService {
     deinit {
         playbackObservationTask?.cancel()
         playlistObservationTask?.cancel()
-        // appTerminationObservation is automatically cleaned up on deallocation (iOS 18.6+)
+        // appTerminationObservation removes itself when the token deallocates
+        // alongside this service (iOS 18.6+) — which requires the weak capture
+        // in `init`, or nothing here is ever reached.
     }
 
     // MARK: - Lifecycle
