@@ -141,6 +141,7 @@ public final class RadioPlayerController: PlaybackController {
         // observers; nothing to do here beyond releasing the reference,
         // which happens automatically once this deinit body returns.
         if let stallObservation { notificationCenter.removeObserver(stallObservation) }
+        commandTargets.removeAll()
         reconnectTask?.cancel()
         heartbeat?.stop()
     }
@@ -160,12 +161,30 @@ public final class RadioPlayerController: PlaybackController {
         }
 
         if let remoteCommandCenter {
-            remoteCommandCenter.playCommand.addTarget(handler: self.remotePlayCommand)
-            remoteCommandCenter.pauseCommand.addTarget(handler: self.remotePauseOrStopCommand)
-            remoteCommandCenter.stopCommand.addTarget(handler: self.remotePauseOrStopCommand)
-            remoteCommandCenter.togglePlayPauseCommand.addTarget(handler: self.remoteTogglePlayPauseCommand(_:))
+            // Register through the paired registry so `deinit` can remove exactly
+            // what was added. These four targets were previously registered with
+            // their tokens discarded and never removed — and, because a bound
+            // method reference like `self.remotePlayCommand` retains its receiver,
+            // every controller ever built stayed alive and armed on
+            // `MPRemoteCommandCenter.shared()`, which is process-global.
+            commandTargets.register(remoteCommandCenter.playCommand) { [weak self] event in
+                self?.remotePlayCommand(event) ?? .commandFailed
+            }
+            commandTargets.register(remoteCommandCenter.pauseCommand) { [weak self] event in
+                self?.remotePauseOrStopCommand(event) ?? .commandFailed
+            }
+            commandTargets.register(remoteCommandCenter.stopCommand) { [weak self] event in
+                self?.remotePauseOrStopCommand(event) ?? .commandFailed
+            }
+            commandTargets.register(remoteCommandCenter.togglePlayPauseCommand) { [weak self] event in
+                self?.remoteTogglePlayPauseCommand(event) ?? .commandFailed
+            }
         }
     }
+
+    /// Remote-command targets, paired with the commands that issued them so
+    /// `deinit` can remove them. See ``RemoteCommandTargetRegistry``.
+    @ObservationIgnored private var commandTargets = RemoteCommandTargetRegistry()
 
     /// Callback fired when player state observation has started. Used by tests for synchronization.
     var onObserversReady: (() -> Void)?
