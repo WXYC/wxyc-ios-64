@@ -15,6 +15,13 @@ import CoreHaptics
 final class Haptics {
     private var engine: CHHapticEngine?
 
+    /// Tokens for the engine-lifecycle observers, removed in `deinit`.
+    ///
+    /// These were previously registered and discarded, so each `Haptics` added a
+    /// pair of blocks to the process-global `NotificationCenter` that nothing ever
+    /// removed, and a second instance stacked another pair on top.
+    private var lifecycleObservations: [any NSObjectProtocol] = []
+
     init() {
         guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
         
@@ -29,12 +36,23 @@ final class Haptics {
             print("Haptics init error:", error)
         }
         
-        NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.engine?.stop()
-        }
-        
-        NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
-            try? self?.engine?.start()
+        lifecycleObservations.append(
+            NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.engine?.stop() }
+            }
+        )
+
+        lifecycleObservations.append(
+            NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { try? self?.engine?.start() }
+            }
+        )
+    }
+
+    @MainActor
+    deinit {
+        for observation in lifecycleObservations {
+            NotificationCenter.default.removeObserver(observation)
         }
     }
 
