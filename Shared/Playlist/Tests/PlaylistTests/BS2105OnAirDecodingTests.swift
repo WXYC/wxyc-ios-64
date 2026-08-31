@@ -48,7 +48,7 @@ struct BS2105OnAirDecodingTests {
     /// `GOLDEN_SHA256`. Must match `BS2103EnrichedDecodingTests.goldenSHA256`
     /// — both suites assert the SAME fixture file, independently, so a stale
     /// pin in either one fails loud rather than silently drifting.
-    static let goldenSHA256 = "46a1064409f65356e076390bd209c198d0a8748ccb23bd51b5fb7ae1409c8f70"
+    static let goldenSHA256 = "d8cc07bd3d720442cf6ea39f71d12ca641e9330e4145ac7ad6737b3708acfbb8"
 
     static func fixture(_ name: String, _ ext: String) throws -> URL {
         try #require(
