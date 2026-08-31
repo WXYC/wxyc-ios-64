@@ -35,7 +35,7 @@ struct OnTourTabView: View {
     @Environment(Singletonia.self) private var appState
     @State private var model: OnTourModel
     @State private var isFilterSheetPresented = false
-    @State private var selectedConcert: Concert?
+    @State private var selection: ConcertSelection?
     /// The zoom-transition namespace tying each row to the poster detail it opens.
     @Namespace private var zoomNamespace
     /// Latches the once-per-launch "tab viewed" event and the initial load so a
@@ -101,9 +101,9 @@ struct OnTourTabView: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             }
-            .detailCover(item: $selectedConcert) { concert in
-                ConcertDetailView(concert: concert)
-                    .zoomTransition(sourceID: concert.id, in: zoomNamespace)
+            .detailCover(item: $selection) { selection in
+                ConcertDetailView(concert: selection.concert, source: selection.source)
+                    .zoomTransition(sourceID: selection.concert.id, in: zoomNamespace)
             }
             // The DEBUG/Release argument lists differ (see `forYouDebugSheet`'s two
             // overloads below): DEBUG passes the OT-Q2 (#632) Concert Spotlight
@@ -136,7 +136,7 @@ struct OnTourTabView: View {
             // keeps the hook itself out of the release binary.
             #if DEBUG
             .onChange(of: appState.marketingDismissOnTourDetailToken) { _, _ in
-                selectedConcert = nil
+                selection = nil
             }
             #endif
     }
@@ -273,7 +273,9 @@ struct OnTourTabView: View {
                     ForEach(sections) { section in
                         Section {
                             ForEach(section.concerts) { concert in
-                                ConcertRow(concert: concert, namespace: zoomNamespace) { selectedConcert = concert }
+                                ConcertRow(concert: concert, namespace: zoomNamespace) {
+                                    selection = ConcertSelection(concert: concert, source: "row")
+                                }
                             }
                         } header: {
                             monthSectionHeader(section.title)
@@ -319,7 +321,7 @@ struct OnTourTabView: View {
             ConcertDeepLinkOpened(source: link.source, resolution: resolution.analyticsLabel)
         )
         if let concert = resolution.concert {
-            selectedConcert = concert
+            selection = ConcertSelection(concert: concert, source: "deep_link")
         } else {
             showMissedLinkNotice = true
         }
@@ -491,7 +493,7 @@ struct OnTourTabView: View {
         StructuredPostHogAnalytics.shared.capture(
             ForYouCardTapped(tier: recommendation.tier.analyticsName)
         )
-        selectedConcert = recommendation.concert
+        selection = ConcertSelection(concert: recommendation.concert, source: "for_you")
     }
 
     /// Handles "Not interested" on a For You card: records the tier-only analytics
@@ -579,6 +581,26 @@ struct OnTourTabView: View {
             OnTourFilterApplied(facet: facet, activeCount: model.filter.activeFacetCount)
         )
     }
+}
+
+// MARK: - Detail selection
+
+/// A concert plus the path the listener took to reach it.
+///
+/// `detailCover` needs one `Identifiable` item and `ConcertDetailViewed` needs
+/// to name the arrival path, so the two travel together rather than the source
+/// being captured separately at each site that opens the cover. That is the
+/// point: three places set this today, and a fourth cannot present a detail
+/// without saying where it came from — the compiler asks. Capturing at the
+/// write sites instead would let a new one forget, and a missing denominator
+/// doesn't fail, it just quietly overstates every rate computed from the ones
+/// that remain.
+private struct ConcertSelection: Identifiable {
+    let concert: Concert
+    /// `"row"`, `"for_you"`, or `"deep_link"`.
+    let source: String
+
+    var id: Int { concert.id }
 }
 
 // MARK: - Previews
