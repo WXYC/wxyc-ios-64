@@ -27,6 +27,12 @@ enum MP3DecoderError: Error {
     case invalidFormat
     case bufferAllocationFailed
     case audioFileStreamError(OSStatus)
+    /// The undecoded packet backlog reached ``MP3StreamDecoder/maxBufferedByteCount``
+    /// and was dropped. Distinct from the other cases because it reports a decoder that
+    /// is accumulating faster than it drains rather than a single failed operation: the
+    /// dropped audio is a deliberate glitch, chosen over the unbounded growth that
+    /// crashed the app in issue #1025.
+    case backlogOverflow(droppedBytes: Int, droppedPackets: Int)
 }
 
 /// Context for C callbacks that safely holds a weak reference to the decoder
@@ -74,6 +80,26 @@ final class MP3StreamDecoder: @unchecked Sendable {
     /// Threshold for compacting the data buffer (64KB).
     /// When consumedByteOffset exceeds this, we perform the actual removal.
     private let compactionThreshold = 65536
+
+    /// Hard ceiling on the bytes `packetData` may hold (4 MB).
+    ///
+    /// The append in `handlePackets()` is unconditional, while every path that drains
+    /// `packetData` is conditional on a converter existing and consuming. When the
+    /// converter is missing — `setUpConverter` only runs on a `kAudioFileStreamProperty_DataFormat`
+    /// callback, and yields `converterCreationFailed` without one on failure — or when it
+    /// stops consuming, nothing else bounds the buffer. A backgrounded session grew it to
+    /// roughly 448 MB before `Data.append` failed to allocate (issue #1025, Sentry IOS-6P).
+    ///
+    /// 4 MB is about 256 seconds of the 128 kbps stream, or 64-256 network chunks (the
+    /// HTTP layer delivers 16-64 KB at a time). That is far above any real jitter burst —
+    /// the startup watchdog gives up after 12 seconds — and 64x `compactionThreshold`, so
+    /// the healthy path never approaches it; and it is small enough that reaching it can
+    /// never itself contribute to a memory-pressure kill.
+    static let maxBufferedByteCount = 4 * 1024 * 1024
+
+    /// How many times this decoder has dropped its backlog. Diagnostic only, and confined
+    /// to `decoderQueue` like the rest of the buffering state.
+    private var overflowCount = 0
 
     // Output format: 44.1kHz, stereo, Float32
     private let outputFormat: AVAudioFormat
@@ -257,6 +283,19 @@ final class MP3StreamDecoder: @unchecked Sendable {
     ) {
         guard numberPackets > 0 else { return }
 
+        // Bound the backlog before appending to it. The append below is the only
+        // unconditional write to `packetData`; every path that drains it is conditional on
+        // a converter that exists and consumes, and nothing stops feeding the decoder when
+        // there isn't one. Dropping the backlog costs a glitch — keeping it cost 896 MB
+        // and the process (#1025).
+        if packetData.count + Int(numberBytes) > Self.maxBufferedByteCount {
+            dropBacklog(incomingByteCount: Int(numberBytes))
+            // A single callback bigger than the whole cap cannot be usefully buffered even
+            // against an empty buffer, so drop it too rather than start the next backlog
+            // already over the ceiling.
+            guard Int(numberBytes) <= Self.maxBufferedByteCount else { return }
+        }
+
         // Calculate the base offset for these packets in our accumulated data
         let currentOffset = Int64(packetData.count)
 
@@ -309,8 +348,55 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 Log(.info, category: .playback, "MP3StreamDecoder[\(instanceID)] conversion loop cancelled with \(self.packetDescriptions.count) packets remaining")
                 break
             }
+            let pendingPacketsBeforeConversion = self.packetDescriptions.count
             convertToPCM()
+            guard self.packetDescriptions.count < pendingPacketsBeforeConversion else {
+                // `convertToPCM()` has early returns that consume nothing — a nil
+                // converter, a failed PCM buffer allocation, a conversion that reports
+                // noErr having taken zero packets — and none of them change this loop's
+                // condition. Without this check the loop spins the serial decoder queue at
+                // 100% until `reset()` flips the cancellation flag, while every queued
+                // `decode(data:)` piles up behind it holding its own chunk (#1025).
+                // Comparing the count across the call is robust to every no-progress path,
+                // not only the ones we can enumerate today.
+                Log(.debug, category: .playback, "MP3StreamDecoder[\(instanceID)] conversion consumed no packets (\(pendingPacketsBeforeConversion) queued, converter \(converter == nil ? "absent" : "present")); leaving the loop rather than spinning")
+                break
+            }
         }
+    }
+
+    /// Drops the undecoded backlog, and reports the drop on every surface that can carry
+    /// it: the error stream, the log, and the shared ``ErrorReporter``.
+    ///
+    /// Reported rather than dropped quietly on purpose. #486 established that internal
+    /// error paths in this subsystem are invisible in the field, and whether this cap ever
+    /// fires — and how often — is precisely what shipping it is meant to find out.
+    private func dropBacklog(incomingByteCount: Int) {
+        overflowCount += 1
+
+        let error = MP3DecoderError.backlogOverflow(
+            droppedBytes: packetData.count,
+            droppedPackets: packetDescriptions.count
+        )
+        Log(.error, category: .playback, "MP3StreamDecoder[\(instanceID)] dropping backlog: \(packetData.count) undecoded bytes / \(packetDescriptions.count) packets would exceed the \(Self.maxBufferedByteCount)-byte cap with a \(incomingByteCount)-byte callback (converter \(converter == nil ? "absent" : "present"), overflow #\(overflowCount))")
+        errorContinuation.yield(error)
+        ErrorReporting.shared.report(
+            error,
+            context: "MP3StreamDecoder handlePackets: undecoded backlog exceeded cap",
+            category: .playback,
+            additionalData: [
+                "dropped_bytes": String(packetData.count),
+                "dropped_packets": String(packetDescriptions.count),
+                "incoming_bytes": String(incomingByteCount),
+                "cap_bytes": String(Self.maxBufferedByteCount),
+                "overflow_count": String(overflowCount),
+                "has_converter": String(converter != nil),
+            ]
+        )
+
+        packetData.removeAll(keepingCapacity: false)
+        packetDescriptions.removeAll()
+        consumedByteOffset = 0
     }
 
     private func setUpConverter(inputFormat: AudioStreamBasicDescription) {
@@ -483,6 +569,69 @@ final class MP3StreamDecoder: @unchecked Sendable {
         }
 
         consumedByteOffset = 0
+    }
+
+    // MARK: - Diagnostics
+
+    /// A point-in-time view of the decoder's buffering state.
+    ///
+    /// One accessor rather than relaxing the individual stored properties, in the spirit
+    /// of `AudioPlayerController.debugStateSnapshot`.
+    struct BufferState: Sendable, Equatable {
+        let bufferedByteCount: Int
+        let pendingPacketCount: Int
+        let consumedByteOffset: Int
+        let hasConverter: Bool
+        let overflowCount: Int
+    }
+
+    /// Reads ``BufferState`` on the decoder queue.
+    ///
+    /// Synchronous, so it waits for whatever the queue is already running. Callers must
+    /// not read it while a `handlePackets()` call they know cannot return is outstanding.
+    var bufferState: BufferState {
+        decoderQueue.sync {
+            BufferState(
+                bufferedByteCount: packetData.count,
+                pendingPacketCount: packetDescriptions.count,
+                consumedByteOffset: consumedByteOffset,
+                hasConverter: converter != nil,
+                overflowCount: overflowCount
+            )
+        }
+    }
+
+    /// Delivers one synthetic packet callback on the decoder queue, exactly as the
+    /// `AudioFileStream` packet callback does, and invokes `completion` once
+    /// `handlePackets()` returns.
+    ///
+    /// A test seam. `handlePackets()` is otherwise reachable only through the C callback
+    /// `AudioFileStreamParseBytes` fires while parsing real MP3 bytes, which always ends
+    /// up with a converter — so the degenerate states this method exists to exercise (no
+    /// converter, or a converter that consumes nothing) are unreachable from the public
+    /// API even though the field hits them.
+    ///
+    /// `completion` is a callback rather than an `async` return deliberately: a caller
+    /// needs to impose its own deadline on a `handlePackets()` that fails to return, and a
+    /// child task suspended on a continuation the decoder queue will never resume cannot
+    /// be cancelled back out of a task group.
+    func deliverSyntheticPackets(
+        bytes: Data,
+        packetCount: UInt32,
+        completion: @escaping @Sendable () -> Void
+    ) {
+        decoderQueue.async { [self] in
+            bytes.withUnsafeBytes { rawBuffer in
+                guard let baseAddress = rawBuffer.baseAddress else { return }
+                handlePackets(
+                    numberBytes: UInt32(bytes.count),
+                    numberPackets: packetCount,
+                    inputData: baseAddress,
+                    packetDescriptions: nil
+                )
+            }
+            completion()
+        }
     }
 }
 
