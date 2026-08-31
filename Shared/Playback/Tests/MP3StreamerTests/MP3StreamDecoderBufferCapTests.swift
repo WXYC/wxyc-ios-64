@@ -47,6 +47,14 @@ struct MP3StreamDecoderBufferCapTests {
             "Undecoded backlog reached \(state.bufferedByteCount) bytes, above the \(MP3StreamDecoder.maxBufferedByteCount)-byte cap"
         )
         #expect(state.overflowCount > 0, "Feeding 16 MB with nothing draining it must trip the cap at least once")
+        // The cap's contract is per callback, not per session, and `bufferedByteCount` is
+        // one terminal sample: a decoder that ran over the ceiling in the middle and
+        // happened to be under it at the end reads as compliant. The high-water mark is
+        // what actually pins "after handlePackets returns, always".
+        #expect(
+            state.peakBufferedByteCount <= MP3StreamDecoder.maxBufferedByteCount,
+            "Undecoded backlog peaked at \(state.peakBufferedByteCount) bytes, above the \(MP3StreamDecoder.maxBufferedByteCount)-byte cap, even though it ended at \(state.bufferedByteCount)"
+        )
         #expect(
             state.noProgressBreakCount > 1,
             "The forward-progress guard is taken once per packet callback for as long as the decoder stays stuck, so anything it does per break — logging above all — is on an unbounded hot path"
@@ -116,6 +124,71 @@ struct MP3StreamDecoderBufferCapTests {
         case .none:
             Issue.record("Overflowing the backlog must not fail silently — no error reached errorStream (#486)")
         }
+    }
+
+    @Test("A callback larger than the whole cap is reported as dropped, not as a zero-byte drop")
+    func overflowReportsTheDiscardedCallbackToo() async {
+        let decoder = MP3StreamDecoder()
+
+        // One callback a byte over the cap, against an empty buffer. `handlePackets()`
+        // cannot buffer it even with nothing in the way, so it discards the callback on top
+        // of the (here empty) backlog — which makes this the largest single loss the cap
+        // ever causes, and the one its report described least: the backlog alone was zero.
+        let oversizedByteCount = MP3StreamDecoder.maxBufferedByteCount + 1
+        guard await feedOrFail(
+            decoder,
+            callbacks: 1,
+            byteCount: oversizedByteCount,
+            packetCount: 4,
+            hangMessage: "handlePackets() never returned on an oversized callback"
+        ) else { return }
+
+        switch await firstError(from: decoder, timeout: .seconds(5)) {
+        case let .backlogOverflow(droppedBytes, droppedPackets):
+            #expect(
+                droppedBytes == oversizedByteCount,
+                "The discarded callback is the loss here; reporting \(droppedBytes) bytes names only the empty backlog"
+            )
+            #expect(
+                droppedPackets == 4,
+                "The discarded callback's packets went with it; reporting \(droppedPackets) names only the empty backlog"
+            )
+        case let .other(description):
+            Issue.record("Expected MP3DecoderError.backlogOverflow, got \(description)")
+        case .none:
+            Issue.record("Discarding an oversized callback must not fail silently (#486)")
+        }
+    }
+
+    @Test("A decoder that keeps overflowing throttles its reports without losing the first")
+    func repeatedOverflowsAreThrottled() async {
+        let decoder = MP3StreamDecoder()
+
+        // 1024 callbacks of 64 KB — 64 MB, about an hour of the 128 kbps stream. A stuck
+        // decoder re-trips the cap once per 4 MB, so this is roughly what a listener who
+        // leaves a broken stream running in the background produces. Unthrottled, every one
+        // of those is an identical event to Sentry and to PostHog.
+        guard await feedOrFail(
+            decoder,
+            callbacks: 1024,
+            byteCount: 64 * 1024,
+            packetCount: 4,
+            hangMessage: "handlePackets() never returned while overflowing repeatedly"
+        ) else { return }
+
+        let state = decoder.bufferState
+        #expect(
+            state.overflowCount > 8,
+            "Precondition: the feed must trip the cap often enough for throttling to be observable, got \(state.overflowCount)"
+        )
+        #expect(
+            state.reportedOverflowCount >= 1,
+            "The first overflow must always be reported — whether this cap ever fires in the field is the reason it ships"
+        )
+        #expect(
+            state.reportedOverflowCount < state.overflowCount,
+            "\(state.overflowCount) overflows produced \(state.reportedOverflowCount) reports; an unthrottled decoder sends one per overflow"
+        )
     }
 }
 

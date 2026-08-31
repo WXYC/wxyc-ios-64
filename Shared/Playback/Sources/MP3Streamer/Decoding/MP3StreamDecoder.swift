@@ -101,6 +101,41 @@ final class MP3StreamDecoder: @unchecked Sendable {
     /// to `decoderQueue` like the rest of the buffering state.
     private var overflowCount = 0
 
+    /// The largest `packetData.count` ever observed as `handlePackets()` returned.
+    ///
+    /// The cap's contract is per callback — "after `handlePackets()` returns,
+    /// `packetData.count <= maxBufferedByteCount`" — but every other reading of the buffer
+    /// is a single sample, which a decoder that ran over the ceiling mid-session and came
+    /// back under it satisfies. This is the one field that can falsify the invariant rather
+    /// than merely fail to catch it. Doubles as calibration: it is the only evidence of how
+    /// close a healthy stream actually runs to a cap picked at 64x `compactionThreshold`.
+    ///
+    /// Diagnostic only, and confined to `decoderQueue` like the rest of the buffering state.
+    private var peakBufferedByteCount = 0
+
+    /// How many of those drops were forwarded to ``ErrorReporting/shared``, as opposed to
+    /// counted and suppressed by ``overflowIsWorthReporting``. Diagnostic only, and
+    /// confined to `decoderQueue` like the rest of the buffering state.
+    private var reportedOverflowCount = 0
+
+    /// Whether the overflow just counted should reach ``ErrorReporting/shared``.
+    ///
+    /// True for the 1st, 2nd, 4th, 8th, 16th ... drop. A decoder that cannot drain re-trips
+    /// the cap once per ``maxBufferedByteCount`` of stream — roughly every four minutes of
+    /// the 128 kbps feed — so reporting every one sends an identical event to Sentry and to
+    /// PostHog for as long as the session lasts. The 448 MB session in #1025 works out to
+    /// about 112 of them.
+    ///
+    /// Geometric rather than a flat first-N cap because the count has to survive the
+    /// throttle. Every report carries `overflow_count`, so the newest event always names a
+    /// running total within a factor of two of the truth, and `no_progress_breaks` beside
+    /// it is exact. A first-N gate stops reporting altogether once it fires, which leaves a
+    /// session that overflowed five times and one that overflowed five hundred looking
+    /// identical — suppressing the severity along with the volume.
+    private var overflowIsWorthReporting: Bool {
+        overflowCount & (overflowCount - 1) == 0
+    }
+
     /// How many times the conversion loop has exited on the forward-progress guard rather
     /// than on its packet-count condition. Diagnostic only, and confined to `decoderQueue`
     /// like the rest of the buffering state.
@@ -295,6 +330,10 @@ final class MP3StreamDecoder: @unchecked Sendable {
     ) {
         guard numberPackets > 0 else { return }
 
+        // Every `return` below is an exit the cap's per-callback contract covers, so the
+        // high-water mark is taken in a `defer` rather than at any one of them.
+        defer { peakBufferedByteCount = max(peakBufferedByteCount, packetData.count) }
+
         // Bound the backlog before appending to it. The append below is the only
         // unconditional write to `packetData`; every path that drains it is conditional on
         // a converter that exists and consumes, and nothing stops feeding the decoder when
@@ -302,11 +341,17 @@ final class MP3StreamDecoder: @unchecked Sendable {
         // and the process (#1025).
         let incomingByteCount = Int(numberBytes)
         if packetData.count + incomingByteCount > Self.maxBufferedByteCount {
-            dropBacklog(incomingByteCount: incomingByteCount)
             // A single callback bigger than the whole cap cannot be usefully buffered even
-            // against an empty buffer, so drop it too rather than start the next backlog
-            // already over the ceiling.
-            guard incomingByteCount <= Self.maxBufferedByteCount else { return }
+            // against an empty buffer, so it goes with the backlog rather than starting the
+            // next one already over the ceiling. Decided before the drop so the report can
+            // name everything this callback actually costs, not just the part already held.
+            let discardsIncomingCallback = incomingByteCount > Self.maxBufferedByteCount
+            dropBacklog(
+                incomingByteCount: incomingByteCount,
+                incomingPacketCount: Int(numberPackets),
+                discardingIncomingCallback: discardsIncomingCallback
+            )
+            guard !discardsIncomingCallback else { return }
         }
 
         // Calculate the base offset for these packets in our accumulated data
@@ -387,36 +432,67 @@ final class MP3StreamDecoder: @unchecked Sendable {
     /// Reported rather than dropped quietly on purpose. #486 established that internal
     /// error paths in this subsystem are invisible in the field, and whether this cap ever
     /// fires — and how often — is precisely what shipping it is meant to find out.
-    private func dropBacklog(incomingByteCount: Int) {
+    private func dropBacklog(
+        incomingByteCount: Int,
+        incomingPacketCount: Int,
+        discardingIncomingCallback: Bool
+    ) {
         overflowCount += 1
 
         // Bound once, up front: the error payload, the log line and the report must all
         // describe the same backlog, and nothing below may read state this method is about
         // to clear.
-        let droppedBytes = packetData.count
-        let droppedPackets = packetDescriptions.count
+        let backlogBytes = packetData.count
+        let backlogPackets = packetDescriptions.count
         let hasConverter = converter != nil
+
+        // What the stream actually loses. The backlog always goes; the callback that
+        // triggered the drop goes with it only when it is too big to buffer against an
+        // empty backlog. That is the largest single loss this cap can cause and the one
+        // the report used to describe worst — the backlog it named could be, and against a
+        // freshly reset decoder was, zero.
+        let droppedBytes = backlogBytes + (discardingIncomingCallback ? incomingByteCount : 0)
+        let droppedPackets = backlogPackets + (discardingIncomingCallback ? incomingPacketCount : 0)
 
         let error = MP3DecoderError.backlogOverflow(
             droppedBytes: droppedBytes,
             droppedPackets: droppedPackets
         )
-        Log(.error, category: .playback, "MP3StreamDecoder[\(instanceID)] dropping backlog: \(droppedBytes) undecoded bytes / \(droppedPackets) packets would exceed the \(Self.maxBufferedByteCount)-byte cap with a \(incomingByteCount)-byte callback (converter \(hasConverter ? "present" : "absent"), overflow #\(overflowCount))")
+        let incomingDisposition = discardingIncomingCallback
+            ? "including the whole \(incomingByteCount)-byte callback, itself over the cap"
+            : "excluding the \(incomingByteCount)-byte callback that triggered it"
+        Log(.error, category: .playback, "MP3StreamDecoder[\(instanceID)] dropping backlog: \(droppedBytes) bytes / \(droppedPackets) packets discarded, \(incomingDisposition), against the \(Self.maxBufferedByteCount)-byte cap (converter \(hasConverter ? "present" : "absent"), overflow #\(overflowCount))")
         errorContinuation.yield(error)
-        ErrorReporting.shared.report(
-            error,
-            context: "MP3StreamDecoder handlePackets: undecoded backlog exceeded cap",
-            category: .playback,
-            additionalData: [
-                "dropped_bytes": String(droppedBytes),
-                "dropped_packets": String(droppedPackets),
-                "incoming_bytes": String(incomingByteCount),
-                "cap_bytes": String(Self.maxBufferedByteCount),
-                "overflow_count": String(overflowCount),
-                "no_progress_breaks": String(noProgressBreakCount),
-                "has_converter": String(hasConverter),
-            ]
-        )
+
+        // The log line and the error-stream yield above stay per-occurrence: the yield is a
+        // bounded in-memory buffer, and one log line per 4 MB of stream is a rate the log
+        // file can carry and a bug report wants. Only the network-bound report is throttled.
+        //
+        // An `if`, never an early `return`: the buffer clear below is what actually enforces
+        // the cap, and a throttled overflow must still drop its backlog.
+        if overflowIsWorthReporting {
+            reportedOverflowCount += 1
+            ErrorReporting.shared.report(
+                error,
+                context: "MP3StreamDecoder handlePackets: undecoded backlog exceeded cap",
+                category: .playback,
+                additionalData: [
+                    "dropped_bytes": String(droppedBytes),
+                    "dropped_packets": String(droppedPackets),
+                    "backlog_bytes": String(backlogBytes),
+                    "backlog_packets": String(backlogPackets),
+                    "incoming_bytes": String(incomingByteCount),
+                    "incoming_packets": String(incomingPacketCount),
+                    "discarded_incoming_callback": String(discardingIncomingCallback),
+                    "cap_bytes": String(Self.maxBufferedByteCount),
+                    "peak_buffered_bytes": String(peakBufferedByteCount),
+                    "overflow_count": String(overflowCount),
+                    "reported_overflow_count": String(reportedOverflowCount),
+                    "no_progress_breaks": String(noProgressBreakCount),
+                    "has_converter": String(hasConverter),
+                ]
+            )
+        }
 
         // Released rather than kept: holding 4 MB of capacity for a decoder that has just
         // proved it cannot drain would preserve exactly the footprint this cap exists to
@@ -610,7 +686,9 @@ final class MP3StreamDecoder: @unchecked Sendable {
         let pendingPacketCount: Int
         let consumedByteOffset: Int
         let hasConverter: Bool
+        let peakBufferedByteCount: Int
         let overflowCount: Int
+        let reportedOverflowCount: Int
         let noProgressBreakCount: Int
     }
 
@@ -631,7 +709,9 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 pendingPacketCount: packetDescriptions.count,
                 consumedByteOffset: consumedByteOffset,
                 hasConverter: converter != nil,
+                peakBufferedByteCount: peakBufferedByteCount,
                 overflowCount: overflowCount,
+                reportedOverflowCount: reportedOverflowCount,
                 noProgressBreakCount: noProgressBreakCount
             )
         }
