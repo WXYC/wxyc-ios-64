@@ -40,7 +40,8 @@ import CryptoKit
 /// bytes, which is the point.
 ///
 /// To refresh: copy the file from Backend-Service, run this suite, update
-/// ``goldenSHA256`` in both places.
+/// ``goldenSHA256`` here (and in `BS2105OnAirDecodingTests`) and
+/// `GOLDEN_SHA256` in Backend-Service's `playlist-proxy-wire-golden.test.ts`.
 @Suite("BS#2103 enriched v1 payload decoding")
 struct BS2103EnrichedDecodingTests {
 
@@ -80,7 +81,8 @@ struct BS2103EnrichedDecodingTests {
             """
             The golden changed. Confirm Backend-Service regenerated it deliberately, \
             re-read the expectations below against the new bytes, then update \
-            goldenSHA256 here and GOLDEN_SHA256 in playlist-proxy-wire-golden.test.ts.
+            goldenSHA256 here (and in BS2105OnAirDecodingTests) and GOLDEN_SHA256 \
+            in playlist-proxy-wire-golden.test.ts.
             """
         )
     }
@@ -260,7 +262,6 @@ struct BS2103EnrichedDecodingTests {
         switch field {
         case "artistWikipediaURL": #expect(playcut.artistWikipediaURL == nil)
         case "discogsURL": #expect(playcut.discogsURL == nil)
-        case "spotifyURL": #expect(playcut.spotifyURL == nil)
         default: Issue.record("unhandled field \(field)")
         }
     }
@@ -275,11 +276,17 @@ struct BS2103EnrichedDecodingTests {
     func synthesizedSearchURLsFillGuardedFields() throws {
         let playcut = try Self.playcut(try Self.loadPayload(), artist: "Chuquimamani-Condori")
 
-        #expect(playcut.bandcampURL != nil)
-        #expect(playcut.spotifyURL != nil)
-        #expect(playcut.appleMusicURL != nil)
-        #expect(playcut.youtubeMusicURL != nil)
-        #expect(playcut.soundcloudURL != nil)
+        // The persisted bandcamp URL is real, not synthesized — assert its
+        // exact value.
+        #expect(playcut.bandcampURL?.absoluteString == "https://chuquimamanicondori.bandcamp.com/album/dj-e")
+        // The other four are synthesized search URLs. Host equality — not a
+        // bare `!= nil` — is what proves each one is actually a synthesized
+        // fallback and not the row's persisted bandcamp URL leaking through
+        // unguarded, which would also satisfy `!= nil`.
+        #expect(playcut.spotifyURL?.host() == "open.spotify.com")
+        #expect(playcut.appleMusicURL?.host() == "music.apple.com")
+        #expect(playcut.youtubeMusicURL?.host() == "music.youtube.com")
+        #expect(playcut.soundcloudURL?.host() == "soundcloud.com")
     }
 
     @Test("A whitespace-padded URL is trimmed, a whitespace-only one is dropped")
