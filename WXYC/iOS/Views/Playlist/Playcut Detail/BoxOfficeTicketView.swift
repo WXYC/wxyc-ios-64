@@ -15,6 +15,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Analytics
 import ColorPalette
 import Concerts
 import Playlist
@@ -40,6 +41,13 @@ struct BoxOfficeTicketView: View {
     /// on a past show — the On Tour browse window is future-only — so this
     /// defaults to `false` for the in-app surfaces that only ever show it.
     var isPast: Bool = false
+
+    /// Which host is rendering this ticket, recorded on ``ConcertTicketsTapped``:
+    /// `"detail"` for the On Tour concert detail, `"playcut_detail"` for the
+    /// keepsake under a playcut. Deliberately has no default — one ticket view
+    /// serves two entry points that answer different product questions, and a
+    /// default would silently mis-attribute the next one added.
+    let surface: String
 
     @Environment(\.openURL) private var openURL
 
@@ -232,6 +240,7 @@ struct BoxOfficeTicketView: View {
         } else if let url = presenter.ctaURL {
             VStack(spacing: 9) {
                 Button {
+                    recordTicketTap()
                     openURL(url)
                 } label: {
                     HStack(spacing: 9) {
@@ -254,6 +263,23 @@ struct BoxOfficeTicketView: View {
                     .frame(maxWidth: .infinity)
             }
         }
+    }
+
+    /// Records the outbound box-office tap. Called from both CTA sites — the
+    /// live ticket button and the cancelled notice's quieter link — so a tap on
+    /// a dead show is still counted, tagged with its ``ShowStatus``, rather than
+    /// silently missing from the funnel.
+    private func recordTicketTap() {
+        StructuredPostHogAnalytics.shared.capture(
+            ConcertTicketsTapped(
+                artist: show.headlineName,
+                artistId: show.headliningArtistId,
+                venue: show.venue.name,
+                concertId: show.id,
+                surface: surface,
+                status: show.status.rawValue
+            )
+        )
     }
 
     /// Filled amber for a live purchase/RSVP; outlined for the "see the
@@ -284,7 +310,10 @@ struct BoxOfficeTicketView: View {
                 .font(.subheadline)
                 .foregroundStyle(Palette.cancelInk)
             if let url = presenter.ctaURL {
-                Button { openURL(url) } label: {
+                Button {
+                    recordTicketTap()
+                    openURL(url)
+                } label: {
                     HStack(spacing: 4) {
                         Text(presenter.ctaLabel)
                         Image(systemName: "arrow.up.right")
@@ -469,7 +498,7 @@ private struct BoxOfficeTicketPreviewStage: View {
         ZStack {
             (lightWallpaper ? Self.lightBackdrop : Self.darkBackdrop)
                 .ignoresSafeArea()
-            BoxOfficeTicketView(show: show, colors: colors, isPast: isPast)
+            BoxOfficeTicketView(show: show, colors: colors, isPast: isPast, surface: "detail")
                 .padding()
         }
     }
@@ -578,7 +607,7 @@ private struct BoxOfficeTicketDetailContextPreview: View {
                         .padding(.top, 30)
                     // WXYC 1983 (foreground `.light`) so the stub's white ink reads
                     // on this dark stand-in wallpaper.
-                    BoxOfficeTicketView(show: show, colors: .previewWXYC1983)
+                    BoxOfficeTicketView(show: show, colors: .previewWXYC1983, surface: "playcut_detail")
                     mockSection(title: "Add it to your library", tiles: 4)
                     mockSection(title: "More Info", tiles: 2)
                     Spacer(minLength: 40)

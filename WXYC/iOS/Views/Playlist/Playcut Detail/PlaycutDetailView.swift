@@ -109,7 +109,8 @@ struct PlaycutDetailView: View {
                 if let upcomingShow {
                     BoxOfficeTicketView(
                         show: upcomingShow,
-                        colors: appearance.ticketColors
+                        colors: appearance.ticketColors,
+                        surface: "playcut_detail"
                     )
                     .transition(.opacity.combined(with: .move(edge: .top)))
                         .onAppear {

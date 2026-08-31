@@ -179,6 +179,7 @@ Every PR stays under the 1000-line guidance; the contract PRs are tiny and land 
 - **Similar-tier noise cap**: top 3 similar matches shelved per window, by weight — **controlled by a PostHog feature flag** via `FeatureFlagProvider`, local default 3.
 - **Analytics identity**: like/shelf events carry no artist ids (strictest reading of the privacy invariant). Loosening to artist-level product analytics is a deliberate future opt-in.
   - **Amended 2026-08-21:** the opt-in was taken, for like events only. Shelf events still carry no artist identity. Rationale and scope: `docs/plans/likes-identity-capture.md`.
+  - **Amended 2026-08-31:** the opt-in was extended to *ticket intent*. `concert_tickets_tapped` carries `artist`, `artist_id`, `venue`, and `concert_id` — the first On Tour event to name a band. The line now sits between browse and intent rather than between likes and everything else: **what we showed you stays anonymous, what you chose to act on does not.** Shelf and filter events are unchanged and still assert counts-only in their tests. `artist`/`artist_id` deliberately reuse `song_like_toggled`'s key names so a liked-artist cohort joins against ticket taps without aliasing.
 
 ## References
 

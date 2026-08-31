@@ -95,6 +95,16 @@ struct ConcertRow: View {
         }
         if let ticketsURL = presenter.ctaURL {
             Button {
+                StructuredPostHogAnalytics.shared.capture(
+                    ConcertTicketsTapped(
+                        artist: concert.headlineName,
+                        artistId: concert.headliningArtistId,
+                        venue: concert.venue.name,
+                        concertId: concert.id,
+                        surface: "row",
+                        status: concert.status.rawValue
+                    )
+                )
                 openURL(ticketsURL)
             } label: {
                 Label("Get Tickets", systemImage: "ticket")
