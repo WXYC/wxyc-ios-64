@@ -46,6 +46,10 @@ struct MP3StreamDecoderBufferCapTests {
             "Undecoded backlog reached \(state.bufferedByteCount) bytes, above the \(MP3StreamDecoder.maxBufferedByteCount)-byte cap"
         )
         #expect(state.overflowCount > 0, "Feeding 16 MB with nothing draining it must trip the cap at least once")
+        #expect(
+            state.noProgressBreakCount > 1,
+            "The forward-progress guard is taken once per packet callback for as long as the decoder stays stuck, so anything it does per break — logging above all — is on an unbounded hot path"
+        )
     }
 
     @Test("Backlog is capped before the packet count reaches the conversion threshold")

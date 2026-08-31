@@ -101,6 +101,18 @@ final class MP3StreamDecoder: @unchecked Sendable {
     /// to `decoderQueue` like the rest of the buffering state.
     private var overflowCount = 0
 
+    /// How many times the conversion loop has exited on the forward-progress guard rather
+    /// than on its packet-count condition. Diagnostic only, and confined to `decoderQueue`
+    /// like the rest of the buffering state.
+    ///
+    /// Counted rather than logged per occurrence because a decoder that stops consuming
+    /// stays stopped: the guard is then taken on every packet callback for the rest of the
+    /// session, and `Log` writes to the shared log file synchronously on the calling
+    /// thread. Logging each break would trade #1025's unbounded memory for an unbounded
+    /// write loop on the decode queue. The first break is logged; the rest are counted and
+    /// ride along on the overflow report.
+    private var noProgressBreakCount = 0
+
     // Output format: 44.1kHz, stereo, Float32
     private let outputFormat: AVAudioFormat
 
@@ -359,7 +371,10 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 // `decode(data:)` piles up behind it holding its own chunk (#1025).
                 // Comparing the count across the call is robust to every no-progress path,
                 // not only the ones we can enumerate today.
-                Log(.debug, category: .playback, "MP3StreamDecoder[\(instanceID)] conversion consumed no packets (\(pendingPacketsBeforeConversion) queued, converter \(converter == nil ? "absent" : "present")); leaving the loop rather than spinning")
+                noProgressBreakCount += 1
+                if noProgressBreakCount == 1 {
+                    Log(.debug, category: .playback, "MP3StreamDecoder[\(instanceID)] conversion consumed no packets (\(pendingPacketsBeforeConversion) queued, converter \(converter == nil ? "absent" : "present")); leaving the loop rather than spinning. Further breaks on this decoder are counted, not logged")
+                }
                 break
             }
         }
@@ -390,6 +405,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 "incoming_bytes": String(incomingByteCount),
                 "cap_bytes": String(Self.maxBufferedByteCount),
                 "overflow_count": String(overflowCount),
+                "no_progress_breaks": String(noProgressBreakCount),
                 "has_converter": String(converter != nil),
             ]
         )
@@ -583,6 +599,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
         let consumedByteOffset: Int
         let hasConverter: Bool
         let overflowCount: Int
+        let noProgressBreakCount: Int
     }
 
     /// Reads ``BufferState`` on the decoder queue.
@@ -596,7 +613,8 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 pendingPacketCount: packetDescriptions.count,
                 consumedByteOffset: consumedByteOffset,
                 hasConverter: converter != nil,
-                overflowCount: overflowCount
+                overflowCount: overflowCount,
+                noProgressBreakCount: noProgressBreakCount
             )
         }
     }
