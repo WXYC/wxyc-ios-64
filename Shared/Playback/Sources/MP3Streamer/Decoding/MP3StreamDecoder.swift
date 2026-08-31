@@ -300,12 +300,13 @@ final class MP3StreamDecoder: @unchecked Sendable {
         // a converter that exists and consumes, and nothing stops feeding the decoder when
         // there isn't one. Dropping the backlog costs a glitch — keeping it cost 896 MB
         // and the process (#1025).
-        if packetData.count + Int(numberBytes) > Self.maxBufferedByteCount {
-            dropBacklog(incomingByteCount: Int(numberBytes))
+        let incomingByteCount = Int(numberBytes)
+        if packetData.count + incomingByteCount > Self.maxBufferedByteCount {
+            dropBacklog(incomingByteCount: incomingByteCount)
             // A single callback bigger than the whole cap cannot be usefully buffered even
             // against an empty buffer, so drop it too rather than start the next backlog
             // already over the ceiling.
-            guard Int(numberBytes) <= Self.maxBufferedByteCount else { return }
+            guard incomingByteCount <= Self.maxBufferedByteCount else { return }
         }
 
         // Calculate the base offset for these packets in our accumulated data
@@ -389,27 +390,38 @@ final class MP3StreamDecoder: @unchecked Sendable {
     private func dropBacklog(incomingByteCount: Int) {
         overflowCount += 1
 
+        // Bound once, up front: the error payload, the log line and the report must all
+        // describe the same backlog, and nothing below may read state this method is about
+        // to clear.
+        let droppedBytes = packetData.count
+        let droppedPackets = packetDescriptions.count
+        let hasConverter = converter != nil
+
         let error = MP3DecoderError.backlogOverflow(
-            droppedBytes: packetData.count,
-            droppedPackets: packetDescriptions.count
+            droppedBytes: droppedBytes,
+            droppedPackets: droppedPackets
         )
-        Log(.error, category: .playback, "MP3StreamDecoder[\(instanceID)] dropping backlog: \(packetData.count) undecoded bytes / \(packetDescriptions.count) packets would exceed the \(Self.maxBufferedByteCount)-byte cap with a \(incomingByteCount)-byte callback (converter \(converter == nil ? "absent" : "present"), overflow #\(overflowCount))")
+        Log(.error, category: .playback, "MP3StreamDecoder[\(instanceID)] dropping backlog: \(droppedBytes) undecoded bytes / \(droppedPackets) packets would exceed the \(Self.maxBufferedByteCount)-byte cap with a \(incomingByteCount)-byte callback (converter \(hasConverter ? "present" : "absent"), overflow #\(overflowCount))")
         errorContinuation.yield(error)
         ErrorReporting.shared.report(
             error,
             context: "MP3StreamDecoder handlePackets: undecoded backlog exceeded cap",
             category: .playback,
             additionalData: [
-                "dropped_bytes": String(packetData.count),
-                "dropped_packets": String(packetDescriptions.count),
+                "dropped_bytes": String(droppedBytes),
+                "dropped_packets": String(droppedPackets),
                 "incoming_bytes": String(incomingByteCount),
                 "cap_bytes": String(Self.maxBufferedByteCount),
                 "overflow_count": String(overflowCount),
                 "no_progress_breaks": String(noProgressBreakCount),
-                "has_converter": String(converter != nil),
+                "has_converter": String(hasConverter),
             ]
         )
 
+        // Released rather than kept: holding 4 MB of capacity for a decoder that has just
+        // proved it cannot drain would preserve exactly the footprint this cap exists to
+        // avoid. Re-growing costs a few reallocations once every 4 MB of stream, which is
+        // far cheaper than the alternative it trades against.
         packetData.removeAll(keepingCapacity: false)
         packetDescriptions.removeAll()
         consumedByteOffset = 0
@@ -606,6 +618,12 @@ final class MP3StreamDecoder: @unchecked Sendable {
     ///
     /// Synchronous, so it waits for whatever the queue is already running. Callers must
     /// not read it while a `handlePackets()` call they know cannot return is outstanding.
+    ///
+    /// Never read it from `decoderQueue` itself, directly or indirectly: `sync` onto the
+    /// serial queue already running the caller deadlocks unconditionally. The indirect
+    /// route is the one to watch — `dropBacklog()` runs on the queue and calls out to
+    /// ``ErrorReporting/shared`` and, through `Log`, to app-registered `LogDestination`s,
+    /// any of which is free to reach back into this decoder.
     var bufferState: BufferState {
         decoderQueue.sync {
             BufferState(

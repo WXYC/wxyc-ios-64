@@ -32,12 +32,13 @@ struct MP3StreamDecoderBufferCapTests {
         // 256 callbacks of 64 KB — 16 MB in total, four packets each — is the shape of a
         // live stream (the HTTP layer delivers 16-64 KB chunks) whose converter was never
         // created. That is the state that reached a 896 MB allocation in #1025.
-        let finished = await feed(decoder, callbacks: 256, byteCount: 64 * 1024, packetCount: 4)
-        #expect(finished, "handlePackets() never returned: the conversion loop spun without consuming (#1025, defect 2)")
-        guard finished else {
-            decoder.reset()
-            return
-        }
+        guard await feedOrFail(
+            decoder,
+            callbacks: 256,
+            byteCount: 64 * 1024,
+            packetCount: 4,
+            hangMessage: "handlePackets() never returned: the conversion loop spun without consuming (#1025, defect 2)"
+        ) else { return }
 
         let state = decoder.bufferState
         #expect(!state.hasConverter, "Precondition: this decoder must have no converter, or nothing here is under test")
@@ -61,12 +62,13 @@ struct MP3StreamDecoderBufferCapTests {
         // loop: that isolates the missing cap (defect 1) from the loop's missing
         // forward-progress guarantee (defect 2), so an uncapped decoder fails the size
         // assertion below instead of hanging on the spin and never reaching it.
-        let finished = await feed(decoder, callbacks: 3, byteCount: 2 * 1024 * 1024, packetCount: 1)
-        #expect(finished, "handlePackets() should return promptly with fewer than four packets queued")
-        guard finished else {
-            decoder.reset()
-            return
-        }
+        guard await feedOrFail(
+            decoder,
+            callbacks: 3,
+            byteCount: 2 * 1024 * 1024,
+            packetCount: 1,
+            hangMessage: "handlePackets() should return promptly with fewer than four packets queued"
+        ) else { return }
 
         let state = decoder.bufferState
         #expect(state.pendingPacketCount < 4, "Precondition: the conversion loop must not have engaged, or this is testing defect 2")
@@ -84,23 +86,26 @@ struct MP3StreamDecoderBufferCapTests {
         // converter, `convertToPCM()` returns at its first guard without consuming any of
         // them, so the loop condition never changes and only a forward-progress check can
         // end it.
-        let finished = await feed(decoder, callbacks: 1, byteCount: 16 * 1024, packetCount: 8)
-        #expect(finished, "handlePackets() never returned: with nothing consumed the loop condition never changes (#1025, defect 2)")
-        if !finished {
-            decoder.reset()
-        }
+        _ = await feedOrFail(
+            decoder,
+            callbacks: 1,
+            byteCount: 16 * 1024,
+            packetCount: 8,
+            hangMessage: "handlePackets() never returned: with nothing consumed the loop condition never changes (#1025, defect 2)"
+        )
     }
 
     @Test("Dropping the backlog yields a distinct, observable error")
     func overflowYieldsDistinctError() async {
         let decoder = MP3StreamDecoder()
 
-        let finished = await feed(decoder, callbacks: 3, byteCount: 2 * 1024 * 1024, packetCount: 1)
-        guard finished else {
-            decoder.reset()
-            Issue.record("handlePackets() never returned, so the error stream could not be observed")
-            return
-        }
+        guard await feedOrFail(
+            decoder,
+            callbacks: 3,
+            byteCount: 2 * 1024 * 1024,
+            packetCount: 1,
+            hangMessage: "handlePackets() never returned, so the error stream could not be observed"
+        ) else { return }
 
         switch await firstError(from: decoder, timeout: .seconds(5)) {
         case let .backlogOverflow(droppedBytes, droppedPackets):
@@ -124,13 +129,33 @@ private enum ObservedDecoderError: Sendable {
     case none
 }
 
+/// Runs `work` under a deadline, substituting `fallback` if the deadline wins.
+///
+/// Every wait in this file needs its own deadline rather than a `.timeLimit` trait: the
+/// hang under test is on a `DispatchQueue`, not in a cancellable task, so cancellation
+/// cannot reach it and the suite would hang instead of failing. Written once so the two
+/// callers cannot drift apart on the race itself.
+private func withDeadline<Result: Sendable>(
+    _ timeout: Duration,
+    fallback: Result,
+    _ work: @escaping @Sendable () async -> Result
+) async -> Result {
+    await withTaskGroup(of: Result.self) { group in
+        group.addTask { await work() }
+        group.addTask {
+            try? await Task.sleep(for: timeout)
+            return fallback
+        }
+        let result = await group.next() ?? fallback
+        group.cancelAll()
+        return result
+    }
+}
+
 /// Delivers `callbacks` synthetic packet callbacks and waits for the last one to return.
 ///
-/// Returns `false` when `timeout` elapses first. The deadline is the point: before the
-/// forward-progress guard, `handlePackets()` can spin the decoder queue forever, and the
-/// spin checks nothing a test can signal short of `reset()`. A `.timeLimit` trait cannot
-/// rescue the suite from that, because the hang is on a `DispatchQueue` rather than in a
-/// cancellable task — so the test owns its deadline and fails on it instead of hanging.
+/// Returns `false` when `timeout` elapses first — which, before the forward-progress
+/// guard, is what a `handlePackets()` spinning the decoder queue looks like from here.
 private func feed(
     _ decoder: MP3StreamDecoder,
     callbacks: Int,
@@ -150,42 +175,46 @@ private func feed(
         }
     }
 
-    return await withTaskGroup(of: Bool.self) { group in
-        group.addTask {
-            for await _ in completions {
-                return true
-            }
-            return false
+    return await withDeadline(timeout, fallback: false) {
+        for await _ in completions {
+            return true
         }
-        group.addTask {
-            try? await Task.sleep(for: timeout)
-            return false
-        }
-        let finished = await group.next() ?? false
-        group.cancelAll()
-        return finished
+        return false
     }
+}
+
+/// ``feed(_:callbacks:byteCount:packetCount:timeout:)``, reporting the hang itself.
+///
+/// Every test here has the same two obligations when the decoder fails to return — record
+/// why, and `reset()` so the spinning queue does not outlive the test — and had drifted
+/// into four slightly different spellings of them.
+@discardableResult
+private func feedOrFail(
+    _ decoder: MP3StreamDecoder,
+    callbacks: Int,
+    byteCount: Int,
+    packetCount: UInt32,
+    hangMessage: Comment,
+    sourceLocation: SourceLocation = #_sourceLocation
+) async -> Bool {
+    let finished = await feed(decoder, callbacks: callbacks, byteCount: byteCount, packetCount: packetCount)
+    if !finished {
+        decoder.reset()
+        Issue.record(hangMessage, sourceLocation: sourceLocation)
+    }
+    return finished
 }
 
 /// Reads the first value off the decoder's error stream, or gives up after `timeout`.
 private func firstError(from decoder: MP3StreamDecoder, timeout: Duration) async -> ObservedDecoderError {
-    await withTaskGroup(of: ObservedDecoderError.self) { group in
-        group.addTask {
-            for await error in decoder.errorStream {
-                if case let MP3DecoderError.backlogOverflow(droppedBytes, droppedPackets) = error {
-                    return .backlogOverflow(droppedBytes: droppedBytes, droppedPackets: droppedPackets)
-                }
-                return .other(String(describing: error))
+    await withDeadline(timeout, fallback: .none) {
+        for await error in decoder.errorStream {
+            if case let MP3DecoderError.backlogOverflow(droppedBytes, droppedPackets) = error {
+                return .backlogOverflow(droppedBytes: droppedBytes, droppedPackets: droppedPackets)
             }
-            return .none
+            return .other(String(describing: error))
         }
-        group.addTask {
-            try? await Task.sleep(for: timeout)
-            return .none
-        }
-        let observed = await group.next() ?? .none
-        group.cancelAll()
-        return observed
+        return .none
     }
 }
 
