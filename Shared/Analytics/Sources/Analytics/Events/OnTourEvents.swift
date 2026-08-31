@@ -182,68 +182,127 @@ public struct ToursNearMeIntentAnswered {
     }
 }
 
-// MARK: - Ticket intent
+// MARK: - Intent tier
 
-/// Event fired when a listener taps the outbound box-office CTA for a show —
-/// "Get Tickets", "RSVP", or whichever wording ``BoxOfficeTicketPresenter``
-/// chose for the status. Fires on the tap, not on a confirmed purchase: WXYC
-/// hands off to the venue and never learns what happened next.
+/// The band-and-show payload every On Tour *intent* event carries.
 ///
-/// The first On Tour event to carry band identity, and the reason the file
-/// header now describes two tiers. `artist` is the billed headline name and
-/// `artistId` the WXYC catalog id — the same keyspace as
-/// ``SongLikeToggled/artistId``, so "did the listeners who like this band go
-/// for tickets" is a join rather than a name match. `artistId` is `nil` for an
-/// unresolved headliner (a local opener the catalog doesn't know), and is
-/// **omitted** rather than sent as null, which is why this is hand-written
-/// rather than `@AnalyticsEvent`-derived: the macro emits a flat dictionary
-/// literal with no nil handling, so an `Int?` would serialize as an
-/// `Optional`-wrapped `Any`. Same reasoning, same shape as `SongLikeToggled`.
+/// Factored out rather than repeated per event because the key names are
+/// load-bearing *across* events, not just within one. `artist` and `artist_id`
+/// have to match ``SongLikeToggled``'s exactly, so a liked-artist cohort joins
+/// against intent without aliasing; and every intent event has to spell them
+/// the same way as every other, so a ticket tap is computable as a rate over
+/// the ``ConcertDetailViewed`` that preceded it. Both are silent failures — a
+/// misspelled key produces a query that runs and returns nothing — so the
+/// definition lives in exactly one place.
 ///
-/// `surface` is which affordance was tapped — `"detail"` (the On Tour concert
-/// detail's ticket), `"playcut_detail"` (the Box Office ticket embedded under a
-/// playcut, reached from the playlist rather than the On Tour tab), or `"row"`
-/// (the On Tour list row's context menu). `status` is the ``ShowStatus`` raw
-/// value, so an "on sale" purchase intent is separable from a "sold out" or
-/// "cancelled" tap that only ever opens a venue page.
-public struct ConcertTicketsTapped: AnalyticsEvent {
-    /// Stated rather than left to `AnalyticsEvent`'s default, which derives the
-    /// same string but recomputes the snake-case conversion on every capture —
-    /// the `SongLikeToggled` precedent.
-    public static let name = "concert_tickets_tapped"
-
+/// `artistId` is `nil` for a headliner the WXYC catalog doesn't know (a local
+/// opener), and is **omitted** from the payload rather than sent as null. That
+/// omission is why the events composing this are hand-written rather than
+/// `@AnalyticsEvent`-derived: the macro emits a flat dictionary literal with no
+/// nil handling, so an `Int?` would serialize as an `Optional`-wrapped `Any`.
+/// Same reasoning, same shape as `SongLikeToggled`.
+public struct ConcertIdentity: Sendable {
+    /// The billed headline name, as the listener read it on the ticket.
     public let artist: String
+    /// The WXYC catalog artist id, in the same keyspace as
+    /// ``SongLikeToggled/artistId``, or `nil` when the headliner is unresolved.
     public let artistId: Int?
     public let venue: String
     public let concertId: Int
-    public let surface: String
+    /// The `ShowStatus` raw value, so intent against an on-sale show stays
+    /// separable from a tap on a sold-out or cancelled one — those open a venue
+    /// page and can never become a purchase.
     public let status: String
-
-    public var properties: [String: Any]? {
-        var props: [String: Any] = [
-            "artist": artist,
-            "venue": venue,
-            "concert_id": concertId,
-            "surface": surface,
-            "status": status,
-        ]
-        if let artistId { props["artist_id"] = artistId }
-        return props
-    }
 
     public init(
         artist: String,
         artistId: Int? = nil,
         venue: String,
         concertId: Int,
-        surface: String,
         status: String
     ) {
         self.artist = artist
         self.artistId = artistId
         self.venue = venue
         self.concertId = concertId
-        self.surface = surface
         self.status = status
+    }
+
+    /// The five shared keys, ready for an event to add its own affordance name to.
+    public var properties: [String: Any] {
+        var props: [String: Any] = [
+            "artist": artist,
+            "venue": venue,
+            "concert_id": concertId,
+            "status": status,
+        ]
+        if let artistId { props["artist_id"] = artistId }
+        return props
+    }
+}
+
+/// Event fired when a concert detail is presented, whichever path opened it.
+///
+/// The denominator for the rest of the intent tier. Every other action a
+/// listener can take on a show — tickets, directions, calendar, share — is only
+/// interpretable as a rate over the views that preceded it, and until this
+/// event existed there was no such rate: ``ForYouCardTapped`` covered the shelf
+/// path alone, so a tap arriving from a list row or a shared link had nothing
+/// to divide by.
+///
+/// `source` is the arrival path: `"row"` (the On Tour list), `"for_you"` (the
+/// "Heard on WXYC" shelf), or `"deep_link"` (a shared link or an app-owned
+/// URL). Kept as a separate vocabulary from ``ConcertTicketsTapped/surface`` on
+/// purpose — a `surface` names the affordance that was pressed, a `source`
+/// names how the listener reached the screen holding it.
+public struct ConcertDetailViewed: AnalyticsEvent {
+    /// Stated rather than left to `AnalyticsEvent`'s default, which derives the
+    /// same string but recomputes the snake-case conversion on every capture —
+    /// the `SongLikeToggled` precedent.
+    public static let name = "concert_detail_viewed"
+
+    public let concert: ConcertIdentity
+    public let source: String
+
+    public var properties: [String: Any]? {
+        var props = concert.properties
+        props["source"] = source
+        return props
+    }
+
+    public init(concert: ConcertIdentity, source: String) {
+        self.concert = concert
+        self.source = source
+    }
+}
+
+/// Event fired when a listener taps the outbound box-office CTA for a show —
+/// "Get Tickets", "RSVP", or whichever wording ``BoxOfficeTicketPresenter``
+/// chose for the status. Fires on the tap, not on a confirmed purchase: WXYC
+/// hands off to the venue and never learns what happened next.
+///
+/// The first On Tour event to carry band identity, and the reason this file's
+/// header describes two tiers.
+///
+/// `surface` is which affordance was tapped — `"detail"` (the On Tour concert
+/// detail's ticket), `"playcut_detail"` (the same ticket embedded under a
+/// playcut, reached from the playlist rather than the On Tour tab), or `"row"`
+/// (the On Tour list row's context menu).
+public struct ConcertTicketsTapped: AnalyticsEvent {
+    /// Stated rather than derived, as above.
+    public static let name = "concert_tickets_tapped"
+
+    public let concert: ConcertIdentity
+    public let surface: String
+
+    public var properties: [String: Any]? {
+        var props = concert.properties
+        props["surface"] = surface
+        return props
+    }
+
+    public init(concert: ConcertIdentity, surface: String) {
+        self.concert = concert
+        self.surface = surface
     }
 }

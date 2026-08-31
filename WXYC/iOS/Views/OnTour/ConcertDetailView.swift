@@ -27,6 +27,13 @@ import WXUI
 struct ConcertDetailView: View {
     let concert: Concert
 
+    /// Which arrival path opened this detail, recorded on ``ConcertDetailViewed``:
+    /// `"row"`, `"for_you"`, or `"deep_link"`. Deliberately has no default — the
+    /// event is the denominator every other On Tour action is a rate over, so an
+    /// unnamed fourth entry path would quietly inflate one of the existing three
+    /// instead of showing up as its own.
+    let source: String
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     /// The interpolated theme snapshot, source of the ticket's wallpaper-derived
@@ -55,8 +62,16 @@ struct ConcertDetailView: View {
     /// does — so the detail swaps the ticket's CTA for a keepsake note.
     private let isPast: Bool
 
-    init(concert: Concert, now: Date = Date()) {
+    /// Latches ``ConcertDetailViewed`` to one capture per presentation.
+    /// `.onAppear` fires again whenever a pushed destination — the venue map —
+    /// pops back, and the cover is built fresh for each opening, so the latch
+    /// lands the event exactly once per detail view. The same idiom the tab uses
+    /// for `OnTourTabViewed`.
+    @State private var hasRecordedView = false
+
+    init(concert: Concert, source: String, now: Date = Date()) {
         self.concert = concert
+        self.source = source
         let presenter = BoxOfficeTicketPresenter(concert)
         self.presenter = presenter
         self.isPast = presenter.isPast(asOf: now)
@@ -110,6 +125,13 @@ struct ConcertDetailView: View {
         }
         .concertShareSheet(concert: $shareTarget)
         .addToCalendar($calendarTrigger, surface: "detail")
+        .onAppear {
+            guard !hasRecordedView else { return }
+            hasRecordedView = true
+            StructuredPostHogAnalytics.shared.capture(
+                ConcertDetailViewed(concert: concert.analyticsIdentity, source: source)
+            )
+        }
     }
 
     // MARK: - Poster hero
@@ -372,22 +394,22 @@ struct ConcertDetailView: View {
 
 #if DEBUG
 #Preview("On sale — gradient fallback") {
-    ConcertDetailView(concert: .detailPreview(status: .onSale))
+    ConcertDetailView(concert: .detailPreview(status: .onSale), source: "row")
         .environment(Singletonia.shared)
 }
 
 #Preview("Sold out") {
-    ConcertDetailView(concert: .detailPreview(status: .soldOut, headliningArtistRaw: "Jessica Pratt"))
+    ConcertDetailView(concert: .detailPreview(status: .soldOut, headliningArtistRaw: "Jessica Pratt"), source: "row")
         .environment(Singletonia.shared)
 }
 
 #Preview("Free") {
-    ConcertDetailView(concert: .detailPreview(status: .free, priceMin: 0, priceMax: 0))
+    ConcertDetailView(concert: .detailPreview(status: .free, priceMin: 0, priceMax: 0), source: "for_you")
         .environment(Singletonia.shared)
 }
 
 #Preview("Cancelled") {
-    ConcertDetailView(concert: .detailPreview(status: .cancelled, headliningArtistRaw: "Water From Your Eyes"))
+    ConcertDetailView(concert: .detailPreview(status: .cancelled, headliningArtistRaw: "Water From Your Eyes"), source: "row")
         .environment(Singletonia.shared)
 }
 
@@ -396,6 +418,7 @@ struct ConcertDetailView: View {
 #Preview("Past show (deep link keepsake)") {
     ConcertDetailView(
         concert: .detailPreview(status: .onSale),
+        source: "deep_link",
         now: Date(timeIntervalSince1970: 1_800_000_000)
     )
     .environment(Singletonia.shared)

@@ -271,14 +271,7 @@ struct BoxOfficeTicketView: View {
     /// silently missing from the funnel.
     private func recordTicketTap() {
         StructuredPostHogAnalytics.shared.capture(
-            ConcertTicketsTapped(
-                artist: show.headlineName,
-                artistId: show.headliningArtistId,
-                venue: show.venue.name,
-                concertId: show.id,
-                surface: surface,
-                status: show.status.rawValue
-            )
+            ConcertTicketsTapped(concert: show.analyticsIdentity, surface: surface)
         )
     }
 
