@@ -16,9 +16,10 @@ import Security
 /// Keychain-backed token storage for anonymous authentication sessions.
 ///
 /// Stores authentication sessions in the Keychain with optional iCloud synchronization
-/// for cross-device session persistence. When iCloud Keychain is unavailable (e.g.,
-/// simulators or devices without an iCloud account), saves fall back to local-only
-/// storage to ensure sessions always persist across app launches (see issue #210).
+/// for cross-device session persistence. A save whose synchronizable add fails retries
+/// without the flag, so sessions still persist across app launches (see issue #210).
+/// That retry is a last resort on an already-failing add, not the path taken by a
+/// device with iCloud Keychain switched off — see `save()` and iOS#1035.
 public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
 
     /// The service name for Keychain items.
@@ -47,8 +48,10 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
     ///                  `<App ID prefix>.<group name>`; the prefix is not
     ///                  necessarily the Team ID (#996).
     ///   - synchronizable: Whether to sync via iCloud Keychain. Defaults to `true`.
-    ///                      When `true`, saves fall back to non-synchronizable storage if
-    ///                      iCloud Keychain is unavailable (e.g., simulators).
+    ///                      When `true`, a save whose synchronizable add fails
+    ///                      retries without the flag. That retry is not what
+    ///                      an iCloud-Keychain-off device takes — see `save()`
+    ///                      and iOS#1035.
     ///   - analytics: Analytics service for tracking keychain errors.
     public init(accessGroup: String?, synchronizable: Bool = true, analytics: AnalyticsService) {
         self.service = "org.wxyc.app.auth"
@@ -146,9 +149,15 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
             }
             status = SecItemAdd(query as CFDictionary, nil)
 
-            // Fall back to non-synchronizable if iCloud Keychain is unavailable
-            // (e.g., simulators, devices without iCloud). Local persistence is
-            // better than no persistence (issue #210).
+            // Retry without the sync flag when the synchronizable add fails.
+            // Not, as this comment used to claim, because iCloud Keychain is
+            // unavailable: a synchronizable add succeeds with iCloud Keychain
+            // off and with no iCloud account, so no device arrives here for
+            // that reason. The statuses that do arrive here — missing
+            // entitlement, wrong access group, keychain not yet unlocked —
+            // reject both adds alike, because kSecAttrSynchronizable is not
+            // what they are rejecting (iOS#1035). The retry is kept because it
+            // costs one call on a path that is already failing (issue #210).
             if synchronizable && status != errSecSuccess {
                 query[kSecAttrSynchronizable as String] = false
                 status = SecItemAdd(query as CFDictionary, nil)
@@ -202,9 +211,10 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
 
     /// Attempts to load a session saved without the synchronizable flag.
     ///
-    /// When iCloud Keychain is unavailable (simulators, devices without iCloud),
-    /// `save()` falls back to storing items without `kSecAttrSynchronizable`. This
-    /// method finds those fallback items using a query without the sync attribute.
+    /// `save()` retries without `kSecAttrSynchronizable` when the synchronizable
+    /// add fails, so such items can exist; this method finds them with a query
+    /// that omits the attribute. The retry is not tied to iCloud Keychain
+    /// availability (iOS#1035) — it is a last resort on an already-failing add.
     ///
     /// - Returns: The session if found, or `nil`.
     private func loadNonSynchronizable() -> AuthSession? {
