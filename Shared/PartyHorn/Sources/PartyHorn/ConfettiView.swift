@@ -10,15 +10,39 @@
 
 import SwiftUI
 import Vortex
-import Combine
 
-final class TapTrigger: ObservableObject {
-    let tap = PassthroughSubject<CGPoint, Never>()
-    func fire(with point: CGPoint) { tap.send(point) }
+/// Carries burst locations from the owning UIKit view into the hosted SwiftUI
+/// confetti view.
+///
+/// Single-consumer by construction: `taps` vends one stream, iterated by the one
+/// `ConfettiView` the trigger is handed to. The owner must outlive that view —
+/// `PartyHornView` holds the trigger directly rather than reaching back through
+/// the hosting controller's `rootView`, so the channel cannot be detached by the
+/// view struct being re-created.
+@MainActor
+final class TapTrigger {
+    private let stream: AsyncStream<CGPoint>
+    private let continuation: AsyncStream<CGPoint>.Continuation
+
+    /// Burst locations, in the order they were fired.
+    var taps: AsyncStream<CGPoint> { stream }
+
+    init() {
+        (stream, continuation) = AsyncStream.makeStream()
+    }
+
+    func fire(with point: CGPoint) {
+        continuation.yield(point)
+    }
+
+    deinit {
+        continuation.finish()
+    }
 }
+
 /// A sample view demonstrating confetti bursts.
 struct ConfettiView: View {
-    @ObservedObject var trigger = TapTrigger()
+    let trigger: TapTrigger
 
     var body: some View {
         VortexViewReader { proxy in
@@ -37,9 +61,12 @@ struct ConfettiView: View {
                 proxy.move(to: location)
                 proxy.burst()
             }
-            .onReceive(trigger.tap) {
-                proxy.move(to: $0)
-                proxy.burst()
+            // Inside the reader, where `proxy` is in scope and valid.
+            .task {
+                for await point in trigger.taps {
+                    proxy.move(to: point)
+                    proxy.burst()
+                }
             }
         }
         .ignoresSafeArea()
@@ -69,5 +96,5 @@ extension VortexSystem {
 
 
 #Preview {
-    ConfettiView()
+    ConfettiView(trigger: TapTrigger())
 }

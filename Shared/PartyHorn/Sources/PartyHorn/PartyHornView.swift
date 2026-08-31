@@ -156,13 +156,19 @@ final class PartyHornView: UIView, UIGestureRecognizerDelegate {
     
     private let inversionView: UIView = .init()
     private var inversionStyle: InversionStyle = .normal
-    private lazy var inversionTimer = RepeatingTimer(initialDelay: 2, interval: 0.5) {
+    // The capture must be weak: this view owns the timer, and the timer holds the
+    // block, so a strong `self` here is a cycle that keeps the view alive and the
+    // loop ticking for the life of the process.
+    private lazy var inversionTimer = RepeatingTimer(
+        initialDelay: .seconds(2),
+        interval: .milliseconds(500)
+    ) { [weak self] in
+        guard let self else { return }
+
         let timeInterval = Date.now.timeIntervalSinceReferenceDate - self.lastTimeInterval
         if timeInterval < 1 {
-            print("inversion timer should energize")
             self.invert()
         } else if self.inversionStyle == .inverted {
-            print("inversion timer WON'T energize")
             self.invert()
         }
     }
@@ -224,8 +230,10 @@ final class PartyHornView: UIView, UIGestureRecognizerDelegate {
 
     // MARK: Confetti
 
-    private var confettiHost: UIHostingController<ConfettiView> =  {
-        let swiftUIView = ConfettiView()
+    private let confettiTrigger = TapTrigger()
+
+    private lazy var confettiHost: UIHostingController<ConfettiView> = {
+        let swiftUIView = ConfettiView(trigger: confettiTrigger)
         let confettiHost = UIHostingController(rootView: swiftUIView)
         confettiHost.view.backgroundColor = .clear
         confettiHost.view.isUserInteractionEnabled = false
@@ -239,7 +247,7 @@ final class PartyHornView: UIView, UIGestureRecognizerDelegate {
         let x = Int.random(in: 0..<Int(bounds.width))
         let y = Int.random(in: 0..<Int(bounds.height))
         let location = CGPoint(x: x, y: y)
-        confettiHost.rootView.trigger.fire(with: location)
+        confettiTrigger.fire(with: location)
     }
     
     // MARK: Haptics
