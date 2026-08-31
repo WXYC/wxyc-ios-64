@@ -48,8 +48,11 @@ struct BS2103EnrichedDecodingTests {
     /// as `GOLDEN_SHA256`. Must match.
     ///
     /// BS#2105 regenerated the golden to add a top-level `onAir` field; see
-    /// `BS2105OnAirDecodingTests` for the iOS half of that contract.
-    static let goldenSHA256 = "46a1064409f65356e076390bd209c198d0a8748ccb23bd51b5fb7ae1409c8f70"
+    /// `BS2105OnAirDecodingTests` for the iOS half of that contract. BS#2345
+    /// regenerated it again to synthesize streaming search URLs for rows whose
+    /// post-host-guard metadata already carries at least one wireable
+    /// streaming URL — rows 9005 and 9009 below.
+    static let goldenSHA256 = "d8cc07bd3d720442cf6ea39f71d12ca641e9330e4145ac7ad6737b3708acfbb8"
 
     static func fixture(_ name: String, _ ext: String) throws -> URL {
         try #require(
@@ -227,6 +230,9 @@ struct BS2103EnrichedDecodingTests {
         let playcut = try Self.playcut(try Self.loadPayload(), artist: "Eiko Ishibashi & Jim O'Rourke")
 
         #expect(playcut.spotifyURL != nil)
+        // Row 9005: BS#2345 synthesizes this once the row already carries a
+        // wireable streaming URL.
+        #expect(playcut.appleMusicURL != nil)
         #expect(playcut.youtubeMusicURL != nil)
         #expect(playcut.soundcloudURL != nil)
         #expect(playcut.bandcampURL != nil)
@@ -246,8 +252,6 @@ struct BS2103EnrichedDecodingTests {
             ("Art Garfunkel", "artistWikipediaURL"),
             // The '' synthetic-match sentinel (LML#401/#487, stripped by BS#1628).
             ("Jessica Pratt", "discogsURL"),
-            // Bandcamp URL filed under spotify_url (BS#1714 host guard).
-            ("Chuquimamani-Condori", "spotifyURL"),
         ]
     )
     func guardedFieldsArriveNil(artist: String, field: String) throws {
@@ -259,6 +263,23 @@ struct BS2103EnrichedDecodingTests {
         case "spotifyURL": #expect(playcut.spotifyURL == nil)
         default: Issue.record("unhandled field \(field)")
         }
+    }
+
+    /// Row 9009: its persisted `spotify_url` was filed under the wrong field
+    /// (BS#1714 host guard) and used to arrive as a bare `nil`, same as the
+    /// cases above. BS#2345 changed that — a bandcamp URL still qualifies the
+    /// row as having a wireable streaming URL, so the backend now synthesizes
+    /// search-URL fallbacks for every other streaming field instead of leaving
+    /// them empty.
+    @Test("A row that qualifies via one wireable URL gets synthesized search URLs for the rest")
+    func synthesizedSearchURLsFillGuardedFields() throws {
+        let playcut = try Self.playcut(try Self.loadPayload(), artist: "Chuquimamani-Condori")
+
+        #expect(playcut.bandcampURL != nil)
+        #expect(playcut.spotifyURL != nil)
+        #expect(playcut.appleMusicURL != nil)
+        #expect(playcut.youtubeMusicURL != nil)
+        #expect(playcut.soundcloudURL != nil)
     }
 
     @Test("A whitespace-padded URL is trimmed, a whitespace-only one is dropped")
