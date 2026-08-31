@@ -2,9 +2,25 @@
 //  OnTourEvents.swift
 //  Analytics
 //
-//  Structured analytics for the On Tour tab. These events carry no artist
-//  identity — only facet names, counts, and tab/sheet lifecycle — per the
-//  On Tour privacy invariant (taste/interest data never leaves the device).
+//  Structured analytics for the On Tour tab, in two tiers.
+//
+//  BROWSE events — tab/sheet lifecycle, facet names, shelf and card counts —
+//  carry no artist identity. Which bands a listener is shown, and which of them
+//  came from their own likes, stays on the device: the For You tiers are
+//  computed locally against the likes store, so naming them here would ship the
+//  taste inference the shelf exists to keep private.
+//
+//  INTENT events — currently only ``ConcertTicketsTapped`` — do carry the band,
+//  the venue, and the concert. A listener tapping through to a box office has
+//  declared an interest in a specific show, and WXYC wants to know which bands
+//  drive that, the same way ``SongLikeToggled`` records which bands get liked
+//  (the 2026-08-21 likes-identity reversal). Identity-bearing events reuse
+//  `SongLikeToggled`'s `artist` / `artist_id` key names exactly so the two can
+//  be joined without aliasing.
+//
+//  The line is deliberate: *what we showed you* is anonymous, *what you chose*
+//  is not. Adding identity to a browse event is a product decision, not a
+//  cleanup — the counts-only assertions in the tests are what hold that line.
 //
 //  Created by Jake Bromberg on 07/13/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -163,5 +179,71 @@ public struct ToursNearMeIntentAnswered {
     public init(dateWindow: String, resultCount: Int) {
         self.dateWindow = dateWindow
         self.resultCount = resultCount
+    }
+}
+
+// MARK: - Ticket intent
+
+/// Event fired when a listener taps the outbound box-office CTA for a show —
+/// "Get Tickets", "RSVP", or whichever wording ``BoxOfficeTicketPresenter``
+/// chose for the status. Fires on the tap, not on a confirmed purchase: WXYC
+/// hands off to the venue and never learns what happened next.
+///
+/// The first On Tour event to carry band identity, and the reason the file
+/// header now describes two tiers. `artist` is the billed headline name and
+/// `artistId` the WXYC catalog id — the same keyspace as
+/// ``SongLikeToggled/artistId``, so "did the listeners who like this band go
+/// for tickets" is a join rather than a name match. `artistId` is `nil` for an
+/// unresolved headliner (a local opener the catalog doesn't know), and is
+/// **omitted** rather than sent as null, which is why this is hand-written
+/// rather than `@AnalyticsEvent`-derived: the macro emits a flat dictionary
+/// literal with no nil handling, so an `Int?` would serialize as an
+/// `Optional`-wrapped `Any`. Same reasoning, same shape as `SongLikeToggled`.
+///
+/// `surface` is which affordance was tapped — `"detail"` (the On Tour concert
+/// detail's ticket), `"playcut_detail"` (the Box Office ticket embedded under a
+/// playcut, reached from the playlist rather than the On Tour tab), or `"row"`
+/// (the On Tour list row's context menu). `status` is the ``ShowStatus`` raw
+/// value, so an "on sale" purchase intent is separable from a "sold out" or
+/// "cancelled" tap that only ever opens a venue page.
+public struct ConcertTicketsTapped: AnalyticsEvent {
+    /// Stated rather than left to `AnalyticsEvent`'s default, which derives the
+    /// same string but recomputes the snake-case conversion on every capture —
+    /// the `SongLikeToggled` precedent.
+    public static let name = "concert_tickets_tapped"
+
+    public let artist: String
+    public let artistId: Int?
+    public let venue: String
+    public let concertId: Int
+    public let surface: String
+    public let status: String
+
+    public var properties: [String: Any]? {
+        var props: [String: Any] = [
+            "artist": artist,
+            "venue": venue,
+            "concert_id": concertId,
+            "surface": surface,
+            "status": status,
+        ]
+        if let artistId { props["artist_id"] = artistId }
+        return props
+    }
+
+    public init(
+        artist: String,
+        artistId: Int? = nil,
+        venue: String,
+        concertId: Int,
+        surface: String,
+        status: String
+    ) {
+        self.artist = artist
+        self.artistId = artistId
+        self.venue = venue
+        self.concertId = concertId
+        self.surface = surface
+        self.status = status
     }
 }

@@ -88,7 +88,12 @@ struct ConcertDetailView: View {
                 VStack(spacing: 0) {
                     posterHero
                     VStack(spacing: 20) {
-                        BoxOfficeTicketView(show: concert, colors: appearance.ticketColors, isPast: isPast)
+                        BoxOfficeTicketView(
+                            show: concert,
+                            colors: appearance.ticketColors,
+                            isPast: isPast,
+                            surface: "detail"
+                        )
                         bioSection
                         whereSection
                     }
