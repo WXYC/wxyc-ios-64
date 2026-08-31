@@ -161,14 +161,52 @@ struct OnTourIntentEventsTests {
         #expect(props["source"] as? String == source)
     }
 
+    // MARK: - Directions
+
+    @Test("ConcertDirectionsTapped's name is the snake_cased type name")
+    func directionsTappedEventName() {
+        #expect(ConcertDirectionsTapped.name == "concert_directions_tapped")
+    }
+
+    @Test(
+        "Directions is its own event, not a ticket tap with a different surface",
+        arguments: ["detail", "detail_map", "row"]
+    )
+    func directionsTappedSurfaces(_ surface: String) throws {
+        // A separate name rather than an action property on the ticket event:
+        // for a free show the CTA reads "RSVP" and directions is the truer
+        // intent signal, and an affordance that dies is only visible as a dead
+        // event name — hidden inside a healthy event's volume it looks like noise.
+        let event = ConcertDirectionsTapped(
+            concert: ConcertIdentity(
+                artist: "Hermanos Gutiérrez",
+                artistId: 318,
+                venue: "Haw River Ballroom",
+                concertId: 77,
+                status: "free"
+            ),
+            surface: surface
+        )
+        let props = try #require(event.properties)
+        #expect(props["surface"] as? String == surface)
+        #expect(props["artist"] as? String == "Hermanos Gutiérrez")
+        #expect(props["artist_id"] as? Int == 318)
+        #expect(props["venue"] as? String == "Haw River Ballroom")
+        #expect(props["concert_id"] as? Int == 77)
+        #expect(props["status"] as? String == "free")
+        #expect(props.count == 6)
+    }
+
     // MARK: - Cross-event contract
 
-    @Test("The denominator and the actions over it agree on every shared key")
-    func identityKeysMatchAcrossTiers() throws {
-        // The join is the whole reason this tier exists. Assert the two events
-        // agree rather than trusting the composition to stay in step as the
-        // tier grows: this is the test that fails if a future event inlines its
-        // own payload instead of composing ConcertIdentity.
+    @Test("Every intent event agrees with the denominator on every shared key")
+    func identityKeysMatchAcrossTier() throws {
+        // The join is the whole reason this tier exists. Assert the events agree
+        // rather than trusting the composition to stay in step as the tier
+        // grows: this is the test that fails if a future event inlines its own
+        // payload instead of composing ConcertIdentity, or spells one of the
+        // five keys differently. Both of those are silent in production — the
+        // query still runs, it just quietly misses half the rows.
         let identity = ConcertIdentity(
             artist: "Cat Power",
             artistId: 5,
@@ -176,15 +214,21 @@ struct OnTourIntentEventsTests {
             concertId: 42,
             status: "on_sale"
         )
-        let viewedProps = try #require(ConcertDetailViewed(concert: identity, source: "row").properties)
-        let tappedProps = try #require(ConcertTicketsTapped(concert: identity, surface: "detail").properties)
         let shared = ["artist", "artist_id", "venue", "concert_id", "status"]
-        for key in shared {
-            #expect(String(describing: viewedProps[key]) == String(describing: tappedProps[key]))
+        let denominator = try #require(ConcertDetailViewed(concert: identity, source: "row").properties)
+
+        // Each action, paired with the one key that names its own affordance.
+        let actions: [(String, [String: Any])] = [
+            ("surface", try #require(ConcertTicketsTapped(concert: identity, surface: "detail").properties)),
+            ("surface", try #require(ConcertDirectionsTapped(concert: identity, surface: "detail").properties)),
+        ]
+
+        #expect(Set(denominator.keys).subtracting(shared) == ["source"])
+        for (ownKey, props) in actions {
+            for key in shared {
+                #expect(String(describing: props[key]) == String(describing: denominator[key]))
+            }
+            #expect(Set(props.keys).subtracting(shared) == [ownKey])
         }
-        // Beyond the shared keys, each event names its own affordance and
-        // nothing else.
-        #expect(Set(viewedProps.keys).subtracting(shared) == ["source"])
-        #expect(Set(tappedProps.keys).subtracting(shared) == ["surface"])
     }
 }

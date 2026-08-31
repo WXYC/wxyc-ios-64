@@ -105,6 +105,9 @@ struct ConcertRow: View {
         }
         if let directionsURL = presenter.directionsURL {
             Button {
+                StructuredPostHogAnalytics.shared.capture(
+                    ConcertDirectionsTapped(concert: concert.analyticsIdentity, surface: "row")
+                )
                 openURL(directionsURL)
             } label: {
                 Label("Directions", systemImage: "location.fill")

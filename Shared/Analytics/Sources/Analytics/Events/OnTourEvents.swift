@@ -306,3 +306,35 @@ public struct ConcertTicketsTapped: AnalyticsEvent {
         self.surface = surface
     }
 }
+
+/// Event fired when a listener opens directions to a show's venue in Maps.
+///
+/// Its own name rather than an action property on ``ConcertTicketsTapped``,
+/// because for a free show the box-office CTA reads "RSVP" and getting
+/// directions is the truer signal that someone means to attend. Named events
+/// are also the only way a dying affordance stays visible: folded into a
+/// shared event's volume, a tap target nobody can find any more reads as noise.
+///
+/// `surface` is `"detail"` (the "Where" card's Directions chip),
+/// `"detail_map"` (the same card's tappable map), or `"row"` (the list row's
+/// context menu). The map is split from the chip because they answer different
+/// questions — the chip is a stated intent, the map is a glance that turned
+/// into one — and because a map that never gets tapped should be able to say so.
+public struct ConcertDirectionsTapped: AnalyticsEvent {
+    /// Stated rather than derived, as above.
+    public static let name = "concert_directions_tapped"
+
+    public let concert: ConcertIdentity
+    public let surface: String
+
+    public var properties: [String: Any]? {
+        var props = concert.properties
+        props["surface"] = surface
+        return props
+    }
+
+    public init(concert: ConcertIdentity, surface: String) {
+        self.concert = concert
+        self.surface = surface
+    }
+}
