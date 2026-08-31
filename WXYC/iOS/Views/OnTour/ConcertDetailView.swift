@@ -227,6 +227,15 @@ struct ConcertDetailView: View {
 
     // MARK: - Where
 
+    /// Records a Maps hand-off from the "Where" card. Both of the card's routes
+    /// out report through here so the chip and the map stay distinguishable
+    /// without either forgetting to fire.
+    private func recordDirectionsTap(surface: String) {
+        StructuredPostHogAnalytics.shared.capture(
+            ConcertDirectionsTapped(concert: concert.analyticsIdentity, surface: surface)
+        )
+    }
+
     private var whereSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("WHERE")
@@ -236,7 +245,10 @@ struct ConcertDetailView: View {
 
             VStack(spacing: 0) {
                 VenueMapView(venue: concert.venue, searchQuery: presenter.venueSearchQuery) {
-                    if let url = presenter.directionsURL { openURL(url) }
+                    if let url = presenter.directionsURL {
+                        recordDirectionsTap(surface: "detail_map")
+                        openURL(url)
+                    }
                 }
                 HStack(alignment: .center, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -250,6 +262,7 @@ struct ConcertDetailView: View {
                     Spacer(minLength: 8)
                     if let url = presenter.directionsURL {
                         Button {
+                            recordDirectionsTap(surface: "detail")
                             openURL(url)
                         } label: {
                             HStack(spacing: 5) {
