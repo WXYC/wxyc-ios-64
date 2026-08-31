@@ -115,7 +115,7 @@ struct KeychainTokenStorageTests {
     // MARK: - Synchronizable Save Fallback
 
     @Test(
-        "Save falls back to non-synchronizable when iCloud Keychain is unavailable",
+        "A synchronizable save round-trips through load()",
         .disabled(
             if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
             "Deterministic errSecMissingEntitlement in the iOS Simulator's SPM test bundle — not a flake, not #371. Passes under swift test on the macOS host, the path CI uses. See the \"Real Keychain, iOS Simulator only\" comment above."
@@ -129,8 +129,18 @@ struct KeychainTokenStorageTests {
             expiresAt: nil
         )
 
-        // Save with synchronizable=true. On macOS (swift test), iCloud Keychain
-        // is unavailable, so the sync save fails and falls back to non-sync.
+        // This does NOT prove the fallback ran, despite what this test was
+        // named until iOS#1035. The premise it rested on was wrong — a
+        // synchronizable add does not fail merely because iCloud Keychain is
+        // unavailable — and the assertions below pass either way, so the test
+        // was vacuous with respect to the branch it claimed to cover. What it
+        // does establish is the round trip: a synchronizable save is readable
+        // by `load()`, whichever add succeeded.
+        //
+        // Covering the fallback branch itself needs a seam this type does not
+        // have; it calls `SecItemAdd` directly. `DeviceFingerprintTests`'
+        // "Sync add failure falls back to non-synchronizable add" is the
+        // non-vacuous version, made possible by `MockKeychainOperations`.
         let storage = makeStorage(synchronizable: true)
         try storage.save(session)
 
@@ -143,7 +153,7 @@ struct KeychainTokenStorageTests {
     }
 
     @Test(
-        "Save fallback persists across instances",
+        "A synchronizable save persists across instances",
         .disabled(
             if: ProcessInfo.processInfo.environment["WXYC_SKIP_KNOWN_FLAKES"] == "1",
             "Deterministic errSecMissingEntitlement in the iOS Simulator's SPM test bundle — not a flake, not #371. Passes under swift test on the macOS host, the path CI uses. See the \"Real Keychain, iOS Simulator only\" comment above."
@@ -157,7 +167,9 @@ struct KeychainTokenStorageTests {
             expiresAt: nil
         )
 
-        // Save with synchronizable=true (may fall back to non-sync)
+        // Save with synchronizable=true. As above, this does not establish
+        // which add succeeded — only that whatever was written survives into
+        // a fresh instance, which is the app-relaunch case it stands in for.
         let storage1 = makeStorage(synchronizable: true)
         try storage1.save(session)
 

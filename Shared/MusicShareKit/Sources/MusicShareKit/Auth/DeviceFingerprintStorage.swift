@@ -273,11 +273,38 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
     }
 
     /// Attempts a synchronizable add first, falling back to local-only storage
-    /// when iCloud Keychain is unavailable (simulators, devices without an
-    /// iCloud account). Local persistence is better than no persistence — the
-    /// fingerprint still survives a reinstall on the same device, defeating
-    /// the most common ban-evasion attempt (see Risk 3 in the iOS#351 plan
-    /// and the pattern established by `KeychainTokenStorage` for iOS#210).
+    /// when that add fails.
+    ///
+    /// Two claims this comment used to make were wrong; iOS#1035 settled both.
+    ///
+    /// It is not iCloud Keychain availability that routes a device here. A
+    /// synchronizable `SecItemAdd` succeeds with iCloud Keychain switched off
+    /// and with no iCloud account at all — the item is stored, and syncs later
+    /// if the user enables it. Across every `fingerprint_mode_resolved_event`
+    /// recorded through 2026-08-31, 294 devices resolved `synchronizable` and
+    /// none resolved `local`; a population that size would not be uniformly
+    /// signed in to iCloud Keychain, and the fallback would show it.
+    ///
+    /// Nor does the fallback rescue the failures that actually occur. The one
+    /// population ever to reach it — 13 Simulator installs hitting #996's
+    /// `-34018` — failed the local add with the same status and resolved
+    /// `failed`, not `local`. That generalizes: a missing entitlement, a wrong
+    /// access group, or a keychain not yet unlocked rejects both adds alike,
+    /// because `kSecAttrSynchronizable` is not the attribute being rejected.
+    /// The branch is kept because it costs one call on a path that is already
+    /// failing, not because it has ever salvaged a write.
+    ///
+    /// Reinstall survival is real, but it belongs to neither branch: keychain
+    /// items outlive app deletion regardless of `kSecAttrSynchronizable`.
+    /// Apple calls that an undocumented implementation detail of the original
+    /// iOS keychain — iOS 10.3 beta 2 removed it, and the removal was rolled
+    /// back before GM — so it is observed behavior rather than a guarantee.
+    /// iOS#351's Risk 3 ("`kSecAttrSynchronizable = true` is essential.
+    /// Without it, ban evasion is trivially delete + reinstall") is therefore
+    /// wrong about the mechanism. What sync buys is a wiped or replaced device
+    /// on the same Apple ID, which a local-only item genuinely does not
+    /// survive. See also `KeychainTokenStorage`, which carries the same
+    /// fallback for iOS#210.
     private func addWithFallback(value: String) -> AddOutcome {
         let syncAttrs = addAttributesDictionary(value: value, synchronizable: true)
         let syncStatus = operations.add(syncAttrs as CFDictionary)
