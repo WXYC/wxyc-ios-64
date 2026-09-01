@@ -258,7 +258,14 @@ public final class MP3Streamer {
         // Pin the generation being consumed. `resetStreamIO()` replaces `mp3Decoder`
         // wholesale, so re-reading `self.mp3Decoder` inside the loop could drift onto a
         // successor mid-stream.
-        let decoder = mp3Decoder
+        // Bind the STREAMS, not the decoder. `AsyncStream` is a value type sharing storage
+        // with its continuation, so the child loops below hold no reference to the decoder
+        // itself. Capturing the decoder strongly would invert the ownership `resetStreamIO()`
+        // relies on — its comment argues the old decoder's `deinit` finishes the buffer
+        // continuation and so ends the loop, which cannot happen if the loop is what keeps
+        // the decoder alive.
+        let bufferStream = mp3Decoder.decodedBufferStream
+        let errorStream = mp3Decoder.errorStream
 
         // The throttle counts belong to this decoder generation. A post-reset decoder is a
         // fresh failure episode — and, per #1036, the generation most likely to be in
@@ -272,13 +279,13 @@ public final class MP3Streamer {
         decoderConsumerTask = Task { [weak self] in
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
-                    for await buffer in decoder.decodedBufferStream {
+                    for await buffer in bufferStream {
                         guard !Task.isCancelled, let self else { break }
                         await self.handleDecodedBuffer(buffer)
                     }
                 }
                 group.addTask {
-                    for await error in decoder.errorStream {
+                    for await error in errorStream {
                         guard !Task.isCancelled, let self else { break }
                         await self.handleDecoderError(error)
                     }
@@ -295,19 +302,27 @@ public final class MP3Streamer {
     /// conversion for the life of the session. The 1st, 2nd, 4th, 8th … occurrence of each
     /// kind is forwarded — the same geometric shape `MP3StreamDecoder` already uses for its
     /// backlog reports, rather than a third pattern — so volume stays bounded while a
-    /// worsening failure still reads as worse. See #1036.
+    /// worsening failure still reads as worse.
+    ///
+    /// These forwards are informational: unlike every other `.error` yield in this type they
+    /// set no state and trigger no recovery. `AudioPlayerController` does disarm its
+    /// silent-startup watchdog on any `.error` (#518), which is harmless here only because
+    /// this streamer's own startup watchdog fires first and owns the recovery for the
+    /// nil-converter case. Recovery for these failures belongs there, not here. See #1036.
     private func handleDecoderError(_ error: Error) {
         guard let decoderError = error as? MP3DecoderError else {
             eventContinuationInternal.yield(.error(error))
             return
         }
 
-        // `backlogOverflow` is deliberately NOT forwarded. It already reports itself to
+        // `backlogOverflow` is deliberately NOT forwarded: it already reports itself to
         // `ErrorReporting.shared` on a geometric throttle of its own, so forwarding it here
-        // too would report one occurrence through two channels. It is also not a playback
-        // failure — the decoder drops a backlog and keeps running — so it does not belong
-        // in the `stream_error` series that the playback-start success rate is measured
-        // against. One path, counted once.
+        // too would report one occurrence through two channels and double-count the ones
+        // that pass that throttle. One path, counted once.
+        //
+        // Note this is an accounting argument, not a severity one — a dropped 4 MB backlog
+        // is a far larger audio gap than a single failed PCM allocation, which IS forwarded.
+        // The exclusion is about where overflow is counted, not about it mattering less.
         guard decoderError.kind != .backlogOverflow else { return }
 
         // Counts occurrences the consumer OBSERVES, which under a real flood is fewer
