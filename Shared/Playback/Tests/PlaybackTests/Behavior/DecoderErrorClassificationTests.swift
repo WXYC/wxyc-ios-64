@@ -47,7 +47,7 @@ struct DecoderErrorClassificationTests {
     @Test(
         "Decoder failures classify as decodingError",
         arguments: [
-            MP3DecoderError.audioFileStreamError(-50),
+            MP3DecoderError.audioFileStreamOpenFailed(-50),
             MP3DecoderError.converterCreationFailed(-50),
             MP3DecoderError.bufferAllocationFailed
         ]
