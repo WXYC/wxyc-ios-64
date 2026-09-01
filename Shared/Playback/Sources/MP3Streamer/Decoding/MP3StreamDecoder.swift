@@ -136,8 +136,8 @@ final class MP3StreamDecoder: @unchecked Sendable {
     private let bufferContinuation: AsyncStream<AVAudioPCMBuffer>.Continuation
 
     /// Stream of decoding errors
-    let errorStream: AsyncStream<Error>
-    private let errorContinuation: AsyncStream<Error>.Continuation
+    let errorStream: AsyncStream<MP3DecoderError>
+    private let errorContinuation: AsyncStream<MP3DecoderError>.Continuation
 
     /// The AudioFileStream for parsing MP3 packets
     private var audioFileStream: AudioFileStreamID?
@@ -258,7 +258,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
 
         // Initialize error stream - errors are rare, small buffer is fine
         (self.errorStream, self.errorContinuation) = AsyncStream.makeStream(
-            of: Error.self,
+            of: MP3DecoderError.self,
             bufferingPolicy: .bufferingNewest(4)
         )
 
@@ -840,12 +840,18 @@ final class MP3StreamDecoder: @unchecked Sendable {
     /// Yields `error` on ``errorStream`` from the decoder queue, exactly as the decoder's
     /// own failure sites do.
     ///
-    /// A test seam. Note this one is not equivalent in risk to `bufferState` or
-    /// `deliverSyntheticPackets`: those only read state or feed the decoder, whereas this
-    /// fabricates an error into the real Sentry and PostHog path, so a production caller
-    /// would poison the very telemetry this exists to make trustworthy. It stays ungated
-    /// because it is internal to a non-product target and no production code can reach it,
-    /// not because fabricating telemetry is harmless.
+    /// A test seam, and the highest-risk one here. `bufferState` and
+    /// `deliverSyntheticPackets` only read state or feed the decoder; this fabricates an
+    /// error into the real Sentry and PostHog path, so a caller would poison the very
+    /// telemetry the rest of this work exists to make trustworthy.
+    ///
+    /// It ships in Release. `MP3StreamerModule` is part of the app, so `internal` — plus
+    /// the fact that nothing inside this module calls it — is the entire guarantee; there
+    /// is no target boundary doing the work. Anything added inside this module that calls
+    /// this WILL fabricate telemetry in a shipped build. Kept ungated rather than
+    /// `#if DEBUG` because nothing in routine CI compiles Release, so a gating mistake here
+    /// would surface only at archive time; that trade is worth revisiting if this module
+    /// ever grows a caller.
     ///
     /// None of the three
     /// silent failures is forceable through the real API: `AudioFileStreamOpen` is called
