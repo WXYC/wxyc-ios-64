@@ -40,16 +40,19 @@ import UIKit
 /// sharing only the fields ``ConcertCalendarEvent`` derives.
 struct ConcertCalendarEditSheet: UIViewControllerRepresentable {
     let concert: Concert
-    /// The originating affordance ("detail" or "row"), recorded on save.
-    let surface: String
+    /// Reports the editor's terminal action — `"saved"` or `"cancelled"` — to
+    /// the presenting modifier, which owns the flow's analytics. The sheet
+    /// captures nothing itself: it cannot observe its own interactive
+    /// dismissal, so the one place that sees every ending has to be the one
+    /// place that records them.
+    let onOutcome: (String) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             calendarEvent: ConcertCalendarEvent(concert),
-            identity: concert.analyticsIdentity,
-            surface: surface,
+            onOutcome: onOutcome,
             dismiss: dismiss
         )
     }
@@ -69,19 +72,16 @@ struct ConcertCalendarEditSheet: UIViewControllerRepresentable {
     /// `EKEvent`, records the save, and dismisses the sheet.
     final class Coordinator: NSObject, EKEventEditViewDelegate {
         private let calendarEvent: ConcertCalendarEvent
-        private let identity: ConcertIdentity
-        private let surface: String
+        private let onOutcome: (String) -> Void
         private let dismiss: DismissAction
 
         init(
             calendarEvent: ConcertCalendarEvent,
-            identity: ConcertIdentity,
-            surface: String,
+            onOutcome: @escaping (String) -> Void,
             dismiss: DismissAction
         ) {
             self.calendarEvent = calendarEvent
-            self.identity = identity
-            self.surface = surface
+            self.onOutcome = onOutcome
             self.dismiss = dismiss
         }
 
@@ -107,13 +107,7 @@ struct ConcertCalendarEditSheet: UIViewControllerRepresentable {
             // `.deleted` can't arise for an event that was never saved, but it
             // is not a save either, so it reports as an abandonment rather than
             // being dropped on the floor.
-            StructuredPostHogAnalytics.shared.capture(
-                ConcertCalendarFlow(
-                    concert: identity,
-                    surface: surface,
-                    outcome: action == .saved ? "saved" : "cancelled"
-                )
-            )
+            onOutcome(action == .saved ? "saved" : "cancelled")
             dismiss()
         }
     }
@@ -147,12 +141,27 @@ private struct AddToCalendarModifier: ViewModifier {
     @State private var accessDenied = false
     @Environment(\.openURL) private var openURL
 
+    /// The editor's terminal action, set by its delegate before it dismisses.
+    ///
+    /// Swiping the sheet away never calls that delegate, so `nil` here at
+    /// dismissal time *is* the interactive dismissal — the one path that would
+    /// otherwise leave a `"requested"` with no terminal outcome, which is
+    /// precisely the hole this event was redesigned to close.
+    @State private var editorOutcome: String?
+
+    /// The identity of the show whose editor is up. Held separately because
+    /// `sheet(item:)` has already cleared `editTarget` by the time `onDismiss`
+    /// runs.
+    @State private var editorIdentity: ConcertIdentity?
+
     func body(content: Content) -> some View {
         content
             .task(id: trigger) { await resolveTrigger() }
-            .sheet(item: $editTarget) { concert in
-                ConcertCalendarEditSheet(concert: concert, surface: surface)
-                    .ignoresSafeArea()
+            .sheet(item: $editTarget, onDismiss: recordEditorDismissal) { concert in
+                ConcertCalendarEditSheet(concert: concert) { outcome in
+                    editorOutcome = outcome
+                }
+                .ignoresSafeArea()
             }
             .alert("Calendar Access Off", isPresented: $accessDenied) {
                 Button("Open Settings") {
@@ -170,20 +179,42 @@ private struct AddToCalendarModifier: ViewModifier {
     /// editor or raises the denied-access alert, and consumes the trigger.
     private func resolveTrigger() async {
         guard let concert = trigger else { return }
+        // Consumed first: `.task(id:)` is cancellable and the row it hangs off
+        // lives in a LazyVStack, so a re-run with the trigger still set would
+        // emit a second "requested" and re-request access for one user tap.
+        trigger = nil
+
         let identity = concert.analyticsIdentity
         // Fires whether or not permission is already granted: this is the tap
         // count every later outcome is a rate over, so it must not be
         // conditional on anything that happens after it.
         record(identity, outcome: "requested")
+
         let store = EKEventStore()
-        let granted = (try? await store.requestWriteOnlyAccessToEvents()) ?? false
-        if granted {
-            editTarget = concert
-        } else {
-            record(identity, outcome: "denied")
+        do {
+            if try await store.requestWriteOnlyAccessToEvents() {
+                editorIdentity = identity
+                editTarget = concert
+            } else {
+                record(identity, outcome: "denied")
+                accessDenied = true
+            }
+        } catch {
+            // A *thrown* request is not a refusal — device restrictions or an
+            // EventKit failure. Reporting it as "denied" would inflate the
+            // refusal rate with cases no Settings change can fix.
+            record(identity, outcome: "failed")
             accessDenied = true
         }
-        trigger = nil
+    }
+
+    /// Records the editor's terminal outcome once the sheet is actually gone,
+    /// treating a dismissal the delegate never reported as an abandonment.
+    private func recordEditorDismissal() {
+        guard let identity = editorIdentity else { return }
+        record(identity, outcome: editorOutcome ?? "cancelled")
+        editorIdentity = nil
+        editorOutcome = nil
     }
 
     private func record(_ identity: ConcertIdentity, outcome: String) {

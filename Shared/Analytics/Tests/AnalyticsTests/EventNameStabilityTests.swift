@@ -39,6 +39,13 @@ private let expectedEventNames: [(String, String)] = [
     (WidgetGetTimeline.name, "widget_get_timeline"),
     // Liked songs
     (SongLikeToggled.name, "song_like_toggled"),
+    // On Tour intent tier. These five hand-write `static let name` rather than
+    // deriving it, so a typo is unguarded anywhere else.
+    (ConcertDetailViewed.name, "concert_detail_viewed"),
+    (ConcertTicketsTapped.name, "concert_tickets_tapped"),
+    (ConcertDirectionsTapped.name, "concert_directions_tapped"),
+    (ConcertCalendarFlow.name, "concert_calendar_flow"),
+    (ConcertShareInitiated.name, "concert_share_initiated"),
     // Error
     (ErrorEvent.name, "error"),
 ]

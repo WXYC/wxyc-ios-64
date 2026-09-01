@@ -26,7 +26,12 @@ public struct ConcertOpenMessage: OpenMessage {
     /// initializer matched), so it rides along in the message for the On Tour
     /// tab to fold into the `ConcertDeepLinkOpened` analytics event once the
     /// resolution ladder finishes.
-    public enum Source: String, Sendable {
+    /// `CaseIterable` so the round-trip test enumerates `allCases` rather than a
+    /// hand-listed array — the encode/`Source(rawValue:)` hop is where an
+    /// unknown raw value makes `makePayload` return `nil` and drops the link
+    /// silently, and a hand-listed array leaves each new case uncovered while
+    /// still passing.
+    public enum Source: String, Sendable, CaseIterable {
         /// `https://wxyc.org/shows/<id>` — a shared public link (a friend tapped it).
         case universalLink
         /// `wxyc://concert/<id>` — an app-owned surface (Spotlight, shortcut).

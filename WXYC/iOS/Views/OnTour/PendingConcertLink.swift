@@ -8,7 +8,8 @@
 //  `RootTabView` reacts to (flipping to the On Tour tab) and `OnTourTabView`
 //  consumes (running the resolution ladder, then clearing it).
 //
-//  `source` is already the analytics label ("universalLink" / "scheme") — the
+//  `source` is already the analytics label ("universalLink" / "scheme" /
+//  "webBanner") — the
 //  `ConcertOpenMessage.Source.rawValue`, mapped at the `Singletonia` boundary so
 //  the On Tour views never import `Intents`. `Equatable` so it can key an
 //  `.onChange` / `.task(id:)`.
@@ -26,6 +27,6 @@ struct PendingConcertLink: Equatable, Sendable {
     let id: Int
 
     /// The link form that opened the app, already in analytics-label form
-    /// ("universalLink" or "scheme") for the `ConcertDeepLinkOpened` event.
+    /// ("universalLink", "scheme", or "webBanner") for the `ConcertDeepLinkOpened` event.
     let source: String
 }

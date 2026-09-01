@@ -111,8 +111,9 @@ public struct ForYouCardDismissed {
 
 /// Event fired when a shared show link opens the app and the arrival path
 /// finishes resolving it (#537). `source` is the link form — "universalLink"
-/// (`wxyc.org/shows/<id>`, a friend tapped a public link) or "scheme"
-/// (`wxyc://concert/<id>`, an app-owned surface). `resolution` is the ladder rung
+/// (`wxyc.org/shows/<id>`, a friend tapped a public link), "webBanner" (the
+/// Smart App Banner on that page), or "scheme" (`wxyc://concert/<id>`, an
+/// app-owned surface: Spotlight, a shortcut). `resolution` is the ladder rung
 /// that resolved it — "window" (already in the loaded list), "byID" (fetched
 /// individually), or "missed" (couldn't be found).
 ///
@@ -168,11 +169,15 @@ public struct ToursNearMeIntentAnswered {
 /// definition lives in exactly one place.
 ///
 /// `artistId` is `nil` for a headliner the WXYC catalog doesn't know (a local
-/// opener), and is **omitted** from the payload rather than sent as null. That
-/// omission is why the events composing this are hand-written rather than
-/// `@AnalyticsEvent`-derived: the macro emits a flat dictionary literal with no
-/// nil handling, so an `Int?` would serialize as an `Optional`-wrapped `Any`.
-/// Same reasoning, same shape as `SongLikeToggled`.
+/// opener), and is **omitted** from the payload rather than sent as null —
+/// `SongLikeToggled`'s shape, and the reason this type writes its own
+/// dictionary: `@AnalyticsEvent` emits a flat literal with no nil handling, so
+/// an `Int?` would serialize as an `Optional`-wrapped `Any`.
+///
+/// The events *composing* this can't be macro-derived either, for a different
+/// reason: the macro would emit `"concert": concert` as a nested object rather
+/// than flattening these five keys alongside the event's own. Hence
+/// ``ConcertIntentEvent``.
 public struct ConcertIdentity: Sendable {
     /// The billed headline name, as the listener read it on the ticket.
     public let artist: String
@@ -213,21 +218,47 @@ public struct ConcertIdentity: Sendable {
     }
 }
 
+/// An On Tour event that names the band, because the listener chose this show.
+///
+/// Conforming makes the composition structural rather than a convention each
+/// event has to remember: the shared keys come from the default `properties`
+/// below, so an event cannot ship a payload that fails to join without opting
+/// out of the protocol entirely. Conformers supply only the key that names
+/// their own affordance.
+public protocol ConcertIntentEvent: AnalyticsEvent {
+    var concert: ConcertIdentity { get }
+    /// The key(s) naming this event's own affordance — `surface`, `source`, and
+    /// so on. Merged over the shared identity keys.
+    var affordanceProperties: [String: Any] { get }
+}
+
+extension ConcertIntentEvent {
+    public var properties: [String: Any]? {
+        concert.properties.merging(affordanceProperties) { _, own in own }
+    }
+}
+
 /// Event fired when a concert detail is presented, whichever path opened it.
 ///
-/// The denominator for the rest of the intent tier. Every other action a
-/// listener can take on a show — tickets, directions, calendar, share — is only
-/// interpretable as a rate over the views that preceded it, and until this
-/// event existed there was no such rate: ``ForYouCardTapped`` covered the shelf
-/// path alone, so a tap arriving from a list row or a shared link had nothing
-/// to divide by.
+/// The denominator for actions taken **on the concert detail**. Tickets,
+/// directions, calendar, and share are only interpretable as a rate over the
+/// views that preceded them, and until this event existed there was no such
+/// rate: ``ForYouCardTapped`` covered the shelf path alone, so a tap arriving
+/// from a list row or a shared link had nothing to divide by.
+///
+/// Scope it when computing that rate. The action events also fire from two
+/// surfaces that never open a detail — the row's context menu (`surface: "row"`)
+/// and the keepsake ticket under a playcut (`"playcut_detail"`) — so an
+/// unfiltered `concert_tickets_tapped / concert_detail_viewed` overstates
+/// tap-through by counting three surfaces in the numerator against one in the
+/// denominator. Filter the numerator to `surface = 'detail'`.
 ///
 /// `source` is the arrival path: `"row"` (the On Tour list), `"for_you"` (the
 /// "Heard on WXYC" shelf), or `"deep_link"` (a shared link or an app-owned
 /// URL). Kept as a separate vocabulary from ``ConcertTicketsTapped/surface`` on
 /// purpose — a `surface` names the affordance that was pressed, a `source`
 /// names how the listener reached the screen holding it.
-public struct ConcertDetailViewed: AnalyticsEvent {
+public struct ConcertDetailViewed: ConcertIntentEvent {
     /// Stated rather than left to `AnalyticsEvent`'s default, which derives the
     /// same string but recomputes the snake-case conversion on every capture —
     /// the `SongLikeToggled` precedent.
@@ -236,11 +267,7 @@ public struct ConcertDetailViewed: AnalyticsEvent {
     public let concert: ConcertIdentity
     public let source: String
 
-    public var properties: [String: Any]? {
-        var props = concert.properties
-        props["source"] = source
-        return props
-    }
+    public var affordanceProperties: [String: Any] { ["source": source] }
 
     public init(concert: ConcertIdentity, source: String) {
         self.concert = concert
@@ -260,18 +287,14 @@ public struct ConcertDetailViewed: AnalyticsEvent {
 /// detail's ticket), `"playcut_detail"` (the same ticket embedded under a
 /// playcut, reached from the playlist rather than the On Tour tab), or `"row"`
 /// (the On Tour list row's context menu).
-public struct ConcertTicketsTapped: AnalyticsEvent {
+public struct ConcertTicketsTapped: ConcertIntentEvent {
     /// Stated rather than derived, as above.
     public static let name = "concert_tickets_tapped"
 
     public let concert: ConcertIdentity
     public let surface: String
 
-    public var properties: [String: Any]? {
-        var props = concert.properties
-        props["surface"] = surface
-        return props
-    }
+    public var affordanceProperties: [String: Any] { ["surface": surface] }
 
     public init(concert: ConcertIdentity, surface: String) {
         self.concert = concert
@@ -289,18 +312,14 @@ public struct ConcertTicketsTapped: AnalyticsEvent {
 ///
 /// Note the asymmetry with ``ConcertDeepLinkOpened``, which stays anonymous: the
 /// sender chose the band, the recipient didn't.
-public struct ConcertShareInitiated: AnalyticsEvent {
+public struct ConcertShareInitiated: ConcertIntentEvent {
     /// Stated rather than derived, as above.
     public static let name = "concert_share_initiated"
 
     public let concert: ConcertIdentity
     public let surface: String
 
-    public var properties: [String: Any]? {
-        var props = concert.properties
-        props["surface"] = surface
-        return props
-    }
+    public var affordanceProperties: [String: Any] { ["surface": surface] }
 
     public init(concert: ConcertIdentity, surface: String) {
         self.concert = concert
@@ -335,7 +354,7 @@ public struct ConcertShareInitiated: AnalyticsEvent {
 /// The old event's `timing` ("timed" vs "allDay") is gone, not dropped by
 /// oversight: it described the show's own date data, which is now recoverable
 /// by joining `concert_id`. Carrying the band made a property redundant.
-public struct ConcertCalendarFlow: AnalyticsEvent {
+public struct ConcertCalendarFlow: ConcertIntentEvent {
     /// Stated rather than derived, as above.
     public static let name = "concert_calendar_flow"
 
@@ -343,11 +362,8 @@ public struct ConcertCalendarFlow: AnalyticsEvent {
     public let surface: String
     public let outcome: String
 
-    public var properties: [String: Any]? {
-        var props = concert.properties
-        props["surface"] = surface
-        props["outcome"] = outcome
-        return props
+    public var affordanceProperties: [String: Any] {
+        ["surface": surface, "outcome": outcome]
     }
 
     public init(concert: ConcertIdentity, surface: String, outcome: String) {
@@ -370,18 +386,14 @@ public struct ConcertCalendarFlow: AnalyticsEvent {
 /// context menu). The map is split from the chip because they answer different
 /// questions — the chip is a stated intent, the map is a glance that turned
 /// into one — and because a map that never gets tapped should be able to say so.
-public struct ConcertDirectionsTapped: AnalyticsEvent {
+public struct ConcertDirectionsTapped: ConcertIntentEvent {
     /// Stated rather than derived, as above.
     public static let name = "concert_directions_tapped"
 
     public let concert: ConcertIdentity
     public let surface: String
 
-    public var properties: [String: Any]? {
-        var props = concert.properties
-        props["surface"] = surface
-        return props
-    }
+    public var affordanceProperties: [String: Any] { ["surface": surface] }
 
     public init(concert: ConcertIdentity, surface: String) {
         self.concert = concert
