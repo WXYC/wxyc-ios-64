@@ -197,6 +197,66 @@ struct OnTourIntentEventsTests {
         #expect(props.count == 6)
     }
 
+    // MARK: - Calendar
+
+    @Test("ConcertCalendarFlow's name is the snake_cased type name")
+    func calendarFlowEventName() {
+        #expect(ConcertCalendarFlow.name == "concert_calendar_flow")
+    }
+
+    @Test(
+        "Every way the add-to-calendar flow can end is one event with an outcome",
+        arguments: ["requested", "denied", "cancelled", "saved", "failed"]
+    )
+    func calendarFlowOutcomes(_ outcome: String) throws {
+        // Replaces `concert_calendar_added`, which only ever fired on a save and
+        // so could never show where the flow was losing people. A tap that ends
+        // at the permission alert and a tap that ends at a saved event were
+        // indistinguishable: both were simply absent.
+        let event = ConcertCalendarFlow(
+            concert: ConcertIdentity(
+                artist: "Nilüfer Yanya",
+                artistId: 1201,
+                venue: "Local 506",
+                concertId: 55,
+                status: "on_sale"
+            ),
+            surface: "detail",
+            outcome: outcome
+        )
+        let props = try #require(event.properties)
+        #expect(props["outcome"] as? String == outcome)
+        #expect(props["surface"] as? String == "detail")
+        #expect(props["artist"] as? String == "Nilüfer Yanya")
+        #expect(props["artist_id"] as? Int == 1201)
+        #expect(props["concert_id"] as? Int == 55)
+        #expect(props.count == 7)
+    }
+
+    @Test(
+        "Surface covers the two in-app affordances and the Siri intent",
+        arguments: ["detail", "row", "siri"]
+    )
+    func calendarFlowSurfaces(_ surface: String) throws {
+        // Siri reports through the same event rather than one of its own: a
+        // listener who adds a show by voice added a show, and splitting that
+        // into a second name would make "how many shows get calendared" a sum
+        // someone has to remember to write.
+        let event = ConcertCalendarFlow(
+            concert: ConcertIdentity(
+                artist: "Duke Ellington & John Coltrane",
+                artistId: 9,
+                venue: "Motorco",
+                concertId: 8,
+                status: "on_sale"
+            ),
+            surface: surface,
+            outcome: "saved"
+        )
+        let props = try #require(event.properties)
+        #expect(props["surface"] as? String == surface)
+    }
+
     // MARK: - Cross-event contract
 
     @Test("Every intent event agrees with the denominator on every shared key")
