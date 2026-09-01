@@ -208,7 +208,7 @@ private enum ObservedDecoderError: Sendable {
 /// hang under test is on a `DispatchQueue`, not in a cancellable task, so cancellation
 /// cannot reach it and the suite would hang instead of failing. Written once so the two
 /// callers cannot drift apart on the race itself.
-private func withDeadline<Result: Sendable>(
+func withDeadline<Result: Sendable>(
     _ timeout: Duration,
     fallback: Result,
     _ work: @escaping @Sendable () async -> Result

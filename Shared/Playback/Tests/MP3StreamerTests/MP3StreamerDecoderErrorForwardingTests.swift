@@ -5,9 +5,9 @@
 //  Tests for the decoder-failure signal path: `MP3StreamDecoder` yields on
 //  `errorStream`, `MP3Streamer` consumes it and forwards to the controller as an
 //  `.error` internal event, throttled per failure kind. Before issue #1036 that
-//  stream had no consumer at all, so `audioFileStreamError`,
-//  `converterCreationFailed` and `bufferAllocationFailed` were silent in the
-//  field — no Sentry event, no PostHog event, no `StreamErrorEvent`.
+//  stream had no consumer at all, so a failed `AudioFileStreamOpen`, a failed
+//  converter creation and a failed PCM allocation were silent in the field — no
+//  Sentry event, no PostHog event, no `StreamErrorEvent`.
 //
 //  Companion to `MP3StreamerErrorEventTests`, which covers the streamer's own
 //  failure paths (#486); this file covers the decoder's, which that issue did
@@ -21,8 +21,8 @@ import Testing
 import PlaybackTestUtilities
 import Foundation
 import AVFoundation
+import AudioToolbox
 import Core
-import Logger
 @testable import MP3StreamerModule
 @testable import PlaybackCore
 
@@ -76,15 +76,12 @@ struct MP3StreamerDecoderErrorForwardingTests {
         return condition()
     }
 
-    // MARK: - Acceptance criterion 1: each silent failure reaches the analytics layer
+    // MARK: - Each formerly silent failure reaches the analytics layer
 
-    /// The three failures that were silent in the field before #1036. Each must reach the
-    /// controller as an `.error` internal event, which is what `AudioPlayerController`
-    /// turns into a `StreamErrorEvent`.
     @Test(
         "Each formerly silent decoder failure reaches the analytics layer",
         arguments: [
-            MP3DecoderError.audioFileStreamError(-50),
+            MP3DecoderError.audioFileStreamOpenFailed(-50),
             MP3DecoderError.converterCreationFailed(-50),
             MP3DecoderError.bufferAllocationFailed
         ]
@@ -102,12 +99,12 @@ struct MP3StreamerDecoderErrorForwardingTests {
         #expect(collector.decoderErrors.first?.kind == error.kind)
     }
 
-    // MARK: - Acceptance criterion 2: repeats do not emit one event per occurrence
+    // MARK: - Repeats do not emit one event per occurrence
 
     /// `bufferAllocationFailed` is raised inside `convertToPCM()`, once per packet
     /// callback, so an unthrottled forward would emit one analytics event per failed
-    /// conversion for the life of the session. Sixteen occurrences must forward the 1st,
-    /// 2nd, 4th, 8th and 16th — five events, not sixteen.
+    /// conversion for the life of the session. Sixteen occurrences forward the 1st, 2nd,
+    /// 4th, 8th and 16th.
     @Test("Repeated failures of one kind are throttled geometrically")
     func repeatedFailuresAreThrottled() async throws {
         let streamer = makeStreamer()
@@ -116,21 +113,23 @@ struct MP3StreamerDecoderErrorForwardingTests {
         defer { drain.cancel() }
 
         // Paced deliberately. `errorStream` is `.bufferingNewest(4)`, so a burst of 16
-        // back-to-back yields is DROPPED down to whatever the consumer manages to pick
-        // up — the throttle would then be counting an arbitrary subset and the assertion
-        // below would be timing-dependent. Pacing lets all 16 occurrences actually reach
-        // the consumer, which is what makes the expected series exact. Do not collapse
-        // this back into a tight loop.
+        // back-to-back yields is dropped down to whatever the consumer manages to pick up.
+        // Pacing lets all 16 occurrences actually reach the consumer.
         for _ in 0..<16 {
             streamer.deliverSyntheticDecoderError(.bufferAllocationFailed)
             try await Task.sleep(for: .milliseconds(10))
         }
-
         try await Task.sleep(for: .milliseconds(300))
 
+        // A range, not `== 5`, for the same reason the pacing exists: the channel is lossy,
+        // and ~50ms of main-actor starvation is enough to drop one occurrence and land on 4
+        // (1, 2, 4, 8) instead of 5. Either value falsifies "one event per occurrence",
+        // which is the property under test; an exact count would just make load look like a
+        // throttle regression.
+        let count = collector.decoderErrors.count
         #expect(
-            collector.decoderErrors.count == 5,
-            "16 occurrences should forward 5 events (1st, 2nd, 4th, 8th, 16th), got \(collector.decoderErrors.count)"
+            (4...5).contains(count),
+            "16 occurrences should forward 4-5 events on a geometric throttle, got \(count)"
         )
     }
 
@@ -155,13 +154,39 @@ struct MP3StreamerDecoderErrorForwardingTests {
         #expect(sawConverter, "converterCreationFailed was masked by the bufferAllocationFailed flood")
     }
 
-    // MARK: - Acceptance criterion 4: backlogOverflow uses exactly one channel
+    /// The three `AudioFileStream` failures are separate kinds precisely so a parse-error
+    /// flood — which repeats once per HTTP chunk, since nothing resets `audioFileStream`
+    /// after a bad parse — cannot throttle away the property-read failure, which is the
+    /// nil-converter signal (#1025) this issue most needs to surface.
+    @Test("A parse-error flood does not mask a data-format failure")
+    func parseFloodDoesNotMaskPropertyReadFailure() async throws {
+        let streamer = makeStreamer()
+        let collector = ErrorCollector()
+        let drain = makeDrain(streamer, into: collector)
+        defer { drain.cancel() }
+
+        for _ in 0..<8 {
+            streamer.deliverSyntheticDecoderError(.audioFileStreamParseFailed(-50))
+        }
+        streamer.deliverSyntheticDecoderError(.audioFileStreamPropertyReadFailed(-50))
+
+        let sawPropertyRead = await waitUntil {
+            collector.decoderErrors.contains { $0.kind == .audioFileStreamPropertyReadFailed }
+        }
+        #expect(sawPropertyRead, "the nil-converter signal was throttled away by a parse flood")
+    }
+
+    // MARK: - backlogOverflow uses exactly one channel
 
     /// `backlogOverflow` reports itself to `ErrorReporting.shared` on a geometric throttle
     /// of its own (#1030). Forwarding it here as well would report one occurrence through
-    /// two channels — and re-introduce, per occurrence, the flood that throttle exists to
-    /// bound. It is also not a playback failure: the decoder drops a backlog and keeps
-    /// running.
+    /// two channels and double-count the ones that pass that throttle.
+    ///
+    /// This test proves only the half it can see: that nothing reaches the analytics
+    /// channel. The other half — that the `ErrorReporting` channel still fires, so the
+    /// count is one rather than zero — is held by `MP3StreamDecoderBufferCapTests`, which
+    /// drives a real overflow and asserts `reportedOverflowCount >= 1`. Neither test alone
+    /// pins "exactly one"; they are complementary and must not be deleted independently.
     @Test("backlogOverflow is not forwarded to the analytics layer")
     func backlogOverflowIsNotForwarded() async throws {
         let streamer = makeStreamer()
@@ -198,27 +223,47 @@ struct MP3StreamerDecoderErrorForwardingTests {
         #expect(converter.contains("converter"))
         #expect(converter.contains("-50"), "the OSStatus must survive into the description")
 
-        let stream = MP3DecoderError.audioFileStreamError(-39).localizedDescription
-        #expect(stream.contains("AudioFileStream"))
-        #expect(stream.contains("-39"))
+        // The three AudioFileStream failures must be distinguishable from one another;
+        // sharing a description would make them unattributable in Sentry.
+        let open = MP3DecoderError.audioFileStreamOpenFailed(-39).localizedDescription
+        let parse = MP3DecoderError.audioFileStreamParseFailed(-39).localizedDescription
+        let property = MP3DecoderError.audioFileStreamPropertyReadFailed(-39).localizedDescription
+        #expect(Set([open, parse, property]).count == 3)
 
-        let buffer = MP3DecoderError.bufferAllocationFailed.localizedDescription
-        #expect(buffer.contains("buffer"))
+        #expect(MP3DecoderError.bufferAllocationFailed.localizedDescription.contains("buffer"))
 
         // The Foundation fallback for a bare Swift error. Its presence would mean the
         // conformance is not being used and the events are ordinals again.
         #expect(!converter.contains("The operation couldn"))
     }
+
+    /// This description reaches Sentry as part of the grouping key and PostHog as a
+    /// property value, and `backlogOverflow` is the one case whose payload is unbounded.
+    /// Interpolating the byte or packet counts would fragment one issue into one issue per
+    /// drop and give the PostHog property unbounded cardinality — defeating the geometric
+    /// throttle that exists to keep those reports groupable.
+    @Test("backlogOverflow's description carries no unbounded values")
+    func backlogOverflowDescriptionIsLowCardinality() throws {
+        let first = MP3DecoderError
+            .backlogOverflow(droppedBytes: 4_194_304, droppedPackets: 512)
+            .localizedDescription
+        let second = MP3DecoderError
+            .backlogOverflow(droppedBytes: 8_388_608, droppedPackets: 1024)
+            .localizedDescription
+
+        #expect(first == second, "two different drops must produce one grouping key")
+        #expect(!first.contains("4194304"))
+        #expect(!first.contains("512"))
+    }
 }
 
-/// The two decoder paths that failed with no signal at all before #1036 — not even a
-/// yield nothing was reading. They are covered here at the decoder level: the forwarding
-/// from `errorStream` to the analytics layer is already proven by the suite above, so
-/// showing the site yields completes the chain.
+/// The decoder paths that failed with no signal at all before #1036 — not even a yield
+/// nothing was reading. Covered here at the decoder level: the forwarding from
+/// `errorStream` to the analytics layer is proven by the suite above, so showing the site
+/// yields completes the chain.
 @Suite("MP3StreamDecoder Silent Failure Paths")
 struct MP3StreamDecoderSilentPathTests {
 
-    /// Drains `errorStream` into a `Sendable` box.
     private actor Collector {
         var errors: [MP3DecoderError] = []
         func append(_ error: Error) {
@@ -244,6 +289,20 @@ struct MP3StreamDecoderSilentPathTests {
         return await collector.kinds.contains(kind)
     }
 
+    /// Awaits a decoder-queue seam's completion callback under a deadline, so a wedged
+    /// queue fails the test rather than reading as success.
+    private func awaitCompletion(
+        timeout: Duration = .seconds(5),
+        _ start: (@escaping @Sendable () -> Void) -> Void
+    ) async -> Bool {
+        let (signals, continuation) = AsyncStream<Void>.makeStream()
+        start { continuation.finish() }
+        return await withDeadline(timeout, fallback: false) {
+            for await _ in signals {}
+            return true
+        }
+    }
+
     /// `handlePropertyChange` used to `return` silently when `AudioFileStreamGetProperty`
     /// failed, leaving `converter` nil for the life of the decoder — the #1025 state,
     /// reached with no signal of any kind. Driving the property callback against a stream
@@ -258,49 +317,45 @@ struct MP3StreamDecoderSilentPathTests {
         // Opens the AudioFileStream without giving it a parseable data format.
         decoder.decode(data: Data(repeating: 0x00, count: 64))
 
-        let done = SendableBox()
-        decoder.deliverSyntheticPropertyChange { done.signal() }
-        _ = await done.wait()
+        let returned = await awaitCompletion { done in
+            decoder.deliverSyntheticPropertyChange(completion: done)
+        }
+        #expect(returned, "the property-change seam never returned")
 
+        // Asserts the property-read kind specifically. A generic AudioFileStream kind here
+        // could be satisfied by an incidental parse failure from the bytes above, which
+        // would let this pass without ever exercising the path it names.
         #expect(
-            await waitForKind(.audioFileStreamError, in: collector),
+            await waitForKind(.audioFileStreamPropertyReadFailed, in: collector),
             "a failed data-format read produced no error — the path is silent again"
         )
     }
 
     /// The fatal-parse-status branch used to be an `if` body containing only a comment.
-    /// Whether AudioToolbox actually returns a fatal status for a given garbage payload is
-    /// its business, so this test asserts the weaker true thing: feeding unparseable bytes
-    /// must not *crash or hang*, and if a fatal status does arise it must now surface
-    /// rather than vanish. The `:319` test above is the deterministic one.
-    @Test("Unparseable bytes never fail silently in a way that hangs the decoder")
-    func garbageBytesDoNotHang() async throws {
+    /// Whether AudioToolbox returns a fatal status for any given payload is its business
+    /// and not something a test can force, so the branch is tested directly instead.
+    @Test(
+        "Only a fatal parse status is reported",
+        arguments: [
+            (OSStatus(noErr), false),
+            (kAudioFileStreamError_NotOptimized, false),
+            (OSStatus(kAudioFileStreamError_InvalidFile), true)
+        ]
+    )
+    func parseStatusReporting(status: OSStatus, expectsReport: Bool) async throws {
         let decoder = MP3StreamDecoder()
         let collector = Collector()
         let drainTask = drain(decoder, into: collector)
         defer { drainTask.cancel() }
 
-        decoder.decode(data: Data(repeating: 0xFF, count: 8192))
-        try await Task.sleep(for: .milliseconds(300))
+        decoder.reportParseStatus(status)
+        try await Task.sleep(for: .milliseconds(200))
 
-        // Whatever AudioToolbox decided, the decoder is still responsive and any error it
-        // did raise is an MP3DecoderError rather than a swallowed status.
-        let kinds = await collector.kinds
-        #expect(kinds.allSatisfy { $0 == .audioFileStreamError || $0 == .converterCreationFailed })
-    }
-}
-
-/// One-shot completion latch for the callback-style decoder seams.
-private final class SendableBox: @unchecked Sendable {
-    private let semaphore = DispatchSemaphore(value: 0)
-    func signal() { semaphore.signal() }
-    func wait() async -> Bool {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global().async {
-                _ = self.semaphore.wait(timeout: .now() + 5)
-                continuation.resume(returning: true)
-            }
-        }
+        let reported = await collector.kinds.contains(.audioFileStreamParseFailed)
+        #expect(
+            reported == expectsReport,
+            "status \(status): expected reported=\(expectsReport), got \(reported)"
+        )
     }
 }
 
