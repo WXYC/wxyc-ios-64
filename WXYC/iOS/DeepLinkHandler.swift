@@ -48,8 +48,9 @@ enum DeepLinkHandler {
     /// Resolves a URL delivered through `onOpenURL` — a `wxyc://` scheme link or
     /// the `https://wxyc.org/shows/<id>` universal link handed over as a Smart App
     /// Banner's `app-argument` — into a routing decision. URL-delivered concerts
-    /// are tagged `.scheme`; a *tapped* web link arrives as an `NSUserActivity`
-    /// and is tagged `.universalLink` by `action(for:)` below.
+    /// are tagged `.webBanner` when the URL carries `?src=web`, else `.scheme`; a
+    /// *tapped* web link arrives as an `NSUserActivity` and is tagged
+    /// `.universalLink` by `action(for:)` below.
     static func action(for url: URL) -> Action {
         switch WXYCDeepLink(routing: url) {
         case .playcut(let id): return .openPlaycut(id)
@@ -61,11 +62,15 @@ enum DeepLinkHandler {
 
     /// Separates a Smart App Banner tap from the app's own scheme links.
     ///
-    /// `WXYCDeepLink` ignores query strings on purpose — it stays a pure parser,
-    /// and shipped builds keep resolving links that gain parameters later — so
-    /// the `?src=` tag is read here, at the one call site that cares. An absent
-    /// or unrecognised tag stays `.scheme` rather than inventing a fourth
-    /// population out of a typo.
+    /// Read here rather than in `WXYCDeepLink` because `src` is *provenance* and
+    /// the parser's job is *destination* — source tagging already lives at this
+    /// layer, which is where `.universalLink` is assigned too. (`WXYCDeepLink`
+    /// never inspects query strings at all, so shipped builds tolerate links
+    /// that gain parameters regardless of where the tag is read; that is a
+    /// property of the parser, not a reason for this to live here.)
+    ///
+    /// An absent or unrecognised tag stays `.scheme` rather than inventing a
+    /// fourth population out of a typo.
     private static func schemeSource(for url: URL) -> ConcertOpenMessage.Source {
         let src = URLComponents(url: url, resolvingAgainstBaseURL: false)?
             .queryItems?

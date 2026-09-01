@@ -62,12 +62,17 @@ struct ConcertDetailView: View {
     /// does — so the detail swaps the ticket's CTA for a keepsake note.
     private let isPast: Bool
 
-    /// Latches ``ConcertDetailViewed`` to one capture per presentation.
-    /// `.onAppear` fires again whenever a pushed destination — the venue map —
-    /// pops back, and the cover is built fresh for each opening, so the latch
-    /// lands the event exactly once per detail view. The same idiom the tab uses
-    /// for `OnTourTabViewed`.
-    @State private var hasRecordedView = false
+    /// The concert id ``ConcertDetailViewed`` was last recorded for, latching the
+    /// event to one capture per show.
+    ///
+    /// Keyed on the id rather than a `Bool` because the cover is
+    /// `fullScreenCover(item:)` and `openPendingConcertLink()` assigns the
+    /// selection without clearing it first: a shared link arriving while a
+    /// detail is already up swaps the content in place, keeping this view's
+    /// identity. A `Bool` latch would stay `true` and swallow the second show's
+    /// view entirely, while its ticket and share taps still fired — actions with
+    /// no denominator row.
+    @State private var recordedConcertID: Int?
 
     init(concert: Concert, source: String, now: Date = Date()) {
         self.concert = concert
@@ -125,9 +130,14 @@ struct ConcertDetailView: View {
         }
         .concertShareSheet(concert: $shareTarget)
         .addToCalendar($calendarTrigger, surface: "detail")
-        .onAppear {
-            guard !hasRecordedView else { return }
-            hasRecordedView = true
+        // `.task(id:)` rather than `.onAppear`: it yields before running, so the
+        // capture's synchronous encode-and-write lands after the presentation
+        // transaction commits instead of inside the zoom transition's frame. The
+        // `id:` also re-runs it when a deep link swaps the show in place. This is
+        // the idiom the tab uses for `OnTourTabViewed`.
+        .task(id: concert.id) {
+            guard recordedConcertID != concert.id else { return }
+            recordedConcertID = concert.id
             StructuredPostHogAnalytics.shared.capture(
                 ConcertDetailViewed(concert: concert.analyticsIdentity, source: source)
             )

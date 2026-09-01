@@ -17,10 +17,13 @@ import Testing
 
 @Suite("ConcertOpenMessage")
 struct ConcertOpenMessageTests {
-    @Test("post + observe round-trips the concert id and source", arguments: [
-        ConcertOpenMessage.Source.universalLink,
-        ConcertOpenMessage.Source.scheme,
-    ])
+    // `allCases`, not a hand-listed array: this is the one hop where an unknown
+    // raw value makes `makePayload` return nil and drops the link, so a new case
+    // must not be able to arrive uncovered while the suite still passes.
+    @Test(
+        "post + observe round-trips the concert id and source",
+        arguments: ConcertOpenMessage.Source.allCases
+    )
     @MainActor
     func roundTripsConcert(_ source: ConcertOpenMessage.Source) async throws {
         let center = NotificationCenter()
