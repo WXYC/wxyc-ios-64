@@ -2599,6 +2599,17 @@ extension AudioPlayerController {
             return .startupTimeout
         }
 
+        #if !os(watchOS)
+        // Decoder failures arrive here as `MP3DecoderError`. This must sit above the
+        // `as NSError` bridge below: bridging always succeeds and yields a Swift-type
+        // domain that matches none of the domain checks, so every decoder failure fell
+        // through to `.unknown` — the bucket #514 drained for engine/session errors.
+        // See #1036.
+        if error is MP3DecoderError {
+            return .decodingError
+        }
+        #endif
+
         let nsError = error as NSError
 
         // Check for URL/network errors
