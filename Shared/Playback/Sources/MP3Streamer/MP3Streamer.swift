@@ -270,6 +270,12 @@ public final class MP3Streamer {
         // The throttle counts belong to this decoder generation. A post-reset decoder is a
         // fresh failure episode — and, per #1036, the generation most likely to be in
         // trouble — so it must not inherit its predecessor's suppression.
+        //
+        // Approximate rather than exact: cancelling the old consumer is not synchronous
+        // teardown, so a handler already suspended when this runs can credit the new
+        // generation with at most a handful of its predecessor's occurrences. Harmless —
+        // occurrence 2 is still a power of two, so a straggler can shift the series but
+        // never suppress the new generation's first forwarded event.
         decoderErrorCounts.removeAll()
 
         // Both decoder streams are consumed by ONE task, so `resetStreamIO()`'s existing
@@ -308,13 +314,12 @@ public final class MP3Streamer {
     /// set no state and trigger no recovery. `AudioPlayerController` does disarm its
     /// silent-startup watchdog on any `.error` (#518), which is harmless here only because
     /// this streamer's own startup watchdog fires first and owns the recovery for the
-    /// nil-converter case. Recovery for these failures belongs there, not here. See #1036.
-    private func handleDecoderError(_ error: Error) {
-        guard let decoderError = error as? MP3DecoderError else {
-            eventContinuationInternal.yield(.error(error))
-            return
-        }
-
+    /// nil-converter case. That rests on an unasserted ordering — `MP3StreamerConfiguration`
+    /// `.startupTimeout` defaults to 12s against the controller's 15s deadline — so raising
+    /// the former past the latter would let a decoder error disarm the controller's
+    /// escalation without this streamer's own having fired yet. Recovery for these failures
+    /// belongs there, not here. See #1036.
+    private func handleDecoderError(_ decoderError: MP3DecoderError) {
         // `backlogOverflow` is deliberately NOT forwarded: it already reports itself to
         // `ErrorReporting.shared` on a geometric throttle of its own, so forwarding it here
         // too would report one occurrence through two channels and double-count the ones

@@ -20,9 +20,7 @@
 import Testing
 import PlaybackTestUtilities
 import Foundation
-import AVFoundation
 import AudioToolbox
-import Core
 @testable import MP3StreamerModule
 @testable import PlaybackCore
 
@@ -266,9 +264,7 @@ struct MP3StreamDecoderSilentPathTests {
 
     private actor Collector {
         var errors: [MP3DecoderError] = []
-        func append(_ error: Error) {
-            if let decoderError = error as? MP3DecoderError { errors.append(decoderError) }
-        }
+        func append(_ error: MP3DecoderError) { errors.append(error) }
         var kinds: [MP3DecoderError.Kind] { errors.map(\.kind) }
     }
 
