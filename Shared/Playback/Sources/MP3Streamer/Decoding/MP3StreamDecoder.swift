@@ -21,7 +21,7 @@ import Logger
 import Synchronization
 
 /// Errors that can occur during MP3 decoding
-enum MP3DecoderError: Error {
+public enum MP3DecoderError: Error, Sendable {
     case converterCreationFailed(OSStatus)
     case conversionFailed(OSStatus)
     case invalidFormat
@@ -33,6 +33,60 @@ enum MP3DecoderError: Error {
     /// dropped audio is a deliberate glitch, chosen over the unbounded growth that
     /// crashed the app in issue #1025.
     case backlogOverflow(droppedBytes: Int, droppedPackets: Int)
+}
+
+extension MP3DecoderError {
+    /// Case identity, independent of associated values.
+    ///
+    /// The key ``MP3Streamer``'s forwarding throttle counts against, so a flood of one
+    /// failure kind cannot mask the first occurrence of another.
+    enum Kind: String, Sendable {
+        case converterCreationFailed
+        case conversionFailed
+        case invalidFormat
+        case bufferAllocationFailed
+        case audioFileStreamError
+        case backlogOverflow
+    }
+
+    var kind: Kind {
+        switch self {
+        case .converterCreationFailed: return .converterCreationFailed
+        case .conversionFailed: return .conversionFailed
+        case .invalidFormat: return .invalidFormat
+        case .bufferAllocationFailed: return .bufferAllocationFailed
+        case .audioFileStreamError: return .audioFileStreamError
+        case .backlogOverflow: return .backlogOverflow
+        }
+    }
+}
+
+extension MP3DecoderError: LocalizedError {
+    /// Names the case and carries its `OSStatus`.
+    ///
+    /// Load-bearing rather than cosmetic: ``StreamErrorEvent`` has no free-form context
+    /// dictionary, so `error_description` — sourced from `localizedDescription` — is the
+    /// only field that can say which decoder failure fired and what the underlying API
+    /// returned. Without this conformance a bare Swift error bridges to "The operation
+    /// couldn't be completed. (MP3StreamerModule.MP3DecoderError error 4.)", which encodes
+    /// the case *ordinal* — a number that silently changes meaning the next time anyone
+    /// reorders the enum — and drops the status entirely. See #1036.
+    public var errorDescription: String? {
+        switch self {
+        case .converterCreationFailed(let status):
+            return "MP3 decoder could not create its audio converter (OSStatus \(status))"
+        case .conversionFailed(let status):
+            return "MP3 decoder could not convert a packet to PCM (OSStatus \(status))"
+        case .invalidFormat:
+            return "MP3 decoder received an unusable stream format"
+        case .bufferAllocationFailed:
+            return "MP3 decoder could not allocate its PCM output buffer"
+        case .audioFileStreamError(let status):
+            return "MP3 decoder's AudioFileStream failed (OSStatus \(status))"
+        case .backlogOverflow(let droppedBytes, let droppedPackets):
+            return "MP3 decoder dropped its packet backlog (\(droppedBytes) bytes / \(droppedPackets) packets)"
+        }
+    }
 }
 
 /// Context for C callbacks that safely holds a weak reference to the decoder
@@ -297,7 +351,10 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 []
             )
             if status != noErr && status != kAudioFileStreamError_NotOptimized {
-                // NotOptimized is not fatal for streaming
+                // NotOptimized is not fatal for streaming. Every other non-`noErr` status
+                // is, and used to die in this body when its only content was the comment
+                // above — no yield, no log, no report. See #1036.
+                errorContinuation.yield(MP3DecoderError.audioFileStreamError(status))
             }
         }
     }
@@ -316,7 +373,13 @@ final class MP3StreamDecoder: @unchecked Sendable {
             &format
         )
 
-        guard status == noErr else { return }
+        guard status == noErr else {
+            // A bare `return` here leaves `converter` nil for the life of the decoder —
+            // the same state #1025 was filed about, reached with no signal of any kind.
+            // See #1036.
+            errorContinuation.yield(MP3DecoderError.audioFileStreamError(status))
+            return
+        }
 
         inputFormat = format
         setUpConverter(inputFormat: format)
@@ -714,6 +777,42 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 reportedOverflowCount: reportedOverflowCount,
                 noProgressBreakCount: noProgressBreakCount
             )
+        }
+    }
+
+    /// Runs `handlePropertyChange(propertyID:)` on the decoder queue, exactly as the
+    /// `AudioFileStream` property callback does, and invokes `completion` when it returns.
+    ///
+    /// A test seam. The `AudioFileStreamGetProperty` failure inside that method is the one
+    /// decoder failure with no route through the public API at all: it needs the property
+    /// callback to fire against a stream whose data format is not yet readable, and the
+    /// callback is owned by AudioToolbox. Driving it directly on a stream that has been
+    /// opened but has not yet parsed a frame header reproduces exactly that state. See
+    /// #1036.
+    func deliverSyntheticPropertyChange(
+        propertyID: AudioFileStreamPropertyID = kAudioFileStreamProperty_DataFormat,
+        completion: @escaping @Sendable () -> Void
+    ) {
+        decoderQueue.async { [self] in
+            handlePropertyChange(propertyID: propertyID)
+            completion()
+        }
+    }
+
+    /// Yields `error` on ``errorStream`` from the decoder queue, exactly as the decoder's
+    /// own failure sites do.
+    ///
+    /// A test seam, and deliberately the *only* one this issue adds. None of the three
+    /// silent failures is forceable through the real API: `AudioFileStreamOpen` is called
+    /// with fixed valid arguments, `AudioConverterNew` fails only on a format parsed out of
+    /// real MP3 bytes inside a private callback, and the 4096-frame `AVAudioPCMBuffer`
+    /// allocation uses a fixed valid PCM format. One injection point that pushes a real
+    /// error through the real yield beats one seam per failure — everything downstream of
+    /// the yield (the consumer, the throttle, the classification, the capture) is then
+    /// exercised for real rather than mocked past. See #1036.
+    func deliverSyntheticError(_ error: MP3DecoderError) {
+        decoderQueue.async { [self] in
+            errorContinuation.yield(error)
         }
     }
 
