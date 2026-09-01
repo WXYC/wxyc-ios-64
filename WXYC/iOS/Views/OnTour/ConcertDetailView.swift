@@ -362,7 +362,9 @@ struct ConcertDetailView: View {
 
     private var shareButton: some View {
         Button {
-            StructuredPostHogAnalytics.shared.capture(ConcertShareInitiated(surface: "detail"))
+            StructuredPostHogAnalytics.shared.capture(
+                ConcertShareInitiated(concert: concert.analyticsIdentity, surface: "detail")
+            )
             shareTarget = concert
         } label: {
             chromeGlyph("square.and.arrow.up")

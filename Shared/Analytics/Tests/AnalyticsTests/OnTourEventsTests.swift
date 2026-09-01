@@ -47,16 +47,8 @@ struct OnTourEventsTests {
         #expect(props["tier"] as? String == "loved")
     }
 
-    @Test("ConcertShareInitiated records only the surface", arguments: ["detail", "row"])
-    func concertShareInitiatedSurface(_ surface: String) throws {
-        // A share carries the originating surface ("detail" chrome button vs. "row"
-        // context menu) and nothing else — never the concert id or artist, per the
-        // On Tour privacy invariant. The link itself resolves the show server-side.
-        let event = ConcertShareInitiated(surface: surface)
-        let props = try #require(event.properties)
-        #expect(props["surface"] as? String == surface)
-        #expect(props.count == 1)
-    }
+    // ConcertShareInitiated moved to the intent tier when sharing began naming
+    // the band; its coverage lives in `OnTourIntentEventsTests`.
 
     @Test(
         "ConcertDeepLinkOpened records the link source and resolution rung, nothing else",
