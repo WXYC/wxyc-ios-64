@@ -33,7 +33,12 @@ extension Concert {
     /// `nil` for a headliner the WXYC catalog doesn't know rather than falling
     /// back to a name lookup: a wrong id is a wrong join, and an absent one is
     /// merely an absent one.
-    var analyticsIdentity: ConcertIdentity {
+    ///
+    /// `nonisolated` because it is pure value math over an immutable `Concert`
+    /// and touches nothing shared. Without it the app target's default MainActor
+    /// isolation applies, and `AddConcertToCalendarIntent.perform()` — which runs
+    /// nonisolated — can't name the band on its way past.
+    nonisolated var analyticsIdentity: ConcertIdentity {
         ConcertIdentity(
             artist: headlineName,
             artistId: headliningArtistId,

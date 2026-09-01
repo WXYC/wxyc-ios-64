@@ -142,26 +142,6 @@ public struct ConcertDeepLinkOpened {
     }
 }
 
-// MARK: - Add to Calendar (#538)
-
-/// Event fired when the listener commits an "Add to Calendar" — i.e. the
-/// EventKit editor reports a saved event, not merely on tapping the affordance.
-/// `surface` is the originating affordance ("detail" or "row"); `timing` is the
-/// event shape the concert produced — "timed" (a known start instant) or
-/// "allDay" (date-only or doors-only). Both are low-cardinality labels: no
-/// concert, artist, or calendar identity ever rides along, per the On Tour
-/// privacy invariant.
-@AnalyticsEvent
-public struct ConcertCalendarAdded {
-    public let surface: String
-    public let timing: String
-
-    public init(surface: String, timing: String) {
-        self.surface = surface
-        self.timing = timing
-    }
-}
-
 // MARK: - Siri / Spotlight (OT-C2, #625)
 
 /// Event fired when the "What WXYC artists are touring near me?" Siri intent
@@ -304,6 +284,55 @@ public struct ConcertTicketsTapped: AnalyticsEvent {
     public init(concert: ConcertIdentity, surface: String) {
         self.concert = concert
         self.surface = surface
+    }
+}
+
+/// Event fired at each step of the "Add to Calendar" flow (#538).
+///
+/// Replaces `concert_calendar_added`, which fired only on a completed save and
+/// so could never say where the flow lost people: a tap that ended at the
+/// permission alert and a tap that ended at a saved event were equally absent
+/// from the data. Redesigned outright rather than supplemented because the old
+/// event had never recorded a single row in PostHog — there was no history to
+/// preserve, which is the only reason replacing it was cheap.
+///
+/// `outcome` is one of:
+/// - `"requested"` — the affordance was tapped; access is being asked for. The
+///   denominator: it fires whether or not permission was already granted.
+/// - `"denied"` — write-only calendar access was refused.
+/// - `"cancelled"` — the editor was presented and the listener backed out.
+/// - `"saved"` — an event landed in the calendar.
+/// - `"failed"` — access was granted but the save threw. Only the Siri path can
+///   produce this; the in-app editor surfaces its own errors.
+///
+/// `surface` is `"detail"`, `"row"`, or `"siri"`. Siri reports through this same
+/// event rather than one of its own: a listener who adds a show by voice added a
+/// show, and a second event name would make "how many shows get calendared" a
+/// sum that someone has to remember to write. The voice path emits one terminal
+/// outcome and no `"requested"` — there is no affordance to tap.
+///
+/// The old event's `timing` ("timed" vs "allDay") is gone, not dropped by
+/// oversight: it described the show's own date data, which is now recoverable
+/// by joining `concert_id`. Carrying the band made a property redundant.
+public struct ConcertCalendarFlow: AnalyticsEvent {
+    /// Stated rather than derived, as above.
+    public static let name = "concert_calendar_flow"
+
+    public let concert: ConcertIdentity
+    public let surface: String
+    public let outcome: String
+
+    public var properties: [String: Any]? {
+        var props = concert.properties
+        props["surface"] = surface
+        props["outcome"] = outcome
+        return props
+    }
+
+    public init(concert: ConcertIdentity, surface: String, outcome: String) {
+        self.concert = concert
+        self.surface = surface
+        self.outcome = outcome
     }
 }
 

@@ -38,24 +38,26 @@ import Foundation
 
 public enum AddConcertToCalendarQuery {
 
-    /// The result of a resolve-map-save attempt. Every failure case carries
-    /// enough to build a clear, human-readable dialog without the caller
-    /// re-deriving it -- `AddConcertToCalendarIntent.perform()` switches over
-    /// this directly.
+    /// The result of a resolve-map-save attempt. Every case that happens *after*
+    /// the concert resolves carries it, so the caller can build both a clear
+    /// human-readable dialog and a band-identified analytics event without
+    /// re-fetching -- `AddConcertToCalendarIntent.perform()` switches over this
+    /// directly. Only `concertUnavailable` has no `Concert` to carry, because
+    /// failing to resolve one is what it means.
     public enum Outcome: Equatable {
-        /// Saved successfully; carries the exact mapped event so the caller
-        /// can report analytics (`isAllDay`) and the dialog (`title`)
+        /// Saved successfully; carries the resolved show and the exact mapped
+        /// event so the caller can report analytics and the dialog (`title`)
         /// without re-mapping.
-        case added(ConcertCalendarEvent)
+        case added(Concert, ConcertCalendarEvent)
         /// `fetcher.fetchConcert(id:)` couldn't resolve the concert (a 404 --
         /// a since-cancelled or unknown show, or a transient fetch failure).
         case concertUnavailable
         /// The listener declined (or previously declined) write-only
         /// calendar access.
-        case accessDenied
+        case accessDenied(Concert)
         /// Access was granted but the save itself threw. Carries the mapped
         /// event's title for the failure dialog.
-        case saveFailed(title: String)
+        case saveFailed(Concert, title: String)
     }
 
     /// Resolves `concertID` to a `Concert`, maps it to a `ConcertCalendarEvent`,
@@ -73,15 +75,15 @@ public enum AddConcertToCalendarQuery {
         let calendarEvent = ConcertCalendarEvent(concert)
 
         guard await calendarStore.requestAccess() else {
-            return .accessDenied
+            return .accessDenied(concert)
         }
 
         do {
             try calendarStore.save(calendarEvent)
         } catch {
-            return .saveFailed(title: calendarEvent.title)
+            return .saveFailed(concert, title: calendarEvent.title)
         }
 
-        return .added(calendarEvent)
+        return .added(concert, calendarEvent)
     }
 }

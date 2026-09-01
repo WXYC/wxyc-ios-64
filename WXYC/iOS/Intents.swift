@@ -458,17 +458,32 @@ struct AddConcertToCalendarIntent: AppIntent, InstanceDisplayRepresentable {
             calendarStore: EventKitCalendarEventSaving()
         )
 
-        switch outcome {
-        case .added(let calendarEvent):
+        // The voice path emits one terminal outcome and no "requested" — there
+        // is no affordance to tap, so there is nothing for a rate to divide by.
+        // `concertUnavailable` reports nothing: with no resolved show there is
+        // no band to name, and a row with the identity keys missing would drag
+        // down every band-level rate computed over this event.
+        func record(_ concert: Concert, _ outcome: String) {
             StructuredPostHogAnalytics.shared.capture(
-                ConcertCalendarAdded(surface: "siri", timing: calendarEvent.isAllDay ? "allDay" : "timed")
+                ConcertCalendarFlow(
+                    concert: concert.analyticsIdentity,
+                    surface: "siri",
+                    outcome: outcome
+                )
             )
+        }
+
+        switch outcome {
+        case .added(let concert, let calendarEvent):
+            record(concert, "saved")
             return .result(dialog: "Added \(calendarEvent.title) to your calendar.")
         case .concertUnavailable:
             return .result(dialog: "Couldn’t find that show to add to your calendar.")
-        case .accessDenied:
+        case .accessDenied(let concert):
+            record(concert, "denied")
             return .result(dialog: "Turn on calendar access for WXYC in Settings to add shows to your calendar.")
-        case .saveFailed(let title):
+        case .saveFailed(let concert, let title):
+            record(concert, "failed")
             return .result(dialog: "Couldn’t add \(title) to your calendar.")
         }
     }

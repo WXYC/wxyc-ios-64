@@ -15,10 +15,13 @@
 //
 //  Access is requested at the **write-only** level (`requestWriteOnlyAccessToEvents`):
 //  the app only ever adds events, never reads the user's calendar, so it asks for
-//  the narrower add-only permission. The `ConcertCalendarAdded` analytics fires on
-//  a genuine save (the editor's `.saved` action), not merely on tapping the
-//  affordance — and carries only the surface and timed/all-day shape, never the
-//  concert or artist, per the On Tour privacy invariant.
+//  the narrower add-only permission.
+//
+//  Every step reports `ConcertCalendarFlow`: `requested` when the trigger is set,
+//  then `denied`, `cancelled`, or `saved`. The old `ConcertCalendarAdded` fired
+//  only on a save, so a flow abandoned at the permission alert and one that never
+//  started looked identical — both simply absent. The events carry the band, like
+//  the rest of the intent tier.
 //
 //  Created by Jake Bromberg on 07/20/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -45,6 +48,7 @@ struct ConcertCalendarEditSheet: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(
             calendarEvent: ConcertCalendarEvent(concert),
+            identity: concert.analyticsIdentity,
             surface: surface,
             dismiss: dismiss
         )
@@ -65,11 +69,18 @@ struct ConcertCalendarEditSheet: UIViewControllerRepresentable {
     /// `EKEvent`, records the save, and dismisses the sheet.
     final class Coordinator: NSObject, EKEventEditViewDelegate {
         private let calendarEvent: ConcertCalendarEvent
+        private let identity: ConcertIdentity
         private let surface: String
         private let dismiss: DismissAction
 
-        init(calendarEvent: ConcertCalendarEvent, surface: String, dismiss: DismissAction) {
+        init(
+            calendarEvent: ConcertCalendarEvent,
+            identity: ConcertIdentity,
+            surface: String,
+            dismiss: DismissAction
+        ) {
             self.calendarEvent = calendarEvent
+            self.identity = identity
             self.surface = surface
             self.dismiss = dismiss
         }
@@ -93,14 +104,16 @@ struct ConcertCalendarEditSheet: UIViewControllerRepresentable {
             _ controller: EKEventEditViewController,
             didCompleteWith action: EKEventEditViewAction
         ) {
-            if action == .saved {
-                StructuredPostHogAnalytics.shared.capture(
-                    ConcertCalendarAdded(
-                        surface: surface,
-                        timing: calendarEvent.isAllDay ? "allDay" : "timed"
-                    )
+            // `.deleted` can't arise for an event that was never saved, but it
+            // is not a save either, so it reports as an abandonment rather than
+            // being dropped on the floor.
+            StructuredPostHogAnalytics.shared.capture(
+                ConcertCalendarFlow(
+                    concert: identity,
+                    surface: surface,
+                    outcome: action == .saved ? "saved" : "cancelled"
                 )
-            }
+            )
             dismiss()
         }
     }
@@ -157,14 +170,26 @@ private struct AddToCalendarModifier: ViewModifier {
     /// editor or raises the denied-access alert, and consumes the trigger.
     private func resolveTrigger() async {
         guard let concert = trigger else { return }
+        let identity = concert.analyticsIdentity
+        // Fires whether or not permission is already granted: this is the tap
+        // count every later outcome is a rate over, so it must not be
+        // conditional on anything that happens after it.
+        record(identity, outcome: "requested")
         let store = EKEventStore()
         let granted = (try? await store.requestWriteOnlyAccessToEvents()) ?? false
         if granted {
             editTarget = concert
         } else {
+            record(identity, outcome: "denied")
             accessDenied = true
         }
         trigger = nil
+    }
+
+    private func record(_ identity: ConcertIdentity, outcome: String) {
+        StructuredPostHogAnalytics.shared.capture(
+            ConcertCalendarFlow(concert: identity, surface: surface, outcome: outcome)
+        )
     }
 }
 #endif

@@ -35,7 +35,7 @@ struct AddConcertToCalendarQueryTests {
             calendarStore: store
         )
 
-        #expect(outcome == .added(ConcertCalendarEvent(concert)))
+        #expect(outcome == .added(concert, ConcertCalendarEvent(concert)))
         #expect(store.savedEvent == ConcertCalendarEvent(concert))
     }
 
@@ -51,7 +51,7 @@ struct AddConcertToCalendarQueryTests {
             calendarStore: store
         )
 
-        guard case .added(let calendarEvent) = outcome else {
+        guard case .added(_, let calendarEvent) = outcome else {
             Issue.record("Expected .added, got \(outcome)")
             return
         }
@@ -70,7 +70,7 @@ struct AddConcertToCalendarQueryTests {
             calendarStore: store
         )
 
-        #expect(outcome == .accessDenied)
+        #expect(outcome == .accessDenied(concert))
         #expect(store.savedEvent == nil)
     }
 
@@ -102,7 +102,7 @@ struct AddConcertToCalendarQueryTests {
             calendarStore: store
         )
 
-        #expect(outcome == .saveFailed(title: "Jessica Pratt"))
+        #expect(outcome == .saveFailed(concert, title: "Jessica Pratt"))
     }
 }
 
