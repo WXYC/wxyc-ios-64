@@ -31,6 +31,11 @@ public struct ConcertOpenMessage: OpenMessage {
         case universalLink
         /// `wxyc://concert/<id>` — an app-owned surface (Spotlight, shortcut).
         case scheme
+        /// `wxyc://concert/<id>?src=web` — the Smart App Banner on the show's own
+        /// web page. Split out of ``scheme`` because it is the only one of those
+        /// arrivals that represents reach from *outside* the app, and lumping it
+        /// in made "how much traffic does the website send us" unanswerable.
+        case webBanner
     }
 
     public static let name = Notification.Name("org.wxyc.iphoneapp.openConcert")
