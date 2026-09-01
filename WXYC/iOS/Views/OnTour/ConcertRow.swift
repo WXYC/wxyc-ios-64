@@ -83,7 +83,9 @@ struct ConcertRow: View {
     @ViewBuilder
     private var contextActions: some View {
         Button {
-            StructuredPostHogAnalytics.shared.capture(ConcertShareInitiated(surface: "row"))
+            StructuredPostHogAnalytics.shared.capture(
+                ConcertShareInitiated(concert: concert.analyticsIdentity, surface: "row")
+            )
             shareTarget = concert
         } label: {
             Label("Share Show", systemImage: "square.and.arrow.up")

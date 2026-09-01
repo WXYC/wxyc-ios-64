@@ -109,28 +109,20 @@ public struct ForYouCardDismissed {
 
 // MARK: - Sharing (#536)
 
-/// Event fired when the listener starts sharing a concert — invoking the detail
-/// view's share button or the row's "Share Show" context action. `surface` is the
-/// originating affordance ("detail" or "row") and is the event's only property:
-/// the shared link resolves the show server-side, so no concert or artist id ever
-/// rides along, per the On Tour privacy invariant.
-@AnalyticsEvent
-public struct ConcertShareInitiated {
-    public let surface: String
-
-    public init(surface: String) {
-        self.surface = surface
-    }
-}
-
 /// Event fired when a shared show link opens the app and the arrival path
 /// finishes resolving it (#537). `source` is the link form — "universalLink"
 /// (`wxyc.org/shows/<id>`, a friend tapped a public link) or "scheme"
 /// (`wxyc://concert/<id>`, an app-owned surface). `resolution` is the ladder rung
 /// that resolved it — "window" (already in the loaded list), "byID" (fetched
-/// individually), or "missed" (couldn't be found). Both are low-cardinality
-/// labels; the concert id never rides along — which show a listener opened is
-/// taste data that stays on the device, per the On Tour privacy invariant.
+/// individually), or "missed" (couldn't be found).
+///
+/// Stays counts-only even though the rest of the arrival path now names bands,
+/// and for a reason of its own rather than the general browse rule: **the
+/// recipient did not choose this band, a friend did.** Attributing an inbound
+/// link as the arriving listener's taste would poison exactly the affinity data
+/// the intent tier exists to collect. The band is not lost — the
+/// ``ConcertDetailViewed`` that follows a millisecond later carries it, with
+/// honest semantics ("this person looked at this show") instead of borrowed ones.
 @AnalyticsEvent
 public struct ConcertDeepLinkOpened {
     public let source: String
@@ -271,6 +263,35 @@ public struct ConcertDetailViewed: AnalyticsEvent {
 public struct ConcertTicketsTapped: AnalyticsEvent {
     /// Stated rather than derived, as above.
     public static let name = "concert_tickets_tapped"
+
+    public let concert: ConcertIdentity
+    public let surface: String
+
+    public var properties: [String: Any]? {
+        var props = concert.properties
+        props["surface"] = surface
+        return props
+    }
+
+    public init(concert: ConcertIdentity, surface: String) {
+        self.concert = concert
+        self.surface = surface
+    }
+}
+
+/// Event fired when the listener starts sharing a concert — the detail view's
+/// share button or the row's "Share Show" context action (`surface`).
+///
+/// Carries the band because choosing to send a specific show to a friend is the
+/// strongest intent signal on the tab — stronger than a ticket tap, which can be
+/// idle curiosity about a price. Which bands people vouch for to their friends is
+/// the question the On Tour tab most wants answered.
+///
+/// Note the asymmetry with ``ConcertDeepLinkOpened``, which stays anonymous: the
+/// sender chose the band, the recipient didn't.
+public struct ConcertShareInitiated: AnalyticsEvent {
+    /// Stated rather than derived, as above.
+    public static let name = "concert_share_initiated"
 
     public let concert: ConcertIdentity
     public let surface: String

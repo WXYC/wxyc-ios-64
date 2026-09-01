@@ -14,7 +14,7 @@
 //  Why `UIActivityViewController` rather than `ShareLink`: the row affordance is a
 //  `.contextMenu` item, and SwiftUI renders context-menu rows as native `UIMenu`
 //  elements that strip attached gestures, so a context-menu `ShareLink` cannot
-//  record `ConcertShareInitiated(surface: "row")`. Driving one representable from
+//  record `ConcertShareInitiated`. Driving one representable from
 //  parent state lets both surfaces — the detail chrome button and the row menu —
 //  capture analytics on the same tap that opens the sheet, with an identical
 //  bare-URL payload (so the App Clip card behaves the same from either surface).

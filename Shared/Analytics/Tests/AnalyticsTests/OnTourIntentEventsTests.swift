@@ -257,6 +257,38 @@ struct OnTourIntentEventsTests {
         #expect(props["surface"] as? String == surface)
     }
 
+    // MARK: - Sharing
+
+    @Test(
+        "Sharing a show names the band being shared",
+        arguments: ["detail", "row"]
+    )
+    func shareInitiatedCarriesBandIdentity(_ surface: String) throws {
+        // Moved out of the browse tier: choosing to send a specific show to a
+        // friend is the strongest intent signal on the tab, stronger than a
+        // ticket tap, and the one most worth knowing per band. The *arrival*
+        // event `concert_deep_link_opened` stays anonymous — the recipient
+        // didn't choose the band, the sender did.
+        let event = ConcertShareInitiated(
+            concert: ConcertIdentity(
+                artist: "Csillagrablók",
+                artistId: 640,
+                venue: "Nightlight",
+                concertId: 21,
+                status: "on_sale"
+            ),
+            surface: surface
+        )
+        let props = try #require(event.properties)
+        #expect(props["surface"] as? String == surface)
+        #expect(props["artist"] as? String == "Csillagrablók")
+        #expect(props["artist_id"] as? Int == 640)
+        #expect(props["venue"] as? String == "Nightlight")
+        #expect(props["concert_id"] as? Int == 21)
+        #expect(props["status"] as? String == "on_sale")
+        #expect(props.count == 6)
+    }
+
     // MARK: - Cross-event contract
 
     @Test("Every intent event agrees with the denominator on every shared key")
@@ -278,17 +310,24 @@ struct OnTourIntentEventsTests {
         let denominator = try #require(ConcertDetailViewed(concert: identity, source: "row").properties)
 
         // Each action, paired with the one key that names its own affordance.
-        let actions: [(String, [String: Any])] = [
-            ("surface", try #require(ConcertTicketsTapped(concert: identity, surface: "detail").properties)),
-            ("surface", try #require(ConcertDirectionsTapped(concert: identity, surface: "detail").properties)),
+        let actions: [(Set<String>, [String: Any])] = [
+            (["surface"], try #require(ConcertTicketsTapped(concert: identity, surface: "detail").properties)),
+            (["surface"], try #require(ConcertDirectionsTapped(concert: identity, surface: "detail").properties)),
+            (["surface"], try #require(ConcertShareInitiated(concert: identity, surface: "detail").properties)),
+            (
+                ["surface", "outcome"],
+                try #require(
+                    ConcertCalendarFlow(concert: identity, surface: "detail", outcome: "saved").properties
+                )
+            ),
         ]
 
         #expect(Set(denominator.keys).subtracting(shared) == ["source"])
-        for (ownKey, props) in actions {
+        for (ownKeys, props) in actions {
             for key in shared {
                 #expect(String(describing: props[key]) == String(describing: denominator[key]))
             }
-            #expect(Set(props.keys).subtracting(shared) == [ownKey])
+            #expect(Set(props.keys).subtracting(shared) == ownKeys)
         }
     }
 }
