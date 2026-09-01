@@ -120,6 +120,12 @@ public final class MP3Streamer {
     private var playerEventTask: Task<Void, Never>?
     @ObservationIgnored
     private var decoderConsumerTask: Task<Void, Never>?
+
+    /// Per-kind forwarded-error counts for the CURRENT decoder generation, keyed on
+    /// ``MP3DecoderError/Kind`` so a flood of one failure kind cannot mask the first
+    /// occurrence of another. Cleared by `startDecoderConsumer()`. See #1036.
+    @ObservationIgnored
+    private var decoderErrorCounts: [MP3DecoderError.Kind: Int] = [:]
     @ObservationIgnored
     private let analytics: AnalyticsService?
     @ObservationIgnored
@@ -249,13 +255,78 @@ public final class MP3Streamer {
     }
 
     private func startDecoderConsumer() {
+        // Pin the generation being consumed. `resetStreamIO()` replaces `mp3Decoder`
+        // wholesale, so re-reading `self.mp3Decoder` inside the loop could drift onto a
+        // successor mid-stream.
+        let decoder = mp3Decoder
+
+        // The throttle counts belong to this decoder generation. A post-reset decoder is a
+        // fresh failure episode — and, per #1036, the generation most likely to be in
+        // trouble — so it must not inherit its predecessor's suppression.
+        decoderErrorCounts.removeAll()
+
+        // Both decoder streams are consumed by ONE task, so `resetStreamIO()`'s existing
+        // cancel-and-restart covers the error consumer for free. A separately tracked error
+        // task would outlive a decoder replacement and leave every post-reset decoder
+        // unheard — which is the #1036 bug itself, recreated one layer up.
         decoderConsumerTask = Task { [weak self] in
-            guard let self else { return }
-            for await buffer in self.mp3Decoder.decodedBufferStream {
-                guard !Task.isCancelled else { break }
-                await self.handleDecodedBuffer(buffer)
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    for await buffer in decoder.decodedBufferStream {
+                        guard !Task.isCancelled, let self else { break }
+                        await self.handleDecodedBuffer(buffer)
+                    }
+                }
+                group.addTask {
+                    for await error in decoder.errorStream {
+                        guard !Task.isCancelled, let self else { break }
+                        await self.handleDecoderError(error)
+                    }
+                }
             }
         }
+    }
+
+    /// Forwards a decoder failure to the controller as an `.error` internal event, on a
+    /// geometric throttle.
+    ///
+    /// `bufferAllocationFailed` is raised inside `convertToPCM()`, which runs once per
+    /// packet callback, so an unthrottled forward would emit one analytics event per failed
+    /// conversion for the life of the session. The 1st, 2nd, 4th, 8th … occurrence of each
+    /// kind is forwarded — the same geometric shape `MP3StreamDecoder` already uses for its
+    /// backlog reports, rather than a third pattern — so volume stays bounded while a
+    /// worsening failure still reads as worse. See #1036.
+    private func handleDecoderError(_ error: Error) {
+        guard let decoderError = error as? MP3DecoderError else {
+            eventContinuationInternal.yield(.error(error))
+            return
+        }
+
+        // `backlogOverflow` is deliberately NOT forwarded. It already reports itself to
+        // `ErrorReporting.shared` on a geometric throttle of its own, so forwarding it here
+        // too would report one occurrence through two channels. It is also not a playback
+        // failure — the decoder drops a backlog and keeps running — so it does not belong
+        // in the `stream_error` series that the playback-start success rate is measured
+        // against. One path, counted once.
+        guard decoderError.kind != .backlogOverflow else { return }
+
+        // Counts occurrences the consumer OBSERVES, which under a real flood is fewer
+        // than the decoder raises: `errorStream` is `.bufferingNewest(4)`, so it already
+        // sheds load before this point. The throttle bounds what survives that; the two
+        // compose, and neither alone is a guarantee about decoder-side volume.
+        let occurrence = (decoderErrorCounts[decoderError.kind] ?? 0) + 1
+        decoderErrorCounts[decoderError.kind] = occurrence
+        guard occurrence & (occurrence - 1) == 0 else { return }
+
+        eventContinuationInternal.yield(.error(decoderError))
+    }
+
+    /// Pushes `error` through the live decoder's error stream, exercising the real
+    /// consume-throttle-forward path rather than mocking past it.
+    ///
+    /// A test seam; see ``MP3StreamDecoder/deliverSyntheticError(_:)``.
+    func deliverSyntheticDecoderError(_ error: MP3DecoderError) {
+        mp3Decoder.deliverSyntheticError(error)
     }
 
     // MARK: - Public Methods
