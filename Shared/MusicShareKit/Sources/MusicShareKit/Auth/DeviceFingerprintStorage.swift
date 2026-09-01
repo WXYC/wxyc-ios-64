@@ -42,6 +42,14 @@ public enum DeviceFingerprintMode: String, CaseIterable, Sendable {
     /// local-only write succeeded. The item survives a reinstall on this device
     /// but does not sync. The accompanying `OSStatus` is the synchronizable
     /// write's failing status — the reason we are on the fallback.
+    ///
+    /// No iOS device has ever reported this, and on iOS none is expected to:
+    /// the statuses that fail the synchronizable add fail the local one too.
+    /// It is reachable on macOS, where `kSecAttrSynchronizable` selects the
+    /// Keychain backend rather than an attribute of the item — see
+    /// ``KeychainDeviceFingerprintStorage`` and iOS#1037. Do not read its
+    /// absence from the fleet as proof the case is dead; read it as the fleet
+    /// being iOS.
     case local
 
     /// No fingerprint could be resolved at all. The `X-Device-Fingerprint`
@@ -285,14 +293,35 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
     /// none resolved `local`; a population that size would not be uniformly
     /// signed in to iCloud Keychain, and the fallback would show it.
     ///
-    /// Nor does the fallback rescue the failures that actually occur. The one
-    /// population ever to reach it — 13 Simulator installs hitting #996's
-    /// `-34018` — failed the local add with the same status and resolved
-    /// `failed`, not `local`. That generalizes: a missing entitlement, a wrong
-    /// access group, or a keychain not yet unlocked rejects both adds alike,
-    /// because `kSecAttrSynchronizable` is not the attribute being rejected.
-    /// The branch is kept because it costs one call on a path that is already
-    /// failing, not because it has ever salvaged a write.
+    /// Nor, **on iOS**, does the fallback rescue the failures that actually
+    /// occur. The one population ever to reach it there — 13 Simulator
+    /// installs hitting #996's `-34018` — failed the local add with the same
+    /// status and resolved `failed`, not `local`. That generalizes across iOS:
+    /// a missing entitlement, a wrong access group, or a keychain not yet
+    /// unlocked rejects both adds alike, because `kSecAttrSynchronizable` is
+    /// not the attribute being rejected. On iOS the branch is kept because it
+    /// costs one call on a path that is already failing, not because it has
+    /// ever salvaged a write.
+    ///
+    /// That last paragraph is **iOS-only, and iOS#1035 failed to say so.** On
+    /// macOS `kSecAttrSynchronizable` is not merely an attribute of the item —
+    /// it selects the backend. `true` routes the item to the data-protection
+    /// Keychain, which requires an `application-identifier` entitlement, while
+    /// an item without the flag lands in the file-based login Keychain, which
+    /// requires none. So in an unentitled macOS process the synchronizable add
+    /// fails with `-34018` and the local add succeeds, order-independently.
+    /// There the fallback does salvage the write, and `local` is the correct,
+    /// reachable outcome rather than a mode nothing can produce.
+    ///
+    /// Every row of `fingerprint_mode_resolved_event` is from iOS, so the
+    /// fleet evidence that no device resolves `local` never had the power to
+    /// observe the platform where it can. Keep that in mind before reading
+    /// "294 synchronizable, zero local" as a statement about this branch in
+    /// general — it is a statement about iOS. It matters for the native macOS
+    /// target, where a locally-signed build carries no `application-identifier`.
+    /// `KeychainPlatformAsymmetryTests` in `KeychainTokenStorageTests.swift`
+    /// asserts the taxonomy for the sibling storage; iOS#1037 carries the
+    /// open question of whether either branch should survive.
     ///
     /// Reinstall survival is real, but it belongs to neither branch: keychain
     /// items outlive app deletion regardless of `kSecAttrSynchronizable`.
