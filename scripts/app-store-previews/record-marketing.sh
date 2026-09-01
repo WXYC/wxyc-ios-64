@@ -126,10 +126,45 @@ if [[ "$DEVICE_STATE" != "Booted" ]]; then
     sleep 3
 fi
 
-# Open Simulator app to make it visible
+# Open Simulator app to make it visible.
+#
+# This is load-bearing, not cosmetic: `simctl io recordVideo` only captures the
+# simulator's Metal-composited display while the Simulator window is frontmost
+# and actively rendering. The WXYC UI sits on top of a full-screen Metal
+# wallpaper shader, so if the window is occluded (e.g. by Xcode during a build)
+# recordVideo writes pure black frames — only the separately-overlaid status bar
+# survives. `screenshot` forces a render and is immune; `recordVideo` is not.
+# See `bring_simulator_to_front` below, called immediately before recording.
 log "Opening Simulator..."
 open -a Simulator --args -CurrentDeviceUDID "$SIMULATOR_UDID"
 sleep 2
+
+bring_simulator_to_front() {
+    osascript -e 'tell application "Simulator" to activate' 2>/dev/null || true
+}
+
+cd "$PROJECT_DIR"
+
+# Build up front, BEFORE recording starts, so the multi-minute build is not
+# inside the capture window and doesn't hold the Simulator in the background
+# (which would black out the Metal wallpaper). The recording then drives only a
+# `test-without-building` run.
+if [[ "$SKIP_BUILD" != "true" ]]; then
+    log "Building for testing (before recording)..."
+    xcodebuild build-for-testing \
+        -scheme WXYC \
+        -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
+        -skipMacroValidation \
+        > /dev/null || {
+        error "build-for-testing failed"
+        exit 1
+    }
+fi
+
+# Metal frames are only captured while the Simulator is frontmost — activate it
+# right before we start recording.
+bring_simulator_to_front
+sleep 1
 
 # Start recording in background
 log "Starting screen recording: $OUTPUT_PATH"
@@ -147,14 +182,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Run the marketing UI test (xcodebuild test handles building internally)
+# Run the marketing UI test. The build already ran above (build-for-testing),
+# so this is `test-without-building` — keeping the multi-minute build out of the
+# recording window. Re-activate the Simulator so its Metal display stays
+# frontmost and is actually captured.
 log "Running marketing recording test..."
-cd "$PROJECT_DIR"
-
-BUILD_FLAG=""
-if [[ "$SKIP_BUILD" == "true" ]]; then
-    BUILD_FLAG="-skip-testing:all"  # Will run test-without-building behavior
-fi
+bring_simulator_to_front
 
 # `set -e` is disabled around this pipeline: with `pipefail` (set above), a
 # non-zero `xcodebuild` exit makes the whole pipeline non-zero even though the
@@ -162,7 +195,7 @@ fi
 # script exit right here, before `TEST_RESULT` below is ever assigned, so the
 # "Test failed" diagnostic and explicit `exit 1` further down never run.
 set +e
-xcodebuild test \
+xcodebuild test-without-building \
     -scheme WXYC \
     -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
     -only-testing:WXYCUITests/MarketingRecordingUITests/testMarketingRecordingSequence \
