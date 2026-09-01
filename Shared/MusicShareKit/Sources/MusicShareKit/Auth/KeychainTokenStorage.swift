@@ -18,9 +18,11 @@ import Security
 /// Stores authentication sessions in the Keychain with optional iCloud synchronization
 /// for cross-device session persistence. A save whose synchronizable add fails retries
 /// without the flag, so sessions still persist across app launches (see issue #210).
-/// That retry is not the path taken by a device with iCloud Keychain switched off. On
-/// iOS it is a last resort on an already-failing add; on macOS it is load-bearing,
-/// because the flag selects which Keychain the item goes to. See `save()`, iOS#1035
+/// That retry is not the path taken by a device with iCloud Keychain switched off. In
+/// an entitled process — every shipping build, iOS and signed macOS/Catalyst alike —
+/// it never runs, because the synchronizable add succeeds. It is load-bearing only in
+/// an UNENTITLED macOS process, where the flag selects which Keychain the item goes
+/// to; today that means `swift test`, not anything we ship. See `save()`, iOS#1035
 /// and iOS#1037.
 public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
 
@@ -152,14 +154,16 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
             }
             status = SecItemAdd(query as CFDictionary, nil)
 
-            // Retry without the sync flag when the synchronizable add fails.
-            // Not, as this comment used to claim, because iCloud Keychain is
-            // unavailable: a synchronizable add succeeds with iCloud Keychain
-            // off and with no iCloud account, so no device arrives here for
-            // that reason (iOS#1035).
+            // Retry without the sync flag when the synchronizable add fails
+            // (issue #210). Not because iCloud Keychain is unavailable: a
+            // synchronizable add succeeds with iCloud Keychain off and with no
+            // iCloud account, so no device arrives here for that reason
+            // (iOS#1035).
             //
-            // What the retry is actually for is platform-dependent, and
-            // iOS#1035 stated only the iOS half.
+            // What the retry buys depends on the platform. This is the
+            // canonical account of that asymmetry; `addWithFallback` in
+            // `DeviceFingerprintStorage` carries the same branch and refers
+            // here rather than restating it.
             //
             // On iOS there is one Keychain, so kSecAttrSynchronizable is not
             // the attribute a missing entitlement / wrong access group /
@@ -172,19 +176,19 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
             // the data-protection Keychain, which requires an
             // `application-identifier` entitlement; without the flag the item
             // lands in the file-based login Keychain, which requires none. So
-            // in an unentitled macOS process the synchronizable add fails with
-            // -34018 while the local add succeeds — measured, and independent
-            // of which one runs first — and this retry is the only reason the
-            // session persists at all. That is exactly the process `swift
-            // test` runs in, which is why KeychainTokenStorageTests' two
+            // an unentitled macOS process fails the synchronizable add with
+            // -34018 and succeeds the local one, and this retry is the only
+            // reason the session persists there. Note the qualifier: a signed
+            // build gets an `application-identifier` from
+            // `keychain-access-groups` in WXYC.entitlements, so every shipping
+            // macOS/Catalyst build is entitled and this branch never runs in
+            // one. The unentitled case is the process `swift test`
+            // runs in, which is why KeychainTokenStorageTests' two
             // `synchronizable: true` round-trip cases pass on the macOS host
             // and are skipped in the iOS Simulator; deleting this branch turns
-            // them red. `KeychainPlatformAsymmetryTests` in that same file
-            // asserts the whole taxonomy, and asserts that the item left
-            // behind is the one this retry wrote. iOS#1037 asks whether the
-            // branch should survive; on this evidence it is not dead code.
-            //
-            // (issue #210)
+            // them red. `KeychainPlatformAsymmetryTests` asserts that taxonomy
+            // and that the surviving item is the one this retry wrote, so on
+            // present evidence the branch is not dead code (iOS#1037).
             if synchronizable && status != errSecSuccess {
                 query[kSecAttrSynchronizable as String] = false
                 status = SecItemAdd(query as CFDictionary, nil)
@@ -239,18 +243,21 @@ public final class KeychainTokenStorage: TokenStorage, @unchecked Sendable {
     /// Attempts to load a session saved without the synchronizable flag.
     ///
     /// `save()` retries without `kSecAttrSynchronizable` when the synchronizable
-    /// add fails, so such items do exist; this method finds them with a query
-    /// that omits the attribute.
+    /// add fails, so such items can exist; this method finds them with a query
+    /// that omits the attribute. Whether any ever reached a user's device is a
+    /// separate question — see `save()`; no shipping build takes that retry.
     ///
     /// It is belt-and-braces, not the thing that keeps those items reachable.
     /// `baseQuery()` uses `kSecAttrSynchronizableAny` when `synchronizable` is
-    /// `true`, and that value does match non-synchronizable items — verified,
-    /// not inferred — so `load()`'s primary read already finds anything this
-    /// method could; its query is a strict subset, and it only runs after that
-    /// read returned `errSecItemNotFound`. Worth knowing before citing this
-    /// method as the reason a local-only item stays readable: the
-    /// `kSecAttrSynchronizableAny` in `baseQuery()` is that reason. See
-    /// iOS#1037.
+    /// `true`, and that value matches non-synchronizable items too — asserted
+    /// by `KeychainPlatformAsymmetryTests`' "kSecAttrSynchronizableAny matches
+    /// a non-synchronizable item", which runs only where a local-only item can
+    /// be written, so the assertion is empirical on the macOS host and taken
+    /// on the API contract elsewhere — so `load()`'s primary read already finds
+    /// anything this method could, and this runs only after that read returned
+    /// `errSecItemNotFound`. Before citing this method as the reason a
+    /// local-only item stays readable, note that `baseQuery()` is that reason
+    /// (iOS#1037).
     ///
     /// - Returns: The session if found, or `nil`.
     private func loadNonSynchronizable() -> AuthSession? {
