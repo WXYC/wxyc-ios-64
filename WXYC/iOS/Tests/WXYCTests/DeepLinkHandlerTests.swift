@@ -43,6 +43,35 @@ struct DeepLinkHandlerTests {
         )
     }
 
+    @Test("?src=web separates a Smart App Banner tap from the app's own scheme links")
+    func webBannerSourceTag() {
+        // Without this, `.scheme` conflates three unrelated populations —
+        // Spotlight, Shortcuts, and everyone arriving from the website — and the
+        // web banner is the only one of the three that represents reach outside
+        // the app. `WXYCDeepLink` ignores query strings, so the tag is read here.
+        #expect(
+            DeepLinkHandler.action(for: URL(string: "wxyc://concert/4821?src=web")!)
+                == .openConcert(id: 4821, source: .webBanner)
+        )
+    }
+
+    @Test("An unrecognised or absent src leaves the link tagged .scheme")
+    func unknownSourceTagFallsBackToScheme() {
+        // Shipped builds must keep resolving links that gain parameters later,
+        // and a typo'd tag must not invent a fourth population.
+        for url in [
+            "wxyc://concert/4821",
+            "wxyc://concert/4821?src=",
+            "wxyc://concert/4821?src=widget",
+            "wxyc://concert/4821?utm_source=web",
+        ] {
+            #expect(
+                DeepLinkHandler.action(for: URL(string: url)!)
+                    == .openConcert(id: 4821, source: .scheme)
+            )
+        }
+    }
+
     @Test("wxyc://playcut/<id> routes to an open-playcut")
     func schemePlaycut() {
         guard case .openPlaycut = DeepLinkHandler.action(for: URL(string: "wxyc://playcut/9")!) else {

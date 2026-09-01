@@ -53,10 +53,25 @@ enum DeepLinkHandler {
     static func action(for url: URL) -> Action {
         switch WXYCDeepLink(routing: url) {
         case .playcut(let id): return .openPlaycut(id)
-        case .concert(let id): return .openConcert(id: id, source: .scheme)
+        case .concert(let id): return .openConcert(id: id, source: schemeSource(for: url))
         case .play: return .play(reason: .deepLink)
         case nil: return .none
         }
+    }
+
+    /// Separates a Smart App Banner tap from the app's own scheme links.
+    ///
+    /// `WXYCDeepLink` ignores query strings on purpose — it stays a pure parser,
+    /// and shipped builds keep resolving links that gain parameters later — so
+    /// the `?src=` tag is read here, at the one call site that cares. An absent
+    /// or unrecognised tag stays `.scheme` rather than inventing a fourth
+    /// population out of a typo.
+    private static func schemeSource(for url: URL) -> ConcertOpenMessage.Source {
+        let src = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first { $0.name == "src" }?
+            .value
+        return src == "web" ? .webBanner : .scheme
     }
 
     /// Resolves a hand-off / universal-link / Siri user activity into a routing
