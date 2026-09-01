@@ -45,11 +45,11 @@ public enum DeviceFingerprintMode: String, CaseIterable, Sendable {
     ///
     /// No iOS device has ever reported this, and on iOS none is expected to:
     /// the statuses that fail the synchronizable add fail the local one too.
-    /// It is reachable on macOS, where `kSecAttrSynchronizable` selects the
-    /// Keychain backend rather than an attribute of the item — see
-    /// ``KeychainDeviceFingerprintStorage`` and iOS#1037. Do not read its
-    /// absence from the fleet as proof the case is dead; read it as the fleet
-    /// being iOS.
+    /// It is reachable in an unentitled macOS process, where
+    /// `kSecAttrSynchronizable` selects the Keychain backend rather than an
+    /// attribute of the item — see ``KeychainDeviceFingerprintStorage`` and
+    /// iOS#1037. That is `swift test`, not a signed build: read its absence
+    /// from the fleet as the fleet being entitled, not as the case being dead.
     case local
 
     /// No fingerprint could be resolved at all. The `X-Device-Fingerprint`
@@ -303,25 +303,28 @@ public struct KeychainDeviceFingerprintStorage: DeviceFingerprintStorage {
     /// costs one call on a path that is already failing, not because it has
     /// ever salvaged a write.
     ///
-    /// That last paragraph is **iOS-only, and iOS#1035 failed to say so.** On
-    /// macOS `kSecAttrSynchronizable` is not merely an attribute of the item —
-    /// it selects the backend. `true` routes the item to the data-protection
-    /// Keychain, which requires an `application-identifier` entitlement, while
-    /// an item without the flag lands in the file-based login Keychain, which
-    /// requires none. So in an unentitled macOS process the synchronizable add
-    /// fails with `-34018` and the local add succeeds, order-independently.
-    /// There the fallback does salvage the write, and `local` is the correct,
-    /// reachable outcome rather than a mode nothing can produce.
+    /// That paragraph is iOS-only. On macOS `kSecAttrSynchronizable` selects
+    /// the Keychain backend rather than an attribute of the item, so the
+    /// synchronizable add can fail where the local one succeeds and this
+    /// fallback does salvage the write — making `local` a correct, reachable
+    /// outcome there rather than a mode nothing can produce.
+    /// `KeychainTokenStorage.save()` holds the canonical account of the
+    /// mechanism, and `KeychainPlatformAsymmetryTests` makes the host's add
+    /// regime executable — but nothing there touches THIS function. The
+    /// coverage for this branch is `DeviceFingerprintTests`' "Sync add failure
+    /// falls back to non-synchronizable add", by injected
+    /// `MockKeychainOperations`; that is the test to look for before changing
+    /// the code below.
     ///
-    /// Every row of `fingerprint_mode_resolved_event` is from iOS, so the
-    /// fleet evidence that no device resolves `local` never had the power to
-    /// observe the platform where it can. Keep that in mind before reading
-    /// "294 synchronizable, zero local" as a statement about this branch in
-    /// general — it is a statement about iOS. It matters for the native macOS
-    /// target, where a locally-signed build carries no `application-identifier`.
-    /// `KeychainPlatformAsymmetryTests` in `KeychainTokenStorageTests.swift`
-    /// asserts the taxonomy for the sibling storage; iOS#1037 carries the
-    /// open question of whether either branch should survive.
+    /// Every row of `fingerprint_mode_resolved_event` is from iOS, so "294
+    /// synchronizable, zero local" is a statement about iOS, not about this
+    /// branch in general — that evidence never had the power to observe the
+    /// process where the branch fires. Do not over-read that either: the
+    /// process it fires in is an unentitled one, and `WXYC.entitlements`
+    /// declares `keychain-access-groups`, so a signed macOS/Catalyst build is
+    /// entitled and takes the synchronizable add like any iOS device. Expect
+    /// no `local` rows from the macOS target unless its signing changes.
+    /// iOS#1037 carries the open question of whether either branch survives.
     ///
     /// Reinstall survival is real, but it belongs to neither branch: keychain
     /// items outlive app deletion regardless of `kSecAttrSynchronizable`.

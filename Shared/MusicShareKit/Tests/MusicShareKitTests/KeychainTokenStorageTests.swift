@@ -19,6 +19,22 @@ import Testing
 private let testService = "org.wxyc.app.auth.test"
 private let testAccount = "anonymous-session-test"
 
+/// Removes every generic-password item at `service`/`account`, synchronizable
+/// or not.
+///
+/// One delete is enough: `kSecAttrSynchronizableAny` spans both kinds, which is
+/// exactly what `KeychainPlatformAsymmetryTests` asserts on the read side. This
+/// matches `DeviceFingerprintTests`' `deleteRealKeychainFingerprint`, the other
+/// real-Keychain cleanup in this target.
+private func deleteKeychainItems(service: String, account: String) {
+    SecItemDelete([
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: service,
+        kSecAttrAccount as String: account,
+        kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
+    ] as CFDictionary)
+}
+
 @Suite("KeychainTokenStorage Tests", .serialized)
 struct KeychainTokenStorageTests {
 
@@ -54,15 +70,14 @@ struct KeychainTokenStorageTests {
     //    devices".
     //
     //    One qualification, added by iOS#1037 and easy to miss: on the macOS
-    //    host the *synchronizable* add does NOT pass. `kSecAttrSynchronizable
-    //    = true` routes the item to the data-protection Keychain, which does
-    //    need an `application-identifier` entitlement, so it fails -34018 here
-    //    just as it does in the Simulator. The two `synchronizable: true`
-    //    tests below pass only because `save()` retries the add without the
-    //    flag, and that retry lands in the login Keychain. Delete the retry
-    //    and they go red on the macOS host while staying skipped in the
-    //    Simulator. `KeychainPlatformAsymmetryTests` at the bottom of this
-    //    file asserts that taxonomy directly.
+    //    host the *synchronizable* add does NOT pass — it needs an
+    //    `application-identifier` entitlement there just as it does in the
+    //    Simulator. The two `synchronizable: true` save tests below pass only
+    //    because `save()` retries without the flag, and that retry lands in
+    //    the login Keychain. Delete the retry and they go red on the macOS
+    //    host while staying skipped in the Simulator. `save()` explains the
+    //    mechanism; `KeychainPlatformAsymmetryTests`, at the bottom of this
+    //    file, asserts it.
     //
     // Which CI path these traits affect is easy to get backwards, so, exactly:
     //
@@ -142,19 +157,17 @@ struct KeychainTokenStorageTests {
         )
 
         // The assertions below pass whichever add succeeded, so this test on
-        // its own does not establish which branch ran — that is why iOS#1035
-        // renamed it off the fallback. What iOS#1035 then got wrong was the
-        // reason: it said no host reaches the fallback, when on the macOS host
-        // this runs on, every `synchronizable: true` save reaches it (the sync
-        // add fails -34018; the retry succeeds). The test is under-specified,
-        // not covering a dead branch.
+        // its own does not establish which branch ran — hence its name. It is
+        // under-specified, not covering a dead branch: on the macOS host it
+        // runs on, every `synchronizable: true` save does reach the retry (the
+        // sync add fails -34018, the retry succeeds).
         //
-        // `KeychainPlatformAsymmetryTests` is where that is pinned down, and
-        // it needs no seam to do it: it asserts the item this save leaves
-        // behind is matched by a non-synchronizable-only query, which is true
-        // only if the retry wrote it. `DeviceFingerprintTests`' "Sync add
-        // failure falls back to non-synchronizable add" covers the sibling
-        // storage's branch by injection, via `MockKeychainOperations`.
+        // `KeychainPlatformAsymmetryTests` pins that down, and needs no seam
+        // to do it: it asserts the item this save leaves behind is matched by
+        // a non-synchronizable-only query, which is true only if the retry
+        // wrote it. `DeviceFingerprintTests`' "Sync add failure falls back to
+        // non-synchronizable add" covers the sibling storage's branch by
+        // injection, via `MockKeychainOperations`.
         let storage = makeStorage(synchronizable: true)
         try storage.save(session)
 
@@ -326,25 +339,9 @@ struct KeychainTokenStorageTests {
     }
 
     private func deleteAllTestKeychainItems() {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: testService,
-            kSecAttrAccount as String: testAccount,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
-        ]
-        SecItemDelete(query as CFDictionary)
-
-        // Also delete non-synchronizable items (queries without kSecAttrSynchronizable
-        // won't match synchronizable items and vice versa)
-        let nonSyncQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: testService,
-            kSecAttrAccount as String: testAccount
-        ]
-        SecItemDelete(nonSyncQuery as CFDictionary)
+        deleteKeychainItems(service: testService, account: testAccount)
     }
 }
-
 
 // MARK: - Platform Asymmetry
 
@@ -354,13 +351,15 @@ private let regimeAccount = "anonymous-session-regime"
 /// How this host's Keychain answers the two adds `KeychainTokenStorage.save()`
 /// makes, probed once against a throwaway service.
 ///
-/// Exists because iOS#1035 concluded — from iOS-only fleet data — that "the
-/// statuses that break a synchronizable add reject the local add identically,
-/// because `kSecAttrSynchronizable` is not the attribute being rejected", and
-/// wrote that into both storages' comments unscoped. It is true on iOS and
-/// false on macOS, where the flag selects the Keychain backend rather than an
-/// attribute of the item. Probing beats asserting a platform here: the regime
-/// depends on the running process's entitlements, not on `#if os(...)`.
+/// Probed rather than assumed: the regime follows the running process's
+/// entitlements, not its platform, so `#if os(...)` would classify the host
+/// wrongly wherever the two diverge — an entitled macOS app and an unentitled
+/// `swift test` process are the same OS and different regimes.
+///
+/// It exists because "the statuses that break a synchronizable add reject the
+/// local add identically" holds on iOS and fails on macOS, where the flag
+/// selects the Keychain backend rather than an attribute of the item. See
+/// `KeychainTokenStorage.save()` for the mechanism (iOS#1035, iOS#1037).
 private enum HostKeychainAdds {
 
     /// The two statuses, and the three regimes they can form.
@@ -368,24 +367,54 @@ private enum HostKeychainAdds {
         let sync: OSStatus
         let local: OSStatus
 
-        /// An entitled process. The retry never runs.
+        /// An entitled process: both adds land, so the retry never runs.
+        ///
+        /// This is every shipping build, on every platform — an iOS device
+        /// (the 294-device fleet in `save()`'s comment) and equally a signed
+        /// macOS/Catalyst build, which carries an `application-identifier` by
+        /// way of `keychain-access-groups` in `WXYC.entitlements`.
         var bothSucceed: Bool { sync == errSecSuccess && local == errSecSuccess }
 
-        /// iOS's regime, including the iOS Simulator's test bundle: whatever
-        /// rejects the synchronizable add rejects the local one the same way,
-        /// so the retry cannot salvage the write.
-        var bothFailAlike: Bool { sync != errSecSuccess && local == sync }
+        /// One Keychain, and it rejected both adds — so the retry cannot
+        /// salvage the write. The unentitled iOS Simulator test bundle, where
+        /// both fail `errSecMissingEntitlement`.
+        ///
+        /// Deliberately not `local == sync`. That the two statuses are equal
+        /// is an iOS observation, not the property being classified: a locked
+        /// login Keychain on a headless runner answers -34018 and -25308, and
+        /// that is this regime for every purpose the taxonomy serves.
+        var retryCannotHelp: Bool { sync != errSecSuccess && local != errSecSuccess }
 
-        /// An unentitled macOS process, which is what `swift test` runs in.
-        /// The retry is the only reason the write lands.
+        /// Split backends, and only the local one is reachable: an unentitled
+        /// macOS process, which is what `swift test` runs in. The retry is the
+        /// only reason the write lands.
         var onlyLocalSucceeds: Bool { sync != errSecSuccess && local == errSecSuccess }
+
+        /// Whether this host is one of the three regimes above. `false` means
+        /// this file's account of the Keychain is incomplete — see
+        /// `hostRegimeIsClassified`.
+        ///
+        /// Total except `(success, failure)`: a synchronizable add that lands
+        /// where a local one is refused inverts the mechanism documented in
+        /// `save()`, and deserves to fail loudly rather than be absorbed.
+        var isClassified: Bool { bothSucceed || retryCannotHelp || onlyLocalSucceeds }
+
+        /// Whether a local-only item can be written here at all. The
+        /// precondition for any test that needs one to match against.
+        var canWriteLocalItem: Bool { local == errSecSuccess }
     }
 
     /// Probed once per process. `static let` is lazy and thread-safe, and the
     /// probe writes only to a UUID-suffixed service it then deletes, so it
     /// cannot collide with either suite's items.
     static let regime: Regime = {
-        let service = "\(regimeService).probe.\(UUID().uuidString)"
+        // Fixed, not UUID-suffixed. A UUID would put every probe outside both
+        // of this file's fixed-name sweeps, so a process killed between the
+        // adds and the delete below would orphan an item that no later run
+        // could find by name. A fixed name is self-healing: the pre-sweep
+        // clears any such leftover, which also preserves the meaning of an
+        // errSecDuplicateItem result rather than masking it.
+        let service = "\(regimeService).probe"
 
         func attributes(synchronizable: Bool) -> [String: Any] {
             var attributes: [String: Any] = [
@@ -401,17 +430,16 @@ private enum HostKeychainAdds {
             return attributes
         }
 
+        // Sweep before as well as after, so a leftover from a killed run
+        // cannot answer errSecDuplicateItem and be read as a regime.
+        deleteKeychainItems(service: service, account: regimeAccount)
+
         // Synchronizable first, matching `save()`. The outcome does not depend
         // on the order, but matching it keeps the probe honest.
         let sync = SecItemAdd(attributes(synchronizable: true) as CFDictionary, nil)
         let local = SecItemAdd(attributes(synchronizable: false) as CFDictionary, nil)
 
-        SecItemDelete([
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: regimeAccount,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
-        ] as CFDictionary)
+        deleteKeychainItems(service: service, account: regimeAccount)
 
         return Regime(sync: sync, local: local)
     }()
@@ -442,12 +470,14 @@ struct KeychainPlatformAsymmetryTests {
     func hostRegimeIsClassified() {
         let regime = HostKeychainAdds.regime
         #expect(
-            regime.bothSucceed || regime.bothFailAlike || regime.onlyLocalSucceeds,
+            regime.isClassified,
             """
             Unclassified Keychain regime: synchronizable add returned \(regime.sync), \
-            local add returned \(regime.local). The three known regimes are an entitled \
-            process (both succeed), iOS (both fail with the same status), and an \
-            unentitled macOS process (sync fails, local succeeds). See iOS#1037.
+            local add returned \(regime.local). The axis is the process's entitlements, \
+            not its platform. The three known regimes are: entitled (both succeed); \
+            unentitled with one Keychain, i.e. the iOS Simulator bundle (both fail); \
+            unentitled with split backends, i.e. an unentitled macOS process (sync \
+            fails, local succeeds). See iOS#1037.
             """
         )
     }
@@ -483,17 +513,31 @@ struct KeychainPlatformAsymmetryTests {
             synchronizable: true,
             analytics: mockAnalytics
         )
+
+        // Assert the pre-state, or this test can pass without the retry ever
+        // running. `save()` tries `SecItemUpdate` over `baseQuery()` first,
+        // and that query carries `kSecAttrSynchronizableAny` — so a stale
+        // local-only item at this service would be UPDATED, `save()` would
+        // return before reaching either add, and the non-synchronizable query
+        // below would still find it. `init()`'s sweep is what normally
+        // guarantees this, but it discards its `SecItemDelete` status, so a
+        // silent sweep failure would otherwise leave this guard green forever.
+        var preState = baseRegimeQuery()
+        preState[kSecAttrSynchronizable as String] = kSecAttrSynchronizableAny
+        #expect(
+            SecItemCopyMatching(preState as CFDictionary, nil) == errSecItemNotFound,
+            "Stale item at \(regimeService): save() would take the SecItemUpdate path and this test would not exercise the retry at all."
+        )
+
         try storage.save(session)
 
-        var query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: regimeService,
-            kSecAttrAccount as String: regimeAccount,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
+        // `false`, not `kSecAttrSynchronizableAny`: this has to match ONLY the
+        // non-synchronizable item, which is what makes the retry the thing
+        // being proved rather than merely the thing that happened to run.
+        var query = baseRegimeQuery()
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         query[kSecAttrSynchronizable as String] = false
-
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         #expect(status == errSecSuccess, "Non-synchronizable query did not find the saved session (status \(status)); save()'s retry is not what wrote it.")
@@ -514,7 +558,7 @@ struct KeychainPlatformAsymmetryTests {
     @Test(
         "kSecAttrSynchronizableAny matches a non-synchronizable item",
         .disabled(
-            if: HostKeychainAdds.regime.local != errSecSuccess,
+            if: !HostKeychainAdds.regime.canWriteLocalItem,
             "Host cannot write a non-synchronizable item, so there is nothing to match."
         )
     )
@@ -552,17 +596,18 @@ struct KeychainPlatformAsymmetryTests {
         deleteRegimeItems()
     }
 
-    private func deleteRegimeItems() {
-        SecItemDelete([
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: regimeService,
-            kSecAttrAccount as String: regimeAccount,
-            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
-        ] as CFDictionary)
-        SecItemDelete([
+    /// Class, service and account for the asymmetry suite's items. Callers add
+    /// the `kSecAttrSynchronizable` value they mean — which is the whole point
+    /// here, so it is deliberately absent rather than defaulted.
+    private func baseRegimeQuery() -> [String: Any] {
+        [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: regimeService,
             kSecAttrAccount as String: regimeAccount
-        ] as CFDictionary)
+        ]
+    }
+
+    private func deleteRegimeItems() {
+        deleteKeychainItems(service: regimeService, account: regimeAccount)
     }
 }
