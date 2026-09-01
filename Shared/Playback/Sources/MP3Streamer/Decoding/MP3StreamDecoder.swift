@@ -21,12 +21,18 @@ import Logger
 import Synchronization
 
 /// Errors that can occur during MP3 decoding
-public enum MP3DecoderError: Error, Sendable {
+package enum MP3DecoderError: Error, Sendable {
     case converterCreationFailed(OSStatus)
     case conversionFailed(OSStatus)
     case invalidFormat
     case bufferAllocationFailed
-    case audioFileStreamError(OSStatus)
+    /// `AudioFileStreamOpen` failed, so the stream never had a parser at all.
+    case audioFileStreamOpenFailed(OSStatus)
+    /// `AudioFileStreamParseBytes` returned a fatal status for a chunk of the feed.
+    case audioFileStreamParseFailed(OSStatus)
+    /// The data-format property could not be read, so `setUpConverter` never ran and
+    /// `converter` stays nil for the life of the decoder — the #1025 state.
+    case audioFileStreamPropertyReadFailed(OSStatus)
     /// The undecoded packet backlog reached ``MP3StreamDecoder/maxBufferedByteCount``
     /// and was dropped. Distinct from the other cases because it reports a decoder that
     /// is accumulating faster than it drains rather than a single failed operation: the
@@ -38,31 +44,39 @@ public enum MP3DecoderError: Error, Sendable {
 extension MP3DecoderError {
     /// Case identity, independent of associated values.
     ///
-    /// The key ``MP3Streamer``'s forwarding throttle counts against, so a flood of one
-    /// failure kind cannot mask the first occurrence of another.
-    enum Kind: String, Sendable {
+    /// The key ``MP3Streamer``'s forwarding throttle counts against. The three
+    /// `AudioFileStream` failures are deliberately separate kinds rather than one:
+    /// nothing resets `audioFileStream` after a bad parse, so a parse failure repeats
+    /// once per HTTP chunk for the rest of the session. Sharing a kind with the
+    /// property-read failure would let that flood throttle away the nil-converter signal
+    /// this issue exists to surface — the one failure here we most need to hear about.
+    package enum Kind: String, Sendable {
         case converterCreationFailed
         case conversionFailed
         case invalidFormat
         case bufferAllocationFailed
-        case audioFileStreamError
+        case audioFileStreamOpenFailed
+        case audioFileStreamParseFailed
+        case audioFileStreamPropertyReadFailed
         case backlogOverflow
     }
 
-    var kind: Kind {
+    package var kind: Kind {
         switch self {
         case .converterCreationFailed: return .converterCreationFailed
         case .conversionFailed: return .conversionFailed
         case .invalidFormat: return .invalidFormat
         case .bufferAllocationFailed: return .bufferAllocationFailed
-        case .audioFileStreamError: return .audioFileStreamError
+        case .audioFileStreamOpenFailed: return .audioFileStreamOpenFailed
+        case .audioFileStreamParseFailed: return .audioFileStreamParseFailed
+        case .audioFileStreamPropertyReadFailed: return .audioFileStreamPropertyReadFailed
         case .backlogOverflow: return .backlogOverflow
         }
     }
 }
 
 extension MP3DecoderError: LocalizedError {
-    /// Names the case and carries its `OSStatus`.
+    /// Names the failure and carries its `OSStatus`.
     ///
     /// Load-bearing rather than cosmetic: ``StreamErrorEvent`` has no free-form context
     /// dictionary, so `error_description` — sourced from `localizedDescription` — is the
@@ -70,8 +84,15 @@ extension MP3DecoderError: LocalizedError {
     /// returned. Without this conformance a bare Swift error bridges to "The operation
     /// couldn't be completed. (MP3StreamerModule.MP3DecoderError error 4.)", which encodes
     /// the case *ordinal* — a number that silently changes meaning the next time anyone
-    /// reorders the enum — and drops the status entirely. See #1036.
-    public var errorDescription: String? {
+    /// reorders the enum — and drops the status entirely.
+    ///
+    /// Every value interpolated here must be LOW CARDINALITY. This string reaches Sentry
+    /// as part of the grouping key and PostHog as a property value, so an unbounded number
+    /// in it fragments one issue into one issue per value. `OSStatus` is a small closed set
+    /// of AudioToolbox codes and is fine; `backlogOverflow`'s byte and packet counts are
+    /// not, and deliberately stay out of the description — they already ride in
+    /// `additionalData`, which is not part of the grouping key.
+    package var errorDescription: String? {
         switch self {
         case .converterCreationFailed(let status):
             return "MP3 decoder could not create its audio converter (OSStatus \(status))"
@@ -81,10 +102,14 @@ extension MP3DecoderError: LocalizedError {
             return "MP3 decoder received an unusable stream format"
         case .bufferAllocationFailed:
             return "MP3 decoder could not allocate its PCM output buffer"
-        case .audioFileStreamError(let status):
-            return "MP3 decoder's AudioFileStream failed (OSStatus \(status))"
-        case .backlogOverflow(let droppedBytes, let droppedPackets):
-            return "MP3 decoder dropped its packet backlog (\(droppedBytes) bytes / \(droppedPackets) packets)"
+        case .audioFileStreamOpenFailed(let status):
+            return "MP3 decoder could not open its AudioFileStream (OSStatus \(status))"
+        case .audioFileStreamParseFailed(let status):
+            return "MP3 decoder hit a fatal AudioFileStream parse error (OSStatus \(status))"
+        case .audioFileStreamPropertyReadFailed(let status):
+            return "MP3 decoder could not read its AudioFileStream data format (OSStatus \(status))"
+        case .backlogOverflow:
+            return "MP3 decoder dropped its packet backlog"
         }
     }
 }
@@ -332,7 +357,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
             )
 
             guard status == noErr, let fileStream = stream else {
-                errorContinuation.yield(MP3DecoderError.audioFileStreamError(status))
+                errorContinuation.yield(MP3DecoderError.audioFileStreamOpenFailed(status))
                 return
             }
 
@@ -350,13 +375,20 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 bytes,
                 []
             )
-            if status != noErr && status != kAudioFileStreamError_NotOptimized {
-                // NotOptimized is not fatal for streaming. Every other non-`noErr` status
-                // is, and used to die in this body when its only content was the comment
-                // above — no yield, no log, no report. See #1036.
-                errorContinuation.yield(MP3DecoderError.audioFileStreamError(status))
-            }
+            reportParseStatus(status)
         }
+    }
+
+    /// Reports a fatal `AudioFileStreamParseBytes` status.
+    ///
+    /// Extracted from the parse loop so it can be tested directly: whether AudioToolbox
+    /// returns a fatal status for any particular byte payload is its business, not
+    /// something a test can force, and this branch used to be an `if` body whose only
+    /// content was a comment. `kAudioFileStreamError_NotOptimized` is not fatal for
+    /// streaming and is the one non-`noErr` status that must stay silent.
+    func reportParseStatus(_ status: OSStatus) {
+        guard status != noErr, status != kAudioFileStreamError_NotOptimized else { return }
+        errorContinuation.yield(MP3DecoderError.audioFileStreamParseFailed(status))
     }
 
     private func handlePropertyChange(propertyID: AudioFileStreamPropertyID) {
@@ -377,7 +409,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
             // A bare `return` here leaves `converter` nil for the life of the decoder —
             // the same state #1025 was filed about, reached with no signal of any kind.
             // See #1036.
-            errorContinuation.yield(MP3DecoderError.audioFileStreamError(status))
+            errorContinuation.yield(MP3DecoderError.audioFileStreamPropertyReadFailed(status))
             return
         }
 
@@ -527,9 +559,15 @@ final class MP3StreamDecoder: @unchecked Sendable {
         Log(.error, category: .playback, "MP3StreamDecoder[\(instanceID)] dropping backlog: \(droppedBytes) bytes / \(droppedPackets) packets discarded, \(incomingDisposition), against the \(Self.maxBufferedByteCount)-byte cap (converter \(hasConverter ? "present" : "absent"), overflow #\(overflowCount))")
         errorContinuation.yield(error)
 
-        // The log line and the error-stream yield above stay per-occurrence: the yield is a
-        // bounded in-memory buffer, and one log line per 4 MB of stream is a rate the log
+        // The log line stays per-occurrence: one line per 4 MB of stream is a rate the log
         // file can carry and a bug report wants. Only the network-bound report is throttled.
+        //
+        // The `errorStream` yield above is NOT a reporting surface. `errorStream` now has a
+        // consumer, and `MP3Streamer.handleDecoderError` discards this case unconditionally
+        // — overflow reaches Sentry and PostHog through the `ErrorReporting.shared` call
+        // below and nowhere else, so one occurrence is counted once (#1036). The yield is
+        // kept purely as an in-process signal for tests and for anything that wants to
+        // observe drops without going through analytics.
         //
         // An `if`, never an early `return`: the buffer clear below is what actually enforces
         // the cap, and a throttled overflow must still drop its backlog.
@@ -802,7 +840,14 @@ final class MP3StreamDecoder: @unchecked Sendable {
     /// Yields `error` on ``errorStream`` from the decoder queue, exactly as the decoder's
     /// own failure sites do.
     ///
-    /// A test seam, and deliberately the *only* one this issue adds. None of the three
+    /// A test seam. Note this one is not equivalent in risk to `bufferState` or
+    /// `deliverSyntheticPackets`: those only read state or feed the decoder, whereas this
+    /// fabricates an error into the real Sentry and PostHog path, so a production caller
+    /// would poison the very telemetry this exists to make trustworthy. It stays ungated
+    /// because it is internal to a non-product target and no production code can reach it,
+    /// not because fabricating telemetry is harmless.
+    ///
+    /// None of the three
     /// silent failures is forceable through the real API: `AudioFileStreamOpen` is called
     /// with fixed valid arguments, `AudioConverterNew` fails only on a format parsed out of
     /// real MP3 bytes inside a private callback, and the 4096-frame `AVAudioPCMBuffer`
