@@ -43,11 +43,11 @@ enum PlaylistServiceEnvironmentDefault {
     /// disk cache and decodes no `Playlist`; loading, fetching, and polling all
     /// begin on first *use* (`waitForCacheLoad()` or `updates()`), which
     /// nothing on this path ever calls, so the shadow sits inert once built.
-    /// It still resolves `PlaylistAPIVersion.loadActive()` — a
-    /// `UserDefaults.wxyc` read plus a PostHog flag lookup — and still builds a
-    /// `PlaylistFetcher(apiVersion:)`, which constructs a data source and
+    /// It still builds a `PlaylistFetcher`, which constructs a data source and
     /// touches the shared error-reporting and analytics singletons through its
-    /// default arguments. Making those lazy is a further step nobody has taken.
+    /// default arguments. (The `UserDefaults.wxyc` read and PostHog flag lookup
+    /// that used to happen here went with the v1 path — #262.) Making the rest
+    /// lazy is a further step nobody has taken.
     ///
     /// Still a single `static let`, deliberately, rather than a computed
     /// `defaultValue`: SwiftUI reads `EnvironmentKey.defaultValue` afresh on

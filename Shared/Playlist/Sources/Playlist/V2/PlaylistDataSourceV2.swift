@@ -29,11 +29,11 @@ extension URL {
 /// ~20 entries and reorders move rows by one or two places; worth knowing
 /// before anyone builds pagination on top of the displayed order.
 ///
-/// `repairsMojibake` is left at its `false` default: unlike the legacy v1
-/// tubafrenzy server, api.wxyc.org has never exhibited the UTF-8-as-Latin-1
-/// double-encoding bug `Data.repairingMojibake()` exists to correct, so this
-/// data source deliberately does not apply it. If that ever changes, add
-/// `repairsMojibake: true` here rather than reaching for a new mechanism.
+/// This data source applies no encoding repair. The legacy v1 tubafrenzy server
+/// double-encoded UTF-8 as Latin-1 and needed one; api.wxyc.org never has, and
+/// the repair went with the v1 path (#262). `PlaylistDataSourceV2Tests`
+/// pins that mojibake-shaped text is passed through uncorrected, so a
+/// reintroduced repair would have to break a test rather than slip in.
 public final class PlaylistDataSourceV2: PlaylistDataSource, @unchecked Sendable {
     private let transport: RevalidatingJSONDataSource<FlowsheetResponse>
 

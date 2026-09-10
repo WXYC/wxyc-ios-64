@@ -35,16 +35,14 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             host: AppConfiguration.defaults.posthogHost
         )
         PostHogSDK.shared.setup(config)
-        // Constructed AFTER PostHog setup, deliberately: `PlaylistService.init`
-        // resolves `PlaylistAPIVersion.loadActive()` synchronously, and a
-        // stored-property default runs before this init body — pre-setup,
-        // `getFeatureFlag` returns nil unconditionally, deterministically
-        // pinning every widget process to `defaultVersion`. This fixes the
-        // ordering only: the widget's PostHog flag cache is per-container (no
-        // `appGroupIdentifier` is configured), so it still can't see the main
-        // app's flag values — but per-version cache keys
-        // (`PlaylistCacheKey.playlist(for:)`) keep a v1-resolving widget from
-        // poisoning the app's v2 cache either way.
+        // Constructed after PostHog setup rather than as a stored-property
+        // default. The ordering used to be load-bearing — `PlaylistService.init`
+        // resolved a PostHog-flag-backed API version synchronously, so a
+        // pre-setup construction pinned every widget process to the compiled
+        // default. That flag lookup went with the v1 path (#262), so the
+        // constraint is gone; the placement is kept because the widget's
+        // PostHog flag cache is still per-container (no `appGroupIdentifier`
+        // is configured) and other flag reads may yet follow.
         playlistService = PlaylistService()
     }
 

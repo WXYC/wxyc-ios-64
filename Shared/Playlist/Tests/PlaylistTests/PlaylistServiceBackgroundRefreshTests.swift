@@ -28,15 +28,9 @@ struct PlaylistServiceBackgroundRefreshTests {
             .stub(songTitle: "Old Song", artistName: "Old Artist", releaseTitle: nil)
         ])
 
-        // Cache keys are version-scoped (`PlaylistCacheKey.playlist(for:)`), so
-        // the seed and the service must agree on a version or the service reads
-        // a key this test never wrote. Pinned explicitly, and derived from one
-        // constant, so neither can drift onto `PlaylistAPIVersion.defaultVersion`.
-        let apiVersion = PlaylistAPIVersion.v2
-
         await cacheCoordinator.set(
             value: oldPlaylist,
-            for: PlaylistCacheKey.playlist(for: apiVersion),
+            for: PlaylistCacheKey.playlist,
             lifespan: 15 * 60
         )
 
@@ -49,15 +43,14 @@ struct PlaylistServiceBackgroundRefreshTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator,
-            apiVersion: apiVersion
+            cacheCoordinator: cacheCoordinator
         )
 
         // When - Background refresh fetches (should ignore cache)
         let fetched = await service.fetchAndCachePlaylist()
 
         // Then - Cache should be updated with new data
-        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist(for: apiVersion))
+        let cached: Playlist = try await cacheCoordinator.value(for: PlaylistCacheKey.playlist)
         #expect(cached.playcuts.first?.songTitle == "New Song")
         #expect(cached.playcuts.first?.songTitle != "Old Song")
         #expect(fetched.playcuts.first?.songTitle == "New Song")
@@ -76,11 +69,10 @@ struct PlaylistServiceBackgroundRefreshTests {
         // what gives the test its premise. If the seed lands under a key the
         // service never reads, "valid cache present" is not actually set up and
         // the assertion below passes vacuously.
-        let apiVersion = PlaylistAPIVersion.v2
 
         await cacheCoordinator.set(
             value: cachedPlaylist,
-            for: PlaylistCacheKey.playlist(for: apiVersion),
+            for: PlaylistCacheKey.playlist,
             lifespan: 15 * 60
         )
 
@@ -90,8 +82,7 @@ struct PlaylistServiceBackgroundRefreshTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator,
-            apiVersion: apiVersion
+            cacheCoordinator: cacheCoordinator
         )
     
         // When - Background refresh

@@ -89,12 +89,11 @@ struct PlaylistServiceMetadataTransitionsTests {
         ])
         // Cache keys are version-scoped, and this test's whole premise is a warm
         // cache, so the seed and the service must agree on a version. Derived
-        // from one constant rather than left to `PlaylistAPIVersion.defaultVersion`
+        // from one constant
         // — a mismatch here doesn't fail loudly, it hangs: the warm window is
         // never found, `updates()` never yields, and the iterator blocks until
         // the time limit.
-        let apiVersion = PlaylistAPIVersion.v2
-        await coordinator.set(value: cachedEnriched, for: PlaylistCacheKey.playlist(for: apiVersion), lifespan: 15 * 60)
+        await coordinator.set(value: cachedEnriched, for: PlaylistCacheKey.playlist, lifespan: 15 * 60)
 
         let mockFetcher = MockPlaylistFetcher()
         // First fetch: same enriched window plus a brand-new pending row.
@@ -105,8 +104,7 @@ struct PlaylistServiceMetadataTransitionsTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 0.05,
-            cacheCoordinator: coordinator,
-            apiVersion: apiVersion
+            cacheCoordinator: coordinator
         )
 
         var transitions = service.terminalMetadataTransitions().makeAsyncIterator()

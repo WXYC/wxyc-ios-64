@@ -14,8 +14,8 @@
 //  ("a URLProtocol's registration is by class, so its state is shared") with
 //  different routing keys, and the choice is load-bearing here: this file's
 //  state is keyed by *request URL*, which lets `FlowsheetLiveEventSourceTests`,
-//  `PlaylistDataSourceV1Tests`, and `PlaylistDataSourceV2Tests` each stub
-//  their own distinct URL (`URL.WXYCPlaylist`, `URL.WXYCFlowsheet`, ...) and
+//  and `PlaylistDataSourceV2Tests` each stub
+//  their own distinct URL (`URL.WXYCFlowsheet`, ...) and
 //  run as three independent, non-`.serialized`-with-each-other adopters in
 //  the same bundle. `QueuedStubURLProtocol` keys by a single global
 //  handler/queue instead, so it caps a bundle at one adopting suite (see its

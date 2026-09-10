@@ -3,8 +3,8 @@
 //  WXYC
 //
 //  Runtime gate for the external critic-reviews card in PlaycutDetailView
-//  (ADR 0012). Mirrors the RequestLineAuthFeature / PlaylistAPIVersion feature
-//  pattern: a debug override wins, then Debug builds default on (so dev and
+//  (ADR 0012). Mirrors the RequestLineAuthFeature pattern: a debug override
+//  wins, then Debug builds default on (so dev and
 //  TestFlight always render for testing), then the PostHog flag decides — and
 //  it defaults OFF, so a Release/App Store build stays dark until the flag is
 //  deliberately ramped from the PostHog dashboard (and can be killed the same

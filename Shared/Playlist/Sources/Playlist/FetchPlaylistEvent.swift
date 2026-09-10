@@ -20,9 +20,11 @@ import Foundation
 /// so per-variant success rate is computable by breaking down on `api_version`
 /// and `succeeded` (WXYC/wxyc-ios-64#414, #415).
 ///
-/// `apiVersion` is stored as a `String` (its `PlaylistAPIVersion.rawValue`)
-/// because the macro emits stored properties verbatim, without calling
-/// `.rawValue` on an enum.
+/// `apiVersion` is stored as a `String`. It was an enum's `rawValue` until the
+/// v1 path was removed (#262); it is now the constant
+/// `PlaylistFetcher.apiVersionTag`, kept on the wire so the `api_version`
+/// breakdown still separates this build from the App Store builds through 3.2
+/// that report `v1`.
 @AnalyticsEvent
 struct FetchPlaylistEvent {
     let duration: TimeInterval

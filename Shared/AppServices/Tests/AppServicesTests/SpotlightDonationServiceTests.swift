@@ -273,13 +273,12 @@ struct SpotlightDonationServiceTests {
 
     // MARK: - The watermark rides `id`, not the ordering key (#839)
 
-    @Test("A v2 tick followed by a v1 tick still donates, though their chronOrderID scales differ by nine orders of magnitude")
+    @Test("A v2 tick followed by an id-scale tick still donates, though their chronOrderID scales differ by nine orders of magnitude")
     func watermarkSurvivesAnAPIVersionFallback() async {
-        // `PlaylistAPIVersion.defaultVersion` is `.v2`, but a single install
-        // still sees both scales: the `playlist_api_version` flag can pull a
-        // build back to v1 as a kill switch, the debug panel can pin either
-        // version, and an upgrade from 3.1 inherits what v1 already persisted.
-        // v1 decodes `chronOrderID` straight out of tubafrenzy's
+        // This build only ever reads v2 (#262), but a single install can still
+        // hold both scales: an upgrade from any build through 3.2 inherits
+        // whatever the v1 path already persisted. The v1 feed carried
+        // `chronOrderID` straight out of tubafrenzy's
         // JSON, where it is the row id; v2 derives the packed composite, nine
         // orders of magnitude up (see `donatedThroughIDKey`'s doc). One
         // persisted watermark serves both and only ever moves up, so keying

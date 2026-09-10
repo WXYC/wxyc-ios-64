@@ -20,8 +20,6 @@ import WXUI
 #if DEBUG
 public struct VisualizerDebugView: View {
     @Bindable var visualizer: VisualizerDataSource
-    @State private var selectedAPIVersion: PlaylistAPIVersion = .loadActive()
-    @State private var skipNextAPIVersionPersist = false
     @State private var selectedPlayerType: PlayerControllerType = .loadPersisted()
     @State private var skipNextPlayerTypePersist = false
     @State private var selectedHLSEnvironment: HLSEnvironment = .loadActive()
@@ -58,13 +56,12 @@ public struct VisualizerDebugView: View {
     /// Footer for the Playlist API section: the selected version's own blurb,
     /// plus what the fetch-error row means and the two ways it can mislead.
     ///
-    /// The reset caveat is not incidental — the version picker directly above
-    /// this row is what triggers it, so a reader who flips the picker and sees
-    /// `0` needs to know that is a fresh fetcher, not a healthy one
+    /// The count is per-fetcher and per-launch, so a `0` on a freshly-launched
+    /// app is an absence of evidence rather than evidence of health
     /// (WXYC/wxyc-ios-64#267).
     private var playlistAPIFooter: String {
-        selectedAPIVersion.shortDescription
-            + " Fetch Errors counts playlist fetches that threw and fell back to an empty playlist — the failures the UI hides by keeping the last good data on screen. Cancellations are excluded. The count is per-fetcher and per-launch, so it resets when the API version changes."
+        "api.wxyc.org/flowsheet"
+            + " Fetch Errors counts playlist fetches that threw and fell back to an empty playlist — the failures the UI hides by keeping the last good data on screen. Cancellations are excluded. The count is per-fetcher and per-launch."
     }
 
     /// The fetch-error count, or an em dash before the first sample lands.
@@ -160,35 +157,17 @@ public struct VisualizerDebugView: View {
                         .disabled(cachePurged)
                     }
 
-                    // Playlist API Version
+                    // Playlist API
+                    //
+                    // The version picker that used to head this section went with
+                    // the v1 path (#262): there is one playlist API now, so there
+                    // is nothing to pick between. The fetch-error readout stays —
+                    // it is about the health of the one remaining path, not about
+                    // which path is selected.
                     DebugSection(
                         header: "Playlist API",
                         footer: playlistAPIFooter
                     ) {
-                        LabeledContent("API Version") {
-                            Picker("API Version", selection: $selectedAPIVersion) {
-                                ForEach(PlaylistAPIVersion.allCases) { version in
-                                    Text(version.displayName).tag(version)
-                                }
-                            }
-                            .labelsHidden()
-                        }
-                        .onChange(of: selectedAPIVersion) { _, newValue in
-                            if skipNextAPIVersionPersist {
-                                skipNextAPIVersionPersist = false
-                            } else {
-                                newValue.persist()
-                            }
-                            Task {
-                                await playlistService.switchAPIVersion(to: newValue)
-                            }
-                        }
-                        Button("Use Feature Flag") {
-                            PlaylistAPIVersion.clearOverride()
-                            skipNextAPIVersionPersist = true
-                            selectedAPIVersion = .loadActive()
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
                         LabeledContent("Fetch Errors", value: fetchErrorCountText)
                             .task {
                                 // Polled rather than observed: the count lives

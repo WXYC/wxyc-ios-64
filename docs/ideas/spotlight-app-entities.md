@@ -65,7 +65,7 @@ The closest existing thing to "Playcut in Spotlight" is the launch `NSUserActivi
 
 ### Hard constraints to design around
 
-1. **Client sees only the last 50 entries** via `wxyc.info/playlists/recentEntries?v=2&n=50`. No historical archive endpoint is consumed today. Without a new backend endpoint, the Spotlight index for `PlaycutEntity` grows accretively — only what background refresh has seen since first launch. Multi-year search requires backend work first.
+1. **Client sees only the last 50 entries** via `api.wxyc.org/flowsheet` (it was `wxyc.info/playlists/recentEntries?v=2&n=50` until the v1 path was removed in #262). No historical archive endpoint is consumed today. Without a new backend endpoint, the Spotlight index for `PlaycutEntity` grows accretively — only what background refresh has seen since first launch. Multi-year search requires backend work first.
 2. **`NowPlayingService` is the canonical fan-out point** for "current playcut + artwork." Donation should hang off the same stream so we don't refetch.
 3. **Rotation tracks have longer artwork TTL** (`Playcut.rotation`). Useful as a priority hint.
 4. **No favourites yet.** Personal-relevance ranking is limited to recency + rotation + (eventually) listener behaviour.

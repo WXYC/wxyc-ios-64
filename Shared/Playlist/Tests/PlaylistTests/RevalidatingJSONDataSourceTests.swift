@@ -2,7 +2,7 @@
 //  RevalidatingJSONDataSourceTests.swift
 //  Playlist
 //
-//  Tests for RevalidatingJSONDataSource, the generic transport PlaylistDataSourceV1
+//  Tests for RevalidatingJSONDataSource, the generic transport PlaylistDataSourceV2
 //  and PlaylistDataSourceV2 both delegate to (#769): URL + cache policy + timeout
 //  + status validation + decode, parameterized on the wire Response type and a
 //  Response -> Playlist map.
@@ -15,7 +15,7 @@ import Testing
 import Foundation
 @testable import Playlist
 
-// Serialized for the same reason as PlaylistDataSourceV1Tests/V2Tests: all
+// Serialized for the same reason as PlaylistDataSourceV2Tests: all
 // stub the same CapturingURLProtocol-keyed URL and read it back.
 @Suite("RevalidatingJSONDataSource Tests", .serialized)
 struct RevalidatingJSONDataSourceTests {
@@ -63,31 +63,6 @@ struct RevalidatingJSONDataSourceTests {
         let playlist = try await dataSource.getPlaylist()
         #expect(playlist.playcuts.count == 3)
     }
-
-    @Test("repairsMojibake: true repairs UTF-8-as-Latin-1 corruption before decoding")
-    func repairsMojibakeWhenEnabled() async throws {
-        CapturingURLProtocol.stub(url: Self.testURL, body: mojibakePlaylistBody)
-        let dataSource = RevalidatingJSONDataSource<Playlist>(
-            url: Self.testURL,
-            session: makeSession(),
-            repairsMojibake: true,
-            map: { $0 }
-        )
-
-        let playlist = try await dataSource.getPlaylist()
-        let playcut = try #require(playlist.playcuts.first)
-        #expect(playcut.artistName == "Nilüfer Yanya")
-    }
-
-    @Test("repairsMojibake: false (the default) leaves mojibake-corrupted text uncorrected")
-    func leavesMojibakeUncorrectedByDefault() async throws {
-        CapturingURLProtocol.stub(url: Self.testURL, body: mojibakePlaylistBody)
-        let dataSource = RevalidatingJSONDataSource<Playlist>(url: Self.testURL, session: makeSession(), map: { $0 })
-
-        let playlist = try await dataSource.getPlaylist()
-        let playcut = try #require(playlist.playcuts.first)
-        #expect(playcut.artistName == "NilÃ¼fer Yanya")
-    }
 }
 
 // MARK: - Fixtures
@@ -106,13 +81,5 @@ private func makeSession() -> URLSession {
 
 private let emptyPlaylistBody: Data = {
     let json = #"{"playcuts":[],"breakpoints":[],"talksets":[]}"#
-    return Data(json.utf8)
-}()
-
-private let mojibakePlaylistBody: Data = {
-    // See PlaylistDataSourceV1Tests.mojibakeV1Body for the encoding story.
-    let json = #"""
-    {"playcuts":[{"id":1,"rotation":"false","request":"false","songTitle":"In Your Head","timeCreated":0,"labelName":"ATO Records","hour":0,"artistName":"NilÃ¼fer Yanya","chronOrderID":1,"releaseTitle":"Painless"}],"breakpoints":[],"talksets":[]}
-    """#
     return Data(json.utf8)
 }()

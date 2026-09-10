@@ -29,7 +29,7 @@ struct PlaylistServiceLazyCacheLoadTests {
     /// A previous session's playlist, as the app group's cache would hold it.
     private static let cachedPlaylist = Playlist.stub(playcuts: [.stub()])
 
-    /// A cache coordinator pre-seeded with ``cachedPlaylist`` under `version`'s key.
+    /// A cache coordinator pre-seeded with ``cachedPlaylist`` under the playlist key.
     ///
     /// - Parameter agedOut: When `true`, the entry is aged past the 15-minute
     ///   `PlaylistService.cacheLifespan` it was written with. That is the *normal*
@@ -37,7 +37,6 @@ struct PlaylistServiceLazyCacheLoadTests {
     ///   every 15 minutes — so a test that only ever seeds a live entry exercises the
     ///   rarer of the two.
     private func seededCoordinator(
-        version: PlaylistAPIVersion = .v1,
         cache: Cache = InMemoryCache(),
         agedOut: Bool = false
     ) async -> CacheCoordinator {
@@ -45,7 +44,7 @@ struct PlaylistServiceLazyCacheLoadTests {
         let coordinator = CacheCoordinator(cache: cache, clock: clock)
         await coordinator.set(
             value: Self.cachedPlaylist,
-            for: PlaylistCacheKey.playlist(for: version),
+            for: PlaylistCacheKey.playlist,
             lifespan: 15 * 60
         )
         if agedOut {
@@ -61,8 +60,7 @@ struct PlaylistServiceLazyCacheLoadTests {
         let service = PlaylistService(
             fetcher: MockPlaylistFetcher(),
             interval: 30,
-            cacheCoordinator: CacheCoordinator(cache: countingCache),
-            apiVersion: .v1
+            cacheCoordinator: CacheCoordinator(cache: countingCache)
         )
 
         // Then - construction started nothing. Asserted on the wiring rather than by
@@ -102,8 +100,7 @@ struct PlaylistServiceLazyCacheLoadTests {
         let service = PlaylistService(
             fetcher: fetcher,
             interval: 30,
-            cacheCoordinator: await seededCoordinator(),
-            apiVersion: .v1
+            cacheCoordinator: await seededCoordinator()
         )
 
         // When - subscribe immediately, with no explicit wait for the cache load between.
@@ -148,8 +145,7 @@ struct PlaylistServiceLazyCacheLoadTests {
         let service = PlaylistService(
             fetcher: fetcher,
             interval: 30,
-            cacheCoordinator: await seededCoordinator(),
-            apiVersion: .v1
+            cacheCoordinator: await seededCoordinator()
         )
 
         // When - the very first subscriber attaches, which is the launch path: deferring
@@ -196,37 +192,6 @@ struct PlaylistServiceLazyCacheLoadTests {
     }
 
     @Test(
-        "switchAPIVersion on a service nothing subscribed to still clears the playlist",
-        .timeLimit(.minutes(1))
-    )
-    func switchAPIVersionClearsPlaylistWithoutPriorSubscription() async throws {
-        // Given - a cache holding content under the version being switched *to*, and a
-        // service on .v1 that nothing has ever subscribed to, so no load has run.
-        //
-        // The fetcher fails, so the post-switch fetch cannot supply content and a cache
-        // load is the only thing that could repopulate the playlist.
-        let mockFetcher = MockPlaylistFetcher()
-        mockFetcher.playlistToReturn = .empty
-
-        let service = PlaylistService(
-            fetcher: mockFetcher,
-            interval: 30,
-            cacheCoordinator: await seededCoordinator(version: .v2),
-            apiVersion: .v1
-        )
-
-        // When - switching versions, which clears the playlist to show a loading state
-        // and then fetches fresh data.
-        await service.switchAPIVersion(to: .v2)
-
-        // Then - the clear stands. `switchAPIVersion` documents that it clears the
-        // playlist "to ensure clean data"; that has to hold whether or not anything
-        // happened to subscribe first, rather than depending on a prior subscription
-        // having settled the cache baseline.
-        #expect(await service.currentPlaylistSnapshot().isContentEmpty)
-    }
-
-    @Test(
         "A failing fetch on an unsubscribed service does not clobber the cached playlist",
         .timeLimit(.minutes(1))
     )
@@ -252,8 +217,7 @@ struct PlaylistServiceLazyCacheLoadTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator,
-            apiVersion: .v1
+            cacheCoordinator: cacheCoordinator
         )
 
         // When - a background-launched refresh fetches with nothing having subscribed and
@@ -265,7 +229,7 @@ struct PlaylistServiceLazyCacheLoadTests {
 
         // Then - the good playlist is still on disk.
         let surviving: Playlist = try await cacheCoordinator.value(
-            for: PlaylistCacheKey.playlist(for: .v1)
+            for: PlaylistCacheKey.playlist
         )
         #expect(surviving.playcuts.first?.songTitle == "la paradoja")
     }
@@ -293,8 +257,7 @@ struct PlaylistServiceLazyCacheLoadTests {
         let service = PlaylistService(
             fetcher: mockFetcher,
             interval: 30,
-            cacheCoordinator: cacheCoordinator,
-            apiVersion: .v1
+            cacheCoordinator: cacheCoordinator
         )
 
         // When - the background refresh runs with nothing subscribed.
@@ -310,122 +273,5 @@ struct PlaylistServiceLazyCacheLoadTests {
             entries.isEmpty,
             "A failed fetch cached an empty playlist, which the widget will be served as a hit for 15 minutes: \(entries.map(\.key))"
         )
-    }
-
-    @Test(
-        "switchAPIVersion cancels a cache load in flight rather than letting it publish the old version's rows",
-        .timeLimit(.minutes(1))
-    )
-    func switchAPIVersionCancelsInFlightCacheLoad() async throws {
-        // Given - a v1 cache whose first read parks, so the load can be held at
-        // `CacheBaseline.loading` for the whole of the switch.
-        let cache = GatedReadCache()
-        let cacheCoordinator = await seededCoordinator(version: .v1, cache: cache)
-
-        let mockFetcher = MockPlaylistFetcher()
-        mockFetcher.playlistToReturn = .empty
-
-        let service = PlaylistService(
-            fetcher: mockFetcher,
-            interval: 30,
-            cacheCoordinator: cacheCoordinator,
-            apiVersion: .v1
-        )
-
-        // And - a load actually in flight. Asserting it is parked, rather than starting it
-        // and hoping, is what stops this test going vacuous: an unparked load against an
-        // in-memory cache settles the baseline before the switch runs, and there would be
-        // nothing left for the switch to orphan.
-        let load = Task { await service.waitForCacheLoad() }
-        #expect(await waitUntil(timeout: .seconds(5)) { cache.isParked })
-
-        // When - the version switches while that load is parked, and the read is released
-        // only afterwards. `apiVersion` is reassigned in the same synchronous actor turn
-        // that settles the baseline, so observing it pins the release to a point after the
-        // switch has asserted its clear — without assuming anything about whether the
-        // switch's own fetch reached the cache first.
-        let switchTask = Task { await service.switchAPIVersion(to: .v2) }
-        #expect(await waitUntil(timeout: .seconds(5)) { await service.wiringSnapshot().apiVersion == .v2 })
-        cache.open()
-        await switchTask.value
-        await load.value
-
-        // Then - the clear stands. `loadCachedPlaylist()` evaluates `cacheKey` before its
-        // suspension, so the orphaned load comes back holding v1's rows; publishing them
-        // would undo the switch's deliberate clear and put two incompatible `chronOrderID`
-        // scales on screen at once.
-        #expect(
-            await service.currentPlaylistSnapshot().isContentEmpty,
-            "A cache load orphaned by switchAPIVersion published the pre-switch version's rows over the clear."
-        )
-    }
-}
-
-/// A ``Cache`` decorator that parks its first metadata read until the test opens the
-/// gate, so a test can hold `PlaylistService`'s cache load at `CacheBaseline.loading`
-/// and drive a version switch at it.
-///
-/// The park is a blocking semaphore wait rather than an async suspension, unlike
-/// `GatedPlaylistFetcher`: `Cache` is a synchronous protocol, so the read runs to
-/// completion inside `CacheCoordinator`'s actor with no suspension point to hold. It
-/// occupies one cooperative thread until ``open()`` and carries its own timeout, so a
-/// test that never opens the gate fails on an assertion rather than wedging the run.
-///
-/// Only the first read parks. Seeding writes through `set(_:metadata:for:)` and the
-/// coordinator's init purge reads `allMetadata()`, so neither trips the gate.
-private final class GatedReadCache: Cache, @unchecked Sendable {
-    private struct State {
-        var isParked = false
-        var isOpen = false
-    }
-
-    private let inner = InMemoryCache()
-    private let gate = DispatchSemaphore(value: 0)
-    private let state = Mutex(State())
-
-    /// True while a read is parked at the gate.
-    var isParked: Bool { state.withLock { $0.isParked } }
-
-    /// Releases the parked read and lets every later read through.
-    func open() {
-        state.withLock { $0.isOpen = true }
-        gate.signal()
-    }
-
-    func metadata(for key: String) -> CacheMetadata? {
-        let shouldPark = state.withLock { state -> Bool in
-            guard !state.isOpen, !state.isParked else { return false }
-            state.isParked = true
-            return true
-        }
-        if shouldPark {
-            _ = gate.wait(timeout: .now() + 30)
-            state.withLock { $0.isParked = false }
-        }
-        return inner.metadata(for: key)
-    }
-
-    func data(for key: String) -> Data? {
-        inner.data(for: key)
-    }
-
-    func set(_ data: Data?, metadata: CacheMetadata, for key: String) {
-        inner.set(data, metadata: metadata, for: key)
-    }
-
-    func remove(for key: String) {
-        inner.remove(for: key)
-    }
-
-    func allMetadata() -> [(key: String, metadata: CacheMetadata)] {
-        inner.allMetadata()
-    }
-
-    func clearAll() {
-        inner.clearAll()
-    }
-
-    func totalSize() -> Int64 {
-        inner.totalSize()
     }
 }

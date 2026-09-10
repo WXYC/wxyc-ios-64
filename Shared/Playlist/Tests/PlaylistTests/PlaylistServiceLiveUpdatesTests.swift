@@ -8,20 +8,9 @@
 //  gated on the foreground state, and backgrounding tears the subscription down
 //  so a later foreground reconnects. See WXYC/wxyc-ios-64#269.
 //
-//  Every test below that injects a `liveEventSource` passes `apiVersion: .v2`
-//  explicitly (#749): whether that source is actually wired in is the
-//  conjunction `apiVersion.supportsLiveUpdates && callerOptedIn`, so omitting
-//  the version falls through to `PlaylistAPIVersion.loadActive()` and couples
-//  the suite to whatever that resolves to.
-//
-//  `PlaylistAPIVersion.defaultVersion` is now `.v2`, so omitting it would
-//  mostly work — which makes removing these arguments more tempting, not less,
-//  and is exactly why they have to stay. `loadActive()` reads the shared
-//  `UserDefaults.wxyc` app group first, and a `debug.isPlaylistAPIManuallySelected`
-//  override left behind by a previous run on the same simulator pins the whole
-//  process to v1. The source then silently never connects and these tests pass
-//  while exercising nothing — the #749 failure mode, now intermittent and
-//  environment-dependent rather than constant. Don't "simplify" this back out.
+//  Every test injects a `liveEventSource` directly; wiring it in is now solely
+//  the caller's opt-in (#262). See `MockLiveFsEventSource` for the
+//  simulator-override hazard that removal eliminated.
 //
 //  Created by Jake Bromberg on 07/31/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -47,8 +36,7 @@ struct PlaylistServiceLiveUpdatesTests {
         ])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -73,8 +61,7 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.update(enriched)])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -113,8 +100,7 @@ struct PlaylistServiceLiveUpdatesTests {
         ])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -139,8 +125,7 @@ struct PlaylistServiceLiveUpdatesTests {
         ])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -166,8 +151,7 @@ struct PlaylistServiceLiveUpdatesTests {
         ])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -187,8 +171,7 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.refetch(source: "etl")])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -212,8 +195,7 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, chronOrderID: 2))])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -243,8 +225,7 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, chronOrderID: 2))])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -269,8 +250,7 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, chronOrderID: 2))])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -332,8 +312,7 @@ struct PlaylistServiceLiveUpdatesTests {
         ])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()
@@ -353,8 +332,7 @@ struct PlaylistServiceLiveUpdatesTests {
         let source = MockLiveFsEventSource(events: [.insert(.stub(id: 42, chronOrderID: 42))])
         let service = PlaylistService(
             fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
-            apiVersion: .v2
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
         )
 
         var iterator = service.updates().makeAsyncIterator()

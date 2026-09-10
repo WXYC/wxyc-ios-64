@@ -24,7 +24,7 @@ import Synchronization
 /// is cancelled. That is the point: `PlaylistService.consumeLiveEvents` reaches
 /// this seam via `applyLiveEvent(.refetch)` → `fetchAndCachePlaylist()`, so a
 /// scripted `.refetch` event parks the consume loop somewhere cancellation
-/// cannot move it, and `switchAPIVersion(to:)`'s `await liveUpdatesTask?.value`
+/// cannot move it, and a caller awaiting `liveUpdatesTask?.value`
 /// then stays suspended for exactly as long as the test wants.
 ///
 /// ```swift

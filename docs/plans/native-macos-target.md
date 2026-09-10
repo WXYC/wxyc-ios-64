@@ -57,7 +57,7 @@ _(Track details being synthesized from Plan agents — sections below to be fill
 **New files on disk (before any pbxproj edit):**
 - `WXYC/macOS/WXYCMacApp.swift` (placeholder `@main`; Track B replaces)
 - `WXYC/macOS/Assets.xcassets` (AccentColor; app icon via membership of shared `iOS/Assets/AppIcon.icon` — WatchXYC precedent)
-- `WXYC/macOS/WXYC-Mac-Info.plist` — modeled on `WXYC-TV-Info.plist`; **must keep the NSAppTransportSecurity exceptions for `audio-mp3.ibiblio.org` / `wxyc.info`** (stream is plain HTTP); no `UIApplicationSceneManifest`/CarPlay
+- `WXYC/macOS/WXYC-Mac-Info.plist` — modeled on `WXYC-TV-Info.plist`; **must keep the NSAppTransportSecurity exception for `audio-mp3.ibiblio.org`** (stream is plain HTTP). Do *not* carry over a `wxyc.info` exception — it existed only for the legacy v1 playlist feed and was removed in #262; no `UIApplicationSceneManifest`/CarPlay
 - `WXYC/Entitlements/WXYC Mac.entitlements` + `WXYC MacDebug.entitlements` — **keep:** associated-domains (`applinks:wxyc.org`), `group.wxyc.iphone` app group, keychain-access-groups, group-session; **drop:** carplay-audio, networking.multipath, siri (iOS-only; leaving them in breaks macOS automatic profile generation). Sandbox/network stay as build settings (`ENABLE_APP_SANDBOX`/`ENABLE_OUTGOING_NETWORK_CONNECTIONS`), matching the iOS target.
 
 **App group on macOS — resolved:** use `group.wxyc.iphone` unchanged. `group.*` identifiers are first-class on macOS 15/Xcode 16, and the widget's macosx slice *already ships* signed with this group under team 92V374HC38 — it's provably provisioned for macOS. Keep `REGISTER_APP_GROUPS = YES`. Mac app + widget share `~/Library/Group Containers/group.wxyc.iphone/`.

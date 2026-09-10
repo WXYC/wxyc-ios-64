@@ -15,7 +15,6 @@ import Foundation
 import Logger
 
 extension URL {
-    static let WXYCPlaylist = URL(string: "http://wxyc.info/playlists/recentEntries?v=2&n=50")!
 #if WXYC_320_STREAM_ENABLED
     static let WXYCStream320kMP3 = URL(string: "https://audio-mp3.ibiblio.org:8000/wxyc-alt.mp3")!
 #endif
@@ -537,7 +536,23 @@ public struct Playcut: PlaylistEntry, Hashable {
             self.artistName = try container.decode(String.self, forKey: .artistName).htmlDecoded
             self.releaseTitle = try container.decodeIfPresent(String.self, forKey: .releaseTitle)?.htmlDecoded
 
-            // V1 API returns rotation as a string ("true"/"false"), V2 converter uses Bool
+            // Tolerates a string ("true"/"false") as well as a Bool. Nothing this
+            // build fetches sends the string form — `FlowsheetConverter` supplies a
+            // Bool, and the cache round-trips one through the synthesized
+            // `encode(to:)` — so on its own this branch is dead code.
+            //
+            // It is retained deliberately, and it is not retained alone: it is what
+            // keeps `BS2103EnrichedDecodingTests`, `BS2105OnAirDecodingTests` and
+            // `PlaylistDecodingTests` able to decode the legacy `wxyc.info` grouped
+            // payload, whose `rotation` is a string. Those suites are the iOS half of
+            // a wire contract that App Store builds through 3.2 still depend on — that
+            // feed is live and enriched, and ~10 installs were still polling it in the
+            // 14 days to 2026-09-10.
+            //
+            // So this branch and those three suites are ONE unit with ONE lifetime:
+            // retire them together once the 3.2 cohort has drained, and not before.
+            // Deleting this line alone silently breaks all three suites; deleting the
+            // suites alone leaves this branch genuinely dead. See #262.
             if let rotationBool = try? container.decodeIfPresent(Bool.self, forKey: .rotation) {
                 self.rotation = rotationBool
             } else if let rotationString = try container.decodeIfPresent(String.self, forKey: .rotation) {

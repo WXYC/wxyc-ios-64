@@ -17,21 +17,23 @@ import Synchronization
 
 /// Test double for ``LiveFsEventSource`` that replays a fixed script of events.
 ///
-/// Pass an explicit `apiVersion:` that supports live updates. Omitting it
-/// resolves via `PlaylistAPIVersion.loadActive()`, which couples the test to a
-/// process-global lookup. `PlaylistAPIVersion.defaultVersion` is `.v2`, so that
-/// usually lands on a version with a push channel — but `loadActive()` consults
-/// the shared `UserDefaults.wxyc` app group first, and a debug override left on
-/// the simulator by an earlier run pins it to `.v1`, which has no push channel.
-/// The service then wires in no source at all, this mock is never connected,
-/// and the test passes while exercising nothing.
+/// Pass the mock as `liveEventSource:` and the service wires it in
+/// unconditionally — the caller's opt-in is now the only gate.
+///
+/// This used to carry a trap worth remembering: the service resolved a
+/// `PlaylistAPIVersion` from the shared `UserDefaults.wxyc` app group, so a
+/// debug override left on the simulator by an earlier run could pin a test to
+/// `.v1`, which had no push channel. The service then wired in no source, this
+/// mock was never connected, and the test passed while exercising nothing.
+/// Removing the v1 path (#262) removed that failure mode by construction: there
+/// is no version to resolve and no process-global lookup to be poisoned.
 /// See WXYC/wxyc-ios-64#749.
 ///
 /// ```swift
 /// let source = MockLiveFsEventSource(events: [.insert(.stub(id: 42))])
 /// let service = PlaylistService(fetcher: fetcher, interval: 300,
 ///                               cacheCoordinator: coordinator,
-///                               liveEventSource: source, apiVersion: .v2)
+///                               liveEventSource: source)
 /// await service.setForegrounded(true)
 /// ```
 public final class MockLiveFsEventSource: LiveFsEventSource, @unchecked Sendable {

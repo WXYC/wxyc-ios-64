@@ -93,16 +93,17 @@ public actor SpotlightDonationService: Sendable {
     ///   UNIQUE on `play_order` outright — tubafrenzy's webhook and dj-site
     ///   both assign it and can overlap (the 2026-05-01 incident memo) — so a
     ///   `>` filter can drop a row that merely ties the edge.
-    /// - **Not one scale.** The v1 data source decodes `chronOrderID` off the
+    /// - **Not one scale.** The legacy v1 feed decoded `chronOrderID` off the
     ///   wire, where Backend-Service's playlist proxy sets it to the row id
     ///   (~5.3e6); v2 derives the packed key (~8.4e15). One watermark serves
     ///   both and only moves up, so a single v2 tick would put it permanently
-    ///   out of reach of every v1 row. `PlaylistAPIVersion.defaultVersion` is
-    ///   now `.v2`, which does not retire the hazard: one install still sees
-    ///   both scales, because the `playlist_api_version` flag can pull a build
-    ///   back to v1 as a kill switch, the debug panel can pin either version,
-    ///   and an upgrade from 3.1 inherits whatever v1 already persisted.
-    ///   ``watermarkKey`` records what that scale mismatch already cost once.
+    ///   out of reach of every v1 row. This build no longer reads the v1 feed
+    ///   (#262), which narrows the hazard without retiring it: an install
+    ///   upgrading from a v1-defaulting build (anything through 3.2) still
+    ///   carries whatever that build persisted, so the *stored* value can
+    ///   predate the collapse even though nothing writes an id-scale key any
+    ///   more. ``watermarkKey`` records what that mismatch already cost once,
+    ///   and is why this service keys on `id` rather than `chronOrderID`.
     ///
     /// The flowsheet `id` is the same serial on both API paths and survives a
     /// reorder untouched, which is exactly what "have I sent this row yet?"
