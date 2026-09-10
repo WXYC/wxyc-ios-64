@@ -37,8 +37,7 @@ struct PlaylistServiceFetchErrorCountTests {
         let service = PlaylistService(
             fetcher: fetcher,
             interval: 30,
-            cacheCoordinator: CacheCoordinator(cache: InMemoryCache()),
-            apiVersion: .v1
+            cacheCoordinator: CacheCoordinator(cache: InMemoryCache())
         )
 
         #expect(await service.fetchErrorCount() == 0)
@@ -55,8 +54,7 @@ struct PlaylistServiceFetchErrorCountTests {
         let service = PlaylistService(
             fetcher: fetcher,
             interval: 30,
-            cacheCoordinator: CacheCoordinator(cache: InMemoryCache()),
-            apiVersion: .v1
+            cacheCoordinator: CacheCoordinator(cache: InMemoryCache())
         )
 
         // Seed good data via a first successful fetch.
@@ -102,8 +100,7 @@ struct PlaylistServiceFetchErrorCountTests {
         let service = PlaylistService(
             fetcher: fetcher,
             interval: 30,
-            cacheCoordinator: CacheCoordinator(cache: InMemoryCache()),
-            apiVersion: .v1
+            cacheCoordinator: CacheCoordinator(cache: InMemoryCache())
         )
 
         for expectedCount in 1...3 {

@@ -25,8 +25,9 @@ let package = Package(
         // Load-bearing — do not remove as "unused" just because OnAirDebugState and
         // OnAirBannerDebugView no longer need it (WXYC/wxyc-ios-64#767 moved their
         // typography/color types to WXUI/ColorPalette). VisualizerDebugView still
-        // needs Playlist for PlaylistAPIVersion, an unrelated debug menu (the API
-        // version override), so this edge stays.
+        // needs Playlist for `PlaylistService` (the fetch-error readout), so this
+        // edge stays — note the API-version picker it also served went with the v1
+        // path in #262.
         .package(name: "Playlist", path: "../Playlist"),
         .package(name: "Wallpaper", path: "../Wallpaper"),
         .package(name: "PlayerHeaderView", path: "../PlayerHeaderView"),

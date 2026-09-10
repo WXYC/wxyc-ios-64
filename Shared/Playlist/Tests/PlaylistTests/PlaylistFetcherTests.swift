@@ -49,14 +49,7 @@ struct PlaylistFetcherTests {
         let mockAnalytics = MockStructuredAnalytics()
         mockDataSource.errorToThrow = NSError(domain: "TestDomain", code: 123, userInfo: nil)
 
-        // The reported context embeds the resolved version, so pin it rather
-        // than inheriting `PlaylistAPIVersion.defaultVersion` — and build the
-        // expectation from the same constant, so this asserts the *shape* of
-        // the context string instead of re-pinning a version literal that has
-        // to be chased every time the default moves.
-        let apiVersion = PlaylistAPIVersion.v2
         let fetcher = PlaylistFetcher(
-            apiVersion: apiVersion,
             dataSource: mockDataSource,
             errorReporter: mockErrorReporter,
             analytics: mockAnalytics
@@ -66,7 +59,7 @@ struct PlaylistFetcherTests {
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
         #expect(mockErrorReporter.allReportedErrors.count == 1)
-        #expect(mockErrorReporter.allReportedErrors.first?.context == "fetchPlaylist(API \(apiVersion.rawValue))")
+        #expect(mockErrorReporter.allReportedErrors.first?.context == "fetchPlaylist(API v2)")
     }
 
     @Test("fetchPlaylist returns empty playlist on URLError")
@@ -196,15 +189,11 @@ struct PlaylistFetcherAnalyticsTests {
         analytics.events(named: FetchPlaylistEvent.name).first?.properties
     }
 
-    @Test(
-        "emits a fetch_playlist_event on an empty (but successful) result, tagged with the API version",
-        arguments: [PlaylistAPIVersion.v1, .v2]
-    )
-    func emitsEventOnEmptyResult(version: PlaylistAPIVersion) async {
+    @Test("emits a fetch_playlist_event on an empty (but successful) result, tagged with the API version")
+    func emitsEventOnEmptyResult() async {
         let dataSource = MockPlaylistDataSource() // returns .empty without throwing
         let analytics = MockStructuredAnalytics()
         let fetcher = PlaylistFetcher(
-            apiVersion: version,
             dataSource: dataSource,
             errorReporter: MockErrorReporter(),
             analytics: analytics,
@@ -215,22 +204,18 @@ struct PlaylistFetcherAnalyticsTests {
         _ = await fetcher.fetchPlaylist()
 
         let props = fetchEventProperties(analytics)
-        #expect(props?["api_version"] as? String == version.rawValue)
+        #expect(props?["api_version"] as? String == "v2")
         #expect(props?["result_count"] as? Int == 0)
         #expect(props?["succeeded"] as? Bool == true)
     }
 
-    @Test(
-        "emits a fetch_playlist_event on failure, tagged with the API version",
-        arguments: [PlaylistAPIVersion.v1, .v2]
-    )
-    func emitsEventOnFailure(version: PlaylistAPIVersion) async {
+    @Test("emits a fetch_playlist_event on failure, tagged with the API version")
+    func emitsEventOnFailure() async {
         let dataSource = MockPlaylistDataSource()
         dataSource.errorToThrow = NSError(domain: "TestDomain", code: 123, userInfo: nil)
         let analytics = MockStructuredAnalytics()
         let reporter = MockErrorReporter()
         let fetcher = PlaylistFetcher(
-            apiVersion: version,
             dataSource: dataSource,
             errorReporter: reporter,
             analytics: analytics,
@@ -241,20 +226,17 @@ struct PlaylistFetcherAnalyticsTests {
         _ = await fetcher.fetchPlaylist()
 
         let props = fetchEventProperties(analytics)
-        #expect(props?["api_version"] as? String == version.rawValue)
+        #expect(props?["api_version"] as? String == "v2")
         #expect(props?["result_count"] as? Int == 0)
         #expect(props?["succeeded"] as? Bool == false)
 
         // #414: the version also rides the error report as a structured property,
         // not just inside the free-text context string.
-        #expect(reporter.allReportedErrors.first?.additionalData["api_version"] == version.rawValue)
+        #expect(reporter.allReportedErrors.first?.additionalData["api_version"] == "v2")
     }
 
-    @Test(
-        "emits a non-empty success event carrying the result count when the sample gate is open",
-        arguments: [PlaylistAPIVersion.v1, .v2]
-    )
-    func emitsNonEmptySuccessWhenSampled(version: PlaylistAPIVersion) async {
+    @Test("emits a non-empty success event carrying the result count when the sample gate is open")
+    func emitsNonEmptySuccessWhenSampled() async {
         let playlist = Playlist.stub(playcuts: [
             .stub(id: 1, songTitle: "la paradoja", artistName: "Juana Molina"),
             .stub(id: 2, songTitle: "Back, Baby", artistName: "Jessica Pratt"),
@@ -263,7 +245,6 @@ struct PlaylistFetcherAnalyticsTests {
         dataSource.playlistToReturn = playlist
         let analytics = MockStructuredAnalytics()
         let fetcher = PlaylistFetcher(
-            apiVersion: version,
             dataSource: dataSource,
             errorReporter: MockErrorReporter(),
             analytics: analytics,
@@ -273,7 +254,7 @@ struct PlaylistFetcherAnalyticsTests {
         _ = await fetcher.fetchPlaylist()
 
         let props = fetchEventProperties(analytics)
-        #expect(props?["api_version"] as? String == version.rawValue)
+        #expect(props?["api_version"] as? String == "v2")
         #expect(props?["succeeded"] as? Bool == true)
         #expect(props?["result_count"] as? Int == playlist.entries.count)
     }
@@ -286,7 +267,6 @@ struct PlaylistFetcherAnalyticsTests {
         ])
         let analytics = MockStructuredAnalytics()
         let fetcher = PlaylistFetcher(
-            apiVersion: .v1,
             dataSource: dataSource,
             errorReporter: MockErrorReporter(),
             analytics: analytics,
@@ -301,7 +281,7 @@ struct PlaylistFetcherAnalyticsTests {
     @Test("a URLSession cancellation (URLError.cancelled) is neither reported nor counted, even when the task flag is unset")
     func urlSessionCancellationIsNotAPhantomFailure() async {
         // `URLSession.data(for:)` throws `URLError(.cancelled)` — NOT Swift's
-        // `CancellationError` — when a fetch is torn down (e.g. switchAPIVersion
+        // `CancellationError` — when a fetch is torn down (e.g. a service teardown
         // swapping the data source). This can surface without the surrounding
         // task's `isCancelled` flag being set, so it must be classified from the
         // error itself, not from `Task.isCancelled`.
@@ -310,7 +290,6 @@ struct PlaylistFetcherAnalyticsTests {
         let analytics = MockStructuredAnalytics()
         let reporter = MockErrorReporter()
         let fetcher = PlaylistFetcher(
-            apiVersion: .v2,
             dataSource: dataSource,
             errorReporter: reporter,
             analytics: analytics,
@@ -330,7 +309,6 @@ struct PlaylistFetcherAnalyticsTests {
         let analytics = MockStructuredAnalytics()
         let reporter = MockErrorReporter()
         let fetcher = PlaylistFetcher(
-            apiVersion: .v2,
             dataSource: dataSource,
             errorReporter: reporter,
             analytics: analytics,
@@ -369,55 +347,3 @@ private actor HangingPlaylistDataSource: PlaylistDataSource {
         throw URLError(.cancelled)
     }
 }
-
-// MARK: - Mojibake Repair Tests
-
-@Suite("Data Mojibake Repair Tests")
-struct DataMojibakeRepairTests {
-    @Test("repairs UTF-8 mojibake in JSON data")
-    func repairsMojibakeInJSON() {
-        // "Bjork" encoded as UTF-8, then incorrectly decoded as Latin-1, then re-encoded as UTF-8
-        // Results in "BjÃ¶rk" in the JSON
-        let corruptedJSON = """
-        {"artistName":"BjÃ¶rk","songTitle":"Venus as a Boy"}
-        """
-        let corruptedData = corruptedJSON.data(using: .utf8)!
-
-        let repairedData = corruptedData.repairingMojibake()
-        let repairedString = String(data: repairedData, encoding: .utf8)!
-
-        #expect(repairedString.contains("Björk"))
-        #expect(!repairedString.contains("BjÃ¶rk"))
-    }
-
-    @Test("preserves ASCII-only data unchanged")
-    func preservesASCIIData() {
-        let asciiJSON = """
-        {"artistName":"The Beatles","songTitle":"Yesterday"}
-        """
-        let asciiData = asciiJSON.data(using: .utf8)!
-
-        let repairedData = asciiData.repairingMojibake()
-
-        #expect(repairedData == asciiData)
-    }
-
-    @Test("repairs multiple mojibake characters")
-    func repairsMultipleMojibakeCharacters() {
-        // Create proper mojibake by encoding UTF-8 string, then interpreting bytes as Latin-1
-        let original = """
-        {"artistName":"Sigur Rós","albumTitle":"Ágætis byrjun"}
-        """
-        // Simulate server bug: UTF-8 bytes interpreted as Latin-1, then served as UTF-8
-        let utf8Bytes = Array(original.utf8)
-        let mojibakeString = String(bytes: utf8Bytes, encoding: .isoLatin1)!
-        let corruptedData = mojibakeString.data(using: .utf8)!
-
-        let repairedData = corruptedData.repairingMojibake()
-        let repairedString = String(data: repairedData, encoding: .utf8)!
-
-        #expect(repairedString.contains("Sigur Rós"))
-        #expect(repairedString.contains("Ágætis byrjun"))
-    }
-}
-

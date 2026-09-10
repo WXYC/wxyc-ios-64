@@ -325,7 +325,7 @@ struct PlaylistServiceTests {
         // Pre-populate the cache
         await cacheCoordinator.set(
             value: cachedPlaylist,
-            for: PlaylistCacheKey.playlist(for: .v1),
+            for: PlaylistCacheKey.playlist,
             lifespan: 15 * 60
         )
 

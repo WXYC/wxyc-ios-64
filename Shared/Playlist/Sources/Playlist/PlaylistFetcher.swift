@@ -44,25 +44,6 @@ public protocol PlaylistDataSource: Sendable {
     func getPlaylist() async throws -> Playlist
 }
 
-// MARK: - Data Repair
-
-extension Data {
-    /// Repairs mojibake caused by UTF-8 text being stored/sent as Latin-1.
-    ///
-    /// The V1 API server has encoding issues where UTF-8 characters are corrupted
-    /// (e.g., "Bjork" becomes "BjÃ¶rk"). This repairs by re-interpreting the
-    /// UTF-8 string as Latin-1 bytes, then decoding those bytes as UTF-8.
-    func repairingMojibake() -> Data {
-        guard let string = String(data: self, encoding: .utf8),
-              let latin1Data = string.data(using: .isoLatin1),
-              let repaired = String(data: latin1Data, encoding: .utf8),
-              let repairedData = repaired.data(using: .utf8) else {
-            return self
-        }
-        return repairedData
-    }
-}
-
 // MARK: - PlaylistFetcher
 
 /// Fetches playlists from a remote source with logging and analytics.
@@ -71,7 +52,6 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     private let dataSource: PlaylistDataSource
     private let errorReporter: any ErrorReporter
     private let analytics: any AnalyticsService
-    private let apiVersion: PlaylistAPIVersion
     private let healthySuccessSampler: @Sendable () -> Bool
 
     /// Backing store for ``fetchErrorCount``. A `Mutex`, not a plain `Int`,
@@ -82,11 +62,20 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     /// reentrancy.
     private let failureCount = Mutex(0)
 
+    /// The value reported as `api_version` on `fetch_playlist_event` and on
+    /// error reports.
+    ///
+    /// A constant rather than a resolved enum since the v1 path was removed
+    /// (#262). It stays on the wire rather than being dropped because App
+    /// Store builds through 3.2 still poll the legacy `wxyc.info` feed and
+    /// report `v1`, so the property is the only thing separating those two
+    /// populations in PostHog. Retire it once that cohort has drained.
+    private static let apiVersionTag = "v2"
+
     /// Creates a new PlaylistFetcher.
     ///
     /// - Parameters:
-    ///   - apiVersion: The API version to use. If nil, uses `PlaylistAPIVersion.loadActive()`.
-    ///   - dataSource: Custom data source. If nil, creates one based on apiVersion.
+    ///   - dataSource: Custom data source. If nil, polls the v2 flowsheet API.
     ///   - errorReporter: Error reporter for failure tracking. Defaults to the global reporter.
     ///   - analytics: Analytics service for event tracking.
     ///   - healthySuccessSampler: Decides whether a healthy (non-empty) success
@@ -95,28 +84,15 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     ///     results and failures ignore this gate and are always captured. Injected
     ///     for deterministic tests.
     public init(
-        apiVersion: PlaylistAPIVersion? = nil,
         dataSource: PlaylistDataSource? = nil,
         errorReporter: any ErrorReporter = ErrorReporting.shared,
         analytics: any AnalyticsService = StructuredPostHogAnalytics.shared,
         healthySuccessSampler: @escaping @Sendable () -> Bool = { Int.random(in: 1...10) == 1 }
     ) {
-        let resolvedVersion = apiVersion ?? PlaylistAPIVersion.loadActive()
-        self.apiVersion = resolvedVersion
-        self.dataSource = dataSource ?? Self.createDataSource(for: resolvedVersion)
+        self.dataSource = dataSource ?? PlaylistDataSourceV2()
         self.errorReporter = errorReporter
         self.analytics = analytics
         self.healthySuccessSampler = healthySuccessSampler
-    }
-
-    /// Creates the appropriate data source for the given API version.
-    private static func createDataSource(for version: PlaylistAPIVersion) -> PlaylistDataSource {
-        switch version {
-        case .v1:
-            PlaylistDataSourceV1()
-        case .v2:
-            PlaylistDataSourceV2()
-        }
     }
 
     /// Fetches a playlist from the remote source.
@@ -129,7 +105,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     /// report as a structured `api_version` property.
     public func fetchPlaylist() async -> Playlist {
         let timer = Core.Timer.start()
-        let context = "fetchPlaylist(API \(apiVersion.rawValue))"
+        let context = "fetchPlaylist(API \(Self.apiVersionTag))"
 
         do {
             let playlist = try await dataSource.getPlaylist()
@@ -143,8 +119,8 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             return playlist
         } catch {
             // `URLSession.data(for:)` throws `URLError(.cancelled)` (NOT Swift's
-            // `CancellationError`) when a fetch is torn down — e.g. switchAPIVersion
-            // swapping the data source mid-flight — and it can surface without the
+            // `CancellationError`) when a fetch is torn down — e.g. a service
+            // teardown cancelling the poll loop mid-flight — and it can surface without the
             // task's `isCancelled` flag being set. Cancellation is normal teardown:
             // don't report it to the error reporter (Sentry) and don't count it as
             // a failure in the rollout metric.
@@ -160,7 +136,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
                 context: context,
                 category: .network,
                 additionalData: [
-                    "api_version": apiVersion.rawValue,
+                    "api_version": Self.apiVersionTag,
                     "duration": "\(duration)",
                 ]
             )
@@ -203,7 +179,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
 
         analytics.capture(FetchPlaylistEvent(
             duration: duration,
-            apiVersion: apiVersion.rawValue,
+            apiVersion: Self.apiVersionTag,
             resultCount: playlist.entries.count,
             succeeded: succeeded
         ))
