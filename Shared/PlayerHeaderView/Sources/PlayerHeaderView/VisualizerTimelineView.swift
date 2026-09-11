@@ -47,20 +47,8 @@ public struct VisualizerTimelineView: View {
     /// Whether the falling animation is active
     @State private var isFalling: Bool = false
     
-    /// Decay factor per frame for falling dots (0.0–1.0). Lower = faster fall.
-    /// At 60 FPS, 0.92 gives a nice ~1 second fall to zero.
-    private let fallDecayFactor: Float = 0.92
-    
     /// Smoothed display values that animate at frame rate (interpolates between audio updates)
     @State private var smoothedValues: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
-    
-    /// Attack factor for rising values (higher = faster response to increases)
-    /// At 60 FPS, 0.5 gives quick attack (~2 frames to reach target)
-    private let attackFactor: Float = 0.5
-    
-    /// Decay factor for falling values (lower = slower decay for smooth falloff)
-    /// At 60 FPS, 0.85 gives a smooth ~0.5 second decay
-    private let decayFactor: Float = 0.85
     
     @State private var fpsCounter = FPSCounter()
     @State private var showModeIndicator = false
@@ -112,9 +100,9 @@ public struct VisualizerTimelineView: View {
                         .transition(.opacity.combined(with: .scale))
                 }
             }
-            .onChange(of: timeline.date) {
+            .onChange(of: timeline.date) { previousDate, currentDate in
                 fpsCounter.recordFrame()
-                updateFrame()
+                updateFrame(elapsed: currentDate.timeIntervalSince(previousDate))
             }
         }
         .onChange(of: visualizer.isActive) { wasActive, nowActive in
@@ -152,17 +140,20 @@ public struct VisualizerTimelineView: View {
         isFalling = true
     }
     
-    private func updateFrame() {
+    private func updateFrame(elapsed: TimeInterval) {
         if visualizer.isActive {
-            updatePlaybackData()
+            updatePlaybackData(elapsed: elapsed)
         } else if isFalling {
-            updateFallingDots()
+            updateFallingDots(elapsed: elapsed)
         }
     }
     
     /// Update visualizer with live audio data using frame-level smoothing
-    /// This interpolates between audio buffer updates to achieve smooth 60 FPS animation
-    private func updatePlaybackData() {
+    ///
+    /// This interpolates between audio buffer updates to achieve smooth animation.
+    /// Smoothing is scaled by `elapsed` so the bars behave identically however
+    /// often the timeline happens to tick.
+    private func updatePlaybackData(elapsed: TimeInterval) {
         // Pull the next eligible frame from the delay buffer into fftMagnitudes/rmsPerBar
         visualizer.dequeueNextFrame()
 
@@ -176,15 +167,11 @@ public struct VisualizerTimelineView: View {
                 : Float(0)
             
             // Apply asymmetric smoothing: fast attack, slow decay
-            let currentSmoothed = smoothedValues[barIndex]
-            let smoothedValue: Float
-            if targetValue > currentSmoothed {
-                // Rising: fast attack to catch beats/peaks
-                smoothedValue = currentSmoothed + (targetValue - currentSmoothed) * attackFactor
-            } else {
-                // Falling: smooth decay for visual appeal
-                smoothedValue = currentSmoothed * decayFactor + targetValue * (1 - decayFactor)
-            }
+            let smoothedValue = VisualizerSmoothing.smooth(
+                current: smoothedValues[barIndex],
+                target: targetValue,
+                elapsed: elapsed
+            )
             smoothedValues[barIndex] = smoothedValue
             
             // Update barHistory for external consumers (e.g., startFalling)
@@ -199,13 +186,16 @@ public struct VisualizerTimelineView: View {
     }
     
     /// Animate falling dots decaying to zero
-    private func updateFallingDots() {
+    ///
+    /// The fall takes the same wall-clock time at any refresh rate; `elapsed`
+    /// is what decouples it from how often this runs.
+    private func updateFallingDots(elapsed: TimeInterval) {
         var allZero = true
         
         for barIndex in 0..<VisualizerConstants.barAmount {
             if fallingDots[barIndex] > 0.5 {
                 // Decay exponentially
-                fallingDots[barIndex] *= fallDecayFactor
+                fallingDots[barIndex] = VisualizerSmoothing.decayedDot(fallingDots[barIndex], elapsed: elapsed)
                 allZero = false
     
                 // Update BarData with falling dot position
