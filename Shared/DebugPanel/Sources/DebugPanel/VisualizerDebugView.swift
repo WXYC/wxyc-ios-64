@@ -26,6 +26,7 @@ public struct VisualizerDebugView: View {
     @State private var skipNextPlayerTypePersist = false
     @State private var selectedHLSEnvironment: HLSEnvironment = .loadActive()
     @State private var cachePurged = false
+    @State private var displayMaximumFPS = VisualizerRefreshRate.baselineFramesPerSecond
     @State private var fetchErrorCount: Int?
     @Environment(\.playlistService) private var playlistService
     private var hudState = DebugHUDState.shared
@@ -71,6 +72,18 @@ public struct VisualizerDebugView: View {
     private var fetchErrorCountText: String {
         guard let fetchErrorCount else { return "—" }
         return "\(fetchErrorCount)"
+    }
+
+    /// Footer for the Refresh Rate section.
+    ///
+    /// Names the rate actually detected rather than saying "ProMotion": the
+    /// toggle is inert on a 60 Hz display and the reader should be able to see
+    /// why without guessing at their hardware.
+    private var refreshRateFooter: String {
+        guard VisualizerRefreshRate.supportsHighRefreshRate(displayMaximumFramesPerSecond: displayMaximumFPS) else {
+            return "This display tops out at \(displayMaximumFPS) Hz, so there is nothing above 60 FPS to switch on. Run on a 120 Hz device, or attach a high-refresh-rate display, to enable it."
+        }
+        return "Runs the visualizer at this display's full \(displayMaximumFPS) Hz instead of the default 60. Bar smoothing is time-based, so the animation keeps the same shape either way — this buys smoother motion at the cost of extra GPU work and battery. Persists across launches."
     }
 
     private var processorFooter: String {
@@ -305,6 +318,17 @@ public struct VisualizerDebugView: View {
                         }
                     }
 
+                    // Visualizer refresh rate
+                    DebugSection(
+                        header: "Refresh Rate",
+                        footer: refreshRateFooter
+                    ) {
+                        Toggle("Match Display Refresh Rate", isOn: $visualizer.highRefreshRateEnabled)
+                            .disabled(!VisualizerRefreshRate.supportsHighRefreshRate(
+                                displayMaximumFramesPerSecond: displayMaximumFPS
+                            ))
+                    }
+
                     // Signal Boost
                     DebugSection(
                         header: "Amplification",
@@ -369,6 +393,12 @@ public struct VisualizerDebugView: View {
                 .padding()
             }
             .sheetChrome(title: "Visualizer Settings")
+            .onAppear {
+                // Resolved here rather than in the property initializer: the
+                // window scene the app is showing in is what reports the rate,
+                // and it is not connected yet when the view value is created.
+                displayMaximumFPS = VisualizerRefreshRate.displayMaximumFramesPerSecond
+            }
         }
     }
 }

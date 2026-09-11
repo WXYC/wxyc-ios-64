@@ -136,6 +136,15 @@ WXYC turns over 10-15 playcuts an hour, so the budget cannot track the flowsheet
 
 **Budget-exempt reloads.** WidgetKit doesn't charge a reload while the containing app is in the foreground *or* holds an active audio session. `WidgetStateService` takes every reload that qualifies and declines every one that doesn't, so a listener's widget tracks the flowsheet change-for-change for free, while an idle backgrounded app spends nothing. Both conditions are in `reloadsAreExemptFromBudget`; `WidgetReloading` is the seam that makes them testable, since `WidgetCenter` silently no-ops under test.
 
+## Display Refresh Rate (ProMotion)
+
+`WXYC/iOS/Assets/Info.plist` sets `CADisableMinimumFrameDurationOnPhone` to `true`. Without that key iOS caps the *entire app* at 60 FPS on ProMotion iPhones, no matter what any individual surface asks for — `CADisplayLink`, `MTKView.preferredFramesPerSecond`, and SwiftUI's `TimelineView(.animation(minimumInterval:))` are all clamped together. It is a build-time declaration, so nothing at runtime can opt in without it. (iPad Pro and ProMotion Macs were never subject to the cap, which is why the key is named "OnPhone".)
+
+Removing the cap is permission, not policy. Each surface still chooses its own rate:
+
+- **Visualizer bars** — opt-in, off by default, via "Refresh Rate → Match Display Refresh Rate" in the Visualizer Settings panel. `VisualizerRefreshRate` turns the setting plus the display's maximum into the `TimelineView` interval; `VisualizerSmoothing` rescales the attack/decay constants by elapsed time so the animation keeps the same wall-clock shape at any rate. Those constants were authored per-frame against 60 FPS, so *any* future change to the visualizer's rate has to go through `VisualizerSmoothing` or the bars will decay at the wrong speed.
+- **Metal wallpaper** — unaffected, and deliberately so. It lives in the `Shared/Wallpaper` submodule, where `MetalWallpaperView` pins `preferredFramesPerSecond` to 60 and `AdaptiveProfile.wallpaperFPSRange` clamps the adaptive quality controller to `15.0...60.0`. Raising that ceiling means changing what "max quality" means for every persisted learned profile (`AdaptiveProfile.isMaxQuality` compares against the range's upper bound), so it is a separate piece of work in a separate repo.
+
 ## App Store Previews
 
 App Store screenshots and preview assets live in a separate project at `../app-store-previews`. Use that project when preparing assets for App Store publication.

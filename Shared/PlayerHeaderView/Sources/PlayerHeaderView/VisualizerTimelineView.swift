@@ -50,6 +50,12 @@ public struct VisualizerTimelineView: View {
     /// Smoothed display values that animate at frame rate (interpolates between audio updates)
     @State private var smoothedValues: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
     
+    /// The current display's maximum refresh rate, resolved once the view is on screen.
+    ///
+    /// Starts at the 60 FPS baseline so the first frames are scheduled conservatively
+    /// on a display that turns out not to support anything faster.
+    @State private var displayMaximumFPS = VisualizerRefreshRate.baselineFramesPerSecond
+    
     @State private var fpsCounter = FPSCounter()
     @State private var showModeIndicator = false
     
@@ -66,6 +72,17 @@ public struct VisualizerTimelineView: View {
         visualizer.isActive || isFalling
     }
 
+    /// How often the timeline is allowed to tick.
+    ///
+    /// Read from the data source rather than cached, unlike `showFPS`: a change
+    /// here has to rebuild the `TimelineView` for the new schedule to take effect.
+    private var minimumInterval: Double {
+        VisualizerRefreshRate.minimumInterval(
+            highRefreshRateEnabled: visualizer.highRefreshRateEnabled,
+            displayMaximumFramesPerSecond: displayMaximumFPS
+        )
+    }
+
     public init(
         visualizer: VisualizerDataSource,
         barHistory: Binding<[[Float]]>,
@@ -77,7 +94,7 @@ public struct VisualizerTimelineView: View {
     }
     
     public var body: some View {
-        TimelineView(.animation(minimumInterval: VisualizerConstants.updateInterval, paused: !isAnimating)) { timeline in
+        TimelineView(.animation(minimumInterval: minimumInterval, paused: !isAnimating)) { timeline in
             LCDSpectrumAnalyzerView(
                 data: barDataCache,
                 maxValue: Double(VisualizerConstants.magnitudeLimit)
@@ -121,8 +138,15 @@ public struct VisualizerTimelineView: View {
         .onChange(of: visualizer.showFPS) { _, newValue in
             cachedShowFPS = newValue
         }
+        .onChange(of: visualizer.highRefreshRateEnabled) {
+            // Re-resolve rather than trust the value cached at `onAppear`: on a Mac
+            // or an iPad with an external display, the window may have moved to a
+            // different panel since this view appeared.
+            displayMaximumFPS = VisualizerRefreshRate.displayMaximumFramesPerSecond
+        }
         .onAppear {
             cachedShowFPS = visualizer.showFPS
+            displayMaximumFPS = VisualizerRefreshRate.displayMaximumFramesPerSecond
         }
 #if DEBUG
         .onTapGesture {
@@ -151,8 +175,8 @@ public struct VisualizerTimelineView: View {
     /// Update visualizer with live audio data using frame-level smoothing
     ///
     /// This interpolates between audio buffer updates to achieve smooth animation.
-    /// Smoothing is scaled by `elapsed` so the bars behave identically however
-    /// often the timeline happens to tick.
+    /// Smoothing is scaled by `elapsed` so the bars behave identically whether the
+    /// timeline is ticking at 60 FPS or at a ProMotion display's full rate.
     private func updatePlaybackData(elapsed: TimeInterval) {
         // Pull the next eligible frame from the delay buffer into fftMagnitudes/rmsPerBar
         visualizer.dequeueNextFrame()
