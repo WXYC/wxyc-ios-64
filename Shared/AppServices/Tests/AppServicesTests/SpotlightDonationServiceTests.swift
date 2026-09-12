@@ -15,6 +15,9 @@
 //  picks a representative original-cased name (most frequent raw
 //  `Playcut.artistName` in the group, ties broken by first occurrence)
 //  rather than handing the already-lowercased dedup key to `ArtistEntity`.
+//  Issue #1063 adds the capture gate on that same path: the artist index is
+//  still refreshed on every tick, but `SpotlightDonated` only fires when the
+//  donated `(normalizedName, playCount)` set actually moved.
 //
 //  Created by Jake Bromberg on 07/09/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -913,6 +916,180 @@ struct SpotlightDonationServiceTests {
         await service.donateArtists(from: [])
 
         #expect(analytics.events.isEmpty)
+    }
+
+    // MARK: - Artist capture gating (#1063)
+
+    @Test("donateArtists re-indexes but does not re-capture when the donated set is unchanged")
+    func donateArtistsSuppressesRepeatCaptureForUnchangedSet() async {
+        // The #1063 case: the caller hands this path the same recent-playlist
+        // window on every tick, so the same artist set was re-donated — and
+        // re-reported — ~33,300 times over 12 days. Indexing stays on every
+        // tick (Spotlight freshness is the feature); only the capture is gated.
+        let analytics = MockStructuredAnalytics()
+        let artistIndexer = MockArtistSpotlightIndexer()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: artistIndexer,
+            analytics: analytics
+        )
+
+        let playcuts: [Playcut] = [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Juana Molina"),
+        ]
+        await service.donateArtists(from: playcuts)
+        await service.donateArtists(from: playcuts)
+
+        #expect(await artistIndexer.calls.count == 2)
+        #expect(analytics.typedEvents(ofType: SpotlightDonated.self).count == 1)
+    }
+
+    @Test("donateArtists captures again when a play count changes on an otherwise identical artist set")
+    func donateArtistsCapturesWhenPlayCountChanges() async {
+        // Counts are in the fingerprint for exactly this reason: this path
+        // has no watermark because counts drift while the *name* set holds
+        // still, so hashing names alone would suppress the informative
+        // donations along with the noisy ones.
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(),
+            analytics: analytics
+        )
+
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Juana Molina"),
+        ])
+        // Same two artists, one of them played once more.
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Juana Molina"),
+            .stub(id: 3, artistName: "Stereolab"),
+        ])
+
+        let events = analytics.typedEvents(ofType: SpotlightDonated.self)
+        #expect(events.count == 2)
+        #expect(events.map(\.batchSize) == [2, 2])
+    }
+
+    @Test("donateArtists captures again when an artist joins the set")
+    func donateArtistsCapturesWhenArtistSetGrows() async {
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(),
+            analytics: analytics
+        )
+
+        await service.donateArtists(from: [.stub(id: 1, artistName: "Stereolab")])
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Chuquimamani-Condori"),
+        ])
+
+        #expect(analytics.typedEvents(ofType: SpotlightDonated.self).count == 2)
+    }
+
+    @Test("donateArtists fingerprints the set, not the order the entities happen to come out in")
+    func donateArtistsFingerprintIgnoresInputOrder() async {
+        // `donateArtists` derives entities from `Dictionary(grouping:)`, whose
+        // iteration order is not stable across calls. If the fingerprint rode
+        // that order the gate would leak captures at random, which is the
+        // failure mode hardest to spot from a volume graph.
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(),
+            analytics: analytics
+        )
+
+        await service.donateArtists(from: [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Juana Molina"),
+            .stub(id: 3, artistName: "Jessica Pratt"),
+        ])
+        await service.donateArtists(from: [
+            .stub(id: 3, artistName: "Jessica Pratt"),
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Juana Molina"),
+        ])
+
+        #expect(analytics.typedEvents(ofType: SpotlightDonated.self).count == 1)
+    }
+
+    @Test("donateArtists still captures SpotlightDonationFailed on every failed tick")
+    func donateArtistsCapturesFailureUnconditionally() async {
+        // Only the success path is noisy. A failure repeating tick after tick
+        // is the signal, not the noise, so the gate must not reach it.
+        let analytics = MockStructuredAnalytics()
+        let service = SpotlightDonationService(
+            storage: InMemoryDefaults(),
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(shouldThrow: true),
+            analytics: analytics
+        )
+
+        let playcuts: [Playcut] = [.stub(id: 1, artistName: "Stereolab")]
+        await service.donateArtists(from: playcuts)
+        await service.donateArtists(from: playcuts)
+
+        #expect(analytics.typedEvents(ofType: SpotlightDonated.self).isEmpty)
+        #expect(analytics.typedEvents(ofType: SpotlightDonationFailed.self).count == 2)
+    }
+
+    @Test("donateArtists leaves the fingerprint unwritten when the indexer throws")
+    func donateArtistsDoesNotRecordFingerprintOnFailure() async {
+        // Mirrors the watermark's failure contract: nothing was indexed, so
+        // the next successful donation of the same set is a first donation
+        // and still reports.
+        let defaults = InMemoryDefaults()
+        let service = SpotlightDonationService(
+            storage: defaults,
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(shouldThrow: true),
+            analytics: MockStructuredAnalytics()
+        )
+
+        await service.donateArtists(from: [.stub(id: 1, artistName: "Stereolab")])
+
+        #expect(defaults.string(forKey: SpotlightDonationService.donatedArtistsFingerprintKey) == nil)
+    }
+
+    @Test("donateArtists stays silent across a relaunch that donates the same set")
+    func donateArtistsFingerprintSurvivesRelaunch() async {
+        // The fingerprint lives in DefaultsStorage, not in the actor, so a
+        // cold start on an unchanged playlist doesn't re-capture. A second
+        // service over the same storage stands in for the next launch.
+        let defaults = InMemoryDefaults()
+        let analytics = MockStructuredAnalytics()
+        let playcuts: [Playcut] = [
+            .stub(id: 1, artistName: "Stereolab"),
+            .stub(id: 2, artistName: "Juana Molina"),
+        ]
+
+        let firstLaunch = SpotlightDonationService(
+            storage: defaults,
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(),
+            analytics: analytics
+        )
+        await firstLaunch.donateArtists(from: playcuts)
+
+        let secondLaunch = SpotlightDonationService(
+            storage: defaults,
+            indexer: MockSpotlightIndexer(),
+            artistIndexer: MockArtistSpotlightIndexer(),
+            analytics: analytics
+        )
+        await secondLaunch.donateArtists(from: playcuts)
+
+        #expect(analytics.typedEvents(ofType: SpotlightDonated.self).count == 1)
     }
 
     @Test("donateBatch emits two SpotlightDonated events distinguishable by kind, not just batch size")
