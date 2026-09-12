@@ -25,13 +25,17 @@ struct AuthenticationServiceTests {
     func makeService(
         storage: TokenStorage = InMemoryTokenStorage(),
         networkClient: AuthNetworkClient = MockAuthNetworkClient(),
-        baseURL: String = "https://api.example.com"
+        baseURL: String = "https://api.example.com",
+        fingerprintMode: DeviceFingerprintMode = .existing,
+        prematureAccessCount: Int = 0
     ) -> AuthenticationService {
         AuthenticationService(
             storage: storage,
             networkClient: networkClient,
             baseURL: baseURL,
-            analytics: mockAnalytics
+            analytics: mockAnalytics,
+            fingerprintMode: fingerprintMode,
+            prematureAccessCount: prematureAccessCount
         )
     }
 
@@ -833,22 +837,180 @@ struct AuthenticationServiceTests {
         #expect(userId == nil)
     }
 
-    // MARK: - Analytics Tests
+    // MARK: - Analytics Tests (#1067 collapse)
 
-    @Test("Tracks auth started and completed events")
-    func tracksAuthEvents() async throws {
+    /// #1067 collapsed `request_line_auth_started_event` +
+    /// `request_line_jwt_exchange_event` + `fingerprint_mode_resolved_event`
+    /// + `request_line_auth_completed_event` into one
+    /// `request_line_auth_resolved` summary per resolution. A fresh sign-in
+    /// (3c) is a network resolution with a real JWT exchange, so it must
+    /// carry a non-nil `jwtDurationMs`.
+    @Test("A fresh sign-in resolution emits exactly one RequestLineAuthResolvedEvent, outcome .freshSignIn")
+    func tracksResolvedEventOnFreshSignIn() async throws {
         let storage = InMemoryTokenStorage()
-        let session = makeValidSession()
         let networkClient = makeNetworkClient(signInResult: makeSignInResult())
 
-        let service = makeService(storage: storage, networkClient: networkClient)
+        let service = makeService(
+            storage: storage,
+            networkClient: networkClient,
+            fingerprintMode: .synchronizable,
+            prematureAccessCount: 3
+        )
         mockAnalytics.reset()
 
         _ = try await service.ensureAuthenticated()
 
-        let eventNames = mockAnalytics.capturedEventNames()
-        #expect(eventNames.contains("request_line_auth_started_event"))
-        #expect(eventNames.contains("request_line_auth_completed_event"))
+        // Exactly one event, and it's the resolved summary — not any of the
+        // four collapsed names (which no longer exist as types to emit).
+        #expect(mockAnalytics.capturedEventNames() == ["request_line_auth_resolved"])
+
+        let resolved = try #require(mockAnalytics.typedEvents(ofType: RequestLineAuthResolvedEvent.self).first)
+        #expect(resolved.outcome == .freshSignIn)
+        #expect(resolved.fingerprintMode == .synchronizable)
+        #expect(resolved.prematureAccessCount == 3)
+        #expect(resolved.jwtDurationMs != nil)
+        #expect(resolved.durationMs >= 0)
+        #expect(resolved.durationClamped == false)
+    }
+
+    /// The `/auth/token` mint path (3b) is also a network resolution with a
+    /// real JWT exchange, but a distinct outcome from a fresh sign-in — the
+    /// distinction #1067's investigation found invisible in the old events
+    /// (both bucketed as `source: "network"` with no way to tell them apart).
+    @Test("A token-refresh resolution emits exactly one RequestLineAuthResolvedEvent, outcome .tokenRefresh")
+    func tracksResolvedEventOnTokenRefresh() async throws {
+        let storage = InMemoryTokenStorage()
+        let expiredSession = makeExpiredSession()
+        try storage.save(expiredSession)
+        let networkClient = makeNetworkClient()
+
+        let service = makeService(storage: storage, networkClient: networkClient, fingerprintMode: .local)
+        mockAnalytics.reset()
+
+        _ = try await service.ensureAuthenticated()
+
+        #expect(mockAnalytics.capturedEventNames() == ["request_line_auth_resolved"])
+
+        let resolved = try #require(mockAnalytics.typedEvents(ofType: RequestLineAuthResolvedEvent.self).first)
+        #expect(resolved.outcome == .tokenRefresh)
+        #expect(resolved.fingerprintMode == .local)
+        #expect(resolved.jwtDurationMs != nil)
+    }
+
+    /// The Keychain-hit path (3a) never calls `/auth/token`, so it must not
+    /// claim a JWT exchange duration it didn't measure — `jwtDurationMs` is
+    /// `nil`, not `0`, distinguishing "no exchange happened" from "the
+    /// exchange somehow took no time."
+    @Test("A Keychain-hit resolution emits exactly one RequestLineAuthResolvedEvent with a nil jwtDurationMs")
+    func tracksResolvedEventOnKeychainHit() async throws {
+        let storage = InMemoryTokenStorage()
+        let networkClient = MockAuthNetworkClient()
+        let session = makeValidSession()
+        try storage.save(session)
+
+        let service = makeService(storage: storage, networkClient: networkClient, fingerprintMode: .existing)
+        mockAnalytics.reset()
+
+        // Nothing cached yet, so this reaches performRefresh() and loads the
+        // still-fresh session from storage — the 3a branch, not the
+        // ensureAuthenticated() in-memory cache fast path (PR1), which is
+        // only reachable on a SECOND call.
+        let token = try await service.ensureAuthenticated()
+
+        #expect(token == session.jwt)
+        #expect(mockAnalytics.capturedEventNames() == ["request_line_auth_resolved"])
+        #expect(networkClient.signInCallCount == 0)
+        #expect(networkClient.fetchJWTCallCount == 0)
+
+        let resolved = try #require(mockAnalytics.typedEvents(ofType: RequestLineAuthResolvedEvent.self).first)
+        #expect(resolved.outcome == .keychainHit)
+        #expect(resolved.fingerprintMode == .existing)
+        #expect(resolved.jwtDurationMs == nil)
+    }
+
+    /// Failure-path visibility is load-bearing for #996/#1002: a resolution
+    /// that throws must still emit `RequestLineAuthFailedEvent` unchanged,
+    /// and must NOT also emit a resolved summary — "Success path emits one
+    /// summary event per resolution" per #1067's acceptance criteria implies
+    /// the failure path emits none.
+    @Test("A failed resolution emits RequestLineAuthFailedEvent and no RequestLineAuthResolvedEvent")
+    func noResolvedEventOnFailure() async throws {
+        let storage = InMemoryTokenStorage()
+        let networkClient = MockAuthNetworkClient()
+        networkClient.mockError = AuthenticationError.networkError(URLError(.notConnectedToInternet))
+
+        let service = makeService(storage: storage, networkClient: networkClient)
+        mockAnalytics.reset()
+
+        do {
+            _ = try await service.ensureAuthenticated()
+            Issue.record("Expected ensureAuthenticated() to throw")
+        } catch {
+            // Expected.
+        }
+
+        #expect(mockAnalytics.typedEvents(ofType: RequestLineAuthFailedEvent.self).count == 1)
+        #expect(mockAnalytics.typedEvents(ofType: RequestLineAuthResolvedEvent.self).isEmpty)
+        #expect(!mockAnalytics.capturedEventNames().contains("request_line_auth_resolved"))
+    }
+
+    /// Regression guard for the four collapsed event names (#1067):
+    /// `request_line_auth_started_event`, `request_line_jwt_exchange_event`,
+    /// `fingerprint_mode_resolved_event`, and
+    /// `request_line_auth_completed_event` no longer exist as types, so this
+    /// is largely a compile-time guarantee already — but pinning the exact
+    /// name strings here means a future re-introduction under one of these
+    /// names (e.g. a hand-rolled `analytics.capture` bypassing the removed
+    /// types) still fails loudly instead of silently reinflating the
+    /// cluster.
+    @Test("No standalone started/jwt-exchange/fingerprint-mode/completed events are emitted across cache, keychain, and network resolutions")
+    func noStandaloneLegacyEventsAcrossResolutionKinds() async throws {
+        let legacyNames: Set<String> = [
+            "request_line_auth_started_event",
+            "request_line_jwt_exchange_event",
+            "fingerprint_mode_resolved_event",
+            "request_line_auth_completed_event",
+        ]
+
+        let storage = InMemoryTokenStorage()
+        let session = makeValidSession()
+        try storage.save(session)
+        let networkClient = makeNetworkClient(signInResult: makeSignInResult())
+        let service = makeService(storage: storage, networkClient: networkClient)
+        mockAnalytics.reset()
+
+        // Keychain hit (3a), then in-memory cache hit (PR1's fast path).
+        _ = try await service.ensureAuthenticated()
+        _ = try await service.ensureAuthenticated()
+
+        // A fresh sign-in on a separate service instance (network resolution).
+        let freshService = makeService(networkClient: makeNetworkClient(signInResult: makeSignInResult()))
+        _ = try await freshService.ensureAuthenticated()
+
+        let capturedNames = Set(mockAnalytics.capturedEventNames())
+        #expect(capturedNames.isDisjoint(with: legacyNames))
+    }
+
+    // MARK: - #1067 Duration Clamp
+
+    /// The #1067 investigation found `duration_ms` values up to 8,452,908 ms
+    /// (2.35 h) from the app suspending mid-`await`. `AuthenticationService`
+    /// has no injected clock, so this pins the pure clamp function directly
+    /// rather than trying to fake a 60-second-plus real delay in a unit test.
+    @Test(
+        "clamp(_:) caps at 60,000 ms and reports whether it clamped",
+        arguments: [
+            (0.0, 0.0, false),
+            (2_953.0, 2_953.0, false),
+            (60_000.0, 60_000.0, false),
+            (60_000.001, 60_000.0, true),
+            (8_452_908.05, 60_000.0, true),
+        ]
+    )
+    func clampCapsAtMaxDuration(_ fixture: (raw: Double, expectedValue: Double, expectedClamped: Bool)) {
+        let (value, wasClamped) = AuthenticationService.clamp(fixture.raw)
+        #expect(value == fixture.expectedValue)
+        #expect(wasClamped == fixture.expectedClamped)
     }
 
     // MARK: - #1067 Cache Fast Path Emits No Analytics
@@ -888,21 +1050,6 @@ struct AuthenticationServiceTests {
 
         #expect(token == session.jwt)
         #expect(mockAnalytics.capturedEventNames().isEmpty)
-    }
-
-    @Test("Tracks JWT exchange event on successful auth from network")
-    func tracksJWTExchangeEvent() async throws {
-        let storage = InMemoryTokenStorage()
-        let session = makeValidSession()
-        let networkClient = makeNetworkClient(signInResult: makeSignInResult())
-
-        let service = makeService(storage: storage, networkClient: networkClient)
-        mockAnalytics.reset()
-
-        _ = try await service.ensureAuthenticated()
-
-        let eventNames = mockAnalytics.capturedEventNames()
-        #expect(eventNames.contains("request_line_jwt_exchange_event"))
     }
 
     @Test("Tracks auth failed event on network error")

@@ -15,10 +15,15 @@ import Security
 
 /// How the device fingerprint came to be available on this launch.
 ///
-/// Reported once per launch as `fingerprint_mode_resolved_event` (#998). Modes
-/// and status codes are the entire permitted payload — the fingerprint value
-/// itself is a stable per-device identifier and therefore a deanonymization
-/// vector, and must never reach analytics.
+/// Resolved once per `configure(...)`/`reconfigure(_:)` call and threaded into
+/// the `AuthenticationService` constructed alongside it, which reports this
+/// mode as the `fingerprint_mode` property on `RequestLineAuthResolvedEvent`
+/// (#1067) — every real auth resolution for that launch carries it, rather
+/// than a single dedicated per-launch event as `fingerprint_mode_resolved_event`
+/// (#998) did before the #1067 collapse. The value itself is never logged or
+/// captured — only the mode and status codes are the permitted payload — the
+/// fingerprint is a stable per-device identifier and therefore a
+/// deanonymization vector.
 public enum DeviceFingerprintMode: String, CaseIterable, Sendable {
 
     /// A value was already persisted and was read back; nothing was written.
@@ -76,8 +81,18 @@ public struct DeviceFingerprintResolution: Sendable {
     ///   failed with.
     ///
     /// A resolution never carries ``DeviceFingerprintMode/failed``; that mode
-    /// is derived by the caller from a thrown error, whose status it reports
-    /// instead.
+    /// is derived by the caller from a thrown error.
+    ///
+    /// Since #1067 no analytics event carries this value directly. On the
+    /// throw path the status reaches PostHog inside
+    /// `DeviceFingerprintInitFailedEvent.error`, which is
+    /// `AuthenticationError.keychainError`'s `"Keychain error: <status>"`
+    /// description; on the ``DeviceFingerprintMode/local`` branch — the only
+    /// mode where this field says something no other signal does — it stays
+    /// local to this type, which is tolerable only because that branch is
+    /// unreachable outside an unentitled macOS process (see that case's doc
+    /// comment). If `local` ever appears in the fleet, this is the value that
+    /// explains it, and it will need a carrier.
     public let osStatus: OSStatus
 
     public init(value: String, mode: DeviceFingerprintMode, osStatus: OSStatus = errSecSuccess) {

@@ -30,12 +30,20 @@ struct DeviceFingerprintConfigurationTests {
     /// can interleave on `MusicShareKit`'s global static state — if both call
     /// `configure(...)` with different URLs concurrently, whichever happens
     /// to land last wins and breaks the other suite's assertions.
+    ///
+    /// `authBaseURL` is non-nil so `reconfigure(_:)` actually builds the
+    /// `AuthenticationService` this suite reads the threaded fingerprint mode
+    /// off. It points at the same discard port
+    /// `MusicShareKitConfigureGuardTests` and `MusicShareKitTokenProviderTests`
+    /// use: nothing here drives a resolution, and if a racing suite ever
+    /// reached this service, a connection to port 9 fails fast rather than
+    /// touching a real host.
     func makeConfiguration(
         storage: any DeviceFingerprintStorage = InMemoryDeviceFingerprintStorage()
     ) -> MusicShareKitConfiguration {
         MusicShareKitConfiguration(
             requestOMaticURL: "https://example.com/request",
-            authBaseURL: nil,
+            authBaseURL: "http://127.0.0.1:9",
             keychainAccessGroup: nil,
             featureFlagProvider: nil,
             defaults: UserDefaults.standard,
@@ -136,13 +144,52 @@ struct DeviceFingerprintConfigurationTests {
         #expect(storage.ensureCallCount == preCount + 1)
     }
 
-    // MARK: - Resolved-mode telemetry (#998)
+    // MARK: - Resolved-mode plumbing (#998, collapsed into AuthenticationService by #1067)
+    //
+    // Before #1067, `reconfigure(_:)` reported the resolved mode as a
+    // dedicated once-per-launch `FingerprintModeResolvedEvent`. That event is
+    // gone: the mode now rides as the `fingerprint_mode` property on every
+    // `RequestLineAuthResolvedEvent` `AuthenticationService` emits (see that
+    // type's `fingerprintMode` doc comment). `AuthenticationService` always
+    // gets a real `KeychainTokenStorage` + `DefaultAuthNetworkClient()` from
+    // `reconfigure(_:)`, with no test seam for either, so there is no way to
+    // drive it through a real resolution here without touching the Keychain
+    // or network. What these tests assert instead is the step that lives in
+    // `reconfigure(_:)`: the mode it computed is the mode it handed to the
+    // service it built, read straight back off that instance. Asserting a
+    // separately-published copy of the value would pass even if the argument
+    // at the construction site were replaced by a literal. That the service
+    // then puts its stored mode on the event is covered in
+    // `AuthenticationServiceTests`, where the network client is a double.
+    //
+    // The branch-to-mode mapping itself (readHit/synchronizableAdd/
+    // localFallback/everythingFails) is exhaustively covered independently in
+    // `DeviceFingerprintModeTests.swift` against
+    // `KeychainDeviceFingerprintStorage.resolve()` directly, so it is not
+    // re-covered here.
+    //
+    // Two tests from before #1067 have no replacement, because the behavior
+    // they pinned no longer exists rather than having moved: `resolvedModeIsOncePerLaunch`
+    // and `retryDoesNotDoubleEmit` guarded against a *second* capture of the
+    // per-launch event on repeated `deviceFingerprint` reads — there is no
+    // longer a per-read emission path to double-fire, so the invariant is
+    // true by construction. `prematureAccessesRideOnTheLaunchEvent` pinned
+    // folding `prematureFingerprintAccesses.count` into that event; the count
+    // still rides into the service alongside the mode and still reaches
+    // PostHog under the same `premature_access_count` key, but its value is a
+    // process-wide total that any suite in a parallel run can advance, so it
+    // is pinned where it is deterministic — as an injected value in
+    // `AuthenticationServiceTests` and `RequestLineAnalyticsEventsTests` —
+    // rather than re-asserted against the live counter here.
+    // `PrematureAccessCounterTests` in `DeviceFingerprintModeTests.swift`
+    // still covers the counter itself.
 
-    /// The load-bearing property of the whole event: it fires when nothing went
-    /// wrong. A failure-only metric reads identically to a metric that stopped
-    /// reporting, and that ambiguity is what hid #996 for two weeks.
-    @Test("configure() captures FingerprintModeResolvedEvent on SUCCESS, not only on failure")
-    func successCapturesResolvedMode() throws {
+    /// The load-bearing property of the original event carries over to its
+    /// replacement home: resolution succeeding must still produce a real,
+    /// non-placeholder mode, not silently leave the prior configure's value
+    /// in place.
+    @Test("reconfigure() threads the resolved mode on SUCCESS, not only on failure")
+    func successThreadsResolvedMode() async throws {
         let storage = InMemoryDeviceFingerprintStorage()
         storage.stubFingerprint = "resolved-ok"
         storage.stubMode = .synchronizable
@@ -150,114 +197,77 @@ struct DeviceFingerprintConfigurationTests {
 
         MusicShareKit.reconfigure(makeConfiguration(storage: storage))
 
-        let resolved = mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self)
-        #expect(resolved.count == 1)
-        #expect(resolved.first?.mode == "synchronizable")
-        #expect(resolved.first?.osStatus == errSecSuccess)
+        #expect(await MusicShareKit.authService?.fingerprintMode == .synchronizable)
         // Adding a signal must not remove one: the pre-existing failure event
         // stays failure-only.
         #expect(mockAnalytics.typedEvents(ofType: DeviceFingerprintInitFailedEvent.self).isEmpty)
     }
 
-    @Test("configure() captures FingerprintModeResolvedEvent(.failed) carrying the thrown OSStatus")
-    func failureCapturesResolvedMode() throws {
+    @Test("reconfigure() threads .failed on a thrown resolution, alongside DeviceFingerprintInitFailedEvent")
+    func failureThreadsResolvedMode() async throws {
         let storage = InMemoryDeviceFingerprintStorage()
         storage.stubError = AuthenticationError.keychainError(status: errSecMissingEntitlement)
         mockAnalytics.reset()
 
         MusicShareKit.reconfigure(makeConfiguration(storage: storage))
 
-        let resolved = mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self)
-        #expect(resolved.count == 1)
-        #expect(resolved.first?.mode == "failed")
-        #expect(resolved.first?.osStatus == -34018)
-        // Both events fire; the new one does not displace the old one.
+        #expect(await MusicShareKit.authService?.fingerprintMode == .failed)
+        // Both signals fire; the new one does not displace the old one.
         #expect(mockAnalytics.typedEvents(ofType: DeviceFingerprintInitFailedEvent.self).count == 1)
     }
 
-    @Test(
-        "Each Keychain branch reaches analytics as its own mode",
-        arguments: [
-            (KeychainScript.readHit, "existing", errSecSuccess),
-            (KeychainScript.synchronizableAdd, "synchronizable", errSecSuccess),
-            (KeychainScript.localFallback, "local", errSecMissingEntitlement),
-            (KeychainScript.everythingFails, "failed", errSecMissingEntitlement),
-        ]
-    )
-    func keychainBranchesReachAnalytics(
-        _ script: KeychainScript, _ expectedMode: String, _ expectedStatus: OSStatus
-    ) throws {
-        mockAnalytics.reset()
-
-        MusicShareKit.reconfigure(makeConfiguration(storage: script.makeStorage()))
-
-        let resolved = mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self)
-        #expect(resolved.count == 1)
-        #expect(resolved.first?.mode == expectedMode)
-        #expect(resolved.first?.osStatus == expectedStatus)
-    }
-
-    /// One summary event per launch is the budget — the PostHog org is on the
-    /// free tier at its six-project limit and came off a quota exhaustion on
-    /// 2026-08-04. Per-operation capture is not affordable.
-    @Test("The resolved-mode event is emitted once per configure, not once per fingerprint read")
-    func resolvedModeIsOncePerLaunch() throws {
+    /// The mode is stamped once, at `reconfigure(_:)` time, and does not
+    /// drift when the accessor's inline retry later recovers (or keeps
+    /// failing) — mirroring the same "known cost" `AuthenticationService`'s
+    /// `fingerprintMode` doc comment describes: a device whose eager init
+    /// failed and whose retry then recovered still reports `.failed` on
+    /// every `RequestLineAuthResolvedEvent` for the rest of that launch.
+    @Test("The resolved mode does not change across later deviceFingerprint reads or the inline retry")
+    func resolvedModeIsStableAcrossLaterReads() async throws {
         let storage = InMemoryDeviceFingerprintStorage()
-        storage.stubFingerprint = "once-per-launch"
-        mockAnalytics.reset()
+        storage.stubError = AuthenticationError.keychainError(status: errSecInteractionNotAllowed)
 
         MusicShareKit.reconfigure(makeConfiguration(storage: storage))
-        for _ in 0..<10 {
+        let service = try #require(MusicShareKit.authService)
+        #expect(await service.fingerprintMode == .failed)
+
+        // …then Keychain comes online and the retry recovers a value for
+        // `deviceFingerprint` itself — but the mode recorded at configure
+        // time must not follow it.
+        storage.stubError = nil
+        storage.stubFingerprint = "recovered-after-unlock"
+        for _ in 0..<5 {
             _ = MusicShareKit.deviceFingerprint
         }
 
-        #expect(mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self).count == 1)
+        // Read the SAME instance again, not `MusicShareKit.authService` — a
+        // racing suite's reconfigure would swap the global out from under
+        // this assertion and turn a stability check into a coin flip.
+        #expect(await service.fingerprintMode == .failed)
     }
 
-    /// The accessor's at-most-once inline retry carries a "don't double-emit"
-    /// comment for the failure event. The per-launch mode event is bound by the
-    /// same rule.
-    @Test("The accessor's inline retry does not emit a second resolved-mode event")
-    func retryDoesNotDoubleEmit() throws {
-        let storage = InMemoryDeviceFingerprintStorage()
-        storage.stubError = AuthenticationError.keychainError(status: errSecInteractionNotAllowed)
-        mockAnalytics.reset()
-
-        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
-
-        storage.stubError = nil
-        storage.stubFingerprint = "recovered-after-unlock"
-        _ = MusicShareKit.deviceFingerprint
-        _ = MusicShareKit.deviceFingerprint
-
-        #expect(mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self).count == 1)
-        #expect(mockAnalytics.typedEvents(ofType: DeviceFingerprintInitFailedEvent.self).count == 1)
-    }
-
-    /// (B) The pre-configure silent nil. `MusicShareKit.deviceFingerprint`'s
-    /// `guard let config = _configuration` returns nil with no analytics
-    /// service in existence to report to — `_configuration` is where the
-    /// analytics service lives. The access is counted and the total rides on
-    /// the next launch event instead.
-    ///
-    /// The count is asserted as a lower bound, not an equality: it is a
-    /// process-wide monotonic counter and `MusicShareKitTests` runs its suites
-    /// in parallel, so another suite could contribute. A regression to "not
-    /// wired" reads as 0 and still fails here.
-    @Test("Pre-configure fingerprint reads are counted and reported on the launch event")
-    func prematureAccessesRideOnTheLaunchEvent() throws {
-        let storage = InMemoryDeviceFingerprintStorage()
-        storage.stubFingerprint = "premature-probe"
-
-        MusicShareKit.prematureFingerprintAccesses.record()
-        MusicShareKit.prematureFingerprintAccesses.record()
-        mockAnalytics.reset()
-
-        MusicShareKit.reconfigure(makeConfiguration(storage: storage))
-
-        let resolved = mockAnalytics.typedEvents(ofType: FingerprintModeResolvedEvent.self)
-        #expect(resolved.count == 1)
-        #expect((resolved.first?.prematureAccessCount ?? -1) >= 2)
+    /// Same wiring, exercised through a real `KeychainDeviceFingerprintStorage`
+    /// + `MockKeychainOperations` (rather than `InMemoryDeviceFingerprintStorage`
+    /// as the rest of this suite uses) so the branch that actually produces
+    /// each mode is real Keychain-shaped code, not a test double standing in
+    /// for it. `osStatus` is deliberately not asserted here — post-#1067,
+    /// `reconfigure(_:)` no longer reads it at all (the new summary event has
+    /// no property for it); see `MusicShareKitConfiguration.swift`'s comment
+    /// at the `mode`/`osStatus` do/catch for the full accounting.
+    @Test(
+        "Each Keychain branch threads its own mode",
+        arguments: [
+            (KeychainScript.readHit, DeviceFingerprintMode.existing),
+            (KeychainScript.synchronizableAdd, DeviceFingerprintMode.synchronizable),
+            (KeychainScript.localFallback, DeviceFingerprintMode.local),
+            (KeychainScript.everythingFails, DeviceFingerprintMode.failed),
+        ]
+    )
+    func keychainBranchesThreadTheirMode(
+        _ script: KeychainScript, _ expectedMode: DeviceFingerprintMode
+    ) async throws {
+        MusicShareKit.reconfigure(makeConfiguration(storage: script.makeStorage()))
+        #expect(await MusicShareKit.authService?.fingerprintMode == expectedMode)
     }
 
     @Test("Configuration default storage is a KeychainDeviceFingerprintStorage")

@@ -2,12 +2,17 @@
 //  RequestLineAnalyticsEventsTests.swift
 //  MusicShareKit
 //
-//  Parity coverage for RequestLineAnalytics.swift's ten events (#763): pins
-//  each event's `name` and `properties` dict to the exact values the
+//  Parity coverage for RequestLineAnalytics.swift's events (#763): pins each
+//  event's `name` and `properties` dict to the exact values the
 //  hand-written conformances produced before the `@AnalyticsEvent` macro
 //  adoption, so the macro's snake_case name/key derivation and (for the
 //  enum-typed properties) the rawValue-backed storage can never silently
 //  drift from what PostHog actually recorded pre-migration.
+//
+//  #1067 collapsed RequestLineAuthStartedEvent, RequestLineJWTExchangeEvent,
+//  FingerprintModeResolvedEvent, and RequestLineAuthCompletedEvent into one
+//  hand-written RequestLineAuthResolvedEvent; their parity tests below were
+//  replaced accordingly rather than deleted outright.
 //
 //  Created by Jake Bromberg on 08/05/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -24,12 +29,6 @@ import Testing
 /// rather than `case.rawValue` so the test actually pins the wire value —
 /// deriving the expectation from `.rawValue` would make the assertion a
 /// tautology against the very enum it's supposed to guard.
-private let authTokenSourceCases: [(AuthTokenSource, String)] = [
-    (.cache, "cache"),
-    (.keychain, "keychain"),
-    (.network, "network"),
-]
-
 private let authFailurePhaseCases: [(AuthFailurePhase, String)] = [
     (.keychain, "keychain"),
     (.network, "network"),
@@ -61,6 +60,12 @@ private let deviceFingerprintModeCases: [(DeviceFingerprintMode, String)] = [
     (.failed, "failed"),
 ]
 
+private let authResolutionOutcomeCases: [(AuthResolutionOutcome, String)] = [
+    (.keychainHit, "keychain_hit"),
+    (.tokenRefresh, "token_refresh"),
+    (.freshSignIn, "fresh_sign_in"),
+]
+
 /// Every `Bool` property is exercised at both polarities. Asserting only the
 /// `true` case would pass even if the macro emitted a literal instead of
 /// reading the stored property, or if an init dropped the assignment.
@@ -78,44 +83,112 @@ struct RequestLineAnalyticsEventsTests {
     /// its expected raw value is written down.
     @Test("Every enum case appears in its parity fixture array")
     func fixtureArraysCoverEveryCase() {
-        #expect(Set(authTokenSourceCases.map(\.0)) == Set(AuthTokenSource.allCases))
         #expect(Set(authFailurePhaseCases.map(\.0)) == Set(AuthFailurePhase.allCases))
         #expect(Set(tokenRefreshReasonCases.map(\.0)) == Set(TokenRefreshReason.allCases))
         #expect(Set(keychainOperationCases.map(\.0)) == Set(KeychainOperation.allCases))
         #expect(Set(featureFlagSourceCases.map(\.0)) == Set(FeatureFlagSource.allCases))
         #expect(Set(deviceFingerprintModeCases.map(\.0)) == Set(DeviceFingerprintMode.allCases))
+        #expect(Set(authResolutionOutcomeCases.map(\.0)) == Set(AuthResolutionOutcome.allCases))
     }
 
-    // MARK: - RequestLineAuthStartedEvent
+    // MARK: - RequestLineAuthResolvedEvent (#1067)
 
-    @Test(
-        "RequestLineAuthStartedEvent carries the token source's raw value",
-        arguments: authTokenSourceCases
-    )
-    func authStartedEventProperties(_ fixture: (AuthTokenSource, String)) throws {
-        let event = RequestLineAuthStartedEvent(source: fixture.0)
+    /// Full property-set pin for a representative fixture, including the
+    /// exact name (deliberately without a trailing `_event` — see
+    /// `PlaybackStartedEvent` for the same explicit-name-override idiom this
+    /// event follows) and the exhaustive key count, which is the guard
+    /// against a stray extra property landing here unnoticed.
+    @Test("RequestLineAuthResolvedEvent carries every property under its exact keys")
+    func authResolvedEventFullProperties() throws {
+        let event = RequestLineAuthResolvedEvent(
+            outcome: .tokenRefresh,
+            fingerprintMode: .synchronizable,
+            prematureAccessCount: 2,
+            jwtDurationMs: 123.0,
+            durationMs: 456.0,
+            durationClamped: false
+        )
         let props = try #require(event.properties)
 
-        #expect(props["source"] as? String == fixture.1)
-        #expect(props.count == 1)
-        #expect(RequestLineAuthStartedEvent.name == "request_line_auth_started_event")
+        #expect(props["outcome"] as? String == "token_refresh")
+        #expect(props["fingerprint_mode"] as? String == "synchronizable")
+        #expect(props["premature_access_count"] as? Int == 2)
+        #expect(props["jwt_duration_ms"] as? Double == 123.0)
+        #expect(props["duration_ms"] as? Double == 456.0)
+        #expect(props["duration_clamped"] as? Bool == false)
+        #expect(props.count == 6)
+        #expect(RequestLineAuthResolvedEvent.name == "request_line_auth_resolved")
     }
 
-    // MARK: - RequestLineAuthCompletedEvent
+    @Test(
+        "RequestLineAuthResolvedEvent.outcome carries the resolution outcome's raw value",
+        arguments: authResolutionOutcomeCases
+    )
+    func authResolvedEventOutcome(_ fixture: (AuthResolutionOutcome, String)) throws {
+        let event = RequestLineAuthResolvedEvent(
+            outcome: fixture.0,
+            fingerprintMode: .existing,
+            prematureAccessCount: 0,
+            jwtDurationMs: 10.0,
+            durationMs: 20.0,
+            durationClamped: false
+        )
+        let props = try #require(event.properties)
+        #expect(props["outcome"] as? String == fixture.1)
+    }
 
     @Test(
-        "RequestLineAuthCompletedEvent carries source, duration, and success",
-        arguments: authTokenSourceCases, bothPolarities
+        "RequestLineAuthResolvedEvent.fingerprintMode carries the fingerprint mode's raw value",
+        arguments: deviceFingerprintModeCases
     )
-    func authCompletedEventProperties(_ fixture: (AuthTokenSource, String), _ success: Bool) throws {
-        let event = RequestLineAuthCompletedEvent(source: fixture.0, durationMs: 42.5, success: success)
+    func authResolvedEventFingerprintMode(_ fixture: (DeviceFingerprintMode, String)) throws {
+        let event = RequestLineAuthResolvedEvent(
+            outcome: .freshSignIn,
+            fingerprintMode: fixture.0,
+            prematureAccessCount: 0,
+            jwtDurationMs: 10.0,
+            durationMs: 20.0,
+            durationClamped: false
+        )
+        let props = try #require(event.properties)
+        #expect(props["fingerprint_mode"] as? String == fixture.1)
+    }
+
+    /// `.keychainHit` never runs a JWT exchange, so `jwtDurationMs` is `nil`
+    /// — and the key must be OMITTED from `properties`, not present with a
+    /// boxed-nil value, which is why this event is hand-written rather than
+    /// `@AnalyticsEvent`-generated (see the type's doc comment).
+    @Test("RequestLineAuthResolvedEvent omits jwt_duration_ms entirely when nil")
+    func authResolvedEventOmitsNilJWTDuration() throws {
+        let event = RequestLineAuthResolvedEvent(
+            outcome: .keychainHit,
+            fingerprintMode: .existing,
+            prematureAccessCount: 0,
+            jwtDurationMs: nil,
+            durationMs: 5.0,
+            durationClamped: false
+        )
         let props = try #require(event.properties)
 
-        #expect(props["source"] as? String == fixture.1)
-        #expect(props["duration_ms"] as? Double == 42.5)
-        #expect(props["success"] as? Bool == success)
-        #expect(props.count == 3)
-        #expect(RequestLineAuthCompletedEvent.name == "request_line_auth_completed_event")
+        #expect(props["jwt_duration_ms"] == nil)
+        #expect(props.count == 5)
+    }
+
+    @Test(
+        "RequestLineAuthResolvedEvent.durationClamped carries whichever raw measurement was clamped",
+        arguments: bothPolarities
+    )
+    func authResolvedEventDurationClamped(_ durationClamped: Bool) throws {
+        let event = RequestLineAuthResolvedEvent(
+            outcome: .tokenRefresh,
+            fingerprintMode: .existing,
+            prematureAccessCount: 0,
+            jwtDurationMs: 10.0,
+            durationMs: 20.0,
+            durationClamped: durationClamped
+        )
+        let props = try #require(event.properties)
+        #expect(props["duration_clamped"] as? Bool == durationClamped)
     }
 
     // MARK: - RequestLineAuthFailedEvent
@@ -132,19 +205,6 @@ struct RequestLineAnalyticsEventsTests {
         #expect(props["phase"] as? String == fixture.1)
         #expect(props.count == 2)
         #expect(RequestLineAuthFailedEvent.name == "request_line_auth_failed_event")
-    }
-
-    // MARK: - RequestLineJWTExchangeEvent
-
-    @Test("RequestLineJWTExchangeEvent carries success and duration", arguments: bothPolarities)
-    func jwtExchangeEventProperties(_ success: Bool) throws {
-        let event = RequestLineJWTExchangeEvent(success: success, durationMs: 123.0)
-        let props = try #require(event.properties)
-
-        #expect(props["success"] as? Bool == success)
-        #expect(props["duration_ms"] as? Double == 123.0)
-        #expect(props.count == 2)
-        #expect(RequestLineJWTExchangeEvent.name == "request_line_jwt_exchange_event")
     }
 
     // MARK: - RequestLineRequestCompletedEvent
@@ -218,34 +278,6 @@ struct RequestLineAnalyticsEventsTests {
         #expect(props["error"] as? String == "errSecInteractionNotAllowed")
         #expect(props.count == 1)
         #expect(DeviceFingerprintInitFailedEvent.name == "device_fingerprint_init_failed_event")
-    }
-
-    // MARK: - FingerprintModeResolvedEvent
-
-    @Test(
-        "FingerprintModeResolvedEvent carries the mode's raw value, the OSStatus, and the premature-access count",
-        arguments: deviceFingerprintModeCases
-    )
-    func fingerprintModeResolvedEventProperties(_ fixture: (DeviceFingerprintMode, String)) throws {
-        let event = FingerprintModeResolvedEvent(
-            mode: fixture.0,
-            osStatus: errSecMissingEntitlement,
-            prematureAccessCount: 7
-        )
-        let props = try #require(event.properties)
-
-        #expect(props["mode"] as? String == fixture.1)
-        #expect(props["os_status"] as? Int32 == -34018)
-        #expect(props["premature_access_count"] as? Int == 7)
-        #expect(FingerprintModeResolvedEvent.name == "fingerprint_mode_resolved_event")
-
-        // The exhaustive count is the privacy guard, and the reason it is an
-        // exact `==` rather than a lower bound: the event must never carry
-        // anything that identifies the device, and the fingerprint is a stable
-        // per-device UUID and therefore a deanonymization vector. Modes and
-        // status codes are the entire permitted payload, so a fourth property
-        // appearing here fails this test until someone justifies it.
-        #expect(props.count == 3)
     }
 
     // MARK: - RequestLineFeatureFlagEvaluatedEvent

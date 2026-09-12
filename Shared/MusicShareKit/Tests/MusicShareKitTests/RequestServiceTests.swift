@@ -81,7 +81,9 @@ struct RequestServiceTests {
             storage: storage,
             networkClient: networkClient,
             baseURL: "https://auth.example.com",
-            analytics: MockStructuredAnalytics()
+            analytics: MockStructuredAnalytics(),
+            fingerprintMode: .existing,
+            prematureAccessCount: 0
         )
 
         // Warm the cache with the (about-to-be-rejected) stored JWT.
@@ -120,7 +122,9 @@ struct RequestServiceTests {
             storage: InMemoryTokenStorage(),
             networkClient: networkClient,
             baseURL: "https://auth.example.com",
-            analytics: MockStructuredAnalytics()
+            analytics: MockStructuredAnalytics(),
+            fingerprintMode: .existing,
+            prematureAccessCount: 0
         )
 
         let session = NeverCalledSession()

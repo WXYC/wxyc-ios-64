@@ -27,6 +27,39 @@ public actor AuthenticationService: SessionTokenProvider {
     private let baseURL: String
     private let analytics: AnalyticsService
 
+    /// How this process's device fingerprint resolved at
+    /// `MusicShareKit.reconfigure(_:)` time — fixed at construction since
+    /// resolution happens once, before this instance exists. Reported as
+    /// `fingerprint_mode` on every ``RequestLineAuthResolvedEvent`` this
+    /// instance emits, replacing the once-per-launch
+    /// `fingerprint_mode_resolved_event` (#998) that used to carry it (#1067).
+    ///
+    /// `internal` rather than `private` for one reason: it is how
+    /// `DeviceFingerprintConfigurationTests` checks that `reconfigure(_:)`
+    /// actually hands the mode it just computed to the service it builds.
+    /// `reconfigure(_:)` wires a real `KeychainTokenStorage` and
+    /// `DefaultAuthNetworkClient`, so that suite cannot drive a resolution and
+    /// read the mode off the emitted event without touching the Keychain or
+    /// the network. Reading the property the constructor actually stored is
+    /// the closest observation to the wiring under test — a mirror of the
+    /// value published elsewhere would keep passing if the argument here were
+    /// changed to a literal.
+    let fingerprintMode: DeviceFingerprintMode
+
+    /// Pre-`configure(...)` fingerprint reads counted by `MusicShareKit`,
+    /// snapshotted at the same moment as ``fingerprintMode``. Reported as
+    /// `premature_access_count`; see that property on
+    /// ``RequestLineAuthResolvedEvent`` for what it means and why it rides
+    /// here.
+    ///
+    /// Snapshotted rather than read live at capture time so a resolution's
+    /// row states what was true when the service was built, and so this actor
+    /// keeps one fewer read of `MusicShareKit`'s mutable globals. The two
+    /// agree in practice — the counter can only advance while
+    /// `_configuration` is nil, which by construction is before this
+    /// instance exists.
+    private let prematureAccessCount: Int
+
     // MARK: - State
 
     /// In-memory cached session for fast access.
@@ -40,18 +73,38 @@ public actor AuthenticationService: SessionTokenProvider {
     /// 60 s of margin against a ≥15-minute JWT is ~6.7% conservatism.
     private static let freshnessMargin: TimeInterval = 60
 
+    /// Cap applied to every duration reaching ``RequestLineAuthResolvedEvent``
+    /// (#1067): `startTime`/`jwtStartTime` are `CFAbsoluteTime` snapshots
+    /// taken before an `await`, and the app suspending mid-`await` (e.g.
+    /// backgrounded mid-refresh) produced a `duration_ms` as high as
+    /// 8,452,908 ms (2.35 h) in the investigation. 60 s is comfortably above
+    /// any real auth latency and below "the process was suspended" — see
+    /// ``clamp(_:)``.
+    private static let maxDurationMs: Double = 60_000
+
     // MARK: - Initialization
 
+    /// - Parameters:
+    ///   - fingerprintMode: What `configure(...)` resolved for this process's
+    ///     device fingerprint. Required, with no default, because a default
+    ///     would let a future construction site quietly label every one of its
+    ///     resolutions with a mode nobody observed.
+    ///   - prematureAccessCount: `MusicShareKit.prematureFingerprintAccesses`
+    ///     at construction time, required for the same reason.
     public init(
         storage: TokenStorage,
         networkClient: AuthNetworkClient,
         baseURL: String,
-        analytics: AnalyticsService
+        analytics: AnalyticsService,
+        fingerprintMode: DeviceFingerprintMode,
+        prematureAccessCount: Int
     ) {
         self.storage = storage
         self.networkClient = networkClient
         self.baseURL = baseURL
         self.analytics = analytics
+        self.fingerprintMode = fingerprintMode
+        self.prematureAccessCount = prematureAccessCount
     }
 
     // MARK: - Public API
@@ -289,11 +342,13 @@ public actor AuthenticationService: SessionTokenProvider {
     ///   a server-validated JWT: a `/auth/token` mint when the stored
     ///   session token is still valid, else a fresh sign-in.
     ///
-    /// Emits exactly one matched `RequestLineAuthStartedEvent` /
-    /// `RequestLineAuthCompletedEvent` pair per call, sourced from the
-    /// branch that actually serves the JWT. The 401/404 fallthrough is a
-    /// single logical "network" auth even though it spans both
-    /// `/auth/token` and `/sign-in/anonymous`.
+    /// Emits exactly one `RequestLineAuthResolvedEvent` per call (#1067),
+    /// named for the branch that actually serves the JWT — `.keychainHit` for
+    /// 3a, `.tokenRefresh` for 3b, `.freshSignIn` for 3c. The 401/404
+    /// fallthrough is one logical resolution even though it spans both
+    /// `/auth/token` and `/sign-in/anonymous`: it reports `.freshSignIn`, the
+    /// branch that produced the token, and its `duration_ms` covers both round
+    /// trips because `startTime` is taken once, at the top.
     ///
     /// - Parameter fallbackSession: A session the caller is holding that is
     ///   not in `cachedSession` — currently only
@@ -314,19 +369,16 @@ public actor AuthenticationService: SessionTokenProvider {
 
         // 3a. Keychain hit on a fresh JWT — fast path.
         if trustStoredJWT, let session = loaded, !session.jwtIsStale(margin: Self.freshnessMargin) {
-            trackAuthStarted(source: .keychain)
             cachedSession = session
-            trackAuthCompleted(source: .keychain, startTime: startTime, success: true)
+            trackAuthResolved(outcome: .keychainHit, startTime: startTime, jwtDurationMs: nil)
             return session.jwt
         }
-
-        trackAuthStarted(source: .network)
 
         // 3b. JWT stale but session token might still be valid — refresh via /auth/token.
         if let session = loaded {
             do {
-                let refreshed = try await mintJWT(for: session)
-                trackAuthCompleted(source: .network, startTime: startTime, success: true)
+                let (refreshed, jwtDurationMs) = try await mintJWT(for: session)
+                trackAuthResolved(outcome: .tokenRefresh, startTime: startTime, jwtDurationMs: jwtDurationMs)
                 return refreshed.jwt
             } catch AuthenticationError.serverError(statusCode: 401),
                     AuthenticationError.serverError(statusCode: 404) {
@@ -339,8 +391,8 @@ public actor AuthenticationService: SessionTokenProvider {
         }
 
         // 3c. No session, or session just nuked — fresh anonymous sign-in.
-        let session = try await freshSignIn()
-        trackAuthCompleted(source: .network, startTime: startTime, success: true)
+        let (session, jwtDurationMs) = try await freshSignIn()
+        trackAuthResolved(outcome: .freshSignIn, startTime: startTime, jwtDurationMs: jwtDurationMs)
         return session.jwt
     }
 
@@ -368,7 +420,11 @@ public actor AuthenticationService: SessionTokenProvider {
     }
 
     /// Mint a fresh JWT for an existing session via `/auth/token`.
-    private func mintJWT(for session: AuthSession) async throws -> AuthSession {
+    ///
+    /// - Returns: The refreshed session and the raw (unclamped) JWT exchange
+    ///   duration, for the caller's ``RequestLineAuthResolvedEvent`` (#1067
+    ///   removed this method's own `request_line_jwt_exchange_event` capture).
+    private func mintJWT(for session: AuthSession) async throws -> (session: AuthSession, jwtDurationMs: Double) {
         let jwtStartTime = CFAbsoluteTimeGetCurrent()
         let minted: JWTExchangeResult
         do {
@@ -412,8 +468,7 @@ public actor AuthenticationService: SessionTokenProvider {
         try Task.checkCancellation()
 
         let payload = try JWTPayloadDecoder.decode(minted.jwt)
-        let jwtDuration = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
-        analytics.capture(RequestLineJWTExchangeEvent(success: true, durationMs: jwtDuration))
+        let jwtDurationMs = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
 
         // `minted.capturedSessionToken` is deliberately ignored: better-auth
         // 1.6.30 never rewrites a session's token value, so there is nothing
@@ -429,11 +484,14 @@ public actor AuthenticationService: SessionTokenProvider {
             ))
         }
         cachedSession = refreshed
-        return refreshed
+        return (refreshed, jwtDurationMs)
     }
 
     /// Sign in anonymously and mint a fresh JWT for the new session.
-    private func freshSignIn() async throws -> AuthSession {
+    ///
+    /// - Returns: The new session and the raw JWT exchange duration — see the
+    ///   matching note on ``mintJWT(for:)``.
+    private func freshSignIn() async throws -> (session: AuthSession, jwtDurationMs: Double) {
         // Read the device fingerprint once so the same value lands on both
         // the sign-in (audit trail) and the JWT fetch (consistency).
         let fingerprint = MusicShareKit.deviceFingerprint
@@ -479,8 +537,7 @@ public actor AuthenticationService: SessionTokenProvider {
         try Task.checkCancellation()
 
         let payload = try JWTPayloadDecoder.decode(minted.jwt)
-        let jwtDuration = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
-        analytics.capture(RequestLineJWTExchangeEvent(success: true, durationMs: jwtDuration))
+        let jwtDurationMs = (CFAbsoluteTimeGetCurrent() - jwtStartTime) * 1000
 
         // `minted.capturedSessionToken` is deliberately ignored here too —
         // same rationale as `mintJWT` above.
@@ -503,7 +560,7 @@ public actor AuthenticationService: SessionTokenProvider {
         }
 
         cachedSession = session
-        return session
+        return (session, jwtDurationMs)
     }
 
     // MARK: - Helpers
@@ -525,20 +582,39 @@ public actor AuthenticationService: SessionTokenProvider {
 
     // MARK: - Analytics
 
-    private func trackAuthStarted(source: AuthTokenSource) {
-        analytics.capture(RequestLineAuthStartedEvent(source: source))
+    /// Captures one ``RequestLineAuthResolvedEvent`` (#1067). `jwtDurationMs`
+    /// is `nil` on `.keychainHit`, where no JWT exchange happens.
+    ///
+    /// - Parameters:
+    ///   - startTime: Taken at the top of ``performRefresh(trustStoredJWT:fallbackSession:)``,
+    ///     so the reported total spans every round trip the resolution needed.
+    ///   - jwtDurationMs: The raw, unclamped exchange duration; clamped here
+    ///     rather than at the measurement site so both durations pass through
+    ///     one cap and one `durationClamped` verdict.
+    private func trackAuthResolved(
+        outcome: AuthResolutionOutcome,
+        startTime: CFAbsoluteTime,
+        jwtDurationMs: Double?
+    ) {
+        let total = Self.clamp((CFAbsoluteTimeGetCurrent() - startTime) * 1000)
+        let jwt = jwtDurationMs.map(Self.clamp)
+
+        analytics.capture(RequestLineAuthResolvedEvent(
+            outcome: outcome,
+            fingerprintMode: fingerprintMode,
+            prematureAccessCount: prematureAccessCount,
+            jwtDurationMs: jwt?.value,
+            durationMs: total.value,
+            durationClamped: total.wasClamped || jwt?.wasClamped == true
+        ))
     }
 
-    private func trackAuthCompleted(
-        source: AuthTokenSource,
-        startTime: CFAbsoluteTime,
-        success: Bool
-    ) {
-        let duration = (CFAbsoluteTimeGetCurrent() - startTime) * 1000
-        analytics.capture(RequestLineAuthCompletedEvent(
-            source: source,
-            durationMs: duration,
-            success: success
-        ))
+    /// Caps `raw` at ``maxDurationMs`` (see its doc comment for why).
+    /// `internal`, not `private`, so tests can exercise this pure function
+    /// directly — there's no injected clock, and 60 s is too long to sleep
+    /// through in a unit test.
+    static func clamp(_ raw: Double) -> (value: Double, wasClamped: Bool) {
+        guard raw > maxDurationMs else { return (raw, false) }
+        return (maxDurationMs, true)
     }
 }

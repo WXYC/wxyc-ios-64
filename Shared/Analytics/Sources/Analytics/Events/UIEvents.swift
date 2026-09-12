@@ -253,7 +253,7 @@ public struct WidgetGetTimeline {
     /// `outcome` is stored as its `rawValue` because `@AnalyticsEvent` copies
     /// stored properties into `properties` verbatim, without reaching for
     /// `.rawValue` on an enum (same reason as `FetchPlaylistEvent` in the
-    /// Playlist package and `RequestLineAuthStartedEvent` in MusicShareKit).
+    /// Playlist package and `RequestLineAuthFailedEvent` in MusicShareKit).
     public init?(family: String, outcome: WidgetTimelineOutcome) {
         guard outcome.isReportable else { return nil }
         self.family = family

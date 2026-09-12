@@ -95,9 +95,8 @@ public enum MusicShareKit {
     static let configureGate = RunOnceGate()
 
     /// Counts reads of ``deviceFingerprint`` that arrived before
-    /// `configure(_:)` ran (#998). Reported on that launch's
-    /// `FingerprintModeResolvedEvent` — see the accessor's `_configuration`
-    /// guard for why the access cannot report itself when it happens, and
+    /// `configure(_:)` ran (#998) — see the accessor's `_configuration` guard
+    /// for why the access cannot report itself when it happens, and
     /// ``PrematureAccessCounter`` for why reading it does not reset it.
     ///
     /// `internal` rather than `private` so tests can record against the same
@@ -105,6 +104,12 @@ public enum MusicShareKit {
     /// this package's test target: `_configuration` is a process global, and
     /// once any suite in the process has configured MusicShareKit it never
     /// returns to nil.
+    ///
+    /// Read once per `reconfigure(_:)`, into the `AuthenticationService` it
+    /// builds, and reported as `premature_access_count` on every
+    /// `RequestLineAuthResolvedEvent` (#1067). Before #1067 the same total
+    /// rode on `FingerprintModeResolvedEvent`; the wire key is unchanged so
+    /// the two eras answer one query.
     static let prematureFingerprintAccesses = PrematureAccessCounter()
 
     /// The current configuration. Fatal error if not set.
@@ -155,7 +160,8 @@ public enum MusicShareKit {
     ///
     /// Reads that arrive before `configure(...)` has run return `nil` and are
     /// counted into ``prematureFingerprintAccesses``, which the next
-    /// `reconfigure(_:)` reports on `fingerprint_mode_resolved_event` (#998).
+    /// `reconfigure(_:)` threads into its `AuthenticationService` to report as
+    /// `premature_access_count` (#998, rehomed by #1067).
     public static var deviceFingerprint: String? {
         fingerprintLock.lock()
         defer { fingerprintLock.unlock() }
@@ -179,11 +185,11 @@ public enum MusicShareKit {
             // lives on `_configuration`, which is exactly what is missing, and
             // `MusicShareKit.configuration` would `fatalError` rather than
             // help. So record it and let the next `reconfigure(_:)` fold the
-            // total into that launch's `FingerprintModeResolvedEvent`. The
-            // counter holds no reference to anything — no closure, no service,
-            // no cycle — and has its own lock, so taking it while
-            // `fingerprintLock` is held is a consistent ordering, never an
-            // inversion.
+            // total into the `AuthenticationService` it builds, which reports
+            // it on every resolution. The counter holds no reference to
+            // anything — no closure, no service, no cycle — and has its own
+            // lock, so taking it while `fingerprintLock` is held is a
+            // consistent ordering, never an inversion.
             prematureFingerprintAccesses.record()
             return nil
         }
@@ -193,16 +199,16 @@ public enum MusicShareKit {
             // Retry burned. Downstream callers omit the header, ROM
             // proceeds-as-unauth, the listener can still request, the
             // ban-evasion vector temporarily opens until next launch.
-            // Analytics already captured during the eager attempt in
-            // configure(); don't double-emit.
             //
-            // `FingerprintModeResolvedEvent` is bound by the same rule, in
-            // both directions: this retry emits nothing when it fails, and
-            // emits nothing when it SUCCEEDS either. One event per launch is
-            // the budget (#998). The known cost is that a device whose eager
-            // init failed and whose retry then recovered is reported as
-            // `failed` for that launch — the mode describes what
-            // configure(...) resolved, not what the process eventually got.
+            // This retry never touches `AuthenticationService.fingerprintMode`
+            // either way (success or failure): that property is a `let` fixed
+            // at construction time in `reconfigure(_:)`, well before any
+            // request could reach this accessor. The known cost, unchanged
+            // since #998, is that a device whose eager init failed and whose
+            // retry then recovered still reports `fingerprint_mode: "failed"`
+            // on every `RequestLineAuthResolvedEvent` for the rest of that
+            // launch — the mode describes what `configure(...)` resolved, not
+            // what the process eventually got.
             return nil
         }
         _deviceFingerprint = value
@@ -265,29 +271,35 @@ public enum MusicShareKit {
         // out. See `KeychainAccessGroup` for the full account and #1008 for
         // whether it gets wired up.
         //
-        // Eagerness also does not produce the once-per-launch guarantee on
-        // `FingerprintModeResolvedEvent` (#998) below — `configure(_:)`'s
-        // `configureGate.runOnce` (#956) plus the single unconditional capture
-        // after the do/catch do that regardless of when resolution runs. The
-        // do/catch below decides only WHAT to report; the single capture after
-        // it is what makes "exactly one event per configure, on every path"
-        // true by construction rather than by convention. A resolved-mode
-        // metric that only spoke up on failure would be indistinguishable from
-        // one that had stopped reporting, which is the ambiguity that hid #996.
+        // The do/catch below always produces a real `mode` — `.failed` on
+        // the throw path, never a placeholder — before `AuthenticationService`
+        // is constructed just after it. Before #1067 this fed a dedicated
+        // once-per-launch `FingerprintModeResolvedEvent` (#998); now it's the
+        // `fingerprint_mode` property on every `RequestLineAuthResolvedEvent`
+        // that instance emits.
+        //
+        // `resolution.osStatus` is deliberately not carried forward. On the
+        // throw path the status is already in the
+        // `DeviceFingerprintInitFailedEvent` captured below —
+        // `AuthenticationError.keychainError`'s description is literally
+        // "Keychain error: <status>" — and on the `.local` branch it is
+        // unreachable outside an unentitled macOS test process (see that
+        // case's doc comment). Everything the retired event reported that has
+        // no other carrier — the mode, and the premature-access count read
+        // here — is threaded into the service instead.
         fingerprintLock.lock()
         _fingerprintRetryAttempted = false  // fresh configure resets the retry budget
         let prematureAccessCount = prematureFingerprintAccesses.count
         let mode: DeviceFingerprintMode
-        let osStatus: OSStatus
         var initFailure: String?
         do {
             let resolution = try configuration.deviceFingerprintStorage.resolve()
             _deviceFingerprint = resolution.value
-            (mode, osStatus) = (resolution.mode, resolution.osStatus)
+            mode = resolution.mode
         } catch {
             _deviceFingerprint = nil
             initFailure = error.localizedDescription
-            (mode, osStatus) = (.failed, keychainStatus(of: error))
+            mode = .failed
         }
         fingerprintLock.unlock()
 
@@ -299,13 +311,6 @@ public enum MusicShareKit {
                 DeviceFingerprintInitFailedEvent(error: initFailure)
             )
         }
-        configuration.analyticsService.capture(
-            FingerprintModeResolvedEvent(
-                mode: mode,
-                osStatus: osStatus,
-                prematureAccessCount: prematureAccessCount
-            )
-        )
 
         // Initialize auth service if auth is configured
         if let authBaseURL = configuration.authBaseURL {
@@ -317,25 +322,11 @@ public enum MusicShareKit {
                 storage: storage,
                 networkClient: DefaultAuthNetworkClient(),
                 baseURL: authBaseURL,
-                analytics: configuration.analyticsService
+                analytics: configuration.analyticsService,
+                fingerprintMode: mode,
+                prematureAccessCount: prematureAccessCount
             )
         }
-    }
-
-    /// The `OSStatus` a failed eager init should report on
-    /// `FingerprintModeResolvedEvent`.
-    ///
-    /// `KeychainDeviceFingerprintStorage` only ever throws
-    /// `AuthenticationError.keychainError`, so the fallback is unreachable from
-    /// production; it exists because `DeviceFingerprintStorage` is a protocol
-    /// and a conformer may throw anything. When it does fire, nothing is lost:
-    /// the `DeviceFingerprintInitFailedEvent` captured alongside carries the
-    /// error's full description.
-    private static func keychainStatus(of error: Error) -> OSStatus {
-        guard case .keychainError(let status)? = error as? AuthenticationError else {
-            return errSecInternalError
-        }
-        return status
     }
 
     /// Checks if request line authentication is enabled via feature flag.
