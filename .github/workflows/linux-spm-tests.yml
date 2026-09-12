@@ -54,11 +54,19 @@ name: Linux SPM Tests
 # Cost
 # ---------------------------------------------------------------------
 #
-# ubuntu-latest bills at 1x with a one-minute floor rounded up. Measured
-# locally in the same container image: 40s cold build, 23s test build, 0.04s
-# to run 4 tests. With checkout and the SwiftPM cache, expect ~2 billable
-# minute-equivalents per run; the first CI run should be checked against
-# that figure and this comment corrected if it is wrong.
+# ubuntu-latest bills at 1x with a one-minute floor rounded up. Measured on
+# CI, run 34713301078, cold cache: 75s wall = 2 billable minute-equivalents.
+# The breakdown matters for anyone trying to trim it:
+#
+#   Initialize containers   35s   <- pulling swift:6.2-noble, the big one
+#   Checkout                 2s
+#   Cache SwiftPM (restore)  1s
+#   swift test              22s   <- the only part doing real work
+#   Cache SwiftPM (save)    11s
+#
+# Nearly half the run is the image pull, so adding packages to PACKAGES is
+# close to free until the build itself grows -- and conversely, shaving the
+# test step buys little while the pull dominates.
 #
 # Trigger frequency is the other half, and it is low: Shared/AnalyticsMacros
 # has been touched by 1 commit since 2026-06-01 and 0 in the last 90 days.
