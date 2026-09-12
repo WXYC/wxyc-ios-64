@@ -395,6 +395,21 @@ public final class AudioPlayerController {
     /// each maintaining a duplicated copy. Populated by `setUpNotifications()`.
     @ObservationIgnored private var interruptionRouteHandler: PlaybackInterruptionRouteHandler?
     #endif
+
+    /// Cancels a pending interruption-resume, where the platform has an
+    /// interruption/route handler to cancel one on.
+    ///
+    /// Exists so the teardown paths can pass a `cancelPendingInterruptionResume`
+    /// closure without naming `interruptionRouteHandler`, which is declared
+    /// only under `#if os(iOS) || os(tvOS)` just above. Two teardown closures
+    /// referenced it unguarded, so the package declared `.macOS(.v15)` support
+    /// it could not actually compile (#1073). Keeping the platform check in one
+    /// place here means a caller cannot reintroduce that by forgetting a guard.
+    private func cancelPendingInterruptionResumeIfSupported() {
+        #if os(iOS) || os(tvOS)
+        interruptionRouteHandler?.cancelPendingInterruptionResume()
+        #endif
+    }
     @ObservationIgnored private nonisolated(unsafe) var commandTargets = RemoteCommandTargetRegistry()
 
     @ObservationIgnored private var eventTask: Task<Void, Never>?
@@ -872,7 +887,7 @@ public final class AudioPlayerController {
                 reason: reason,
                 wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
                 sessionID: &sessionID,
-                cancelPendingInterruptionResume: { interruptionRouteHandler?.cancelPendingInterruptionResume() }
+                cancelPendingInterruptionResume: { cancelPendingInterruptionResumeIfSupported() }
             )
             #if os(iOS) || os(tvOS)
             scheduleAudioSessionDeactivation()
@@ -899,7 +914,7 @@ public final class AudioPlayerController {
             playbackIntended: &playbackIntended,
             wasPlayingBeforeRouteDisconnect: &wasPlayingBeforeRouteDisconnect,
             sessionID: &sessionID,
-            cancelPendingInterruptionResume: { interruptionRouteHandler?.cancelPendingInterruptionResume() }
+            cancelPendingInterruptionResume: { cancelPendingInterruptionResumeIfSupported() }
         )
 
         stallStartTime = nil
