@@ -1,0 +1,149 @@
+name: Linux SPM Tests
+
+# The repo's first PR-triggered gate that compiles and tests Swift.
+#
+# Context: build-and-test.yml has been workflow_dispatch-only since
+# 2026-06-03 (52990b0b, implementing #395) because a full run costs 21-27
+# minutes on a macos-latest runner, billed at a 10x multiplier against a
+# 2,000 minute-equivalent monthly allowance shared by every private repo in
+# the org, behind a $25 hard stop. At ~140 merged PRs/month that is ~35,000
+# minute-equivalents and ~$210/month. Restoring it is not affordable and
+# this workflow does not try to. See #1069 for the full costing.
+#
+# This lane is the cheap complement: ubuntu-latest (1x, not 10x), no Xcode,
+# no simulator, no Wallpaper submodule deploy key, no secrets. It runs
+# `swift test` against the SPM packages that actually build on corelibs
+# Foundation.
+#
+# ---------------------------------------------------------------------
+# Why the path filter is narrow, and why that is deliberate
+# ---------------------------------------------------------------------
+#
+# It would be easy to trigger this on all of Shared/** so that every Swift
+# PR shows a check. That would be actively harmful. This lane verifies the
+# packages in PACKAGES below and nothing else, so a PR touching
+# Shared/Playback/ would get a green check that compiled none of its
+# changes.
+#
+# Today such a PR reports `no checks reported on the branch`, which an
+# autonomous merger can detect and refuse. A green-but-vacuous check is an
+# absence it cannot detect. Converting a legible "nothing ran" into an
+# illegible "passed" is strictly worse than having no gate, so the trigger
+# is scoped to exactly what the job verifies.
+#
+# The workflow's own path is in the filter for the reason
+# shell-script-tests.yml documents: a self-excluding workflow can be broken
+# by an edit that never triggers it.
+#
+# ---------------------------------------------------------------------
+# Coverage, measured 2026-09-12 at 239a838 -- 1 of 20 packages
+# ---------------------------------------------------------------------
+#
+# AnalyticsMacros is the only package in Shared/ that builds and tests on
+# Linux today. This is not an oversight; it was established by building all
+# 20 against swift:6.2-noble. The blocker is structural: Logger imports
+# OSLog unguarded, Core depends on Logger and adds UIKit/AppKit/SwiftUI/
+# ImageIO, and 13 of the remaining packages depend on Core. The full
+# dependency map and per-package failure mode are recorded in
+# docs/build-test.md so the next attempt does not re-derive them.
+#
+# Adding a package once it is portable is a one-line edit to PACKAGES.
+# That extensibility is most of the point of landing this now.
+#
+# ---------------------------------------------------------------------
+# Cost
+# ---------------------------------------------------------------------
+#
+# ubuntu-latest bills at 1x with a one-minute floor rounded up. Measured
+# locally in the same container image: 40s cold build, 23s test build, 0.04s
+# to run 4 tests. With checkout and the SwiftPM cache, expect ~2 billable
+# minute-equivalents per run; the first CI run should be checked against
+# that figure and this comment corrected if it is wrong.
+#
+# Trigger frequency is the other half, and it is low: Shared/AnalyticsMacros
+# has been touched by 1 commit since 2026-06-01 and 0 in the last 90 days.
+# So the honest expected cost is single-digit minute-equivalents per month,
+# and the honest expected benefit is that this fires rarely. The value here
+# is the seam plus the recorded spike, not the coverage.
+
+on:
+  pull_request:
+    paths:
+      - "Shared/AnalyticsMacros/**"
+      - ".github/workflows/linux-spm-tests.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "Shared/AnalyticsMacros/**"
+      - ".github/workflows/linux-spm-tests.yml"
+  workflow_dispatch:
+
+# Nothing here needs write access: it checks out, builds, and runs tests.
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-spm-tests-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  linux-spm-tests:
+    runs-on: ubuntu-latest
+    # The official Swift image rather than a third-party setup-swift action:
+    # ubuntu-latest ships no Swift toolchain, and this repo already declines
+    # to hand unvetted third-party code a runner (see verify-api-types.yml).
+    # Pinned to the minor, matching the swift-tools-version:6.2 manifests.
+    container: swift:6.2-noble
+    timeout-minutes: 15
+
+    # One job that loops, not a matrix. A matrix would spawn one job per
+    # package and every job carries its own one-minute billing floor, so a
+    # 6-package matrix of 20-second builds bills 6 minutes where a loop
+    # bills 1. The loop keeps going after a failure and reports at the end,
+    # so one broken package still tells you about the others.
+    env:
+      PACKAGES: "AnalyticsMacros"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # No git operations after checkout; don't leave a token in
+          # .git/config for the dependency resolution step to inherit.
+          persist-credentials: false
+
+      # Keyed on every Package.resolved in Shared/, not just the ones this
+      # lane builds. That over-invalidates -- a resolution change in a
+      # package this job never compiles still busts the cache -- but it
+      # errs toward a cold build rather than a stale one, and it does not
+      # need editing every time PACKAGES grows. A cold build is ~40s here.
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: Shared/*/.build
+          key: linux-spm-${{ hashFiles('Shared/*/Package.resolved') }}
+          restore-keys: linux-spm-
+
+      - name: swift test
+        run: |
+          set -uo pipefail
+          failed=""
+          for package in $PACKAGES; do
+            echo "::group::$package"
+            if swift test --package-path "Shared/$package"; then
+              echo "$package: PASS"
+            else
+              echo "$package: FAIL"
+              failed="$failed $package"
+            fi
+            echo "::endgroup::"
+          done
+
+          if [ -n "$failed" ]; then
+            echo "Failed packages:$failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "Failed packages:$failed"
+            exit 1
+          fi
+
+          echo "All Linux-portable packages passed:$PACKAGES" >> "$GITHUB_STEP_SUMMARY"
