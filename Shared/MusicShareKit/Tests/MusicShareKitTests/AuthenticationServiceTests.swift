@@ -851,6 +851,45 @@ struct AuthenticationServiceTests {
         #expect(eventNames.contains("request_line_auth_completed_event"))
     }
 
+    // MARK: - #1067 Cache Fast Path Emits No Analytics
+
+    /// The in-memory cache hit at the top of `ensureAuthenticated()` used to
+    /// call `trackAuthCompleted(source: .cache, success: true)` with
+    /// `durationMs` hardcoded to 0 — a pure in-memory read on the request hot
+    /// path, not an auth resolution. Per #1067's investigation, this single
+    /// call site accounted for 14,966 of 21,428 `auth_completed` rows over
+    /// 12 days (69.8% of the cluster's volume, and 100% of the
+    /// `auth_completed`-vs-`auth_started` asymmetry the ticket set out to
+    /// explain), while also dragging the shared `duration_ms` field's mean
+    /// from a true 2,953 ms down to 854 ms with hardcoded zeros. The 2026-09-12
+    /// decision comment on #1067 is to delete the capture outright — not
+    /// sample it, not fold it into a counter — because zero saved insights or
+    /// alerts read it and an in-memory token read was never the thing this
+    /// event exists to measure. This test pins the fast path to emitting
+    /// nothing at all, so a future change can't quietly reintroduce a
+    /// per-request row here.
+    @Test("The in-memory cache fast path emits no analytics event")
+    func cacheFastPathEmitsNoAnalytics() async throws {
+        let storage = InMemoryTokenStorage()
+        let session = makeValidSession()
+        try storage.save(session)
+
+        let service = makeService(storage: storage)
+
+        // First call loads from storage into the in-memory cache (not the
+        // path under test — this just warms `cachedSession`).
+        _ = try await service.ensureAuthenticated()
+        mockAnalytics.reset()
+
+        // Second call takes the in-memory cache fast path: `cachedSession` is
+        // set and not stale, so this returns before touching storage or the
+        // network at all.
+        let token = try await service.ensureAuthenticated()
+
+        #expect(token == session.jwt)
+        #expect(mockAnalytics.capturedEventNames().isEmpty)
+    }
+
     @Test("Tracks JWT exchange event on successful auth from network")
     func tracksJWTExchangeEvent() async throws {
         let storage = InMemoryTokenStorage()

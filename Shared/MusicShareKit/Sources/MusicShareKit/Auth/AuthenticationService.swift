@@ -68,8 +68,19 @@ public actor AuthenticationService: SessionTokenProvider {
     /// - Throws: `AuthenticationError` if authentication fails.
     public func ensureAuthenticated() async throws -> String {
         // 1. In-memory cache — fast path.
+        //
+        // Deliberately emits no analytics (#1067): a pure in-memory read on
+        // the request hot path is not an auth resolution. The deleted
+        // `trackAuthCompleted(source: .cache, success: true)` call here used
+        // to fire on every authed request once the cache warmed, hardcoding
+        // `durationMs: 0` — 14,966 of 21,428 `auth_completed` rows over 12
+        // days (69.8% of the cluster), and the reason `auth_completed` fired
+        // 3.2x more often than `auth_started`. Its zero-duration
+        // `trackAuthCompleted` overload went with it: this was the overload's
+        // only caller, so leaving it behind would have left a one-call-away
+        // reintroduction of the same defect. See the 2026-09-12 decision
+        // comment on #1067 for the full accounting.
         if let cached = cachedSession, !cached.jwtIsStale(margin: Self.freshnessMargin) {
-            trackAuthCompleted(source: .cache, success: true)
             return cached.jwt
         }
 
@@ -516,14 +527,6 @@ public actor AuthenticationService: SessionTokenProvider {
 
     private func trackAuthStarted(source: AuthTokenSource) {
         analytics.capture(RequestLineAuthStartedEvent(source: source))
-    }
-
-    private func trackAuthCompleted(source: AuthTokenSource, success: Bool) {
-        analytics.capture(RequestLineAuthCompletedEvent(
-            source: source,
-            durationMs: 0,
-            success: success
-        ))
     }
 
     private func trackAuthCompleted(
