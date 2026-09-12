@@ -1,5 +1,56 @@
 # Build & Test Commands
 
+## What CI gates on a pull request
+
+Short version: **almost nothing, and you should assume a PR is unverified unless you ran the tests yourself.**
+
+| Workflow | Runs on a PR? | Covers |
+|---|---|---|
+| `linux-spm-tests.yml` | Yes, path-filtered | `swift test` for the SPM packages that build on Linux — today only `AnalyticsMacros` |
+| `verify-api-types.yml` | Yes, path-filtered | Drift between the vendored `Shared/WXYCAPIModels` tree and a fresh regen |
+| `shell-script-tests.yml` | Yes, path-filtered | The zsh CI scripts under `.github/scripts/` and `scripts/` |
+| `build-and-test.yml` | **No** — `workflow_dispatch` only | The Xcode build, the simulator suites, the UI tests |
+| `debug-core-tests.yml` | No — `workflow_dispatch` only | Focused Core debugging |
+| `spec-drift.yml` | No — weekly cron | Spec drift |
+
+A PR that changes `Shared/Playback/`, `Shared/Core/`, or `WXYC/` therefore matches **no** workflow that compiles it, and `gh pr checks` reports `no checks reported on the branch`. Treat that as "not verified", never as "passed".
+
+The simulator path is not PR-gated because a full `build-and-test.yml` run costs 21–27 minutes on a `macos-latest` runner. macOS bills at a **10x** multiplier against a 2,000 minute-equivalent monthly allowance shared by every private repo in the org, behind a **$25** hard stop. At ~140 merged PRs/month that is roughly 35,000 minute-equivalents and ~$210/month, so re-enabling it would exhaust the org's entire Actions budget in the first days of the month and take every private WXYC repo dark. That is a budget fact, not a preference. Background in #395 and #1069.
+
+Run it by hand when a change warrants it:
+
+```sh
+gh workflow run build-and-test.yml --ref "$(git branch --show-current)"
+```
+
+### Why the Linux lane covers one package
+
+`linux-spm-tests.yml` runs on `ubuntu-latest` (1x, not 10x) precisely so it can afford to auto-run. Its coverage is limited by what compiles against corelibs Foundation. All 20 packages in `Shared/` were built against `swift:6.2-noble` on 2026-09-12 at `239a838`; the results, so the next attempt does not re-derive them:
+
+| Package | Local deps | Linux | Blocker |
+|---|---|---|---|
+| `AnalyticsMacros` | swift-syntax | **builds, 4 tests pass** | — |
+| `WXYCAPIModels` | none | fails | One line. Compiles 273/273 sources, then `#if !os(macOS)` guards `import MobileCoreServices` — true on Linux. Wants `#if canImport(MobileCoreServices)`, but the tree is `openapi-generator` output and `verify-api-types.yml` enforces byte-identity with a fresh regen, so **the fix belongs upstream in `wxyc-shared`'s templates**, not here. Has no test target either way. |
+| `Logger` | none | fails | `import OSLog`, unguarded. Confined to `Logger.swift` — the `osLogType` mapping, the `OSLoggerCache`, and one emit site. |
+| `Core` | `Logger` | fails | Inherits Logger, and adds `UIKit` / `AppKit` / `SwiftUI` / `ImageIO` across 3 unguarded files. |
+| `Caching`, `Concerts`, `ColorPalette` | `Core`, `Logger` | fails | Transitively, via the two above. |
+| `Playlist`, `LikedSongs`, `Playback`, `Artwork`, `Metadata`, `Intents`, `AppServices`, `DebugPanel`, `PlayerHeaderView` | `Core`+ | fails | Transitively. `Playlist` and everything above it also pull `Analytics`. |
+| `Analytics` | posthog-ios | fails | `PostHog`, `WatchKit`. `posthog-ios` is Darwin-only. |
+| `MusicShareKit` | none | fails | `Security`, `SwiftUI`, `UIKit`. |
+| `WXUI` | none | fails | `SwiftUI`, `UIKit`, `AppKit`, `CoreGraphics`. |
+| `PartyHorn` | Vortex | fails | `AVFoundation`, `SwiftUI`, `UIKit`, and Vortex is a SwiftUI library. |
+
+The shape of the blockage is a chain, not a scatter: **`Logger` blocks `Core`, and `Core` blocks 13 packages.** Making `Logger` portable is a small, contained change; making `Core` portable is not, and until both land the Linux lane cannot grow past `AnalyticsMacros`. Note also that the ceiling is genuinely low — anything that depends on `Analytics` reaches `posthog-ios` and can never go to Linux without conditionalizing that too.
+
+To add a package once it is portable, append it to `PACKAGES` in `linux-spm-tests.yml`. It is a single job that loops rather than a matrix, because every job carries a one-minute billing floor.
+
+Reproduce the spike locally:
+
+```sh
+docker run --rm -v "$PWD:/work" -w /work swift:6.2-noble \
+  swift test --package-path Shared/AnalyticsMacros
+```
+
 ## Running Tests
 
 Run WXYC.xctestplan.
