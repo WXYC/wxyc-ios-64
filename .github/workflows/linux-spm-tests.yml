@@ -97,6 +97,15 @@ jobs:
     container: swift:6.2-noble
     timeout-minutes: 15
 
+    # Inside a container GitHub does not default `run:` to bash the way it
+    # does on a bare runner -- it resolved to `sh -e {0}` here, and dash has
+    # no `set -o pipefail`, so the first run of this workflow died with
+    # "Illegal option -o pipefail" before reaching swift. The image ships
+    # bash; ask for it explicitly.
+    defaults:
+      run:
+        shell: bash
+
     # One job that loops, not a matrix. A matrix would spawn one job per
     # package and every job carries its own one-minute billing floor, so a
     # 6-package matrix of 20-second builds bills 6 minutes where a loop
