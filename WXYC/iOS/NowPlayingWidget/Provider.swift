@@ -109,6 +109,12 @@ final class Provider: AppIntentTimelineProvider, Sendable {
     func timeline(for configuration: NowPlayingWidgetIntent, in context: Context) async -> Timeline<NowPlayingTimelineEntry> {
         let family = context.family
         var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
+        // A failing fetch is swallowed into an empty playlist by
+        // `PlaylistFetcher`, so an empty timeline and a broken one are
+        // indistinguishable from the return value alone. The delta on the
+        // fetcher's cumulative error count over this one call separates them.
+        // Two synchronous actor reads, no network, no state of our own.
+        var fetchFailed = false
 
         if context.isPreview {
             // Four literal evaluations, not `Array(repeating:)`: `.placeholder`
@@ -121,11 +127,14 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             // Already head-first — no re-sort here: sorting by the ordering
             // key would displace the `currentPlaycut` head exactly in the
             // cases where the two disagree.
+            let errorsBefore = await playlistService.fetchErrorCount()
             nowPlayingItemsWithArtwork = await nowPlayingItems(from: playlistService.fetchPlaylist())
+            fetchFailed = (await playlistService.fetchErrorCount()) > errorsBefore
         }
 
         let now = Date.now
         let entries: [NowPlayingTimelineEntry]
+        let outcome: WidgetTimelineOutcome
 
         if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.safePopFirst() {
             let recents = Array(recentItems)
@@ -137,13 +146,19 @@ final class Provider: AppIntentTimelineProvider, Sendable {
                     family: family
                 )
             ]
+            outcome = .ok
         } else {
             entries = [.emptyState(family: family)]
+            outcome = fetchFailed ? .fetchFailed : .empty
         }
 
-        StructuredPostHogAnalytics.shared.capture(WidgetGetTimeline(
-            family: String(describing: family)
-        ))
+        // Gated, not unconditional: WidgetKit picks the refresh cadence, so a
+        // capture on every timeline is a per-timer emission. `init?` yields nil
+        // for `.ok`, which is the overwhelming majority. See the event's doc
+        // comment for what that costs a reader (WXYC/wxyc-ios-64#1065).
+        if let event = WidgetGetTimeline(family: String(describing: family), outcome: outcome) {
+            StructuredPostHogAnalytics.shared.capture(event)
+        }
 
         return Timeline(entries: entries, policy: .after(now.addingTimeInterval(5 * 60)))
     }
