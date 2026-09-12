@@ -33,7 +33,10 @@
 //  same batch passed to `donateRecentPlaycuts`) down to one `ArtistEntity`
 //  per normalized artist name, via `ArtistEntityQuery`'s grouping, and
 //  upserts at `batchPriority`. Re-donating an artist with an unchanged play
-//  count is a cheap no-op server-side, so no separate waterline is needed.
+//  count is a cheap no-op server-side, so no waterline gates the *indexing*.
+//  It gates the *reporting*: `donatedArtistsFingerprintKey` holds a hash of
+//  the last set this device donated, because a re-donation that is free
+//  server-side is not free in PostHog (#1063).
 //
 //  `donateRecentPlaycuts(_:)` and `donateArtists(from:)` report `SpotlightDonated`
 //  / `SpotlightDonationFailed` through the injected `AnalyticsService` (#445) so
@@ -131,6 +134,29 @@ public actor SpotlightDonationService: Sendable {
     /// is one batch of XPC, not a duplicate. The key is left on disk rather
     /// than deleted: removing it buys nothing and can't be undone.
     public static let watermarkKey = "spotlight.playcuts.watermark"
+
+    /// UserDefaults key for the fingerprint of the last artist set
+    /// ``donateArtists(from:)`` successfully donated — the gate on that
+    /// path's `SpotlightDonated` capture, and nothing else.
+    ///
+    /// This is *not* a watermark, and it does not gate the indexer call: the
+    /// `wxyc.artists` index is refreshed on every tick exactly as before,
+    /// because index freshness is the feature (#445, C6/#640/#644). It exists
+    /// because the donation being free server-side does not make it free in
+    /// PostHog. At a steady state the caller hands this path the same recent
+    /// playlist window every tick, so `kind: "artists"` re-stated an unchanged
+    /// set ~33,300 times over 12 days and became the app's single largest
+    /// analytics event — issue #1063.
+    ///
+    /// Stored as a decimal `String` for the same reason
+    /// ``donatedThroughIDKey`` is: the value is a `UInt64` and
+    /// `DefaultsStorage.integer(forKey:)` returns a signed `Int`.
+    ///
+    /// Persisted rather than held in memory so a relaunch on an unchanged
+    /// playlist stays silent too. A cold start is otherwise the most common
+    /// tick there is, and re-capturing on each one would put a floor under
+    /// the saving roughly the size of daily actives.
+    public static let donatedArtistsFingerprintKey = "spotlight.artists.donatedFingerprint"
 
     /// Priority for a per-tick current-playcut donation. Deliberately above
     /// the batch value so Spotlight surfaces the on-air track sooner than a
@@ -291,11 +317,20 @@ public actor SpotlightDonationService: Sendable {
     /// with `ArtistEntityQuery.entities(for:)` as of #646), not the
     /// normalized key itself — issue #640. The resulting entities are capped
     /// at ``batchLimit`` (mirroring `donateRecentPlaycuts`'s bound on
-    /// background-refresh work) and sent at ``batchPriority``. No watermark:
-    /// unlike the playcut batch, this path always re-derives entities fresh
-    /// from whatever playcuts the caller passes, so play counts never go
-    /// stale, and a re-donation of an unchanged count is a free upsert
-    /// server-side.
+    /// background-refresh work) and sent at ``batchPriority``. No watermark
+    /// gates the donation: unlike the playcut batch, this path always
+    /// re-derives entities fresh from whatever playcuts the caller passes, so
+    /// play counts never go stale, and a re-donation of an unchanged count is
+    /// a free upsert server-side.
+    ///
+    /// It is not free in PostHog, though, so the *capture* is gated even
+    /// though the donation isn't. `SpotlightDonated` fires only when the
+    /// donated `(normalizedName, playCount)` set differs from the last one
+    /// this device donated successfully — see
+    /// ``donatedArtistsFingerprintKey`` and ``fingerprint(of:)`` (#1063).
+    /// `SpotlightDonationFailed` stays ungated: failures are rare and
+    /// diagnostic, and a failure that repeated silently would be the one
+    /// worth seeing.
     public func donateArtists(from playcuts: [Playcut]) async {
         let grouped = Dictionary(grouping: playcuts) { normalizedEntityKey($0.artistName) }
         let entities = grouped
@@ -314,8 +349,15 @@ public actor SpotlightDonationService: Sendable {
         // ids are unique, so there is no tie to resolve.
         let representativeID = playcuts.lazy.map(\.id).max() ?? 0
 
+        let batch = Array(entities)
         do {
-            try await artistIndexer.indexArtists(Array(entities), priority: Self.batchPriority)
+            try await artistIndexer.indexArtists(batch, priority: Self.batchPriority)
+
+            // Unconditional above, gated here: the index is refreshed every
+            // tick, the event is reported only when the set moved.
+            let fingerprint = Self.fingerprint(of: batch)
+            guard fingerprint != lastDonatedArtistsFingerprint else { return }
+            recordDonatedArtistsFingerprint(fingerprint)
             analytics.capture(SpotlightDonated(playcutID: String(representativeID), batchSize: entities.count, priorityTier: Self.batchPriority, kind: "artists"))
         } catch {
             Log(.warning, category: .general, "Spotlight artist donation failed (\(entities.count) artists): \(error)")
@@ -375,6 +417,57 @@ public actor SpotlightDonationService: Sendable {
     private func advanceWatermarkIfNewer(_ candidate: UInt64) {
         guard candidate > currentWatermark else { return }
         storage.set(String(candidate), forKey: Self.donatedThroughIDKey)
+    }
+
+    // MARK: - Artist donation fingerprint
+
+    /// `nil` until the first successful artist donation writes
+    /// ``donatedArtistsFingerprintKey``, so a fresh install always captures
+    /// its first donation.
+    private var lastDonatedArtistsFingerprint: UInt64? {
+        storage.string(forKey: Self.donatedArtistsFingerprintKey).flatMap(UInt64.init)
+    }
+
+    /// Written only after the indexer returns, mirroring
+    /// ``advanceWatermarkIfNewer(_:)``: a failed donation leaves the previous
+    /// fingerprint in place, so the retry that eventually succeeds still
+    /// reports the set it sent. Unlike the watermark this is not monotone —
+    /// an artist set can legitimately shrink, and reverting to a set donated
+    /// two ticks ago is a change worth reporting.
+    private func recordDonatedArtistsFingerprint(_ fingerprint: UInt64) {
+        storage.set(String(fingerprint), forKey: Self.donatedArtistsFingerprintKey)
+    }
+
+    /// Fingerprint of a donated artist batch: FNV-1a over the batch's
+    /// `(normalizedName, playCount)` pairs, sorted so the nondeterministic
+    /// `Dictionary(grouping:)` iteration order behind `entities` can't make
+    /// two identical batches hash differently.
+    ///
+    /// The play counts are part of the input on purpose. This path has no
+    /// watermark precisely because counts drift while the name set holds
+    /// still, so hashing names alone would suppress exactly the donations
+    /// that carry new information.
+    ///
+    /// `stableEntityID` (FNV-1a, `WXYCIntents`) rather than `Hasher`: the
+    /// standard library's hash seed is randomized per process launch, and
+    /// this value is compared against one persisted by an earlier launch.
+    /// Tab and newline are safe separators because `normalizedEntityKey`
+    /// collapses every whitespace run to a single space. A collision would
+    /// cost one suppressed capture on a path that has no consumers, which is
+    /// well inside what 64 bits buys.
+    ///
+    /// The one hole: if a caller ever hands `donateArtists` more than
+    /// ``batchLimit`` *distinct* artists, the `prefix` that trims the batch
+    /// picks an arbitrary subset and the fingerprint moves on ticks the set
+    /// didn't. It fails open — extra captures, never a lost one — and both
+    /// production callers pass `playlist.playcuts`, a ~50-row window that
+    /// cannot dedup to more than 50 artists.
+    private static func fingerprint(of entities: [ArtistEntity]) -> UInt64 {
+        let canonical = entities
+            .map { "\($0.normalizedName)\t\($0.playCount)" }
+            .sorted()
+            .joined(separator: "\n")
+        return stableEntityID(for: canonical)
     }
 }
 
