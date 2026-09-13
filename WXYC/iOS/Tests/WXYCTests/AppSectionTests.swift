@@ -13,6 +13,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import SwiftUI
 import Testing
 import Wallpaper
 @testable import WXYC
@@ -61,10 +62,18 @@ struct AppSectionTests {
 struct RootTabViewTintTests {
     @Test("The tab tint uses LCD active brightness")
     func tabTintBrightnessUsesLCDActiveBrightness() {
-        let appearance = ThemeAppearance(
-            accentColor: AccentColor(hue: 120, saturation: 0.4, brightness: 0.35),
-            lcdActiveBrightness: 1.42
-        )
+        // Seeded from the environment default rather than the memberwise
+        // initializer: `ThemeAppearance` is a submodule type with 13 stored
+        // properties, and keyword-constructing it here would make every field
+        // this test does not care about a host-side source break the moment
+        // Wallpaper adds one or drops a default. Mutating the two fields under
+        // test keeps the host immune to both without a gitlink bump.
+        var appearance = EnvironmentValues().themeAppearance
+        // A discriminating foil, not dead setup: brightness 0.35 differs from
+        // the asserted 1.42, so the expectation fails if `tabTintBrightness`
+        // ever reads the accent's brightness instead of the LCD's.
+        appearance.accentColor = AccentColor(hue: 120, saturation: 0.4, brightness: 0.35)
+        appearance.lcdActiveBrightness = 1.42
 
         #expect(RootTabView.tabTintBrightness(for: appearance) == 1.42)
     }
