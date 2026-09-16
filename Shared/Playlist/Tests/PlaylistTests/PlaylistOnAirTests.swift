@@ -107,8 +107,8 @@ struct PlaylistOnAirTests {
         #expect(ids.contains(1))
     }
 
-    @Test("timelineEntries drops sign-offs and the on-air sign-on, keeps other sign-ons and entries")
-    func timelineEntriesDropsSignOffsAndOnAir() {
+    @Test("timelineEntries drops only the on-air sign-on, keeping both boundaries of a past show")
+    func timelineEntriesKeepsPastShowBoundaries() {
         let onAir = ShowMarker.stub(id: 50, chronOrderID: 50, isStart: true, djName: "CURRENT")
         let previousSignOff = ShowMarker.stub(id: 40, chronOrderID: 40, isStart: false, djName: "PREVIOUS")
         let previousSignOn = ShowMarker.stub(id: 30, chronOrderID: 30, isStart: true, djName: "PREVIOUS")
@@ -120,16 +120,16 @@ struct PlaylistOnAirTests {
         )
 
         let ids = playlist.timelineEntries.map(\.id)
-        #expect(!ids.contains(onAir.id))            // current DJ lives in the banner
-        #expect(!ids.contains(previousSignOff.id))  // sign-offs are hidden entirely
-        #expect(ids.contains(previousSignOn.id))    // earlier sign-ons remain as show boundaries
+        #expect(!ids.contains(onAir.id))           // current DJ lives in the banner
+        #expect(ids.contains(previousSignOff.id))  // the handoff off the air is the show's top boundary
+        #expect(ids.contains(previousSignOn.id))   // and its sign-on is the bottom one
         #expect(ids.contains(1))
         #expect(ids.contains(2))
         #expect(ids.contains(3))
     }
 
-    @Test("timelineEntries drops sign-offs even when no one is on the air")
-    func timelineEntriesDropsSignOffsWithoutOnAir() {
+    @Test("timelineEntries keeps a sign-off when no one is on the air")
+    func timelineEntriesKeepsSignOffWithoutOnAir() {
         let signOff = ShowMarker.stub(id: 2, chronOrderID: 2, isStart: false, djName: "PREVIOUS")
         let playlist = Playlist.stub(
             playcuts: [.stub(id: 1, chronOrderID: 1)],
@@ -137,8 +137,43 @@ struct PlaylistOnAirTests {
         )
 
         let ids = playlist.timelineEntries.map(\.id)
-        #expect(!ids.contains(signOff.id))
+        #expect(ids.contains(signOff.id))
         #expect(ids.contains(1))
+    }
+
+    /// A sign-off sorts above its own show's content, so it heads the block it
+    /// closes rather than trailing it: Backend stamps the marker with the show's
+    /// last `play_order`, which the packed `(show_id, play_order)` key carries
+    /// into the newest-first display order. Sampled over 108 consecutive shows,
+    /// 104 put the sign-off at the show's maximum `play_order`; the other four
+    /// had a handful of rows logged after the DJ signed off, which the feed then
+    /// shows above the marker — the flowsheet as logged, not a mis-sort.
+    @Test("A show's sign-off heads its block and its sign-on closes it")
+    func signOffHeadsTheShowItCloses() {
+        // show 7, play_order 1...3 — packed key is show << 32 | play_order.
+        let key: (UInt64, UInt64) -> UInt64 = { show, order in (show << 32) | order }
+        let signOn = ShowMarker.stub(id: 10, chronOrderID: key(7, 1), isStart: true, djName: "PREVIOUS")
+        let song = Playcut.stub(id: 11, chronOrderID: key(7, 2))
+        let signOff = ShowMarker.stub(id: 12, chronOrderID: key(7, 3), isStart: false, djName: "PREVIOUS")
+        let playlist = Playlist.stub(playcuts: [song], showMarkers: [signOn, signOff])
+
+        #expect(playlist.timelineEntries.map(\.id) == [signOff.id, song.id, signOn.id])
+    }
+
+    @Test(
+        "timelineLabel names the DJ and the direction, and stays subjectless without a name",
+        arguments: [
+            (String?("DJ Moo"), true, "DJ Moo signed on"),
+            (String?("DJ Moo"), false, "DJ Moo signed off"),
+            // An empty dj_name reaches the model as nil (FlowsheetEntryType
+            // folds it), and must not borrow onAirTitle's "WXYC" fallback —
+            // "WXYC signed off" would assert the station left the air.
+            (String?.none, true, "Signed on"),
+            (String?.none, false, "Signed off"),
+        ]
+    )
+    func timelineLabelCopy(djName: String?, isStart: Bool, expected: String) {
+        #expect(ShowMarker.stub(isStart: isStart, djName: djName).timelineLabel == expected)
     }
 
     @Test("onAirTitle is the DJ name when present")

@@ -261,6 +261,28 @@ public extension ShowMarker {
     var onAirTitle: String {
         djName ?? "WXYC"
     }
+
+    /// Label for the marker's inline timeline row — "DJ Moo signed on",
+    /// "DJ Moo signed off".
+    ///
+    /// Lives here rather than in the view so the copy sits beside
+    /// ``onAirTitle``, the other string this type spells for a surface, and so
+    /// both are covered by the same tests.
+    ///
+    /// An absent DJ name degrades to a subjectless "Signed on"/"Signed off"
+    /// instead of borrowing ``onAirTitle``'s station-name fallback: "WXYC
+    /// signed off" would assert the station left the air. Backend sends an
+    /// empty `dj_name` on a small fraction of sign-offs (2 of 108 shows
+    /// sampled over 12 days), which `FlowsheetEntryType` folds to nil, so this
+    /// is a row the feed really renders.
+    var timelineLabel: String {
+        switch (djName, isStart) {
+        case (let name?, true): "\(name) signed on"
+        case (let name?, false): "\(name) signed off"
+        case (nil, true): "Signed on"
+        case (nil, false): "Signed off"
+        }
+    }
 }
 
 public struct Playcut: PlaylistEntry, Hashable {
@@ -768,16 +790,43 @@ public extension Playlist {
         return latest
     }
 
-    /// `entries` filtered down to the show markers worth showing inline.
+    /// ``entries`` with the on-air DJ's sign-on removed, and nothing else.
     ///
-    /// Sign-offs are dropped entirely — a DJ leaving the air isn't an event listeners need
-    /// in the feed. Earlier sign-ons remain as show boundaries. The current DJ's sign-on is
-    /// also dropped, since it is promoted to its own "on air" banner above the list.
+    /// That one marker is promoted to the dedicated "on air" banner above the
+    /// list, so leaving it inline would state the same fact twice. Every other
+    /// show marker stays, including sign-offs: a past show's sign-off heads the
+    /// block it closes and its sign-on ends it, so each airing is bracketed and
+    /// a scroll through a handoff names both the DJ who left and the one who
+    /// arrived.
+    ///
+    /// Sign-offs were dropped outright until now, on the theory that a DJ
+    /// leaving the air isn't an event listeners need. The cost was a silent
+    /// handoff — songs changed hands mid-scroll with no marker at the top of
+    /// the outgoing show's block — and, worse, no way to say the booth had gone
+    /// empty at all: that is exactly the state where ``onAirSignOn`` is nil and
+    /// the banner has nothing to show, so the feed was the only surface left
+    /// that could report it.
+    ///
+    /// The sign-off lands above its own show's content rather than below it
+    /// because Backend stamps the marker with the show's last `play_order`,
+    /// which the packed `(show_id, play_order)` key carries into the
+    /// newest-first order ``entries`` imposes. Two shapes put it lower: rows
+    /// logged after the DJ signed off (4 of 108 shows in a 12-day sample),
+    /// where the feed is reporting the flowsheet as logged; and the
+    /// `play_order`-0 sign-off the tubafrenzy webhook can write
+    /// (`sequenceWithinShow ?? 0`), which sorts to the foot of its own show,
+    /// directly under its sign-on. The second shape is absent from that same
+    /// sample and disappears with the webhook (WXYC/wiki#88 Phase 6a), so it is
+    /// left to mis-place one row rather than given ordering machinery of its
+    /// own — ``onAirSignOn`` is already immune to it, which is the reader that
+    /// would do real damage.
     var timelineEntries: [any PlaylistEntry] {
-        let onAirID = onAirSignOn?.id
+        // No one on the air means no marker was promoted to the banner, so
+        // there is nothing to suppress and every entry survives.
+        guard let onAirID = onAirSignOn?.id else { return entries }
         return entries.filter { entry in
             guard let marker = entry as? ShowMarker else { return true }
-            return marker.isStart && marker.id != onAirID
+            return marker.id != onAirID
         }
     }
 }
