@@ -125,12 +125,11 @@ struct PlaylistTimelineItemsTests {
         #expect(playcutIDs == [3, 1])
     }
 
-    @Test("An earlier sign-on breaks a run and is not folded into a seam")
-    func signOnBreaksRun() {
-        // The current DJ's sign-on (id 10) is the latest marker, so it's promoted
-        // to the banner and dropped from the timeline. An earlier sign-on (id 6)
-        // is a real show boundary that survives and splits the surrounding markers.
-        // Surviving timeline, newest-first: talkset(8), sign-on(6), breakpoint(4), song(1)
+    @Test("Sign-ons leave the timeline entirely, so a run they used to split now coalesces")
+    func signOnsDoNotSplitRuns() {
+        // Raw order, newest-first: sign-on(10), talkset(8), sign-on(6), breakpoint(4), song(1).
+        // Both sign-ons are filtered out, so the talkset and breakpoint become
+        // adjacent with no song between them and fold into a single seam.
         let onAir = ShowMarker.stub(id: 10, chronOrderID: 10, isStart: true, djName: "CURRENT")
         let previousSignOn = ShowMarker.stub(id: 6, chronOrderID: 6, isStart: true, djName: "PREVIOUS")
         let playlist = Playlist.stub(
@@ -141,11 +140,11 @@ struct PlaylistTimelineItemsTests {
         )
 
         let items = playlist.timelineItems
-        // The earlier sign-on survives as its own item, not merged into a seam.
-        #expect(items.contains { $0.asShowMarker?.id == 6 })
-        // Talkset and breakpoint sit on opposite sides of it, so two seams.
+        #expect(!items.contains { $0.asShowMarker != nil })
         let seams = items.compactMap(\.asSeam)
-        #expect(seams.count == 2)
+        #expect(seams.count == 1)
+        #expect(seams.first?.hasMicBreak == true)
+        #expect(seams.first?.breakpoint?.id == 4)
     }
 
     @Test("A sign-off breaks a run and is not folded into a seam")
