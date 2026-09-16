@@ -345,15 +345,7 @@ struct PlaylistView: View {
             SeamRowView(seam: seam)
 
         case .showMarker(let marker):
-            TextRowView(text: showMarkerText(for: marker))
-        }
-    }
-
-    private func showMarkerText(for marker: ShowMarker) -> String {
-        if let djName = marker.djName {
-            marker.isStart ? "\(djName) signed on" : "\(djName) signed off"
-        } else {
-            marker.isStart ? "Signed on" : "Signed off"
+            TextRowView(text: marker.timelineLabel)
         }
     }
 

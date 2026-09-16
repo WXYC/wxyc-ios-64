@@ -148,6 +148,27 @@ struct PlaylistTimelineItemsTests {
         #expect(seams.count == 2)
     }
 
+    @Test("A sign-off breaks a run and is not folded into a seam")
+    func signOffBreaksRun() {
+        // Nobody is on the air — the latest marker is the sign-off — so no
+        // marker is promoted to the banner and the sign-off heads the timeline.
+        // Newest-first: sign-off(8), talkset(6), song(4), breakpoint(2), sign-on(1)
+        let signOff = ShowMarker.stub(id: 8, chronOrderID: 8, isStart: false, djName: "PREVIOUS")
+        let signOn = ShowMarker.stub(id: 1, chronOrderID: 1, isStart: true, djName: "PREVIOUS")
+        let playlist = Playlist.stub(
+            playcuts: [.stub(id: 4, chronOrderID: 4)],
+            breakpoints: [.stub(id: 2, chronOrderID: 2)],
+            talksets: [.stub(id: 6, chronOrderID: 6)],
+            showMarkers: [signOff, signOn]
+        )
+
+        let items = playlist.timelineItems
+        #expect(items.first?.asShowMarker?.id == signOff.id)
+        // The talkset below it and the breakpoint below the song stay separate
+        // seams; the sign-off does not swallow the talkset into its own row.
+        #expect(items.compactMap(\.asSeam).count == 2)
+    }
+
     // MARK: - Reorder across a seam boundary (#839)
 
     @Test("A talkset that moves across a playcut boundary re-coalesces into the new seam, not the old one")
