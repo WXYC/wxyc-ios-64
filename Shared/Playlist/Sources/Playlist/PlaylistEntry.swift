@@ -269,6 +269,13 @@ public extension ShowMarker {
     /// ``onAirTitle``, the other string this type spells for a surface, and so
     /// both are covered by the same tests.
     ///
+    /// Total over both directions even though ``Playlist/timelineEntries``
+    /// currently filters every sign-on out of the feed, so only the sign-off
+    /// half reaches a row today. Which markers render is that filter's policy
+    /// to state, not this property's to bake in — the same split as
+    /// ``onAirTitle``, which is only meaningful for a sign-on yet is defined
+    /// for every marker.
+    ///
     /// An absent DJ name degrades to a subjectless "Signed on"/"Signed off"
     /// instead of borrowing ``onAirTitle``'s station-name fallback: "WXYC
     /// signed off" would assert the station left the air. Backend sends an
@@ -790,43 +797,46 @@ public extension Playlist {
         return latest
     }
 
-    /// ``entries`` with the on-air DJ's sign-on removed, and nothing else.
+    /// ``entries`` with every sign-on removed, leaving sign-offs as the only
+    /// show markers in the timeline.
     ///
-    /// That one marker is promoted to the dedicated "on air" banner above the
-    /// list, so leaving it inline would state the same fact twice. Every other
-    /// show marker stays, including sign-offs: a past show's sign-off heads the
-    /// block it closes and its sign-on ends it, so each airing is bracketed and
-    /// a scroll through a handoff names both the DJ who left and the one who
-    /// arrived.
+    /// Who is on the air is the header's job. It reads ``Playlist/onAir``
+    /// straight from the backend, so it is right even when the current show's
+    /// sign-on falls outside the fetched window — which is most of the time, at
+    /// a 30-row page against shows averaging around 38 entries. An inline
+    /// "X signed on" row can therefore only repeat the header, or sit one row
+    /// above the sign-off that already reports the same handoff.
     ///
-    /// Sign-offs were dropped outright until now, on the theory that a DJ
-    /// leaving the air isn't an event listeners need. The cost was a silent
-    /// handoff — songs changed hands mid-scroll with no marker at the top of
-    /// the outgoing show's block — and, worse, no way to say the booth had gone
-    /// empty at all: that is exactly the state where ``onAirSignOn`` is nil and
-    /// the banner has nothing to show, so the feed was the only surface left
-    /// that could report it.
+    /// A sign-off is the row that says what nothing else can: the booth
+    /// emptied, and whose show just ended. It is also load-bearing while live —
+    /// 16 of 108 sampled handoffs left the booth empty for 30+ minutes (longest
+    /// 3.0 hours), and throughout those ``onAirSignOn`` is nil and the header
+    /// has no DJ to name.
     ///
-    /// The sign-off lands above its own show's content rather than below it
-    /// because Backend stamps the marker with the show's last `play_order`,
-    /// which the packed `(show_id, play_order)` key carries into the
-    /// newest-first order ``entries`` imposes. Two shapes put it lower: rows
-    /// logged after the DJ signed off (4 of 108 shows in a 12-day sample),
-    /// where the feed is reporting the flowsheet as logged; and the
-    /// `play_order`-0 sign-off the tubafrenzy webhook can write
-    /// (`sequenceWithinShow ?? 0`), which sorts to the foot of its own show,
-    /// directly under its sign-on. The second shape is absent from that same
-    /// sample and disappears with the webhook (WXYC/wiki#88 Phase 6a), so it is
-    /// left to mis-place one row rather than given ordering machinery of its
-    /// own — ``onAirSignOn`` is already immune to it, which is the reader that
-    /// would do real damage.
+    /// Every row stays attributable without sign-ons, because each surviving
+    /// marker labels the block *below* it: newest-first, a sign-off closes the
+    /// show whose entries follow underneath, and the header covers the current
+    /// DJ, whose entries sit above the topmost sign-off.
+    ///
+    /// The rule is a pure function of `isStart` — deliberately, where the
+    /// previous one consulted ``onAirSignOn``. A marker's visibility now
+    /// changes only when the marker does, not when the backend's notion of
+    /// who is live moves underneath it.
+    ///
+    /// Ordering needs no special handling: Backend stamps a sign-off with its
+    /// show's last `play_order`, which the packed `(show_id, play_order)` key
+    /// carries into the newest-first order ``entries`` imposes, so the marker
+    /// heads the block it closes. Two shapes put it lower — rows logged after
+    /// the DJ signed off (4 of 108 shows sampled over 12 days), where the feed
+    /// is reporting the flowsheet as logged; and the `play_order`-0 sign-off
+    /// the tubafrenzy webhook can write (`sequenceWithinShow ?? 0`), which
+    /// sinks to the foot of its own show. The second is absent from that
+    /// sample and goes away with the webhook (WXYC/wiki#88 Phase 6a), so it is
+    /// left to mis-place one row rather than given machinery of its own.
     var timelineEntries: [any PlaylistEntry] {
-        // No one on the air means no marker was promoted to the banner, so
-        // there is nothing to suppress and every entry survives.
-        guard let onAirID = onAirSignOn?.id else { return entries }
-        return entries.filter { entry in
+        entries.filter { entry in
             guard let marker = entry as? ShowMarker else { return true }
-            return marker.id != onAirID
+            return !marker.isStart
         }
     }
 }

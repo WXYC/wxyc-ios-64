@@ -94,21 +94,8 @@ struct PlaylistOnAirTests {
         #expect(playlist.onAirSignOn?.djName == "CURRENT")
     }
 
-    @Test("timelineEntries excludes exactly the on-air sign-on marker")
-    func timelineEntriesExcludesOnAirSignOn() {
-        let onAir = ShowMarker.stub(id: 99, chronOrderID: 99, isStart: true, djName: "HOUNDSTOOTH")
-        let playlist = Playlist.stub(
-            playcuts: [.stub(id: 1, chronOrderID: 1)],
-            showMarkers: [onAir]
-        )
-
-        let ids = playlist.timelineEntries.map(\.id)
-        #expect(!ids.contains(onAir.id))
-        #expect(ids.contains(1))
-    }
-
-    @Test("timelineEntries drops only the on-air sign-on, keeping both boundaries of a past show")
-    func timelineEntriesKeepsPastShowBoundaries() {
+    @Test("timelineEntries drops every sign-on, on-air or not, and keeps everything else")
+    func timelineEntriesDropsEverySignOn() {
         let onAir = ShowMarker.stub(id: 50, chronOrderID: 50, isStart: true, djName: "CURRENT")
         let previousSignOff = ShowMarker.stub(id: 40, chronOrderID: 40, isStart: false, djName: "PREVIOUS")
         let previousSignOn = ShowMarker.stub(id: 30, chronOrderID: 30, isStart: true, djName: "PREVIOUS")
@@ -120,12 +107,34 @@ struct PlaylistOnAirTests {
         )
 
         let ids = playlist.timelineEntries.map(\.id)
-        #expect(!ids.contains(onAir.id))           // current DJ lives in the banner
-        #expect(ids.contains(previousSignOff.id))  // the handoff off the air is the show's top boundary
-        #expect(ids.contains(previousSignOn.id))   // and its sign-on is the bottom one
+        #expect(!ids.contains(onAir.id))           // the header already names the current DJ
+        #expect(!ids.contains(previousSignOn.id))  // and a past sign-on only repeats the sign-off below it
+        #expect(ids.contains(previousSignOff.id))
         #expect(ids.contains(1))
         #expect(ids.contains(2))
         #expect(ids.contains(3))
+    }
+
+    /// The filter is a pure function of `isStart`, so it cannot depend on who
+    /// the backend says is live. Pinned because the previous rule *did* consult
+    /// `onAirSignOn`, and reintroducing that coupling would make a marker's
+    /// visibility change without the marker changing.
+    @Test("A sign-on is dropped whether or not it is the one on the air")
+    func signOnDropIsIndependentOfOnAir() {
+        let signOn = ShowMarker.stub(id: 30, chronOrderID: 30, isStart: true, djName: "PREVIOUS")
+        let song = Playcut.stub(id: 1, chronOrderID: 1)
+
+        // Alone, this sign-on IS the on-air marker; behind a newer sign-off it is not.
+        let live = Playlist.stub(playcuts: [song], showMarkers: [signOn])
+        let ended = Playlist.stub(
+            playcuts: [song],
+            showMarkers: [signOn, .stub(id: 40, chronOrderID: 40, isStart: false, djName: "PREVIOUS")]
+        )
+
+        #expect(live.onAirSignOn?.id == signOn.id)
+        #expect(ended.onAirSignOn == nil)
+        #expect(!live.timelineEntries.map(\.id).contains(signOn.id))
+        #expect(!ended.timelineEntries.map(\.id).contains(signOn.id))
     }
 
     @Test("timelineEntries keeps a sign-off when no one is on the air")
@@ -148,7 +157,7 @@ struct PlaylistOnAirTests {
     /// 104 put the sign-off at the show's maximum `play_order`; the other four
     /// had a handful of rows logged after the DJ signed off, which the feed then
     /// shows above the marker — the flowsheet as logged, not a mis-sort.
-    @Test("A show's sign-off heads its block and its sign-on closes it")
+    @Test("A show's sign-off heads the block it closes, with no sign-on beneath it")
     func signOffHeadsTheShowItCloses() {
         // show 7, play_order 1...3 — packed key is show << 32 | play_order.
         let key: (UInt64, UInt64) -> UInt64 = { show, order in (show << 32) | order }
@@ -157,7 +166,7 @@ struct PlaylistOnAirTests {
         let signOff = ShowMarker.stub(id: 12, chronOrderID: key(7, 3), isStart: false, djName: "PREVIOUS")
         let playlist = Playlist.stub(playcuts: [song], showMarkers: [signOn, signOff])
 
-        #expect(playlist.timelineEntries.map(\.id) == [signOff.id, song.id, signOn.id])
+        #expect(playlist.timelineEntries.map(\.id) == [signOff.id, song.id])
     }
 
     @Test(
