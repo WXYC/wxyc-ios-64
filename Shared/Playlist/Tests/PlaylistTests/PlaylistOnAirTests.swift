@@ -176,9 +176,11 @@ struct PlaylistOnAirTests {
             (String?("DJ Moo"), false, "DJ Moo signed off"),
             // An empty dj_name reaches the model as nil (FlowsheetEntryType
             // folds it), and must not borrow onAirTitle's "WXYC" fallback —
-            // "WXYC signed off" would assert the station left the air.
-            (String?.none, true, "Signed on"),
-            (String?.none, false, "Signed off"),
+            // "WXYC signed off" would assert the station left the air. The
+            // direction words track the feed's newest-first order, where a
+            // marker labels the block below it.
+            (String?.none, true, "Next DJ signed on"),
+            (String?.none, false, "Previous DJ signed off"),
         ]
     )
     func timelineLabelCopy(djName: String?, isStart: Bool, expected: String) {

@@ -276,18 +276,25 @@ public extension ShowMarker {
     /// ``onAirTitle``, which is only meaningful for a sign-on yet is defined
     /// for every marker.
     ///
-    /// An absent DJ name degrades to a subjectless "Signed on"/"Signed off"
-    /// instead of borrowing ``onAirTitle``'s station-name fallback: "WXYC
-    /// signed off" would assert the station left the air. Backend sends an
-    /// empty `dj_name` on a small fraction of sign-offs (2 of 108 shows
-    /// sampled over 12 days), which `FlowsheetEntryType` folds to nil, so this
-    /// is a row the feed really renders.
+    /// An absent DJ name degrades to a generic subject — "Previous DJ signed
+    /// off", "Next DJ signed on" — rather than borrowing ``onAirTitle``'s
+    /// station-name fallback, which would read "WXYC signed off" and assert
+    /// the station itself left the air.
+    ///
+    /// The direction words are relative to the feed's newest-first order,
+    /// where a marker labels the block below it: the DJ who signed off is the
+    /// one whose show follows underneath the row, and the DJ who signed on is
+    /// the one whose show sits above it.
+    ///
+    /// Backend sends an empty `dj_name` on a small fraction of sign-offs (2 of
+    /// 108 shows sampled over 12 days), which `FlowsheetEntryType` folds to
+    /// nil, so this is a row the feed really renders.
     var timelineLabel: String {
         switch (djName, isStart) {
         case (let name?, true): "\(name) signed on"
         case (let name?, false): "\(name) signed off"
-        case (nil, true): "Signed on"
-        case (nil, false): "Signed off"
+        case (nil, true): "Next DJ signed on"
+        case (nil, false): "Previous DJ signed off"
         }
     }
 }
