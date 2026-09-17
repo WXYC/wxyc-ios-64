@@ -18,12 +18,6 @@ import Playlist
 import SwiftUI
 @testable import WXYC
 
-/// Resolves nothing, ever — distinguishable from both real resolvers precisely
-/// because they *would* return a show for a playcut that carries one.
-private struct NeverResolvingUpcomingShowResolver: UpcomingShowResolving {
-    func upcomingShow(for playcut: Playcut) -> Concert? { nil }
-}
-
 @Suite("UpcomingShowResolver")
 @MainActor
 struct UpcomingShowResolverTests {
@@ -133,4 +127,12 @@ struct UpcomingShowResolverTests {
 
         #expect(values.upcomingShowResolver.upcomingShow(for: playcut) == nil)
     }
+}
+
+// MARK: - Test Doubles
+
+/// Resolves nothing, ever — distinguishable from both real resolvers precisely
+/// because they *would* return a show for a playcut that carries one.
+private struct NeverResolvingUpcomingShowResolver: UpcomingShowResolving {
+    func upcomingShow(for playcut: Playcut) -> Concert? { nil }
 }
