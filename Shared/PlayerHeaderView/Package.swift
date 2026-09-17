@@ -36,7 +36,11 @@ let package = Package(
         ),
         .testTarget(
             name: "PlayerHeaderViewTests",
-            dependencies: ["PlayerHeaderView", "Playback"]
+            dependencies: [
+                "PlayerHeaderView",
+                "Playback",
+                .product(name: "WallpaperTheme", package: "Wallpaper"),
+            ]
         ),
     ]
 )
