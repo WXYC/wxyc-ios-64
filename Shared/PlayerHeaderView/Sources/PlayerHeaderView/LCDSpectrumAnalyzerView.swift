@@ -135,27 +135,51 @@ struct LCDSpectrumAnalyzerView: View {
         )
     }
 
+    /// The brightness component of a segment's color: the lit/unlit multiplier
+    /// for `colorScheme`, applied to the accent brightness this segment's
+    /// gradient offset lands on.
+    ///
+    /// The lit arm is `activeBrightnessMultiplier` verbatim. Light mode used to
+    /// scale it by a fixed `1.21` here, because the theme only ever produced one
+    /// dark-tuned multiplier and light had to be corrected at render time. The
+    /// theme now resolves the multiplier per color scheme, so the value arriving
+    /// under a light scheme already *is* the light value; correcting it again
+    /// would double-apply.
+    static func segmentBrightness(
+        isActive: Bool,
+        colorScheme: ColorScheme,
+        activeBrightnessMultiplier: Double,
+        accentBrightness: Double,
+        offsetBrightness: Double
+    ) -> Double {
+        let baseBrightness = max(0, min(1, accentBrightness + offsetBrightness))
+        let inactiveBrightness = colorScheme == .light ? 1.15 : 0.90
+        let stateBrightness = isActive ? activeBrightnessMultiplier : inactiveBrightness
+
+        return stateBrightness * baseBrightness
+    }
+
     private func segmentColor(isActive: Bool, segmentIndex: Int) -> Color {
         let offset = interpolatedOffset(for: segmentIndex)
 
         // Base accent color with offset applied
         let baseHue = hue + offset.hue / 360.0
         let baseSaturation = max(0, min(1, saturation + offset.saturation))
-        let baseBrightness = max(0, min(1, accentBrightness + offset.brightness))
 
-        // Active/inactive brightness multipliers
-        // Light mode adds a boost factor on top of the configurable active brightness
-        let activeBrightness = colorScheme == .light ? activeBrightnessMultiplier * 1.21 : activeBrightnessMultiplier
-        let inactiveBrightness = colorScheme == .light ? 1.15 : 0.90
-
-        let brightness = isActive ? activeBrightness : inactiveBrightness
+        let brightness = Self.segmentBrightness(
+            isActive: isActive,
+            colorScheme: colorScheme,
+            activeBrightnessMultiplier: activeBrightnessMultiplier,
+            accentBrightness: accentBrightness,
+            offsetBrightness: offset.brightness
+        )
 
         // Wrap hue to 0-1 range
         var finalHue = baseHue
         while finalHue < 0 { finalHue += 1 }
         while finalHue >= 1 { finalHue -= 1 }
 
-        return Color(hue: finalHue, saturation: baseSaturation, brightness: brightness * baseBrightness)
+        return Color(hue: finalHue, saturation: baseSaturation, brightness: brightness)
     }
 
     private func glowColor(for segmentIndex: Int, isActive: Bool) -> Color {
