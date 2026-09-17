@@ -11,85 +11,54 @@
 import SwiftUI
 import WallpaperTheme
 
-// MARK: - Environment Keys
+// MARK: - Missing-injection fallback
 
-private struct AccentHueKey: EnvironmentKey {
-    /// Default hue: orange (23°), normalized to 0.0-1.0 range
-    static let defaultValue: Double = 23.0 / 360.0
-}
-
-private struct AccentSaturationKey: EnvironmentKey {
-    static let defaultValue: Double = 0.75
-}
-
-private struct AccentBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = 1.0
-}
-
-// MARK: - LCD HSB Offset Environment Keys
-
-private struct LCDMinOffsetKey: EnvironmentKey {
-    static let defaultValue: HSBOffset = .defaultMin
-}
-
-private struct LCDMaxOffsetKey: EnvironmentKey {
-    static let defaultValue: HSBOffset = .defaultMax
-}
-
-private struct LCDActiveBrightnessKey: EnvironmentKey {
-    /// The theme's dark default, read rather than copied: this was the last of
-    /// three hardcoded `1.24`s, and the other two now live behind
-    /// ``LCDConfiguration/defaultActiveBrightness(for:)``.
-    ///
-    /// Dark, because that is the scheme the literal always meant — an untuned
-    /// light scheme resolves its own arm through the theme and never reaches
-    /// this default. A `static let` over a stored literal is still a single
-    /// `swift_once` and a load: `EnvironmentKey.defaultValue` is evaluated while
-    /// SwiftUI *processes* an `.environment(_:_:)` write, not only on a genuine
-    /// miss (wxyc-ios-64#866), so nothing here may grow into real work.
-    static let defaultValue: Double = LCDConfiguration.defaultActiveBrightness(for: .dark)
+/// What `\.lcdActiveBrightness` resolves to when nothing was injected: the
+/// theme's dark default, read rather than copied. This was the last of three
+/// hardcoded `1.24`s, and the other two now live behind
+/// ``LCDConfiguration/defaultActiveBrightness(for:)``.
+///
+/// Dark, because that is the scheme the literal always meant — an untuned light
+/// scheme resolves its own arm through the theme and never reaches this
+/// default.
+///
+/// Hoisted to a `static let` rather than written inline in the `@Entry` default
+/// below, because `@Entry` emits a *computed* `defaultValue`: the expression it
+/// is handed runs on every lookup that misses, where this constant runs once per
+/// process. And a miss is not the only trigger — SwiftUI evaluates `defaultValue`
+/// while it *processes* an `.environment(_:_:)` write too (wxyc-ios-64#866), so
+/// the expression also runs on every correctly-injecting read. The call this
+/// wraps is a pure ternary over two literals and would survive being re-run;
+/// naming it keeps that true by construction rather than by inspection, so
+/// nothing here can quietly grow into real work.
+private enum LCDActiveBrightnessDefault {
+    static let dark: Double = LCDConfiguration.defaultActiveBrightness(for: .dark)
 }
 
 // MARK: - Environment Values Extension
 
 public extension EnvironmentValues {
     /// Hue value for LCD visualizer segments (0.0-1.0, normalized).
-    var lcdAccentHue: Double {
-        get { self[AccentHueKey.self] }
-        set { self[AccentHueKey.self] = newValue }
-    }
+    ///
+    /// Defaults to orange (23°), normalized to the 0.0-1.0 range.
+    @Entry var lcdAccentHue: Double = 23.0 / 360.0
 
     /// Saturation value for LCD visualizer segments (0.0-1.0).
-    var lcdAccentSaturation: Double {
-        get { self[AccentSaturationKey.self] }
-        set { self[AccentSaturationKey.self] = newValue }
-    }
+    @Entry var lcdAccentSaturation: Double = 0.75
 
     /// Accent brightness multiplier for LCD segments.
-    var lcdAccentBrightness: Double {
-        get { self[AccentBrightnessKey.self] }
-        set { self[AccentBrightnessKey.self] = newValue }
-    }
+    @Entry var lcdAccentBrightness: Double = 1.0
 
     // MARK: - LCD HSB Offsets
 
     /// HSB offset for LCD min (top) segments.
-    var lcdMinOffset: HSBOffset {
-        get { self[LCDMinOffsetKey.self] }
-        set { self[LCDMinOffsetKey.self] = newValue }
-    }
+    @Entry var lcdMinOffset: HSBOffset = .defaultMin
 
     /// HSB offset for LCD max (bottom) segments.
-    var lcdMaxOffset: HSBOffset {
-        get { self[LCDMaxOffsetKey.self] }
-        set { self[LCDMaxOffsetKey.self] = newValue }
-    }
+    @Entry var lcdMaxOffset: HSBOffset = .defaultMax
 
     /// Brightness multiplier for active (lit) LCD segments.
-    var lcdActiveBrightness: Double {
-        get { self[LCDActiveBrightnessKey.self] }
-        set { self[LCDActiveBrightnessKey.self] = newValue }
-    }
+    @Entry var lcdActiveBrightness: Double = LCDActiveBrightnessDefault.dark
 }
 
 // MARK: - View Extension

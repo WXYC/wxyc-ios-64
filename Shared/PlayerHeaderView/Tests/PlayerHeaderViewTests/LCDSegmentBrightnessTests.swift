@@ -108,10 +108,10 @@ struct LCDSegmentBrightnessTests {
     }
 
     /// Nothing-set default: the environment falls back to the theme's dark
-    /// default rather than a literal of its own. `LCDActiveBrightnessKey`'s doc
-    /// records which copy this was and why it is read rather than restated; the
-    /// reason to pin it here is that a copy only stays correct until somebody
-    /// retunes the constant on one side.
+    /// default rather than a literal of its own. `LCDActiveBrightnessDefault`'s
+    /// doc records which copy this was and why it is read rather than restated;
+    /// the reason to pin it here is that a copy only stays correct until
+    /// somebody retunes the constant on one side.
     @Test("The environment default is the theme's dark default, not a private copy")
     func environmentDefaultTracksTheThemeConstant() {
         #expect(

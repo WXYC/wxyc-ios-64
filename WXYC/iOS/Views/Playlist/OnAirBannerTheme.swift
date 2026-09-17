@@ -114,18 +114,11 @@ struct OnAirBannerTheme: Equatable {
 
 // MARK: - Environment
 
-private struct OnAirBannerThemeKey: EnvironmentKey {
-    static let defaultValue: OnAirBannerTheme = .default
-}
-
 extension EnvironmentValues {
     /// The on-air banner's visual theme. Defaults to the shipping look
     /// (``OnAirBannerTheme/default``); the composition root overrides this with a
     /// live-tuning value from the debug panel in `#if DEBUG || DEBUG_TESTFLIGHT`
     /// builds only (see `RootTabView`), so `PlaylistView` and `OnAirBannerView`
     /// never reference the debug state directly.
-    var onAirBannerTheme: OnAirBannerTheme {
-        get { self[OnAirBannerThemeKey.self] }
-        set { self[OnAirBannerThemeKey.self] = newValue }
-    }
+    @Entry var onAirBannerTheme: OnAirBannerTheme = .default
 }
