@@ -23,7 +23,7 @@ import Playlist
 /// consumer of this key (WatchXYC's PlayerPage/PlaylistPage, DebugPanel's
 /// VisualizerDebugView) gets a real, functioning value.
 enum PlaylistServiceEnvironmentDefault {
-    /// The single instance the key ever hands out — see ``PlaylistServiceKey``.
+    /// The single instance `\.playlistService` ever hands out on a miss.
     ///
     /// Built **silently**, with no assertion and no log. An earlier revision
     /// ran `assertionFailure` from this initializer on the theory that a
@@ -49,9 +49,10 @@ enum PlaylistServiceEnvironmentDefault {
     /// that used to happen here went with the v1 path — #262.) Making the rest
     /// lazy is a further step nobody has taken.
     ///
-    /// Still a single `static let`, deliberately, rather than a computed
-    /// `defaultValue`: SwiftUI reads `EnvironmentKey.defaultValue` afresh on
-    /// every lookup that misses, so a computed default would allocate a new
+    /// Still a single `static let`, deliberately, and the `@Entry` default
+    /// below *references* it rather than constructing one: `@Entry` emits a
+    /// computed `defaultValue`, which SwiftUI reads afresh on every lookup that
+    /// misses, so an inlined `PlaylistService()` would allocate a new
     /// `PlaylistService` per read — and per read that a caller actually
     /// subscribes to (`updates()`), its own cache load, fetch, and 30-second
     /// poll loop writing the app group's shared playlist cache key (the same
@@ -61,17 +62,12 @@ enum PlaylistServiceEnvironmentDefault {
     static let shared = PlaylistService()
 }
 
-// MARK: - Environment Key
-
-private struct PlaylistServiceKey: EnvironmentKey {
-    static let defaultValue: PlaylistService = PlaylistServiceEnvironmentDefault.shared
-}
-
 // MARK: - Environment Values Extension
 
 public extension EnvironmentValues {
-    var playlistService: PlaylistService {
-        get { self[PlaylistServiceKey.self] }
-        set { self[PlaylistServiceKey.self] = newValue }
-    }
+    /// The playlist service views read. Defaults to
+    /// ``PlaylistServiceEnvironmentDefault/shared`` — a *reference*, never a
+    /// construction; that constant's doc carries the two incidents that rule
+    /// comes from.
+    @Entry var playlistService: PlaylistService = PlaylistServiceEnvironmentDefault.shared
 }

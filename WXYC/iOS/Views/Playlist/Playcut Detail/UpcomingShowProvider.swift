@@ -82,10 +82,20 @@ struct DebugUpcomingShowResolver: UpcomingShowResolving {
 
 // MARK: - Environment
 
-private struct UpcomingShowResolverKey: EnvironmentKey {
-    // Reads the embedded feed value in release; a DEBUG toggle can synthesize a
-    // mock for the now-playing row so the feature is exercisable pre-data.
-    static let defaultValue: any UpcomingShowResolving = {
+/// What `\.upcomingShowResolver` resolves to when nothing was injected: the
+/// embedded feed value in release, and in DEBUG a toggle-driven mock for the
+/// now-playing row so the feature is exercisable pre-data.
+///
+/// Hoisted to a `static let` rather than written inline in the `@Entry` default
+/// below, because `@Entry` emits a *computed* `defaultValue` — the expression it
+/// is handed runs on every lookup that misses, where this constant runs once per
+/// process. Both resolvers are stateless structs behind an existential with no
+/// `AnyObject` bound, so rebuilding one costs nothing and no caller can tell two
+/// apart; naming it is this codebase's rule that a default is a reference, not a
+/// construction, rather than a fix for a hazard. It also keeps the `#if` out of
+/// the macro's input.
+private enum UpcomingShowResolverDefault {
+    static let shared: any UpcomingShowResolving = {
         #if DEBUG
         DebugUpcomingShowResolver()
         #else
@@ -98,8 +108,5 @@ extension EnvironmentValues {
     /// The resolver that turns a playcut into its upcoming show. Defaults to the
     /// embedded-feed read (release) / a toggle-driven mock (DEBUG). Both are
     /// synchronous and make no network call.
-    var upcomingShowResolver: any UpcomingShowResolving {
-        get { self[UpcomingShowResolverKey.self] }
-        set { self[UpcomingShowResolverKey.self] = newValue }
-    }
+    @Entry var upcomingShowResolver: any UpcomingShowResolving = UpcomingShowResolverDefault.shared
 }
