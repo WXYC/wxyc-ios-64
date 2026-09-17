@@ -59,4 +59,29 @@ struct OnAirBannerThemeTests {
         // actually shipped as its default.
         #expect(OnAirBannerTheme.default.indicatorColor != Color.green)
     }
+
+    /// The table above pins ``OnAirBannerTheme/default``; this pins the other
+    /// half of the release path — that an uninjected `\.onAirBannerTheme` read
+    /// actually reaches it. `PlaylistView` gets its theme from the environment
+    /// with no debug fallback in Release, so a default that resolved anywhere
+    /// else would render a banner no golden table describes.
+    @Test("An uninjected environment read resolves to the shipping theme")
+    func environmentDefaultIsTheShippingTheme() {
+        #expect(EnvironmentValues().onAirBannerTheme == OnAirBannerTheme.default)
+    }
+
+    /// Guards the getter/setter pair against addressing different keys, which
+    /// would send the debug panel's live-tuned theme nowhere and leave every
+    /// reader on the default. The tuned field is deliberately unlike the
+    /// default's, so a read that fell through could not coincidentally match.
+    @Test("An injected theme is the one that resolves")
+    func injectedThemeIsWhatResolves() {
+        var tuned = OnAirBannerTheme.default
+        tuned.waveDepth = 999
+        var values = EnvironmentValues()
+        values.onAirBannerTheme = tuned
+
+        #expect(values.onAirBannerTheme == tuned)
+        #expect(values.onAirBannerTheme != OnAirBannerTheme.default)
+    }
 }
