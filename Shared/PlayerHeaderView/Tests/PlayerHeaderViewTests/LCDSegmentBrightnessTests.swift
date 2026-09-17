@@ -35,16 +35,12 @@ struct LCDSegmentBrightnessTests {
     /// A lit segment renders the multiplier the theme resolved for its color
     /// scheme, unchanged.
     ///
-    /// Light mode used to be scaled by a fixed `× 1.21` here: the theme produced
-    /// a single dark-tuned multiplier, so the only place light could be corrected
-    /// was at render time. `LCDConfiguration` now resolves the multiplier per
-    /// color scheme, and `ThemeConfiguration` collapses the pair before the value
-    /// reaches this view — the number arriving under a light scheme *is* the light
-    /// number. Re-applying the correction would render light at `authoredLight × 1.21`
-    /// — for the untuned default, far enough past 1.0 that the top of the lit range
-    /// flattens onto one color. Brightness clips there; saturation does not, so at
-    /// the accent's default saturation of 0.75 the segments land on a fully
-    /// saturated bright accent rather than on white.
+    /// `segmentBrightness`' own doc carries the history of the `× 1.21` light
+    /// correction this replaces. What it does not say is what re-applying that
+    /// correction would look like on screen: past 1.0 the top of the lit range
+    /// flattens onto a single color, and because brightness clips where
+    /// saturation does not, at the accent's default saturation of 0.75 the
+    /// segments land on a fully saturated bright accent — not on white.
     @Test(
         "A lit segment renders exactly the multiplier resolved for its color scheme",
         arguments: [ColorScheme.light, ColorScheme.dark]
@@ -65,6 +61,10 @@ struct LCDSegmentBrightnessTests {
 
     /// The same holds for a value a theme authored rather than defaulted to —
     /// the view must not know or care where the multiplier came from.
+    ///
+    /// This is what keeps the test above from being satisfiable by an
+    /// implementation that ignores the parameter: one re-deriving the number
+    /// from `LCDConfiguration` would pass there and fail here.
     @Test("A tuned light-mode multiplier reaches the segment unscaled")
     func tunedLightMultiplierIsNotScaled() {
         let authoredLight = 1.09
@@ -108,10 +108,10 @@ struct LCDSegmentBrightnessTests {
     }
 
     /// Nothing-set default: the environment falls back to the theme's dark
-    /// default rather than a literal of its own. This was the last of three
-    /// hardcoded copies of `1.24` — the other two were folded into
-    /// `LCDConfiguration` upstream — and a copy only stays correct until
-    /// somebody retunes the constant on one side.
+    /// default rather than a literal of its own. `LCDActiveBrightnessKey`'s doc
+    /// records which copy this was and why it is read rather than restated; the
+    /// reason to pin it here is that a copy only stays correct until somebody
+    /// retunes the constant on one side.
     @Test("The environment default is the theme's dark default, not a private copy")
     func environmentDefaultTracksTheThemeConstant() {
         #expect(
