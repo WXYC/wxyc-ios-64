@@ -27,10 +27,10 @@ import WallpaperTheme
 /// is handed runs on every lookup that misses, where this constant runs once per
 /// process. And a miss is not the only trigger — SwiftUI evaluates `defaultValue`
 /// while it *processes* an `.environment(_:_:)` write too (wxyc-ios-64#866), so
-/// the expression also runs on every correctly-injecting read. The call this
-/// wraps is a pure ternary over two literals and would survive being re-run;
-/// naming it keeps that true by construction rather than by inspection, so
-/// nothing here can quietly grow into real work.
+/// the expression also runs on every launch that injects correctly. The call
+/// this wraps is a pure ternary over two literals and would survive being
+/// re-run; naming it keeps that true by construction rather than by inspection,
+/// so nothing here can quietly grow into real work.
 private enum LCDActiveBrightnessDefault {
     static let dark: Double = LCDConfiguration.defaultActiveBrightness(for: .dark)
 }
