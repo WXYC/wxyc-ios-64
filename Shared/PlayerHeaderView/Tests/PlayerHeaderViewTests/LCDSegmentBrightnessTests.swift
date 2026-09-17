@@ -83,6 +83,19 @@ struct LCDSegmentBrightnessTests {
         )
     }
 
+    /// Nothing-set default: the environment falls back to the theme's dark
+    /// default rather than a literal of its own. This was the last of three
+    /// hardcoded copies of `1.24` — the other two were folded into
+    /// `LCDConfiguration` upstream — and a copy only stays correct until
+    /// somebody retunes the constant on one side.
+    @Test("The environment default is the theme's dark default, not a private copy")
+    func environmentDefaultTracksTheThemeConstant() {
+        #expect(
+            EnvironmentValues().lcdActiveBrightness
+                == LCDConfiguration.defaultActiveBrightness(for: .dark)
+        )
+    }
+
     /// The gradient offset still scales the result: a segment whose offset darkens
     /// the accent gets a proportionally dimmer lit brightness. Asserted under the
     /// dark scheme so it stays orthogonal to the light-correction tests above.

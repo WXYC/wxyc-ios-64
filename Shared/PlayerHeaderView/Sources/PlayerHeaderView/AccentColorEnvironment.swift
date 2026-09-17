@@ -37,7 +37,17 @@ private struct LCDMaxOffsetKey: EnvironmentKey {
 }
 
 private struct LCDActiveBrightnessKey: EnvironmentKey {
-    static let defaultValue: Double = 1.24
+    /// The theme's dark default, read rather than copied: this was the last of
+    /// three hardcoded `1.24`s, and the other two now live behind
+    /// ``LCDConfiguration/defaultActiveBrightness(for:)``.
+    ///
+    /// Dark, because that is the scheme the literal always meant — an untuned
+    /// light scheme resolves its own arm through the theme and never reaches
+    /// this default. A `static let` over a stored literal is still a single
+    /// `swift_once` and a load: `EnvironmentKey.defaultValue` is evaluated while
+    /// SwiftUI *processes* an `.environment(_:_:)` write, not only on a genuine
+    /// miss (wxyc-ios-64#866), so nothing here may grow into real work.
+    static let defaultValue: Double = LCDConfiguration.defaultActiveBrightness(for: .dark)
 }
 
 // MARK: - Environment Values Extension
