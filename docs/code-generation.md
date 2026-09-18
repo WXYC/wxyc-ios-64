@@ -43,7 +43,19 @@ No other surface imports `WXYCAPIModels` yet. Adopting it elsewhere is a case-by
 }
 ```
 
-`wxycSharedSha` is what the regen/verify scripts actually read; `wxycSharedTag` and `apiYamlVersion` are for humans scanning the diff. The vendored `Sources/WXYCAPIModels` tree should always be the exact output of running codegen against this pinned commit — never hand-edited (see "The generated-file header exception" below for how that's enforced).
+The three fields are not equal in status, and the difference is worth holding onto:
+
+| Field | Status | What reads it |
+|---|---|---|
+| `wxycSharedSha` | **Authoritative** — the only field that decides anything | `regenerate-api-types.sh`, `verify-api-types.sh`, `spec-drift.yml` |
+| `apiYamlVersion` | **Checked, not authoritative** | asserted by `regenerate-api-types.sh` against `info.version` in `api.yaml` at the pinned commit |
+| `wxycSharedTag` | **Advisory** — a label naming where the commit lives | nothing |
+
+The vendored `Sources/WXYCAPIModels` tree should always be the exact output of running codegen against this pinned commit — never hand-edited (see "The generated-file header exception" below for how that's enforced).
+
+**Why `apiYamlVersion` is checked and `wxycSharedTag` is not** (#923). The version is a property of the pinned *commit's content*, so it can be verified from the pin alone and any disagreement is a bug in this repo. A tag is a mutable ref: what it points at is a property of upstream's ref state at the moment you look, not of what was vendored here, so checking it would let an upstream retag turn a verified-green tree red for a reason that has nothing to do with drift. That asymmetry is the decision, not an omission — the tag stays a label on purpose.
+
+Until #923 neither label was checked, and the unchecked one drifted into a lie exactly as you'd expect: #919 advanced the pin while `apiYamlVersion` read `1.35.0` on both sides, because upstream had stopped moving `info.version`. Two fixes had to land for the check to be worth writing — WXYC/wxyc-shared#347 made the upstream version move with content, and #920 put `verify-api-types.sh` on PR CI so a check added here would actually run.
 
 **Keep reading the SHA, not the tag.** That rule is about which field is authoritative, not about whether the tag happens to be trustworthy today, and it does not relax now that the tag is real. From the #412 stand-up until the v10.0.0 pin, `wxycSharedTag` held the literal string `main` — worse than useless, since it named a branch that moves, recorded nothing about what was pinned, and quietly implied the pin floated. It now names a `wxyc-shared` release, and the two version fields agree because `@wxyc/shared` v10.0.0 was cut at `api.yaml` 10.0.0 specifically so they could. Do not assume that alignment holds forever: the package version and `info.version` are independent counters that were deliberately made to coincide once, not wired together.
 
@@ -54,8 +66,9 @@ Regeneration — bumping the pin and re-running codegen — is **the update path
 The script clones `wxyc-shared` at the commit pinned in `contract-version.json` into a gitignored scratch dir, runs its `generate:swift` codegen target (the swift6 generator added in `wxyc-shared#250`), and rsyncs the generated `Models/` and `Infrastructure/` directories over the vendored package. `APIs/` is excluded on every run, matching the "models-only" package described above.
 
 ```bash
-# Update the contract: bump contract-version.json's wxycSharedTag / wxycSharedSha /
-# apiYamlVersion to the new wxyc-shared commit first, then:
+# Update the contract: point contract-version.json's wxycSharedSha at the new
+# wxyc-shared commit and set apiYamlVersion to that commit's info.version (they
+# are checked against each other); update wxycSharedTag for legibility. Then:
 scripts/regenerate-api-types.sh
 
 # Iterating locally without a full re-clone each time:
@@ -74,6 +87,8 @@ Requires `git`, `npm`/`node`, `java` (the OpenAPI generator runs on the JVM via 
 - a hand-edit to a generated file,
 - a `contract-version.json` bump that wasn't followed by a regen, or
 - an upstream `api.yaml` change that never made it into this repo.
+
+It also inherits, via `regenerate-api-types.sh`, the `apiYamlVersion` assertion described above: a pin whose recorded version does not equal `info.version` at the pinned commit fails there, naming both values, immediately after the checkout and before the expensive `npm ci` + JVM codegen. There is no second implementation to keep in sync — one assertion, in the script both paths call. `scripts/tests/test-api-types-contract-version.sh` covers it (match, both directions of mismatch, a missing label, and an unresolvable sha) against a local stand-in for `wxyc-shared` with `npm`/`java` stubbed, and runs on PR via `.github/workflows/shell-script-tests.yml`.
 
 ```bash
 scripts/verify-api-types.sh

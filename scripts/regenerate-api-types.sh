@@ -28,13 +28,34 @@
 #                       re-clone on the next run -- useful for iterating).
 #   -h, --help          Show this message.
 #
-# Reads the pinned commit from Shared/WXYCAPIModels/contract-version.json's
-# `wxycSharedSha` field, which is the authoritative pin (the exact commit the
-# vendored tree is generated from). `wxycSharedTag` is a human-readable label
-# for where that commit lives (e.g. "main" or a "vX.Y.Z" release once one
-# includes it) and is NOT read by this script. To vendor a newer wxyc-shared
-# contract, update `wxycSharedSha` (and, for legibility, `wxycSharedTag` /
-# `apiYamlVersion`) first, then run this script and commit the diff.
+# Reads the pin from Shared/WXYCAPIModels/contract-version.json, whose three
+# fields are deliberately NOT equal in status:
+#
+#   wxycSharedSha     Authoritative. The exact commit the vendored tree is
+#                     generated from, and the only field that decides anything.
+#   apiYamlVersion    Checked, not authoritative. Asserted below to equal
+#                     info.version in api.yaml at that commit, so the label a
+#                     reader consults cannot drift away from the sha that
+#                     decides (#923).
+#   wxycSharedTag     Advisory. Names where the commit lives (a release tag, or
+#                     "main" for a pin ahead of any release) purely for
+#                     legibility, and is not read by this script at all.
+#
+# The asymmetry between the last two is principled rather than leftover:
+# api.yaml's version is a property of the pinned COMMIT'S CONTENT, so it can be
+# checked from the pin alone and any disagreement is our bug. A tag is a
+# mutable ref -- what it points at is a property of upstream's ref state at the
+# moment you look, not of what was vendored -- so checking it would let an
+# upstream retag turn this repo's verified-green tree red for a reason that has
+# nothing to do with drift here. It stays a label, and stays unchecked, on
+# purpose. (`.github/workflows/spec-drift.yml` reads the sha for the same
+# reason.)
+#
+# To vendor a newer wxyc-shared contract, update `wxycSharedSha` and
+# `apiYamlVersion` together (and `wxycSharedTag` for legibility), then run this
+# script and commit the diff. A sha/version mismatch fails immediately after
+# the checkout -- before `npm ci` and the JVM codegen, which are the expensive
+# part -- rather than producing a correctly-generated tree under a wrong label.
 #
 # Requires: git, npm (+ node), java (openapi-generator-cli runs on the JVM),
 # rsync.
@@ -113,7 +134,11 @@ done
 SHA=$(node -e 'process.stdout.write(require(process.argv[1]).wxycSharedSha || "")' "$REPO_ROOT/$CONTRACT_FILE")
 [[ -n "$SHA" ]] || fail "wxycSharedSha missing or empty in $CONTRACT_FILE"
 
+DECLARED_API_VERSION=$(node -e 'process.stdout.write(require(process.argv[1]).apiYamlVersion || "")' "$REPO_ROOT/$CONTRACT_FILE")
+[[ -n "$DECLARED_API_VERSION" ]] || fail "apiYamlVersion missing or empty in $CONTRACT_FILE -- it is checked against the pinned commit's api.yaml below, so it can no longer be omitted"
+
 log "Pinned wxyc-shared commit: $SHA"
+log "Declared api.yaml version: $DECLARED_API_VERSION"
 log "Remote: $REMOTE"
 log "Work dir: $WORK_DIR"
 
@@ -133,6 +158,39 @@ fi
 
 log "Checking out $SHA"
 git -C "$WORK_DIR" checkout --quiet "$SHA" || fail "checkout of $SHA in $WORK_DIR failed -- does the commit exist on $REMOTE?"
+
+# ---------------------------------------------------------------------------
+# Assert the recorded label describes the commit actually pinned
+# ---------------------------------------------------------------------------
+#
+# `wxycSharedSha` decides what gets generated; `apiYamlVersion` is what a
+# reader consults to answer "what shape did I generate against". Until #923
+# only the first was machine-read, so the second could drift into a lie -- and
+# did: #919 advanced the pin while the label sat at 1.35.0 on both sides,
+# because upstream had stopped moving `info.version`. That upstream half is
+# fixed (WXYC/wxyc-shared#347 fails any api.yaml content change that doesn't
+# bump the version), which is what makes the label worth checking at all: from
+# 1.36.0 on, two different contents cannot share a version string.
+#
+# Read the version exactly the way wxyc-shared's own gate does
+# (scripts/check-version-bump.sh) rather than with a YAML parser -- this
+# script's dependency set is git/npm/node/java/rsync and should stay that way.
+# `|| true` because a missing line would otherwise abort the pipeline under
+# `set -o pipefail` before the empty check below can name the real problem.
+API_YAML="$WORK_DIR/api.yaml"
+[[ -f "$API_YAML" ]] || fail "api.yaml not found at the pinned commit $SHA -- is $REMOTE really wxyc-shared?"
+
+PINNED_API_VERSION=$(grep -m1 '^  version:' "$API_YAML" | awk '{print $2}' || true)
+[[ -n "$PINNED_API_VERSION" ]] || fail "could not read info.version from api.yaml at $SHA (expected a line matching '^  version:')"
+
+if [[ "$PINNED_API_VERSION" != "$DECLARED_API_VERSION" ]]; then
+    fail "contract-version.json is out of sync with the commit it pins.
+    $CONTRACT_FILE says apiYamlVersion: $DECLARED_API_VERSION
+    api.yaml at $SHA says info.version: $PINNED_API_VERSION
+  Fix whichever is wrong: set apiYamlVersion to $PINNED_API_VERSION if the sha is the intended pin, or move wxycSharedSha (and wxycSharedTag) to the commit that actually shipped $DECLARED_API_VERSION."
+fi
+
+log "Contract label matches the pinned commit (api.yaml info.version: $PINNED_API_VERSION)"
 
 # ---------------------------------------------------------------------------
 # Generate
