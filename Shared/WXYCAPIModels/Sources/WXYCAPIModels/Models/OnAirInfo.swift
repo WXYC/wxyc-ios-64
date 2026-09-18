@@ -10,7 +10,7 @@ import Foundation
 /** Minimal, name-only on-air DJ shape for the &#x60;on_air&#x60; field. Deliberately separate from &#x60;OnAirDJ&#x60;, which additionally carries an &#x60;id&#x60; (a nullable &#x60;auth_user.id&#x60; string) that the &#x60;on_air&#x60; banner has no use for. */
 public struct OnAirInfo: Sendable, Codable, Hashable {
 
-    /** Display name of the DJ currently on air. */
+    /** The DJ's public on-air handle, never the DJ's legal name. Same PII-safe resolution chain as `FlowsheetEntryFields.dj_name` (BS#1371), except when unresolvable this substitutes the station name (\"WXYC\") rather than `null` — it's the enclosing `on_air` field that goes `null`, not this one. */
     public var djName: String
 
     public init(djName: String) {

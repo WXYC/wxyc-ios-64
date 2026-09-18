@@ -7,43 +7,54 @@
 
 import Foundation
 
+/** &#x60;AlbumCreateFields&#x60; plus the artist reference pair. The label rule travels with it: at least one of &#x60;label&#x60; or &#x60;label_id&#x60; must be provided, or the request is a 400 (BS#2410) — restated here, not only on &#x60;AlbumCreateFields&#x60;, because the Swift and Kotlin generators flatten &#x60;allOf&#x60; into a standalone type whose doc comment is this description, leaving no link to the composed schema&#39;s own text. See &#x60;AlbumCreateFields&#x60; for the full &#x60;label&#x60;/&#x60;label_id&#x60; resolution semantics (which value wins for the denormalized &#x60;library.label&#x60; column, dangling-&#x60;label_id&#x60; handling).  */
 public struct AddAlbumRequest: Sendable, Codable, Hashable {
 
+    public static let codeNumberRule = NumericRule<Int>(minimum: 1, exclusiveMinimum: false, maximum: 32767, exclusiveMaximum: false, multipleOf: nil)
+    public static let codeVolumeLettersRule = StringRule(minLength: nil, maxLength: 4, pattern: nil)
     public var albumTitle: String
-    public var artistName: String?
-    public var artistId: Int?
-    public var label: String
+    public var label: String?
     public var labelId: Int?
     public var genreId: Int
     public var formatId: Int
+    /** Operator-chosen release call number (BS#2410). `library.code_number` is a Postgres smallint, hence the 32767 ceiling. Omitted, Backend assigns MAX+1 for the artist — this field makes that assignment overridable, it does not replace it. No application-level collision check by design (single-librarian decision; the eventual DB uniqueness constraint and its 409 mapping are tracked at WXYC/Backend-Service#2033).  */
+    public var codeNumber: Int?
+    /** Optional volume letters for the release call code (BS#2410; `library.code_volume_letters`, varchar(4)). Trimmed server-side; an empty or whitespace-only value is stored as NULL rather than `''`, and over-length input is a 400 measured in code points, not UTF-16 units.  */
+    public var codeVolumeLetters: String?
     public var discQuantity: Int?
     public var alternateArtistName: String?
     public var albumArtist: String?
+    public var artistName: String?
+    public var artistId: Int?
 
-    public init(albumTitle: String, artistName: String? = nil, artistId: Int? = nil, label: String, labelId: Int? = nil, genreId: Int, formatId: Int, discQuantity: Int? = nil, alternateArtistName: String? = nil, albumArtist: String? = nil) {
+    public init(albumTitle: String, label: String? = nil, labelId: Int? = nil, genreId: Int, formatId: Int, codeNumber: Int? = nil, codeVolumeLetters: String? = nil, discQuantity: Int? = nil, alternateArtistName: String? = nil, albumArtist: String? = nil, artistName: String? = nil, artistId: Int? = nil) {
         self.albumTitle = albumTitle
-        self.artistName = artistName
-        self.artistId = artistId
         self.label = label
         self.labelId = labelId
         self.genreId = genreId
         self.formatId = formatId
+        self.codeNumber = codeNumber
+        self.codeVolumeLetters = codeVolumeLetters
         self.discQuantity = discQuantity
         self.alternateArtistName = alternateArtistName
         self.albumArtist = albumArtist
+        self.artistName = artistName
+        self.artistId = artistId
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case albumTitle = "album_title"
-        case artistName = "artist_name"
-        case artistId = "artist_id"
         case label
         case labelId = "label_id"
         case genreId = "genre_id"
         case formatId = "format_id"
+        case codeNumber = "code_number"
+        case codeVolumeLetters = "code_volume_letters"
         case discQuantity = "disc_quantity"
         case alternateArtistName = "alternate_artist_name"
         case albumArtist = "album_artist"
+        case artistName = "artist_name"
+        case artistId = "artist_id"
     }
 
     // Encodable protocol methods
@@ -51,15 +62,17 @@ public struct AddAlbumRequest: Sendable, Codable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(albumTitle, forKey: .albumTitle)
-        try container.encodeIfPresent(artistName, forKey: .artistName)
-        try container.encodeIfPresent(artistId, forKey: .artistId)
-        try container.encode(label, forKey: .label)
+        try container.encodeIfPresent(label, forKey: .label)
         try container.encodeIfPresent(labelId, forKey: .labelId)
         try container.encode(genreId, forKey: .genreId)
         try container.encode(formatId, forKey: .formatId)
+        try container.encodeIfPresent(codeNumber, forKey: .codeNumber)
+        try container.encodeIfPresent(codeVolumeLetters, forKey: .codeVolumeLetters)
         try container.encodeIfPresent(discQuantity, forKey: .discQuantity)
         try container.encodeIfPresent(alternateArtistName, forKey: .alternateArtistName)
         try container.encodeIfPresent(albumArtist, forKey: .albumArtist)
+        try container.encodeIfPresent(artistName, forKey: .artistName)
+        try container.encodeIfPresent(artistId, forKey: .artistId)
     }
 }
 

@@ -10,7 +10,10 @@ import Foundation
 /** A single item from LML&#39;s library catalog search. */
 public struct LibrarySearchItem: Sendable, Codable, Hashable {
 
-    public var id: Int
+    /** The release's Backend identifier — `wxyc_schema.library.id` — once the proxy id re-map (WXYC/Backend-Service#2168) ships. Until that deploy it still carries the library.db legacy id, the same value as `legacy_release_id` below, because library.db has no other id to give. The distinction is not cosmetic: the two spaces are numerically coextensive but unrelated, and an id read in the wrong one lands on a *different real release* 87.7% of the time (WXYC/dj-site#1179) — a silently wrong album link, not a miss.  Required but nullable. A `null` here comes only from Backend's proxy rewrite path (`GET /proxy/library/search`), for a row whose legacy id has no Backend counterpart: 609 of 64,731 library.db rows as measured 2026-08-14 (599 collapsed into a sibling sharing their `LIBRARY_CODE`, 10 absent outright), all of them already unreachable from the dj-site picker. LML's own `GET /library/search` never emits null here.  */
+    public var id: Int?
+    /** The library.db producer key — upstream tubafrenzy `LIBRARY_RELEASE.ID`, or the Backend mint floored at 1,000,000 for Backend-authored catalog rows (WXYC/Backend-Service#1963). This is the space LML's own per-release reads resolve against, and the id embedded in `library_url` below; Backend's serial `library.id` is not in it. Optional and nullable for wire compatibility only — absent means the producer predates WXYC/Backend-Service#2167, in which case `id` above still carries this value.  */
+    public var legacyReleaseId: Int?
     public var title: String?
     public var artist: String?
     public var callLetters: String?
@@ -23,15 +26,16 @@ public struct LibrarySearchItem: Sendable, Codable, Hashable {
     public var onStreaming: Bool?
     /** Computed call number (e.g. \"Rock CD S 1/1\") */
     public var callNumber: String?
-    /** Per-release dj.wxyc.org permalink for this release. Points at the dj-site legacy front door `/dashboard/album/legacy/{id}`, which resolves the legacy library `id` to the canonical release route server-side and 308-redirects. Null when unavailable.  */
+    /** Per-release dj.wxyc.org permalink for this release. Points at the dj-site legacy front door `/dashboard/album/legacy/{id}`, whose `{id}` segment is the `legacy_release_id` above — not this row's `id`, which the proxy re-map (WXYC/Backend-Service#2168) moves into Backend's serial space. The front door resolves that legacy id to the canonical release route server-side and 308-redirects. Null when unavailable.  */
     public var libraryUrl: String?
     /** Populated when a track-title match drove this release into the results (catalog-track-search plan §5.1). Empty or absent when the release matched on artist / title normally. Backward-compatible — existing consumers ignore the field.  */
     public var matchedVia: [TrackMatchHint]?
     /** Sibling to `matched_via`. Reserved for the day LML composes artist-alias hits itself; not produced in v1 of the artist-search-alias plan (BS-local cache only). Optional and backward-compatible.  */
     public var matchedViaAlias: [ArtistMatchHint]?
 
-    public init(id: Int, title: String? = nil, artist: String? = nil, callLetters: String? = nil, artistCallNumber: Int? = nil, releaseCallNumber: Int? = nil, genre: String? = nil, format: String? = nil, alternateArtistName: String? = nil, label: String? = nil, onStreaming: Bool? = nil, callNumber: String? = nil, libraryUrl: String? = nil, matchedVia: [TrackMatchHint]? = nil, matchedViaAlias: [ArtistMatchHint]? = nil) {
+    public init(id: Int?, legacyReleaseId: Int? = nil, title: String? = nil, artist: String? = nil, callLetters: String? = nil, artistCallNumber: Int? = nil, releaseCallNumber: Int? = nil, genre: String? = nil, format: String? = nil, alternateArtistName: String? = nil, label: String? = nil, onStreaming: Bool? = nil, callNumber: String? = nil, libraryUrl: String? = nil, matchedVia: [TrackMatchHint]? = nil, matchedViaAlias: [ArtistMatchHint]? = nil) {
         self.id = id
+        self.legacyReleaseId = legacyReleaseId
         self.title = title
         self.artist = artist
         self.callLetters = callLetters
@@ -50,6 +54,7 @@ public struct LibrarySearchItem: Sendable, Codable, Hashable {
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case id
+        case legacyReleaseId = "legacy_release_id"
         case title
         case artist
         case callLetters = "call_letters"
@@ -71,6 +76,7 @@ public struct LibrarySearchItem: Sendable, Codable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
         try container.encodeIfPresent(title, forKey: .title)
         try container.encodeIfPresent(artist, forKey: .artist)
         try container.encodeIfPresent(callLetters, forKey: .callLetters)

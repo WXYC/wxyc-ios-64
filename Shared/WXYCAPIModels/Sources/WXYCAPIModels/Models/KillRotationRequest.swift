@@ -11,9 +11,9 @@ public struct KillRotationRequest: Sendable, Codable, Hashable {
 
     public var rotationId: Int
     /** ISO date string, defaults to today */
-    public var killDate: Date?
+    public var killDate: CalendarDate?
 
-    public init(rotationId: Int, killDate: Date? = nil) {
+    public init(rotationId: Int, killDate: CalendarDate? = nil) {
         self.rotationId = rotationId
         self.killDate = killDate
     }

@@ -41,12 +41,14 @@ public struct CatalogExportRow: Sendable, Codable, Hashable {
     public var popularity: Int?
     /** Album cover URL from Discogs; null if not yet fetched. */
     public var artworkUrl: String?
-    /** RAW current-rotation bin — the most-recently-ADDED rotation record for this album — NOT the CURRENT_DATE-filtered value AlbumSearchResult returns. Nominal values are H/M/L/S (see RotationBin) but it is typed as a free string, NOT the RotationBin enum, so a value outside those cohorts (e.g. 'N', a current server-enum member — NOT legacy) cannot break a strict-enum decoder. Evaluate live rotation client-side together with rotation_kill_date:   in rotation  ==  rotation_bin != null                   AND (rotation_kill_date == null                        OR rotation_kill_date > today-in-client-tz) The daily kill-date expiry is a clock event no DB trigger can observe, which is why this endpoint ships raw and defers expiry to the client.  */
+    /** RAW current-rotation bin — the most-recently-ADDED rotation record for this album — NOT the CURRENT_DATE-filtered value AlbumSearchResult returns. The values are H/M/L/S (see RotationBin), typed here as a free string rather than that enum as a forward-compatibility hedge: a bin added server-side ahead of its clients then cannot break a strict-enum decoder mid-rollout. The hedge matters more on THIS endpoint than on the others that $ref RotationBin, because the body is NDJSON cloned in bulk — one unknown value would fail every line and take a client's whole on-device catalog with it, rather than one row. Evaluate live rotation client-side together with rotation_kill_date:   in rotation  ==  rotation_bin != null                   AND (rotation_kill_date == null                        OR rotation_kill_date > today-in-client-tz) The daily kill-date expiry is a clock event no DB trigger can observe, which is why this endpoint ships raw and defers expiry to the client.  */
     public var rotationBin: String?
     /** Date (YYYY-MM-DD; server ::text cast) the current rotation record expires, or null if it has none. Used with rotation_bin to evaluate live rotation client-side. Absent from AlbumSearchResult — a client that reuses AlbumSearchResult for this endpoint silently loses it.  */
-    public var rotationKillDate: Date?
+    public var rotationKillDate: CalendarDate?
+    /** True when the digital archive (WXYC/Backend-Service#2320) has at least one asset bound to this album — the badge the archive player client uses to decide whether to offer playback before calling GET /digital-archive/albums/{id}/playback. OPTIONAL and OUT of `required`, same leniency as the BS#1965 producer fields above and for the same reason: a Backend that hasn't deployed #2320 yet does not emit this key at all, and a required key it doesn't emit would fail every NDJSON line. Absent means false — a client not yet regenerated against this field, or talking to a Backend that doesn't emit it, correctly treats every row as having no digital audio rather than crashing the decode.  */
+    public var hasDigitalAudio: Bool?
 
-    public init(id: Int, legacyReleaseId: Int? = nil, artistName: String, alternateArtistName: String? = nil, albumArtist: String? = nil, crossReferenceNames: [String]? = nil, albumTitle: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, label: String? = nil, genreName: String, formatName: String, onStreaming: Bool? = nil, plays: Int? = nil, popularity: Int? = nil, artworkUrl: String? = nil, rotationBin: String? = nil, rotationKillDate: Date? = nil) {
+    public init(id: Int, legacyReleaseId: Int? = nil, artistName: String, alternateArtistName: String? = nil, albumArtist: String? = nil, crossReferenceNames: [String]? = nil, albumTitle: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, label: String? = nil, genreName: String, formatName: String, onStreaming: Bool? = nil, plays: Int? = nil, popularity: Int? = nil, artworkUrl: String? = nil, rotationBin: String? = nil, rotationKillDate: CalendarDate? = nil, hasDigitalAudio: Bool? = nil) {
         self.id = id
         self.legacyReleaseId = legacyReleaseId
         self.artistName = artistName
@@ -66,6 +68,7 @@ public struct CatalogExportRow: Sendable, Codable, Hashable {
         self.artworkUrl = artworkUrl
         self.rotationBin = rotationBin
         self.rotationKillDate = rotationKillDate
+        self.hasDigitalAudio = hasDigitalAudio
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -88,6 +91,7 @@ public struct CatalogExportRow: Sendable, Codable, Hashable {
         case artworkUrl = "artwork_url"
         case rotationBin = "rotation_bin"
         case rotationKillDate = "rotation_kill_date"
+        case hasDigitalAudio = "has_digital_audio"
     }
 
     // Encodable protocol methods
@@ -113,6 +117,7 @@ public struct CatalogExportRow: Sendable, Codable, Hashable {
         try container.encodeIfPresent(artworkUrl, forKey: .artworkUrl)
         try container.encodeIfPresent(rotationBin, forKey: .rotationBin)
         try container.encodeIfPresent(rotationKillDate, forKey: .rotationKillDate)
+        try container.encodeIfPresent(hasDigitalAudio, forKey: .hasDigitalAudio)
     }
 }
 

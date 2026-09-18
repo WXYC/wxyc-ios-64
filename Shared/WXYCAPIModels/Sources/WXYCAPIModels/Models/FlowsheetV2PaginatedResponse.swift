@@ -7,9 +7,10 @@
 
 import Foundation
 
+/** The response of the default (paginated) branch of &#x60;GET /flowsheet&#x60; — the branch a request carrying neither &#x60;shows_limit&#x60; nor &#x60;start_id&#x60;/&#x60;end_id&#x60; selects, and the one the iOS app polls. The other two branches of that endpoint answer with a bare &#x60;FlowsheetV2Entry&#x60; array and no envelope; see the path for which query selects which. */
 public struct FlowsheetV2PaginatedResponse: Sendable, Codable, Hashable {
 
-    public var entries: [V2FlowsheetLatestGet200Response]
+    public var entries: [FlowsheetV2Entry]
     public var page: Int
     public var limit: Int
     /** Total number of entries */
@@ -19,7 +20,7 @@ public struct FlowsheetV2PaginatedResponse: Sendable, Codable, Hashable {
     /** The DJ currently on air, when known. An object with `dj_name` means a named DJ is live; JSON `null` means the station is confirmed on automation (\"Auto DJ\"); the field being absent entirely means the server does not report on-air status (older backends / non-default query branches) and clients should treat it as unknown rather than asserting automation. Not in `required` so absence stays distinct from an explicit `null`.  Codegen note: this three-way distinction (object / null / absent) survives openapi-typescript (`on_air?: OnAirInfo | null`), but a *synthesized* decoder in Swift (Codable `decodeIfPresent`), Kotlin (kotlinx default value), or Python (pydantic `| None = None`) collapses JSON `null` and an absent key into the same value. A consumer that needs the third state must decode by key presence (e.g. Swift's `container.contains` + `decodeNil`), as the iOS app does — do not rely on a generated model to tell `null` from absent. */
     public var onAir: OnAirInfo?
 
-    public init(entries: [V2FlowsheetLatestGet200Response], page: Int, limit: Int, total: Int, totalPages: Int, onAir: OnAirInfo? = nil) {
+    public init(entries: [FlowsheetV2Entry], page: Int, limit: Int, total: Int, totalPages: Int, onAir: OnAirInfo? = nil) {
         self.entries = entries
         self.page = page
         self.limit = limit

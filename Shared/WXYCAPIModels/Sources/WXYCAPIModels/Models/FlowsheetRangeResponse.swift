@@ -12,10 +12,10 @@ public struct FlowsheetRangeResponse: Sendable, Codable, Hashable {
 
     /** Every show overlapping the window, ordered by `start_time` ascending. Empty when the window contains no shows. */
     public var shows: [FlowsheetRangeShow]
-    /** Every flowsheet row in the window, ordered by `add_time` ascending and tie-broken on `id` — NOT by `play_order`, which is per-show and interleaves a multi-show window (see the endpoint description). Includes the `show_start` / `show_end` marker rows. Those markers are a convenience, not a guarantee: a show whose `show_end` delivery was dropped has no closing marker (the same failure that leaves `FlowsheetRangeShow.end_time` null), so a consumer that segments purely on markers will run one show's entries into the next. Segment on `show_id` and treat the markers as labels. */
-    public var entries: [FlowsheetRangeEntry]
+    /** Every flowsheet row in the window, ordered by `add_time` ascending and tie-broken on `id` — NOT by `play_order`, which is per-show and interleaves a multi-show window (see the endpoint description). Includes the `show_start` / `show_end` marker rows. Those markers are a convenience, not a guarantee: a show whose `show_end` delivery was dropped has no closing marker (the same failure that leaves `FlowsheetRangeShow.end_time` null), so a consumer that segments purely on markers will run one show's entries into the next. Segment on `show_id` and treat the markers as labels.  The rows are `FlowsheetV2Entry` — the same discriminated union `GET /flowsheet` serves, discriminated on `entry_type` — so a marker row carries only the marker's own fields and not the track field set. Sharing the union with `GET /flowsheet` is a contract requirement rather than a convenience: iOS V2 decodes both endpoints with a single decoder (tubafrenzy-decommissioning plan §2.5, consumer #3). `show_id` is nullable here as it is everywhere in the union; see `FlowsheetV2Base.show_id` for the unattributed case a window of historical entries can contain. */
+    public var entries: [FlowsheetV2Entry]
 
-    public init(shows: [FlowsheetRangeShow], entries: [FlowsheetRangeEntry]) {
+    public init(shows: [FlowsheetRangeShow], entries: [FlowsheetV2Entry]) {
         self.shows = shows
         self.entries = entries
     }

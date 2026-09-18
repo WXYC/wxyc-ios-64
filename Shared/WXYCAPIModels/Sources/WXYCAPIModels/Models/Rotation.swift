@@ -9,39 +9,68 @@ import Foundation
 
 public struct Rotation: Sendable, Codable, Hashable {
 
+    /** Linked `library.id`, or null on an uncatalogued row (album_id IS NULL has no library row to join).  */
     public var id: Int?
+    /** `artists.code_letters` via the library/artists join. Null on an uncatalogued row for the same reason as `id`.  */
     public var codeLetters: String?
+    /** `genre_artist_crossreference.artist_genre_code`. Null on an uncatalogued row (no `library.artist_id` to join the crossreference on).  */
     public var codeArtistNumber: Int?
+    /** `library.code_number`. Null on an uncatalogued row for the same reason as `id`.  */
     public var codeNumber: Int?
+    /** COALESCE(artists.artist_name, rotation.artist_name) — the same expression and the same fallback as `alphabetical_name` below, nullable for the identical reason: `rotation.artist_name` carries no NOT NULL.  */
     public var artistName: String?
+    /** COALESCE(artists.alphabetical_name, rotation.artist_name) — the library-linked artist's shelf-order name (\"Beatles, The\") on a catalogued row, falling back to this row's own denormalized artist_name snapshot on an uncatalogued one (album_id IS NULL has no artists row to join). Nullable because that fallback itself carries no NOT NULL. Derived, not stored: PATCH /library/rotation/:id rejects the field outright rather than silently no-op writing it — there is no rotation.alphabetical_name column, so edit artists.alphabetical_name via PATCH /library/artists/:id on a catalogued row, or artist_name on an uncatalogued one.  */
+    public var alphabeticalName: String?
+    /** COALESCE(library.album_title, rotation.album_title). Nullable for two independent reasons: `library.album_title` is NOT NULL but the `library` join misses entirely on an uncatalogued row, and its fallback `rotation.album_title` carries no NOT NULL of its own.  */
     public var albumTitle: String?
+    /** COALESCE(library.label, rotation.record_label). `library.label` is already nullable in the database, and an uncatalogued row has no `library` row to join at all; the fallback `rotation.record_label` carries no NOT NULL either.  */
     public var recordLabel: String?
+    /** library.label_id, the FK to the labels table for a catalogued row's linked label. Nullable for two independent reasons: the column itself carries no NOT NULL (a catalogued release can have no resolved label), and an uncatalogued rotation row (album_id IS NULL) has no library row to join at all. Distinct from record_label, the free-text display snapshot.  */
+    public var labelId: Int?
+    /** `genres.genre_name` via the library/genres join. Null on an uncatalogued row for the same reason as `id`, and also on a catalogued row whose release has no genre link.  */
     public var genreName: String?
+    /** `format.format_name` via the library/format join. Null on an uncatalogued row for the same reason as `id`, and also on a catalogued row whose release has no format link.  */
     public var formatName: String?
     public var rotationId: Int?
-    public var addDate: Date?
-    public var playFreq: RotationBin?
-    public var killDate: Date?
+    /** `library.add_date` — the catalog release's own add date. Null on an uncatalogued row (album_id IS NULL has no library row to join). No `format` is declared: `library.add_date` is a `timestamptz`, and `getRotationFromDB` reads it via a raw `db.execute` call — drizzle's postgres-js driver installs a transparent (pass-through) parser for timestamp/date OIDs on that path, so the wire carries Postgres' own text rendering (`YYYY-MM-DD HH:MI:SS±TZ`, e.g. `2026-08-20 00:00:00+00`) rather than a parsed-and-reformatted value. That satisfies neither RFC 3339 date-time (`T` separator, colon-delimited offset) nor an RFC 3339 full-date (10 bytes), so no `format` is declared here — see WXYC/Backend-Service#2349 for the identical defect already tracked on `PlaylistSearchResult.play_date`; normalizing the server's own serialization is that ticket's job, not this contract's.  */
+    public var addDate: String?
+    /** rotation.add_date — when this rotation record itself was added, distinct from add_date (the library release's own catalog add date, absent on an uncatalogued row). Always present: rotation is this query's driving table, so every returned row carries its own rotation.add_date regardless of whether it ever linked to a library row.  */
+    public var rotationAddDate: CalendarDate?
+    public var rotationBin: RotationBin?
+    /** rotation.kill_date — null while the record is still active. */
+    public var rotationKillDate: CalendarDate?
+    /** `library.plays`. Null on an uncatalogued row for the same reason as `id`.  */
     public var plays: Int?
     /** The library row's surrogate key (BS#1963). Nullable here (unlike AlbumSearchResult/BinLibraryDetails/AlbumInfoResponse): a library-unlinked rotation row has no library row at all, hence no legacy id.  */
     public var legacyReleaseId: Int?
+    /** The library-linked artist's external identifiers (toReconciledIdentity), or null both when the row is uncatalogued (no artists row to join) and when a catalogued artist has resolved none of the six IDs yet.  */
+    public var reconciledIdentity: ReconciledIdentity?
+    public var card: RotationCard?
+    /** Storage order. Plain strings, not `format: uri` — MDs paste bare domains, so a value carries no scheme guarantee and a renderer must not bind one into an href without checking it. Deliberately an inline twin: `Rotation.urls` and `RotationEntry.urls` are pinned identical by a spec test rather than `$ref`ing a named array schema, because naming a top-level array makes the Python generator wrap the field in a RootModel (`.root` to reach the list) while every other target keeps a plain string list.  */
+    public var urls: [String]?
 
-    public init(id: Int? = nil, codeLetters: String? = nil, codeArtistNumber: Int? = nil, codeNumber: Int? = nil, artistName: String? = nil, albumTitle: String? = nil, recordLabel: String? = nil, genreName: String? = nil, formatName: String? = nil, rotationId: Int? = nil, addDate: Date? = nil, playFreq: RotationBin? = nil, killDate: Date? = nil, plays: Int? = nil, legacyReleaseId: Int? = nil) {
+    public init(id: Int? = nil, codeLetters: String? = nil, codeArtistNumber: Int? = nil, codeNumber: Int? = nil, artistName: String? = nil, alphabeticalName: String? = nil, albumTitle: String? = nil, recordLabel: String? = nil, labelId: Int? = nil, genreName: String? = nil, formatName: String? = nil, rotationId: Int? = nil, addDate: String? = nil, rotationAddDate: CalendarDate? = nil, rotationBin: RotationBin? = nil, rotationKillDate: CalendarDate? = nil, plays: Int? = nil, legacyReleaseId: Int? = nil, reconciledIdentity: ReconciledIdentity? = nil, card: RotationCard? = nil, urls: [String]? = nil) {
         self.id = id
         self.codeLetters = codeLetters
         self.codeArtistNumber = codeArtistNumber
         self.codeNumber = codeNumber
         self.artistName = artistName
+        self.alphabeticalName = alphabeticalName
         self.albumTitle = albumTitle
         self.recordLabel = recordLabel
+        self.labelId = labelId
         self.genreName = genreName
         self.formatName = formatName
         self.rotationId = rotationId
         self.addDate = addDate
-        self.playFreq = playFreq
-        self.killDate = killDate
+        self.rotationAddDate = rotationAddDate
+        self.rotationBin = rotationBin
+        self.rotationKillDate = rotationKillDate
         self.plays = plays
         self.legacyReleaseId = legacyReleaseId
+        self.reconciledIdentity = reconciledIdentity
+        self.card = card
+        self.urls = urls
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -50,16 +79,22 @@ public struct Rotation: Sendable, Codable, Hashable {
         case codeArtistNumber = "code_artist_number"
         case codeNumber = "code_number"
         case artistName = "artist_name"
+        case alphabeticalName = "alphabetical_name"
         case albumTitle = "album_title"
         case recordLabel = "record_label"
+        case labelId = "label_id"
         case genreName = "genre_name"
         case formatName = "format_name"
         case rotationId = "rotation_id"
         case addDate = "add_date"
-        case playFreq = "play_freq"
-        case killDate = "kill_date"
+        case rotationAddDate = "rotation_add_date"
+        case rotationBin = "rotation_bin"
+        case rotationKillDate = "rotation_kill_date"
         case plays
         case legacyReleaseId = "legacy_release_id"
+        case reconciledIdentity = "reconciled_identity"
+        case card
+        case urls
     }
 
     // Encodable protocol methods
@@ -71,23 +106,29 @@ public struct Rotation: Sendable, Codable, Hashable {
         try container.encodeIfPresent(codeArtistNumber, forKey: .codeArtistNumber)
         try container.encodeIfPresent(codeNumber, forKey: .codeNumber)
         try container.encodeIfPresent(artistName, forKey: .artistName)
+        try container.encodeIfPresent(alphabeticalName, forKey: .alphabeticalName)
         try container.encodeIfPresent(albumTitle, forKey: .albumTitle)
         try container.encodeIfPresent(recordLabel, forKey: .recordLabel)
+        try container.encodeIfPresent(labelId, forKey: .labelId)
         try container.encodeIfPresent(genreName, forKey: .genreName)
         try container.encodeIfPresent(formatName, forKey: .formatName)
         try container.encodeIfPresent(rotationId, forKey: .rotationId)
         try container.encodeIfPresent(addDate, forKey: .addDate)
-        try container.encodeIfPresent(playFreq, forKey: .playFreq)
-        try container.encodeIfPresent(killDate, forKey: .killDate)
+        try container.encodeIfPresent(rotationAddDate, forKey: .rotationAddDate)
+        try container.encodeIfPresent(rotationBin, forKey: .rotationBin)
+        try container.encodeIfPresent(rotationKillDate, forKey: .rotationKillDate)
         try container.encodeIfPresent(plays, forKey: .plays)
         try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
+        try container.encodeIfPresent(reconciledIdentity, forKey: .reconciledIdentity)
+        try container.encodeIfPresent(card, forKey: .card)
+        try container.encodeIfPresent(urls, forKey: .urls)
     }
 }
 
 
 extension Rotation: UnknownCaseCheckable {
     public var containsUnknownDefaultOpenApiCase: Bool {
-        if playFreq == .unknownDefaultOpenApi { return true }
+        if rotationBin == .unknownDefaultOpenApi { return true }
         return false
     }
 }

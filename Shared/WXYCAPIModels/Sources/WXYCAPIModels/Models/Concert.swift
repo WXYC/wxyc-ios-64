@@ -13,7 +13,7 @@ public struct Concert: Sendable, Codable, Hashable {
     public var id: Int
     public var venue: Venue
     /** Venue-local (America/New_York) calendar date. */
-    public var startsOn: Date
+    public var startsOn: CalendarDate
     /** Exact start instant; null for date-only events. */
     public var startsAt: Date?
     /** Doors-open instant, when the source publishes one. */
@@ -51,7 +51,7 @@ public struct Concert: Sendable, Codable, Hashable {
     /** Artist biography from the resolved headliner's Discogs profile (raw Discogs markup, parsed client-side), keyed on the effective Discogs artist id and cached nightly on `artist_metadata`. Null when the headliner is unresolved, has no Discogs profile, or enrichment has not run. Identical for every listener; carries no listener data. Renders the On Tour concert-detail \"About the Artist\" card. Optional (not in `required`) so it can land ahead of the Backend-Service emitter and older clients decode forward-compatibly — same discipline as `Concert.similar_artists`. */
     public var artistBio: String?
 
-    public init(id: Int, venue: Venue, startsOn: Date, startsAt: Date?, doorsAt: Date?, headliningArtistRaw: String, headliningArtistId: Int?, title: String?, supportingArtistsRaw: [String], ticketUrl: String?, imageUrl: String?, eventUrl: String?, priceMin: Double?, priceMax: Double?, ageRestriction: String?, status: ConcertStatus, genres: [String]? = nil, similarArtists: [SimilarArtist]? = nil, stationPlays: Int? = nil, stationRecommended: Bool? = nil, stationRecommendedRank: Int? = nil, artistBio: String? = nil) {
+    public init(id: Int, venue: Venue, startsOn: CalendarDate, startsAt: Date?, doorsAt: Date?, headliningArtistRaw: String, headliningArtistId: Int?, title: String?, supportingArtistsRaw: [String], ticketUrl: String?, imageUrl: String?, eventUrl: String?, priceMin: Double?, priceMax: Double?, ageRestriction: String?, status: ConcertStatus, genres: [String]? = nil, similarArtists: [SimilarArtist]? = nil, stationPlays: Int? = nil, stationRecommended: Bool? = nil, stationRecommendedRank: Int? = nil, artistBio: String? = nil) {
         self.id = id
         self.venue = venue
         self.startsOn = startsOn

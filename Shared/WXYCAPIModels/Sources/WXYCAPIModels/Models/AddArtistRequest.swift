@@ -9,20 +9,25 @@ import Foundation
 
 public struct AddArtistRequest: Sendable, Codable, Hashable {
 
+    public static let codeNumberRule = NumericRule<Int>(minimum: 1, exclusiveMinimum: false, maximum: 2147483647, exclusiveMaximum: false, multipleOf: nil)
     public var artistName: String
     public var codeLetters: String
     public var genreId: Int
+    /** Operator-chosen artist call number within the `(genre_id, code_letters)` bucket. The backing column (`genre_artist_crossreference.artist_genre_code`) is a Postgres integer, hence the 2147483647 ceiling — bounded here, at publish time, because oasdiff treats adding request-side bounds later as a breaking change (see `RotationCreateFields.urls`). Declared optional ahead of the Backend-Service relaxation that honors omission (WXYC/Backend-Service#2475): the deployed `POST /library/artists` still 400s on a body without it, so a client must keep sending it until #2475 ships. Once omission is honored, the server assigns the next number in the bucket — the same generator behind Backend's artist-code peek route (`GET /library/artists/peek-code`, a Backend route this contract does not declare) — and this field makes that assignment overridable, it does not replace it.  */
+    public var codeNumber: Int?
 
-    public init(artistName: String, codeLetters: String, genreId: Int) {
+    public init(artistName: String, codeLetters: String, genreId: Int, codeNumber: Int? = nil) {
         self.artistName = artistName
         self.codeLetters = codeLetters
         self.genreId = genreId
+        self.codeNumber = codeNumber
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
         case artistName = "artist_name"
         case codeLetters = "code_letters"
         case genreId = "genre_id"
+        case codeNumber = "code_number"
     }
 
     // Encodable protocol methods
@@ -32,6 +37,7 @@ public struct AddArtistRequest: Sendable, Codable, Hashable {
         try container.encode(artistName, forKey: .artistName)
         try container.encode(codeLetters, forKey: .codeLetters)
         try container.encode(genreId, forKey: .genreId)
+        try container.encodeIfPresent(codeNumber, forKey: .codeNumber)
     }
 }
 

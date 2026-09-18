@@ -7,30 +7,64 @@
 
 import Foundation
 
+/** The response of &#x60;GET /flowsheet/playlist?show_id&#x3D;&#x60; — one archived show, its entries, and the ids of the shows either side of it.  The handler spreads the whole &#x60;shows&#x60; row, then adds the resolved specialty-show name, the show&#39;s DJs, the two neighbour ids and the projected entries. Every property below is therefore always present on the wire; the nullable ones carry &#x60;null&#x60;, they are not omitted. This schema previously described a shape the route has not emitted for some time: it declared &#x60;specialty_show&#x60; (emitted as &#x60;specialty_show_name&#x60;), typed &#x60;entries&#x60; as the V1 &#x60;FlowsheetEntryResponse&#x60; (emitted as the V2 discriminated union), declared no identifier at all, and omitted the six &#x60;shows&#x60; columns the spread ships. */
 public struct ShowPlaylist: Sendable, Codable, Hashable {
 
+    /** `shows.id` — the same value passed as `show_id`, and the value to pass back for a neighbour. The row is spread, so the key is `id`, not `show_id`. */
+    public var id: Int
+    public var specialtyId: Int?
     public var showName: String?
-    public var specialtyShow: String?
-    public var startTime: Date?
+    public var startTime: Date
+    /** Null does NOT mean \"still on the air\". It has two causes this column cannot distinguish: the show is genuinely live, or its `show_end` delivery was dropped and the column stayed null permanently. 2,813 of the ~2,814 null-`end_time` shows are legacy imports going back to 2006. */
     public var endTime: Date?
-    public var showDjs: [OnAirDJ]?
-    public var entries: [FlowsheetEntryResponse]?
+    public var primaryDjId: String?
+    public var legacyShowId: Int?
+    public var legacyDjName: String?
+    public var legacyDjId: Int?
+    public var djNameOverride: String?
+    /** The resolved specialty-show name, or the empty string when the show is not a specialty show. Empty string, never null. */
+    public var specialtyShowName: String
+    public var showDjs: [OnAirDJ]
+    /** The show that aired immediately before this one, or null on the oldest show in the archive.  Ordered by `(start_time, id)`, not by `id`: ids were airtime-ordered while tubafrenzy assigned them, but the import left 32 of ~72,900 shows carrying a lower id than a show that aired earlier. Null is the end of the archive and nothing else — never `0`, the sentinel the legacy JSP linked to and then failed to resolve. */
+    public var previousShowId: Int?
+    /** The show that aired immediately after this one, or null on the newest show.  Points at the live show while one is on the air: nothing filters on `end_time` (see the field's own note), matching the legacy behaviour. A client caching this response should exclude the newest show — the hazard is freezing a null `next_show_id` after a later show has started, not linking to a show still in progress. */
+    public var nextShowId: Int?
+    /** The V2 discriminated union, the same shape `GET /flowsheet` serves. The handler projects through `projectEntriesV2`; there is no V1 variant of this response. */
+    public var entries: [FlowsheetV2Entry]
 
-    public init(showName: String? = nil, specialtyShow: String? = nil, startTime: Date? = nil, endTime: Date? = nil, showDjs: [OnAirDJ]? = nil, entries: [FlowsheetEntryResponse]? = nil) {
+    public init(id: Int, specialtyId: Int?, showName: String?, startTime: Date, endTime: Date?, primaryDjId: String?, legacyShowId: Int?, legacyDjName: String?, legacyDjId: Int?, djNameOverride: String?, specialtyShowName: String, showDjs: [OnAirDJ], previousShowId: Int?, nextShowId: Int?, entries: [FlowsheetV2Entry]) {
+        self.id = id
+        self.specialtyId = specialtyId
         self.showName = showName
-        self.specialtyShow = specialtyShow
         self.startTime = startTime
         self.endTime = endTime
+        self.primaryDjId = primaryDjId
+        self.legacyShowId = legacyShowId
+        self.legacyDjName = legacyDjName
+        self.legacyDjId = legacyDjId
+        self.djNameOverride = djNameOverride
+        self.specialtyShowName = specialtyShowName
         self.showDjs = showDjs
+        self.previousShowId = previousShowId
+        self.nextShowId = nextShowId
         self.entries = entries
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
+        case id
+        case specialtyId = "specialty_id"
         case showName = "show_name"
-        case specialtyShow = "specialty_show"
         case startTime = "start_time"
         case endTime = "end_time"
+        case primaryDjId = "primary_dj_id"
+        case legacyShowId = "legacy_show_id"
+        case legacyDjName = "legacy_dj_name"
+        case legacyDjId = "legacy_dj_id"
+        case djNameOverride = "dj_name_override"
+        case specialtyShowName = "specialty_show_name"
         case showDjs = "show_djs"
+        case previousShowId = "previous_show_id"
+        case nextShowId = "next_show_id"
         case entries
     }
 
@@ -38,12 +72,21 @@ public struct ShowPlaylist: Sendable, Codable, Hashable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encodeIfPresent(showName, forKey: .showName)
-        try container.encodeIfPresent(specialtyShow, forKey: .specialtyShow)
-        try container.encodeIfPresent(startTime, forKey: .startTime)
-        try container.encodeIfPresent(endTime, forKey: .endTime)
-        try container.encodeIfPresent(showDjs, forKey: .showDjs)
-        try container.encodeIfPresent(entries, forKey: .entries)
+        try container.encode(id, forKey: .id)
+        try container.encode(specialtyId, forKey: .specialtyId)
+        try container.encode(showName, forKey: .showName)
+        try container.encode(startTime, forKey: .startTime)
+        try container.encode(endTime, forKey: .endTime)
+        try container.encode(primaryDjId, forKey: .primaryDjId)
+        try container.encode(legacyShowId, forKey: .legacyShowId)
+        try container.encode(legacyDjName, forKey: .legacyDjName)
+        try container.encode(legacyDjId, forKey: .legacyDjId)
+        try container.encode(djNameOverride, forKey: .djNameOverride)
+        try container.encode(specialtyShowName, forKey: .specialtyShowName)
+        try container.encode(showDjs, forKey: .showDjs)
+        try container.encode(previousShowId, forKey: .previousShowId)
+        try container.encode(nextShowId, forKey: .nextShowId)
+        try container.encode(entries, forKey: .entries)
     }
 }
 

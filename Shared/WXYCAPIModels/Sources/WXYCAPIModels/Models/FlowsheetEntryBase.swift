@@ -7,13 +7,15 @@
 
 import Foundation
 
+/** Identity block for the v1 flowsheet row. Composed by every v1 read shape; never by a write shape, which cannot supply the server-assigned &#x60;id&#x60; and &#x60;play_order&#x60; this block requires. */
 public struct FlowsheetEntryBase: Sendable, Codable, Hashable {
 
     public var id: Int
     public var playOrder: Int
-    public var showId: Int
+    /** The show this entry belongs to, or `null` for an **unattributed** entry — a row that exists with no linked show. `flowsheet.show_id` carries no NOT NULL and its foreign key is `ON DELETE SET NULL`, and the table documents NULL `show_id` as a shape Backend-canonical writes must accept: entries that pre-date a show, marker rows, and never-linked tracks. The Phase 0 audit for the tubafrenzy decommissioning counted 20 such rows of 2,619,011 (2005-02-06 → 2026-04-21) and decided against backfilling them, so they reach the wire rather than being dropped.  Consumers that group entries by show must render an unattributed bucket; they must not assume every entry joins to a show, and must not crash on the null. The key is always present. Same column and same contract as `FlowsheetV2Base.show_id` — the two identity blocks are separate for historical reasons, not because the column differs between them. */
+    public var showId: Int?
 
-    public init(id: Int, playOrder: Int, showId: Int) {
+    public init(id: Int, playOrder: Int, showId: Int?) {
         self.id = id
         self.playOrder = playOrder
         self.showId = showId

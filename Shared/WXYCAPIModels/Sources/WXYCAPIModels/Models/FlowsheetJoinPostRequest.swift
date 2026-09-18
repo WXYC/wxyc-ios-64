@@ -17,12 +17,17 @@ public struct FlowsheetJoinPostRequest: Sendable, Codable, Hashable {
     public var specialtyId: Int?
     /** Optional per-show override for the public DJ name. When present and non-empty after trim, supersedes the caller's `auth_user.dj_name`-derived name on the `show_start` marker text, on the `flowsheet.dj_name` column of every entry in this show, and on `shows.legacy_dj_name`. Empty or whitespace-only values are treated as absent. Scoped to the new-show (start-show) path; the co-host /join branch intentionally ignores this field. Max length matches `auth_user.dj_name varchar(255)`.  */
     public var djNameOverride: String?
+    public var intent: FlowsheetJoinIntent?
+    /** The `shows.id` the caller intends to close. Required with `intent: takeover`, ignored otherwise.  A compare-and-set against the currently-open show, echoed from the 409's `details.show.id`. Clients poll, so the show named in the prompt may already have closed by the time the DJ clicks: if it has, the caller simply starts their own show (no error — the outcome they asked for is already true); if a DIFFERENT show is now open, the request is a fresh 409 and nothing is closed, so a DJ can never end a show they were not shown.  */
+    public var expectedShowId: Int?
 
-    public init(djId: Int, showName: String? = nil, specialtyId: Int? = nil, djNameOverride: String? = nil) {
+    public init(djId: Int, showName: String? = nil, specialtyId: Int? = nil, djNameOverride: String? = nil, intent: FlowsheetJoinIntent? = nil, expectedShowId: Int? = nil) {
         self.djId = djId
         self.showName = showName
         self.specialtyId = specialtyId
         self.djNameOverride = djNameOverride
+        self.intent = intent
+        self.expectedShowId = expectedShowId
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -30,6 +35,8 @@ public struct FlowsheetJoinPostRequest: Sendable, Codable, Hashable {
         case showName = "show_name"
         case specialtyId = "specialty_id"
         case djNameOverride = "dj_name_override"
+        case intent
+        case expectedShowId = "expected_show_id"
     }
 
     // Encodable protocol methods
@@ -40,6 +47,15 @@ public struct FlowsheetJoinPostRequest: Sendable, Codable, Hashable {
         try container.encodeIfPresent(showName, forKey: .showName)
         try container.encodeIfPresent(specialtyId, forKey: .specialtyId)
         try container.encodeIfPresent(djNameOverride, forKey: .djNameOverride)
+        try container.encodeIfPresent(intent, forKey: .intent)
+        try container.encodeIfPresent(expectedShowId, forKey: .expectedShowId)
     }
 }
 
+
+extension FlowsheetJoinPostRequest: UnknownCaseCheckable {
+    public var containsUnknownDefaultOpenApiCase: Bool {
+        if intent == .unknownDefaultOpenApi { return true }
+        return false
+    }
+}

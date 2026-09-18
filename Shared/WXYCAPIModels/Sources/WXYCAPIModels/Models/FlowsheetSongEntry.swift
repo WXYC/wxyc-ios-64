@@ -7,16 +7,18 @@
 
 import Foundation
 
-/** Song entry in the flowsheet */
+/** Song entry in the flowsheet. Not &#x60;$ref&#x60;&#39;d by any operation in this document — every v1 read path composes &#x60;FlowsheetEntryResponse&#x60; instead — but published as a generated type, so it is kept accurate. */
 public struct FlowsheetSongEntry: Sendable, Codable, Hashable {
 
     public var id: Int
     public var playOrder: Int
-    public var showId: Int
+    /** The show this entry belongs to, or `null` for an **unattributed** entry — a row that exists with no linked show. `flowsheet.show_id` carries no NOT NULL and its foreign key is `ON DELETE SET NULL`, and the table documents NULL `show_id` as a shape Backend-canonical writes must accept: entries that pre-date a show, marker rows, and never-linked tracks. The Phase 0 audit for the tubafrenzy decommissioning counted 20 such rows of 2,619,011 (2005-02-06 → 2026-04-21) and decided against backfilling them, so they reach the wire rather than being dropped.  Consumers that group entries by show must render an unattributed bucket; they must not assume every entry joins to a show, and must not crash on the null. The key is always present. Same column and same contract as `FlowsheetV2Base.show_id` — the two identity blocks are separate for historical reasons, not because the column differs between them. */
+    public var showId: Int?
     public var trackTitle: String
     public var artistName: String
     public var albumTitle: String
     public var recordLabel: String
+    /** Same column and same contract as `FlowsheetEntryFields.label_id`: `labels.id` for `record_label`, or `null` when the row's label was never linked to a catalog row, which is the state of the large majority of rows. Declared again here because this shape carries its own copy of the field set rather than composing that block. */
     public var labelId: Int?
     public var requestFlag: Bool
     public var segue: Bool?
@@ -26,7 +28,7 @@ public struct FlowsheetSongEntry: Sendable, Codable, Hashable {
     /** Track position on the release (e.g., \"A1\", \"B2\", \"5\"). Optional; populated by the dj-site picker when a release with a resolvable tracklist is chosen (catalog-track-search plan §5.3 / Track 3). Free-text `track_title` remains the source of truth; this field is additive metadata for future enrichment + analytics.  */
     public var trackPosition: String?
 
-    public init(id: Int, playOrder: Int, showId: Int, trackTitle: String, artistName: String, albumTitle: String, recordLabel: String, labelId: Int? = nil, requestFlag: Bool, segue: Bool? = nil, albumId: Int? = nil, rotationId: Int? = nil, rotationBin: RotationBin? = nil, trackPosition: String? = nil) {
+    public init(id: Int, playOrder: Int, showId: Int?, trackTitle: String, artistName: String, albumTitle: String, recordLabel: String, labelId: Int? = nil, requestFlag: Bool, segue: Bool? = nil, albumId: Int? = nil, rotationId: Int? = nil, rotationBin: RotationBin? = nil, trackPosition: String? = nil) {
         self.id = id
         self.playOrder = playOrder
         self.showId = showId
