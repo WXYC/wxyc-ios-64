@@ -8,18 +8,19 @@ name: API Spec Drift
 # pin or the generated types without regenerating. It is structurally blind to
 # a different question: has wxyc-shared's api.yaml moved on since that SHA was
 # pinned? A pin can be perfectly self-consistent with the vendored tree and
-# still be 16 commits behind upstream, which is exactly today's state (#984) --
-# nothing short of a human diffing two repos would have caught that drift.
+# still be dozens of commits behind upstream -- the state #984 was filed
+# against, and the state this check reported weekly for a month until #1092
+# advanced the pin. Nothing short of a human diffing two repos would have
+# caught that drift.
 #
 # This workflow answers that second question by calling wxyc-shared's
 # reusable, read-only check-api-spec-drift.yml on a weekly schedule (plus
 # workflow_dispatch for on-demand checks). It never touches the pin itself --
-# advancing contract-version.json, and absorbing whatever Swift type renames
-# that forces (this repo's generated types are operation-derived, so a
-# wxyc-shared path relocation like the ones in the 16-commit span behind this
-# pin renames Swift symbols, not just fields), is separate work with its own
-# risk profile. See #984's "What advancing the pin will cost" section before
-# picking that up.
+# advancing contract-version.json, and absorbing whatever that forces, is
+# separate work with its own risk profile. #1092 is the worked example: the
+# feared Swift symbol renames from relocated api.yaml paths did not
+# materialize, but the regen did trip the FlowsheetContractParityTests drift
+# guard on four new wire fields, which is the cost to budget for next time.
 #
 # A red scheduled run nobody watches is not a signal, so both outcomes that
 # need a human -- drift, and a check that never reached a verdict -- open a
@@ -31,11 +32,14 @@ name: API Spec Drift
 # WXYC/library-metadata-lookup's codegen-drift.yml. Keep the three in step --
 # they are one mechanism aimed at one contract.
 #
-# EXPECTED FIRST RUN: as of this workflow's introduction, the pin (c804de3,
-# api.yaml 1.36.0) is 16 commits behind wxyc-shared:main (api.yaml 1.46.0). A
-# scheduled run that reports "no drift" today would mean the wiring here is
-# broken, not that the pin caught up -- nobody has advanced it. Drift should
-# clear only after a future PR bumps wxycSharedSha.
+# EXPECTED RESULT, and note that it INVERTED: at this workflow's introduction
+# the pin (c804de3, api.yaml 1.36.0) was behind wxyc-shared:main, so a run
+# reporting "no drift" would have meant broken wiring rather than a caught-up
+# pin. #1092 advanced the pin to api.yaml 10.0.0 and #1093 repointed it at the
+# v10.0.0 release, so "no drift" is now the correct healthy result. Do not read
+# this paragraph's original form as still saying a green run is suspicious --
+# it is only suspicious when the pin is known to be behind. Check the pin
+# against wxyc-shared:main before concluding anything about a green run.
 
 on:
   schedule:
@@ -68,10 +72,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # wxycSharedSha is the real pin. wxycSharedTag currently reads the
-      # literal string "main" -- a leftover that does NOT track what is
-      # actually pinned (see #984) -- so this deliberately never reads that
-      # field. Read the SHA, not the tag.
+      # wxycSharedSha is the real pin, and this step deliberately never reads
+      # wxycSharedTag. That held when the tag was the literal string "main" --
+      # a leftover naming a moving branch, see #984 -- and it still holds now
+      # that the tag names a real wxyc-shared release: a tag is a mutable ref
+      # by construction, so reading it would make this check's verdict depend
+      # on where the tag points at run time rather than on what was vendored.
+      # Read the SHA, not the tag.
       #
       # The SHA is read here, at run time, and handed to check-drift as a job
       # output rather than hard-coded anywhere in this file: a SHA baked into
