@@ -83,3 +83,12 @@ jobs:
 
       - name: Simulator-resolution regression suite
         run: zsh scripts/tests/test-simulator-resolution.sh
+
+      # Covers the contract-version.json <-> api.yaml version assertion in
+      # scripts/regenerate-api-types.sh (#923). Belongs here rather than in
+      # verify-api-types.yml: that workflow proves the vendored tree matches
+      # the real pinned contract, which means cloning wxyc-shared and running
+      # the JVM codegen. This suite proves the assertion itself behaves, off a
+      # local stand-in repo with npm/java stubbed, in about a second.
+      - name: contract-version.json assertion regression suite
+        run: zsh scripts/tests/test-api-types-contract-version.sh
