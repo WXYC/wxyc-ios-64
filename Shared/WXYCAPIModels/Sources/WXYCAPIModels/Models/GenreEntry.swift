@@ -7,13 +7,14 @@
 
 import Foundation
 
+/** One row of &#x60;GET /library/genres&#x60; — the authoritative enumeration of the genres this station files under. Do not hardcode the set: it is a lookup table &#x60;POST /library/genres&#x60; appends to, and a closed enum here previously declared ten values while production held fifteen (#367). As of 2026-08 those fifteen are Africa, Asia, Blues, Classical, Comedy, Hiphop, Jazz, Latin, OCS, Reggae, Rock, Soundtracks, Spoken, Xmas, Electronic — listed to orient a reader, not as a contract.  */
 public struct GenreEntry: Sendable, Codable, Hashable {
 
     public var id: Int
-    public var genreName: Genre
+    public var genreName: String
     public var codeLetters: String
 
-    public init(id: Int, genreName: Genre, codeLetters: String) {
+    public init(id: Int, genreName: String, codeLetters: String) {
         self.id = id
         self.genreName = genreName
         self.codeLetters = codeLetters
@@ -35,10 +36,3 @@ public struct GenreEntry: Sendable, Codable, Hashable {
     }
 }
 
-
-extension GenreEntry: UnknownCaseCheckable {
-    public var containsUnknownDefaultOpenApiCase: Bool {
-        if genreName == .unknownDefaultOpenApi { return true }
-        return false
-    }
-}

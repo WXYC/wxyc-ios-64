@@ -11,6 +11,7 @@ import Foundation
 public struct FlowsheetV2Base: Sendable, Codable, Hashable {
 
     public var id: Int
+    /** The show this entry belongs to, or `null` for an **unattributed** entry — a row that exists with no linked show. 20 of 2,619,011 rows are in that state (2005-02-06 → 2026-04-21), and the Phase 0 audit for the tubafrenzy decommissioning decided against backfilling them, so every read that can reach a historical row can reach a null here. Consumers that group entries by show must render an unattributed bucket; they must not assume every entry joins to a show, and must not crash on the null. The key is always present. */
     public var showId: Int?
     public var playOrder: Int
     public var addTime: Date

@@ -18,7 +18,7 @@ public struct BinLibraryDetails: Sendable, Codable, Hashable {
     public var codeNumber: Int?
     public var formatName: String?
     public var genreName: String?
-    /** The library row's surrogate key (BS#1963), NOT NULL in the database since migration 0137. Optional here (never required) so the live openapi-compliance deploy gate stays green across the publish -> BS-deploy window, matching the CatalogExportRow and BulkResolveInput precedent.  */
+    /** The library row's surrogate key (BS#1963), NOT NULL in the database since migration 0137. Optional here (never required) because the column is emitted per-projection, not globally: NOT NULL is a claim about the column, while `required` is a promise that the key appears on the wire, and WXYC/Backend-Service#2167 is open precisely because the LML search-proxy rows do not emit it explicitly yet. Promoting this to required once every projection returning the schema provably emits it is worth doing, and needs a per-projection audit rather than a text edit. Matches the CatalogExportRow and BulkResolveInput precedent.  */
     public var legacyReleaseId: Int?
 
     public init(albumId: Int? = nil, albumTitle: String? = nil, artistName: String? = nil, label: String? = nil, codeLetters: String? = nil, codeArtistNumber: Int? = nil, codeNumber: Int? = nil, formatName: String? = nil, genreName: String? = nil, legacyReleaseId: Int? = nil) {

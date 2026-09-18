@@ -15,6 +15,7 @@ public struct PlaylistSearchResult: Sendable, Codable, Hashable {
     public var trackTitle: String
     public var albumTitle: String
     public var recordLabel: String
+    /** The DJ's public on-air handle, never the DJ's legal name. Read from the denormalized `flowsheet.dj_name` column, itself populated at entry-insert time via the PII-safe chain (BS#1371); `\"Unknown DJ\"` substitutes when that resolves to nothing. */
     public var djName: String
     public var showId: Int
 

@@ -9,14 +9,16 @@ import Foundation
 
 public struct AddScheduleShiftRequest: Sendable, Codable, Hashable {
 
+    public static let dayRule = NumericRule<Int>(minimum: 0, exclusiveMinimum: false, maximum: 6, exclusiveMaximum: false, multipleOf: nil)
     public var djId: Int
-    public var day: DayOfWeek
+    /** Day of the week 0 = Monday, 6 = Sunday */
+    public var day: Int
     public var startTime: String
     public var endTime: String
     public var showName: String?
     public var specialtyId: Int?
 
-    public init(djId: Int, day: DayOfWeek, startTime: String, endTime: String, showName: String? = nil, specialtyId: Int? = nil) {
+    public init(djId: Int, day: Int, startTime: String, endTime: String, showName: String? = nil, specialtyId: Int? = nil) {
         self.djId = djId
         self.day = day
         self.startTime = startTime
@@ -47,10 +49,3 @@ public struct AddScheduleShiftRequest: Sendable, Codable, Hashable {
     }
 }
 
-
-extension AddScheduleShiftRequest: UnknownCaseCheckable {
-    public var containsUnknownDefaultOpenApiCase: Bool {
-        if day == .unknownDefaultOpenApi { return true }
-        return false
-    }
-}

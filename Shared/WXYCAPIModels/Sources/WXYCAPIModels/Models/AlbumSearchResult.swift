@@ -10,6 +10,7 @@ import Foundation
 public struct AlbumSearchResult: Sendable, Codable, Hashable {
 
     public static let discogsUnavailableNoteRule = StringRule(minLength: nil, maxLength: 500, pattern: nil)
+    public static let urlsRule = ArrayRule(minItems: nil, maxItems: 20, uniqueItems: false)
     public var id: Int
     public var addDate: Date
     public var albumTitle: String
@@ -19,18 +20,25 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
     public var codeArtistNumber: Int
     public var formatName: String
     public var genreName: String
-    public var label: String
+    /** `library.label`. Nullable in the database; the key is always present because the projection always selects it. `GET /library` sends that null through, while `GET /library/query` currently coalesces it to `\"\"` — treat both as \"no label on file\".  */
+    public var label: String?
+    /** `library.label_id`. Nullable in the database (no NOT NULL, no FK-driven default) — the same shape as `label`, one line above. `library_artist_view` selects it straight off the base `library` row (no COALESCE), and neither `/library/query` mapper nor `GET /library`'s serializer coalesces it, so a release with no catalogued label reaches the wire with `label_id: null`.  */
     public var labelId: Int?
-    /** The library row's surrogate key (BS#1963), NOT NULL in the database since migration 0137. Optional here (never required) so the live openapi-compliance deploy gate stays green across the publish -> BS-deploy window, matching the CatalogExportRow and BulkResolveInput precedent.  */
+    /** The WXYC catalog artist id, sharing the `library.artist_id` keyspace. Optional here (never required): it lands ahead of the Backend-Service change that populates it (BS#2227), so a consumer compiled against this field must still tolerate its absence until that deploys.  */
+    public var artistId: Int?
+    /** The library row's surrogate key (BS#1963), NOT NULL in the database since migration 0137. Optional here (never required) because the column is emitted per-projection, not globally: NOT NULL is a claim about the column, while `required` is a promise that the key appears on the wire, and WXYC/Backend-Service#2167 is open precisely because the LML search-proxy rows do not emit it explicitly yet. Promoting this to required once every projection returning the schema provably emits it is worth doing, and needs a per-projection audit rather than a text edit. Matches the CatalogExportRow and BulkResolveInput precedent.  */
     public var legacyReleaseId: Int?
     public var albumDist: Double?
     public var artistDist: Double?
+    /** Current-rotation bin, from the CURRENT_DATE-filtered LEFT JOIN against `rotation`. Null whenever the release is not actively rotating — never added, or added and since killed — which is most of the catalog. That filtering happens server-side, so `rotation_bin != null` is this endpoint's in-rotation test, unlike CatalogExportRow's, which ships rotation raw and defers expiry to the client. `card` below is NOT a substitute for that test: it rides a further join through the nullable `rotation.card_id`, so a release that is actively rotating but filed on no card carries a bin and a null card. A present value is always exactly one of H/M/L/S — `rotation.rotation_bin` is a NOT NULL Postgres enum, so the null here comes from the absent join row, never the column.  */
     public var rotationBin: RotationBin?
     public var rotationId: Int?
+    /** The card this release is on, from the same CURRENT_DATE-filtered JOIN as rotation_bin. Non-null only while actively rotating, never on a killed row.  */
+    public var card: RotationCard?
     public var plays: Int?
     /** True if this release is available on at least one streaming service. False means only available in the WXYC physical library. Null if unknown. */
     public var onStreaming: Bool?
-    /** Credited album artist for compilations. */
+    /** Credited album artist for compilations. `library.album_artist` is nullable (most releases are not compilations); the view and both `/library/query` mappers, plus `GET /library`'s serializer, all pass it through unchanged, so a non-compilation row reaches the wire with `album_artist: null`.  */
     public var albumArtist: String?
     /** When the release was marked missing from the physical library. Null if in library. */
     public var dateLost: Date?
@@ -48,8 +56,10 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
     public var matchedVia: [TrackMatchHint]?
     /** Populated by Backend's catalog search when an artist-alias match (from `artist_search_alias`) drove this release into the results, per artist-search-alias plan PR 5. Sibling field to `matched_via` (which is track-title provenance). Empty or absent on normal artist/album hits. Backward-compatible — existing consumers ignore the field.  */
     public var matchedViaAlias: [ArtistMatchHint]?
+    /** The release's definitive external links (label page, Bandcamp, streaming, press), in storage order — position IS the contract, so a consumer renders them in array order. Plain strings, not `format: uri` — MDs paste bare domains, so a value carries no scheme guarantee and a renderer must not bind one into an href without checking it. Release-scoped and rotation-independent: set replace-wholesale via `PUT /library/{id}/urls`. Bounded identically to that write shape (`AlbumUrlsUpdate.urls`) and `RotationCreateFields.urls` — at most 20 links, 2048 characters each — so the one `urls` vocabulary is the same on read and write. Optional here (never required) and absent until Backend-Service persists it (BS#2491); a consumer must tolerate its absence.  */
+    public var urls: [String]?
 
-    public init(id: Int, addDate: Date, albumTitle: String, artistName: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, formatName: String, genreName: String, label: String, labelId: Int? = nil, legacyReleaseId: Int? = nil, albumDist: Double? = nil, artistDist: Double? = nil, rotationBin: RotationBin? = nil, rotationId: Int? = nil, plays: Int? = nil, onStreaming: Bool? = nil, albumArtist: String? = nil, dateLost: Date? = nil, dateFound: Date? = nil, artworkUrl: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil, lastDiscogsRecheckAt: Date? = nil, matchedVia: [TrackMatchHint]? = nil, matchedViaAlias: [ArtistMatchHint]? = nil) {
+    public init(id: Int, addDate: Date, albumTitle: String, artistName: String, codeLetters: String, codeNumber: Int, codeArtistNumber: Int, formatName: String, genreName: String, label: String?, labelId: Int? = nil, artistId: Int? = nil, legacyReleaseId: Int? = nil, albumDist: Double? = nil, artistDist: Double? = nil, rotationBin: RotationBin? = nil, rotationId: Int? = nil, card: RotationCard? = nil, plays: Int? = nil, onStreaming: Bool? = nil, albumArtist: String? = nil, dateLost: Date? = nil, dateFound: Date? = nil, artworkUrl: String? = nil, discogsUnavailable: Bool? = nil, discogsUnavailableNote: String? = nil, lastDiscogsRecheckAt: Date? = nil, matchedVia: [TrackMatchHint]? = nil, matchedViaAlias: [ArtistMatchHint]? = nil, urls: [String]? = nil) {
         self.id = id
         self.addDate = addDate
         self.albumTitle = albumTitle
@@ -61,11 +71,13 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         self.genreName = genreName
         self.label = label
         self.labelId = labelId
+        self.artistId = artistId
         self.legacyReleaseId = legacyReleaseId
         self.albumDist = albumDist
         self.artistDist = artistDist
         self.rotationBin = rotationBin
         self.rotationId = rotationId
+        self.card = card
         self.plays = plays
         self.onStreaming = onStreaming
         self.albumArtist = albumArtist
@@ -77,6 +89,7 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         self.lastDiscogsRecheckAt = lastDiscogsRecheckAt
         self.matchedVia = matchedVia
         self.matchedViaAlias = matchedViaAlias
+        self.urls = urls
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -91,11 +104,13 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         case genreName = "genre_name"
         case label
         case labelId = "label_id"
+        case artistId = "artist_id"
         case legacyReleaseId = "legacy_release_id"
         case albumDist = "album_dist"
         case artistDist = "artist_dist"
         case rotationBin = "rotation_bin"
         case rotationId = "rotation_id"
+        case card
         case plays
         case onStreaming = "on_streaming"
         case albumArtist = "album_artist"
@@ -107,6 +122,7 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         case lastDiscogsRecheckAt
         case matchedVia = "matched_via"
         case matchedViaAlias = "matched_via_alias"
+        case urls
     }
 
     // Encodable protocol methods
@@ -124,11 +140,13 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         try container.encode(genreName, forKey: .genreName)
         try container.encode(label, forKey: .label)
         try container.encodeIfPresent(labelId, forKey: .labelId)
+        try container.encodeIfPresent(artistId, forKey: .artistId)
         try container.encodeIfPresent(legacyReleaseId, forKey: .legacyReleaseId)
         try container.encodeIfPresent(albumDist, forKey: .albumDist)
         try container.encodeIfPresent(artistDist, forKey: .artistDist)
         try container.encodeIfPresent(rotationBin, forKey: .rotationBin)
         try container.encodeIfPresent(rotationId, forKey: .rotationId)
+        try container.encodeIfPresent(card, forKey: .card)
         try container.encodeIfPresent(plays, forKey: .plays)
         try container.encodeIfPresent(onStreaming, forKey: .onStreaming)
         try container.encodeIfPresent(albumArtist, forKey: .albumArtist)
@@ -140,6 +158,7 @@ public struct AlbumSearchResult: Sendable, Codable, Hashable {
         try container.encodeIfPresent(lastDiscogsRecheckAt, forKey: .lastDiscogsRecheckAt)
         try container.encodeIfPresent(matchedVia, forKey: .matchedVia)
         try container.encodeIfPresent(matchedViaAlias, forKey: .matchedViaAlias)
+        try container.encodeIfPresent(urls, forKey: .urls)
     }
 }
 

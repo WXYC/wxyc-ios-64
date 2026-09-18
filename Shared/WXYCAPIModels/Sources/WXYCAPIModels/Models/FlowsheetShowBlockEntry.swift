@@ -12,15 +12,17 @@ public struct FlowsheetShowBlockEntry: Sendable, Codable, Hashable {
 
     public var id: Int
     public var playOrder: Int
-    public var showId: Int
+    /** The show this entry belongs to, or `null` for an **unattributed** entry — a row that exists with no linked show. `flowsheet.show_id` carries no NOT NULL and its foreign key is `ON DELETE SET NULL`, and the table documents NULL `show_id` as a shape Backend-canonical writes must accept: entries that pre-date a show, marker rows, and never-linked tracks. The Phase 0 audit for the tubafrenzy decommissioning counted 20 such rows of 2,619,011 (2005-02-06 → 2026-04-21) and decided against backfilling them, so they reach the wire rather than being dropped.  Consumers that group entries by show must render an unattributed bucket; they must not assume every entry joins to a show, and must not crash on the null. The key is always present. Same column and same contract as `FlowsheetV2Base.show_id` — the two identity blocks are separate for historical reasons, not because the column differs between them. */
+    public var showId: Int?
     /** Day string (e.g., \"Monday\") */
     public var day: String
     /** Time string (e.g., \"14:00\") */
     public var time: String
+    /** The DJ's public on-air handle, never the DJ's legal name — same already-resolved `flowsheet.dj_name` value as `FlowsheetEntryFields.dj_name` (BS#1371). Not currently `$ref`'d by any operation in this document; kept accurate in case that changes. */
     public var djName: String
     public var isStart: Bool
 
-    public init(id: Int, playOrder: Int, showId: Int, day: String, time: String, djName: String, isStart: Bool) {
+    public init(id: Int, playOrder: Int, showId: Int?, day: String, time: String, djName: String, isStart: Bool) {
         self.id = id
         self.playOrder = playOrder
         self.showId = showId

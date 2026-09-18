@@ -90,17 +90,37 @@ struct FlowsheetContractParityTests {
     /// - `on_streaming` / `track_position`: plausible future-adoption candidates
     ///   (a "library exclusive" badge, a track-position line) that simply aren't
     ///   built yet.
+    /// - `rotation_label` (WXYC/Backend-Service#2505): the rotation release's
+    ///   canonical label, resolved server-side from the linked release rather than
+    ///   from the free text a DJ typed. The app consumes `record_label` and
+    ///   projects it onto `Playcut.labelName`; preferring `rotation_label` and
+    ///   falling back to `record_label` on null is a rendering decision, not a
+    ///   decode one, so it is deliberately not made here (#1091).
+    /// - `label_id`: already reaches the app on the *other* path — decoded as
+    ///   `PlaycutMetadata.labelId` off `/proxy/metadata/album` — where it is
+    ///   explicitly decode-only, rendered by nothing, awaiting the `LabelEntity`
+    ///   re-keying in #432. A second source for a field no consumer reads buys
+    ///   nothing until that lands.
     ///
-    /// `discogsUnavailable` / `discogsUnavailableNote` (#731) left this ledger in
-    /// the #914 regen because they were never contract-backed on this variant:
-    /// api.yaml declares them on `FlowsheetEntryResponse` (v1) and the album DTOs,
-    /// never on `FlowsheetV2TrackEntry` — the vendored struct only carried them
-    /// because d970bd22a hand-edited the generated file, drifting the tree from
-    /// its own pin (the #914 regen erased that undeclared drift). If Backend ever
-    /// emits them on the V2 embed (WXYC/Backend-Service#1908), this guard stays
-    /// silent until the contract declares them on this variant. The render gate
-    /// for "Not on Discogs" is fed via `AlbumMetadataResponse`
-    /// (`PlaycutMetadataService`), not this embed.
+    /// `discogsUnavailable` / `discogsUnavailableNote` (#731) were listed here as
+    /// *not contract-backed on this variant* through the #914 regen: api.yaml
+    /// declared them on `FlowsheetEntryResponse` (v1) and the album DTOs, never on
+    /// `FlowsheetV2TrackEntry`, and the vendored struct only carried them because
+    /// d970bd22a hand-edited the generated file (the #914 regen erased that
+    /// undeclared drift). That note predicted this moment — "if Backend ever emits
+    /// them on the V2 embed (WXYC/Backend-Service#1908), this guard stays silent
+    /// until the contract declares them on this variant." The 10.0.0 pin advance is
+    /// that moment: both are now declared on this variant, so they return to this
+    /// ledger for the opposite reason — contract-backed and genuinely unconsumed by
+    /// the V2 decoder, rather than absent from the contract altogether.
+    ///
+    /// Adopting them is real work, not a one-line decode: `Playcut` already carries
+    /// both fields and the "Not on Discogs" render gate already reads them, but on
+    /// this path they are populated from `AlbumMetadataResponse`
+    /// (`PlaycutMetadataService`) — so wiring the embed would move that signal a
+    /// round-trip earlier and needs the two sources reconciled where they disagree.
+    /// Tracked in #1091, along with the stale claim in `PlaycutMetadata`'s doc
+    /// comment that the V2 embed does not carry the field.
     ///
     /// Revisit — and move into `consumedWireFields` by wiring the field into
     /// ``FlowsheetEntry`` / `FlowsheetConverter` — if a feature needs one of these.
@@ -109,6 +129,10 @@ struct FlowsheetContractParityTests {
         "rotation_bin",
         "on_streaming",
         "track_position",
+        "rotation_label",
+        "label_id",
+        "discogsUnavailable",
+        "discogsUnavailableNote",
     ]
 
     /// The primary drift guard. `FlowsheetV2TrackEntry.CodingKeys` is

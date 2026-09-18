@@ -9,10 +9,13 @@ import Foundation
 
 public struct ScheduleShift: Sendable, Codable, Hashable {
 
+    public static let dayRule = NumericRule<Int>(minimum: 0, exclusiveMinimum: false, maximum: 6, exclusiveMaximum: false, multipleOf: nil)
     public var id: Int
     public var djId: Int
+    /** The DJ's public on-air handle, never the DJ's legal name. Per the declared/actual mismatch noted above (BS#2224), no current handler populates this from a verified `dj_name`-bearing source — this description states the intent for when that gap closes, not today's implemented behavior. */
     public var djName: String
-    public var day: DayOfWeek
+    /** Day of the week 0 = Monday, 6 = Sunday */
+    public var day: Int
     /** Time in HH:MM format */
     public var startTime: String
     /** Time in HH:MM format */
@@ -20,7 +23,7 @@ public struct ScheduleShift: Sendable, Codable, Hashable {
     public var showName: String?
     public var specialtyId: Int?
 
-    public init(id: Int, djId: Int, djName: String, day: DayOfWeek, startTime: String, endTime: String, showName: String? = nil, specialtyId: Int? = nil) {
+    public init(id: Int, djId: Int, djName: String, day: Int, startTime: String, endTime: String, showName: String? = nil, specialtyId: Int? = nil) {
         self.id = id
         self.djId = djId
         self.djName = djName
@@ -57,10 +60,3 @@ public struct ScheduleShift: Sendable, Codable, Hashable {
     }
 }
 
-
-extension ScheduleShift: UnknownCaseCheckable {
-    public var containsUnknownDefaultOpenApiCase: Bool {
-        if day == .unknownDefaultOpenApi { return true }
-        return false
-    }
-}

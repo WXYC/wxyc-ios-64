@@ -7,13 +7,15 @@
 
 import Foundation
 
+/** One DJ in a DJ list — the &#x60;auth_user.id&#x60; and the PII-safe on-air handle, both nullable.  The single shape for all three list sites: &#x60;/flowsheet/djs-on-air&#x60;, &#x60;/flowsheet/shows/recent&#x60;&#39;s &#x60;djs&#x60; and &#x60;/flowsheet/playlist&#x60;&#39;s &#x60;show_djs&#x60;. Every one of them resolves the handle through the same &#x60;resolveDjDisplayName&#x60;, so none can constrain &#x60;dj_name&#x60; more tightly than the others — the premise a per-site fork would rest on. A second declaration of one shape is how the two come to disagree; declare the site, not the shape. */
 public struct OnAirDJ: Sendable, Codable, Hashable {
 
     /** The DJ's better-auth `auth_user.id` (an opaque `varchar(255)` string), or `null` for a legacy/tubafrenzy-mirrored show whose on-air DJ has no Backend-Service account (their identity is `legacy_dj_name`, surfaced on `/flowsheet/djs-on-air` with a null id). Historically mistyped as `integer`; corrected to the nullable string it is at runtime (BS#1547). */
     public var id: String?
-    public var djName: String
+    /** The DJ's public on-air handle, never the DJ's legal name. For a DJ with a Backend-Service account, the DJ's chosen handle (`user.djName`); for a legacy/tubafrenzy-mirrored show with no account, the full PII-safe chain (BS#1371) down to `shows.legacy_dj_name`.  `null` when that chain resolves to nothing. The account arm keeps the DJ's row and nulls the name — `resolveDjDisplayName` discards a blank handle and the literal \"Anonymous\" (BS#1286) — so every operation serving this schema can return it. Present-but-null, never omitted: `dj_name` stays required.  A null `dj_name` and a null `id` never co-occur. The legacy arm is the only source of a null `id`, and it emits an entry only when it has a name to put in it. */
+    public var djName: String?
 
-    public init(id: String?, djName: String) {
+    public init(id: String?, djName: String?) {
         self.id = id
         self.djName = djName
     }

@@ -7,19 +7,13 @@
 
 import Foundation
 
-/** Readiness response shape for &#x60;GET /ready&#x60; (and equivalent) endpoints. Extends &#x60;HealthCheckResponse&#x60; with a per-dependency status map. Each entry in &#x60;services&#x60; reports the live state of one external dependency (database, upstream HTTP service, queue, etc.).  Status values:   - &#x60;ok&#x60;          — dependency reachable and responsive   - &#x60;unavailable&#x60; — dependency reachable but reporting an error,                     or the connection itself failed   - &#x60;timeout&#x60;     — dependency exceeded the readiness probe deadline  */
+/** Readiness response shape for &#x60;GET /ready&#x60; (and equivalent) endpoints. Extends &#x60;HealthCheckResponse&#x60; with a per-dependency status map. Each entry in &#x60;services&#x60; reports the live state of one external dependency (database, upstream HTTP service, queue, etc.).  The status value is a free string, not a closed set, and the set of keys is per-service. Each probe classifies its own failures, and the vocabulary is expected to grow as probes are added.  The convention the existing probes follow, so a new one has something to match rather than inventing a fourth spelling: &#x60;ok&#x60; on success, and on failure one of &#x60;auth-error&#x60;, &#x60;rate-limited&#x60;, &#x60;upstream-error&#x60;, &#x60;network-error&#x60;, &#x60;error&#x60; — shared deliberately between Backend-Service&#39;s &#x60;services.database&#x60; and library-metadata-lookup&#39;s &#x60;services.discogs_api&#x60; so operators can pattern-match one against the other. Probes that cannot distinguish those buckets report a coarser value: Backend-Service&#39;s auth proxy emits &#x60;unavailable&#x60;.  A probe-timeout value is deliberately absent. Postgres has no timeout bucket distinct from \&quot;couldn&#39;t get a response\&quot;, so a canceled statement is reported as &#x60;network-error&#x60;; a probe whose client can tell the two apart should say so in its own terms rather than reach for a shared &#x60;timeout&#x60;.  */
 public struct ReadinessResponse: Sendable, Codable, Hashable {
 
     public enum Status: String, Sendable, Codable, CaseIterable, CaseIterableDefaultsLast {
         case healthy = "healthy"
         case degraded = "degraded"
         case unhealthy = "unhealthy"
-        case unknownDefaultOpenApi = "unknown_default_open_api"
-    }
-    public enum Services: String, Sendable, Codable, CaseIterable, CaseIterableDefaultsLast {
-        case ok = "ok"
-        case unavailable = "unavailable"
-        case timeout = "timeout"
         case unknownDefaultOpenApi = "unknown_default_open_api"
     }
     /** Service-reported health. `healthy` = fully operational; `degraded` = serving but with reduced capability; `unhealthy` = should not receive traffic.  */

@@ -7,27 +7,38 @@
 
 import Foundation
 
+/** &#x60;RotationCreateFields&#x60; plus the album reference required only on the direct-add path — &#x60;POST /library/filings&#x60; supplies its own release in the same request, so &#x60;FilingRotationRequest&#x60; omits it.  */
 public struct AddRotationRequest: Sendable, Codable, Hashable {
 
-    public var albumId: Int
+    public static let urlsRule = ArrayRule(minItems: nil, maxItems: 20, uniqueItems: false)
     public var rotationBin: RotationBin
+    public var cardId: Int?
+    /** Storage order. Plain strings, not `format: uri` — MDs paste bare domains, so a value carries no scheme guarantee and a renderer must not bind one into an href without checking it. Bounded here, at publish time, because oasdiff treats adding request-side bounds later as a breaking change — they could never be added after this ships. The spec's existing request arrays split between per-item-work caps (25) and bulk-drain caps (1000); neither fits a hand-curated link list, so this takes a small cap of 20, with 2048 characters per item covering any pasted URL. An empty array is equivalent to omitting the field.  */
+    public var urls: [String]?
+    public var albumId: Int
 
-    public init(albumId: Int, rotationBin: RotationBin) {
-        self.albumId = albumId
+    public init(rotationBin: RotationBin, cardId: Int? = nil, urls: [String]? = nil, albumId: Int) {
         self.rotationBin = rotationBin
+        self.cardId = cardId
+        self.urls = urls
+        self.albumId = albumId
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
-        case albumId = "album_id"
         case rotationBin = "rotation_bin"
+        case cardId = "card_id"
+        case urls
+        case albumId = "album_id"
     }
 
     // Encodable protocol methods
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(albumId, forKey: .albumId)
         try container.encode(rotationBin, forKey: .rotationBin)
+        try container.encodeIfPresent(cardId, forKey: .cardId)
+        try container.encodeIfPresent(urls, forKey: .urls)
+        try container.encode(albumId, forKey: .albumId)
     }
 }
 

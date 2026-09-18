@@ -10,11 +10,11 @@ import Foundation
 /** Show metadata for one show overlapping a &#x60;GET /flowsheet/range&#x60; window. A deliberately public-safe projection of the &#x60;shows&#x60; row: it carries the DJ&#39;s public handle but no user id and no real-name column. Distinct from &#x60;Show&#x60;, which exposes &#x60;primary_dj_id&#x60; and is used on authenticated surfaces. */
 public struct FlowsheetRangeShow: Sendable, Codable, Hashable {
 
-    /** Matches `FlowsheetRangeEntry.show_id` for every entry belonging to this show. */
+    /** Matches `entries[].show_id` for every entry belonging to this show. */
     public var id: Int
     /** Specialty-show name, or `null` for a regular show. */
     public var showName: String?
-    /** Resolved public display name of the show's DJ. Same PII-safe resolution chain as `FlowsheetEntryFields.dj_name` (BS#1371): per-show override -> `user.djName` -> `shows.legacy_dj_name` (tubafrenzy's `DJ_HANDLE`) -> null. Never the real-name column. */
+    /** The DJ's public on-air handle, never the DJ's legal name. Same PII-safe resolution chain as `FlowsheetEntryFields.dj_name` (BS#1371): per-show override -> the DJ's chosen handle (`user.djName`) -> the legacy tubafrenzy handle (`shows.legacy_dj_name`, tubafrenzy's `DJ_HANDLE`) -> `null`. */
     public var djName: String?
     public var specialtyId: Int?
     /** When the DJ signed on (ISO 8601). */

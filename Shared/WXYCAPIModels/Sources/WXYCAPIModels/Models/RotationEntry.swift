@@ -10,17 +10,23 @@ import Foundation
 public struct RotationEntry: Sendable, Codable, Hashable {
 
     public var id: Int
-    public var albumId: Int
+    /** Linked `library.id`, or `null` on a rotation row that never linked to a catalog release — the defining state of the Awaiting Cataloging queue, which `GET /library/rotation/uncatalogued` serves as exactly the rows where this is null. Passed straight through from `rotation.album_id`, which carries no NOT NULL and whose table documents the unlinked row as a shape Backend-canonical writes must accept. Both operations returning this schema echo the raw rotation row, so `PATCH /library/rotation` reports null whenever the killed row was never catalogued. Same column and same contract as `RotationRowSummary.album_id`. A consumer keying a catalog cache on this value must skip the null rather than write an entry under it. */
+    public var albumId: Int?
     public var rotationBin: RotationBin
-    public var addDate: Date
-    public var killDate: Date?
+    public var addDate: CalendarDate
+    public var killDate: CalendarDate?
+    public var card: RotationCard?
+    /** Storage order. Plain strings, not `format: uri` — MDs paste bare domains, so a value carries no scheme guarantee and a renderer must not bind one into an href without checking it. Deliberately an inline twin: `Rotation.urls` and `RotationEntry.urls` are pinned identical by a spec test rather than `$ref`ing a named array schema, because naming a top-level array makes the Python generator wrap the field in a RootModel (`.root` to reach the list) while every other target keeps a plain string list.  */
+    public var urls: [String]?
 
-    public init(id: Int, albumId: Int, rotationBin: RotationBin, addDate: Date, killDate: Date? = nil) {
+    public init(id: Int, albumId: Int?, rotationBin: RotationBin, addDate: CalendarDate, killDate: CalendarDate? = nil, card: RotationCard? = nil, urls: [String]? = nil) {
         self.id = id
         self.albumId = albumId
         self.rotationBin = rotationBin
         self.addDate = addDate
         self.killDate = killDate
+        self.card = card
+        self.urls = urls
     }
 
     public enum CodingKeys: String, CodingKey, CaseIterable {
@@ -29,6 +35,8 @@ public struct RotationEntry: Sendable, Codable, Hashable {
         case rotationBin = "rotation_bin"
         case addDate = "add_date"
         case killDate = "kill_date"
+        case card
+        case urls
     }
 
     // Encodable protocol methods
@@ -40,6 +48,8 @@ public struct RotationEntry: Sendable, Codable, Hashable {
         try container.encode(rotationBin, forKey: .rotationBin)
         try container.encode(addDate, forKey: .addDate)
         try container.encodeIfPresent(killDate, forKey: .killDate)
+        try container.encodeIfPresent(card, forKey: .card)
+        try container.encodeIfPresent(urls, forKey: .urls)
     }
 }
 

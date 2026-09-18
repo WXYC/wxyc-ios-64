@@ -10,6 +10,7 @@ import Foundation
 public struct ShowPeekDjsInner: Sendable, Codable, Hashable {
 
     public var djId: Int?
+    /** The DJ's raw stored handle (`user.djName`), read directly via join with no per-show-override or legacy-handle resolution — may be blank or literally \"Anonymous\". Still never the DJ's legal name; this never reads `real_name`. */
     public var djName: String?
 
     public init(djId: Int? = nil, djName: String? = nil) {
