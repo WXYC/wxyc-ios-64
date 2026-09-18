@@ -37,13 +37,15 @@ No other surface imports `WXYCAPIModels` yet. Adopting it elsewhere is a case-by
 
 ```json
 {
-  "wxycSharedTag": "main",
-  "wxycSharedSha": "8a363952e127c91aaacc4eae1cd4a27c06049f9f",
+  "wxycSharedTag": "v10.0.0",
+  "wxycSharedSha": "8e07a213fdea44b449dae5fca13f1270d9f55dbb",
   "apiYamlVersion": "10.0.0"
 }
 ```
 
 `wxycSharedSha` is what the regen/verify scripts actually read; `wxycSharedTag` and `apiYamlVersion` are for humans scanning the diff. The vendored `Sources/WXYCAPIModels` tree should always be the exact output of running codegen against this pinned commit — never hand-edited (see "The generated-file header exception" below for how that's enforced).
+
+**Keep reading the SHA, not the tag.** That rule is about which field is authoritative, not about whether the tag happens to be trustworthy today, and it does not relax now that the tag is real. From the #412 stand-up until the v10.0.0 pin, `wxycSharedTag` held the literal string `main` — worse than useless, since it named a branch that moves, recorded nothing about what was pinned, and quietly implied the pin floated. It now names a `wxyc-shared` release, and the two version fields agree because `@wxyc/shared` v10.0.0 was cut at `api.yaml` 10.0.0 specifically so they could. Do not assume that alignment holds forever: the package version and `info.version` are independent counters that were deliberately made to coincide once, not wired together.
 
 ## Regenerating: `scripts/regenerate-api-types.sh`
 
