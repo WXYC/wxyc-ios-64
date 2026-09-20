@@ -23,9 +23,10 @@ import Playlist
 /// - The loader is constructed once at app launch and lives for the app's lifetime.
 /// - `load(_:)` is idempotent and safe to call repeatedly; it coalesces concurrent
 ///   requests for the same playcut and short-circuits when state is `.loaded`.
-/// - `retryFailures()` re-fetches every `.failed` entry (used after the artwork
-///   service's fetcher chain or negative cache changes); `prune(keepingKeys:)`
-///   bounds memory by dropping entries no longer in the visible playlist.
+/// - `retryFailures()` re-fetches every `.failed` entry (for when the negative
+///   cache changes out from under the loader; currently caller-less — see #293);
+///   `prune(keepingKeys:)` bounds memory by dropping entries no longer in the
+///   visible playlist.
 @MainActor
 @Observable
 public final class ArtworkLoader {
@@ -104,9 +105,9 @@ public final class ArtworkLoader {
         dispatch(.reset(key: playcut.artworkCacheKey))
     }
 
-    /// Re-fetch every `.failed` entry using the retained Playcut. Call this after
-    /// the artwork service gains a new fetcher or its negative cache is cleared,
-    /// so previously-failed lookups don't have to wait for the next poll to retry.
+    /// Re-fetch every `.failed` entry using the retained Playcut. Call this when
+    /// the artwork service's negative cache has been cleared out from under the
+    /// loader, so previously-failed lookups don't wait for the next poll to retry.
     /// A coincident `load(_:)` coalesces because each retry transitions the entry
     /// to `.loading` before yielding.
     public func retryFailures() {

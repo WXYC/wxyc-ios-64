@@ -4,7 +4,7 @@
 //
 //  Actor-level concerns for MultisourceArtworkService: fetcher-chain ordering,
 //  in-flight deduplication, negative-cache (definitive vs. transient errors),
-//  and the `addFetcher` / `cacheExternalArtwork` / `clearNegativeCache` APIs.
+//  and the `cacheExternalArtwork` API.
 //
 //  Cache-lookup correctness (key shape, TTL, hit/miss, decoding) lives in
 //  CacheCoordinatorTests, CachedFetchTests, and CacheCoordinatorArtworkTests
@@ -471,8 +471,8 @@ struct ArtworkServiceTests {
         // Regression guard: `HTTPURLResponse.validateSuccessStatus()` throws
         // `HTTPStatusError` (carrying the real status code) instead of the old
         // undifferentiated `URLError(.badServerResponse)`. A fetcher backed by
-        // `WebSession.data(from:)` (e.g. `URLArtworkFetcher`,
-        // `DiscogsArtworkService`) now raises this type on a non-2xx response,
+        // `WebSession.data(from:)` (e.g. `URLArtworkFetcher`) now raises this
+        // type on a non-2xx response,
         // and it must still be treated as transient — not cached as a
         // definitive "no artwork available" verdict — same as the old error.
         let fetcher = MockArtworkService()
@@ -553,45 +553,6 @@ struct ArtworkServiceTests {
         #expect(fetcher.fetchCount == 1) // fetcher not called again
     }
 
-    @Test("clearNegativeCache allows retrying previously failed lookups")
-    func clearNegativeCacheAllowsRetry() async throws {
-        let fetcher = MockArtworkService()
-        fetcher.errorToThrow = ServiceError.noResults
-
-        let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
-        let service = MultisourceArtworkService(
-            fetchers: [fetcher],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache()),
-            errorCache: errorCache
-        )
-
-        let playcut = uniquePlaycut()
-
-        // First call: fails and caches the error
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(fetcher.fetchCount == 1)
-
-        // Clear negative cache
-        await service.clearNegativeCache()
-
-        // Provide artwork so next call succeeds
-        fetcher.errorToThrow = nil
-        fetcher.artworkToReturn = CGImage.testImageWithColor(.blue)
-
-        // Should retry (error cache cleared) and succeed
-        let result = try await service.fetchArtwork(for: playcut)
-        #expect(fetcher.fetchCount == 2)
-        #expect(result.width > 0)
-    }
-
-    // MARK: - Transient Error Caching Tests
-    //
-    // Transient URLErrors (timeouts, cancellations, network drops) must not
-    // populate the negative cache. Cancellation in particular is the launch-race
-    // path: a row's `.task` can be cancelled mid-flight when the view is
-    // reconstructed for any reason, and persisting that as `noArtworkAvailable`
-    // for 30 days would block every retry.
-
     @Test(
         "Does not cache transient URLErrors so subsequent fetches retry",
         arguments: [
@@ -652,19 +613,19 @@ struct ArtworkServiceTests {
 
     @Test("Caches negative when a conclusive .noResults occurs alongside .notAttempted")
     func cachesNegativeWhenMixedWithNotAttempted() async throws {
-        // Mixed chain: the URL fetcher had no URL (.notAttempted) but the Discogs
-        // fallback genuinely searched and came up empty (.noResults). That second
+        // Mixed chain: the URL fetcher had no URL (.notAttempted) but a later
+        // fetcher genuinely looked and came up empty (.noResults). That second
         // outcome IS a conclusive verdict and should still be cached — otherwise
-        // we'd hammer Discogs every 30s poll for tracks that simply have no art.
+        // we'd re-fetch on every poll for tracks that simply have no art.
         let urlLike = MockArtworkService()
         urlLike.errorToThrow = ServiceError.notAttempted
 
-        let discogsLike = MockArtworkService()
-        discogsLike.errorToThrow = ServiceError.noResults
+        let conclusiveFetcher = MockArtworkService()
+        conclusiveFetcher.errorToThrow = ServiceError.noResults
 
         let errorCache = CacheCoordinator(cache: DiskCache(subdirectory: "test-errors-\(UUID().uuidString)"))
         let service = MultisourceArtworkService(
-            fetchers: [urlLike, discogsLike],
+            fetchers: [urlLike, conclusiveFetcher],
             cacheCoordinator: CacheCoordinator(cache: DiskCache()),
             errorCache: errorCache
         )
@@ -673,75 +634,12 @@ struct ArtworkServiceTests {
 
         do { _ = try await service.fetchArtwork(for: playcut) } catch {}
         #expect(urlLike.fetchCount == 1)
-        #expect(discogsLike.fetchCount == 1)
+        #expect(conclusiveFetcher.fetchCount == 1)
 
         // Second call must hit the negative cache — neither fetcher should run again.
         do { _ = try await service.fetchArtwork(for: playcut) } catch {}
         #expect(urlLike.fetchCount == 1, "a conclusive .noResults must still poison the negative cache")
-        #expect(discogsLike.fetchCount == 1)
-    }
-
-    // MARK: - addFetcher Tests
-
-    @Test("addFetcher exposes the new fetcher to subsequent fetchArtwork calls")
-    func addFetcherExposesNewFetcher() async throws {
-        let original = MockArtworkService()
-        original.errorToThrow = ServiceError.noResults
-
-        let added = MockArtworkService()
-        added.artworkToReturn = CGImage.testImageWithColor(.green)
-
-        let service = MultisourceArtworkService(
-            fetchers: [original],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-add-\(UUID().uuidString)")),
-            errorCache: CacheCoordinator(cache: DiskCache(subdirectory: "test-add-err-\(UUID().uuidString)"))
-        )
-
-        let playcut = uniquePlaycut()
-
-        // First call: only the original fetcher exists — fails.
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(original.fetchCount == 1)
-        #expect(added.fetchCount == 0)
-
-        // Augment the chain.
-        await service.addFetcher(added)
-
-        // Second call: the new fetcher should now be tried (after the original
-        // fails again) and succeed.
-        let result = try await service.fetchArtwork(for: playcut)
-        #expect(original.fetchCount == 2)
-        #expect(added.fetchCount == 1)
-        #expect(result.width > 0)
-    }
-
-    @Test("addFetcher clears the negative cache so previously-failed lookups can retry")
-    func addFetcherClearsNegativeCache() async throws {
-        let original = MockArtworkService()
-        original.errorToThrow = ServiceError.noResults
-
-        let added = MockArtworkService()
-        added.artworkToReturn = CGImage.testImageWithColor(.blue)
-
-        let service = MultisourceArtworkService(
-            fetchers: [original],
-            cacheCoordinator: CacheCoordinator(cache: DiskCache(subdirectory: "test-add2-\(UUID().uuidString)")),
-            errorCache: CacheCoordinator(cache: DiskCache(subdirectory: "test-add2-err-\(UUID().uuidString)"))
-        )
-
-        let playcut = uniquePlaycut()
-
-        // First call: fails, populates the negative cache.
-        do { _ = try await service.fetchArtwork(for: playcut) } catch {}
-        #expect(original.fetchCount == 1)
-
-        // addFetcher must clear the negative cache as part of its contract — otherwise
-        // the freshly-augmented chain would be silently bypassed by the cached error.
-        await service.addFetcher(added)
-
-        let result = try await service.fetchArtwork(for: playcut)
-        #expect(added.fetchCount == 1, "Newly-added fetcher must run despite the prior negative-cache entry")
-        #expect(result.width > 0)
+        #expect(conclusiveFetcher.fetchCount == 1)
     }
 }
 

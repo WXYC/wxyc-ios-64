@@ -40,12 +40,6 @@ import Logger
 // unparseable `donateUrl` as absent per those semantics.
 @_exported import struct WXYCAPIModels.AppConfig
 
-/// Third-party API credentials returned by the authenticated `/config/secrets` endpoint.
-public struct AppSecrets: Sendable, Codable, Equatable {
-    public let discogsApiKey: String
-    public let discogsApiSecret: String
-}
-
 /// Bootstrap configuration provider.
 ///
 /// Provides hardcoded defaults that are always available synchronously (for widgets,
@@ -137,25 +131,4 @@ public actor AppConfiguration {
         }
     }
 
-    /// Fetches third-party API credentials from the authenticated `/config/secrets` endpoint.
-    ///
-    /// Goes through `URLSession.authedData(for:tokenProvider:)`, the shared
-    /// authed-request seam: a stale-token 401 (the #715 cold-launch
-    /// condition) reauthenticates and retries once instead of silently
-    /// collapsing to `nil` — which would leave the Discogs artwork fallback
-    /// disabled for the whole session.
-    ///
-    /// Returns `nil` on failure (no auth session, network error, persistent
-    /// non-2xx, or backend hasn't been updated yet).
-    public func fetchSecrets(tokenProvider: SessionTokenProvider) async -> AppSecrets? {
-        do {
-            let url = URL(string: "\(Self.apiBaseUrl)/config/secrets")!
-            let request = URLRequest(url: url)
-            let (data, _) = try await session.authedData(for: request, tokenProvider: tokenProvider)
-            return try JSONDecoder.shared.decode(AppSecrets.self, from: data)
-        } catch {
-            Log(.warning, category: .general, "AppConfiguration: failed to fetch /config/secrets: \(error)")
-            return nil
-        }
-    }
 }
