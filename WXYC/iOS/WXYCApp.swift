@@ -116,7 +116,7 @@ struct WXYCApp: App {
         UINavigationBar.appearance().barStyle = .black
         #endif
         
-        // Fetch backend configuration (upgrades artwork service with Discogs fallback)
+        // Fetch backend configuration
         let appState = self.appState
         Task { await appState.fetchConfiguration() }
 

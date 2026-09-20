@@ -757,55 +757,17 @@ final class Singletonia {
     /// local one — the fetched value would go out of scope with it.
     private(set) var appConfig: AppConfig = AppConfiguration.defaults
 
-    /// Fetches secrets from the backend and upgrades services that depend on them.
+    /// Fetches remote configuration from the backend.
     ///
-    /// Call this early in the app lifecycle. The artwork service starts with cache + URL
-    /// fetcher only; once secrets arrive with Discogs credentials, the Discogs API fallback
-    /// is added to the fetcher chain. Requires device session auth.
+    /// Call this early in the app lifecycle. `/config` is unauthenticated,
+    /// fetched once per launch — right for an endpoint served
+    /// `Cache-Control: public, max-age=3600`.
     ///
-    /// Retries with exponential backoff on failure because a transient timeout would
-    /// otherwise leave the Discogs fallback disabled for the entire session, causing
-    /// all artwork lookups to fail for v1 API entries (which have no inline artworkURL).
+    /// This used to also run a 4-attempt authenticated `/config/secrets` loop
+    /// whose sole purpose was arming the Discogs artwork fallback; both went
+    /// with #1096 — the backend's `artwork_url` is the only artwork source now.
     func fetchConfiguration() async {
-        let appConfiguration = AppConfiguration()
-
-        // Before the secrets loop, deliberately. That loop is 4-attempt
-        // exponential backoff for *authenticated* secrets and `return`s outright
-        // when they never arrive, so a `/config` call appended after it would be
-        // skipped in exactly the cold-launch/no-auth case that matters most.
-        // `/config` is unauthenticated and must not be gated on auth. Fetched
-        // once per launch, which is right for an endpoint served
-        // `Cache-Control: public, max-age=3600`.
-        appConfig = await appConfiguration.config()
-
-        let maxAttempts = 4
-        var delay: Duration = .seconds(5)
-
-        for attempt in 1...maxAttempts {
-            guard let secrets = await appConfiguration.fetchSecrets(tokenProvider: MusicShareKit.tokenProvider) else {
-                Log(.info, "Secrets fetch attempt \(attempt)/\(maxAttempts) failed")
-
-                guard attempt < maxAttempts else {
-                    Log(.warning, "No secrets available after \(maxAttempts) attempts — Discogs fallback disabled")
-                    return
-                }
-
-                try? await Task.sleep(for: delay)
-                delay *= 3
-                continue
-            }
-
-            if !secrets.discogsApiKey.isEmpty, !secrets.discogsApiSecret.isEmpty {
-                let discogs = DiscogsArtworkService(
-                    key: secrets.discogsApiKey,
-                    secret: secrets.discogsApiSecret
-                )
-                await artworkService.addFetcher(discogs)
-                artworkLoader.retryFailures()
-                Log(.info, "Artwork service upgraded with Discogs fallback (attempt \(attempt))")
-            }
-            return
-        }
+        appConfig = await AppConfiguration().config()
     }
 
     // MARK: - Review Request Tracking

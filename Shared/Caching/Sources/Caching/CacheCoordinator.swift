@@ -69,8 +69,8 @@ public final actor CacheCoordinator {
 
     /// Cache coordinator for artwork fetch errors (negative cache).
     ///
-    /// Stored separately from artwork images so errors can be cleared independently
-    /// when the fetcher chain is upgraded (e.g. Discogs fallback added).
+    /// Stored separately from artwork images so errors can be cleared
+    /// independently of the cached images themselves.
     public static let ArtworkErrors = CacheCoordinator(cache: DiskCache(subdirectory: "artwork-errors"))
 
     /// Cache coordinator for playlist data.

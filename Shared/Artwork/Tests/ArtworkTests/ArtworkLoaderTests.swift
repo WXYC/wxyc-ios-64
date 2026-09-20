@@ -149,7 +149,7 @@ struct ArtworkLoaderTests {
         try await waitForState(loader, of: playcut) { $0 == .failed }
         #expect(service.fetchCount == 1)
 
-        // Simulate the fetcher chain gaining a new source (e.g. Discogs fallback)
+        // Simulate a previously-failed lookup becoming retryable
         // by flipping the mock to succeed. The loader must re-attempt previously-
         // failed entries without the caller re-issuing load().
         service.errorToThrow = nil

@@ -2,7 +2,7 @@
 //  ArtworkFetcherTests.swift
 //  Artwork
 //
-//  Tests for individual artwork fetcher implementations (Discogs).
+//  Tests for individual artwork fetcher implementations (URLArtworkFetcher).
 //
 //  Created by Jake Bromberg on 11/10/25.
 //  Copyright © 2025 WXYC. All rights reserved.
@@ -35,23 +35,6 @@ final class MockWebSession: WebSession, @unchecked Sendable {
         }
 
         return data
-    }
-}
-
-/// A `WebSession` that returns queued responses in order — request N gets
-/// `responses[N]` — for fetchers that make more than one sequential request
-/// (a search followed by an image fetch). Once queued responses are
-/// exhausted, further requests throw `.noResults`.
-final class SequentialMockSession: WebSession, @unchecked Sendable {
-    var responses: [Data] = []
-    var currentIndex = 0
-
-    func data(from url: URL) async throws -> Data {
-        defer { currentIndex += 1 }
-        guard currentIndex < responses.count else {
-            throw ServiceError.noResults
-        }
-        return responses[currentIndex]
     }
 }
 
@@ -88,183 +71,6 @@ extension CGImage {
     }
 }
 #endif
-
-// MARK: - DiscogsArtworkService Tests
-
-@Suite(
-    "DiscogsArtworkService Tests",
-    .tags(.ciHang),
-    .disabled(if: ProcessInfo.processInfo.environment["WXYC_SKIP_CI_HANG"] == "1", "Hangs on CI paravirt — excluded from CI")
-)
-struct DiscogsArtworkServiceTests {
-
-    @Test("Fetches album artwork successfully")
-    func fetchAlbumArtworkSuccess() async throws {
-        // Given
-        let mockSession = SequentialMockSession()
-        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
-
-        let playcut = Playcut.stub()
-
-        // Mock search results with valid cover image
-        let searchResults = """
-        {
-            "results": [
-                {
-                    "cover_image": "https://example.com/cover.jpg",
-                    "master_id": 12345,
-                    "id": 1,
-                    "type": "release"
-                }
-            ]
-        }
-        """.data(using: .utf8)!
-
-        let imageData = CGImage.testImage.pngDataCompatibility!
-
-        mockSession.responses = [searchResults, imageData]
-
-        // When
-        let artwork = try await fetcher.fetchArtwork(for: playcut)
-
-        // Then
-        #expect(artwork.pngDataCompatibility != nil)
-    }
-
-    @Test("Skips spacer.gif images")
-    func skipsSpacerGifImages() async throws {
-        // Given
-        let mockSession = SequentialMockSession()
-        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
-
-        let playcut = Playcut.stub()
-
-        // Mock search results with spacer.gif first, then real image
-        let searchResults = """
-        {
-            "results": [
-                {
-                    "cover_image": "https://example.com/spacer.gif",
-                    "master_id": 1,
-                    "id": 1,
-                    "type": "release"
-                },
-                {
-                    "cover_image": "https://example.com/real-cover.jpg",
-                    "master_id": 2,
-                    "id": 2,
-                    "type": "release"
-                }
-            ]
-        }
-        """.data(using: .utf8)!
-
-        let imageData = CGImage.testImage.pngDataCompatibility!
-
-        mockSession.responses = [searchResults, imageData]
-
-        // When
-        let artwork = try await fetcher.fetchArtwork(for: playcut)
-
-        // Then
-        #expect(artwork.pngDataCompatibility != nil)
-    }
-
-    @Test("Handles s/t (self-titled) album correctly")
-    func handlesSelfTitledAlbum() async throws {
-        // This test verifies the URL construction logic for self-titled albums
-        // We can't easily test the internal URL construction, but we can verify behavior
-
-        let mockSession = MockWebSession()
-        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
-
-        let playcut = Playcut.stub(releaseTitle: "s/t")
-
-        mockSession.errorToThrow = ServiceError.noResults
-
-        // When
-        _ = try? await fetcher.fetchArtwork(for: playcut)
-
-        // Then - should have made a request
-        #expect(mockSession.requestedURLs.count > 0)
-    }
-
-    @Test("Falls back to artist art when album art not found")
-    func fallsBackToArtistArt() async throws {
-        // Given
-        final class CustomMockSession: WebSession, @unchecked Sendable {
-            var responses: [URL: Data] = [:]
-            var requestCount = 0
-
-            func data(from url: URL) async throws -> Data {
-                requestCount += 1
-
-                // First request (album search) returns empty results
-                if requestCount == 1 {
-                    return """
-                    {
-                        "results": []
-                    }
-                    """.data(using: .utf8)!
-                }
-
-                // Second request (artist search) returns results
-                if requestCount == 2 {
-                    return """
-                    {
-                        "results": [
-                            {
-                                "cover_image": "https://example.com/artist.jpg",
-                                "master_id": 123,
-                                "id": 1,
-                                "type": "artist"
-                            }
-                        ]
-                    }
-                    """.data(using: .utf8)!
-                }
-
-                // Third request is for the actual image
-                return CGImage.testImage.pngDataCompatibility!
-            }
-        }
-
-        let mockSession = CustomMockSession()
-        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
-
-        let playcut = Playcut.stub()
-
-        // When
-        let artwork = try await fetcher.fetchArtwork(for: playcut)
-
-        // Then
-        #expect(artwork.pngDataCompatibility != nil)
-        #expect(mockSession.requestCount == 3) // album search, artist search, image fetch
-    }
-
-    @Test("Throws error when no artwork found")
-    func throwsErrorWhenNoArtwork() async throws {
-        // Given
-        let mockSession = MockWebSession()
-        let fetcher = DiscogsArtworkService(key: "test-key", secret: "test-secret", session: mockSession)
-
-        let playcut = Playcut.stub()
-
-        // Mock empty search results
-        let emptyResults = """
-        {
-            "results": []
-        }
-        """.data(using: .utf8)!
-
-        mockSession.dataToReturn = emptyResults
-
-        // When/Then
-        await #expect(throws: ServiceError.self) {
-            try await fetcher.fetchArtwork(for: playcut)
-        }
-    }
-}
 
 // MARK: - URLArtworkFetcher Tests
 
