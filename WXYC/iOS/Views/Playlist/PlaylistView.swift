@@ -137,7 +137,7 @@ struct PlaylistView: View {
                             #endif
                         }
                     )
-                    .lcdAccentColor(appearance.accentColor)
+                    .lcdAccentColor(appearance.lcdAccentColor)
                     .lcdHSBOffsets(
                         min: appearance.lcdMinOffset,
                         max: appearance.lcdMaxOffset
