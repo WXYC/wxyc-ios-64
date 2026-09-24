@@ -11,6 +11,7 @@
 import AnalyticsTesting
 import Foundation
 import Testing
+@testable import ListenerAuth
 @testable import MusicShareKit
 
 @Suite("RequestService Tests")

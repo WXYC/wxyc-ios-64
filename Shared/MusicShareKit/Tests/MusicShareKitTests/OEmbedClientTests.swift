@@ -5,13 +5,13 @@
 //  Tests for the shared oEmbed fetch-and-parse used by SoundCloudService and
 //  YouTubeMusicService.
 //
-//  Declared as an extension of `DefaultAuthNetworkClientTests` rather than
-//  their own `@Suite`: the stubbing below rides `CoreTesting`'s
-//  `QueuedStubURLProtocol` (through its `PatternRoutingWebSession` facade),
-//  whose state is static — at most one adopting suite per test bundle, with
-//  further adopters joining it as extensions. A separate suite would run in
-//  parallel with it despite its own `.serialized` trait, because traits only
-//  serialize tests *within* a suite.
+//  Declared as its own `@Suite` rather than an extension: the stubbing below
+//  rides `CoreTesting`'s `QueuedStubURLProtocol` (through its
+//  `PatternRoutingWebSession` facade), whose state is static — at most one
+//  adopting suite per test bundle. `DefaultAuthNetworkClientTests`, this
+//  file's prior host, moved to `ListenerAuthTests` in WXYC/wxyc-ios-64#1099,
+//  so this is now the only adopter of `QueuedStubURLProtocol` left in this
+//  bundle.
 //
 //  Created by Jake Bromberg on 08/10/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -22,7 +22,8 @@ import Foundation
 import Testing
 @testable import MusicShareKit
 
-extension DefaultAuthNetworkClientTests {
+@Suite("OEmbedClient Tests", .serialized)
+struct OEmbedClientTests {
 
     @Test("oEmbed: parses title, author_name, and thumbnail_url from a valid response")
     func oEmbedParsesValidResponse() async throws {
