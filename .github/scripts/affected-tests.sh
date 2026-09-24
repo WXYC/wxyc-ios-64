@@ -67,12 +67,12 @@ run_all_and_exit() {
     # SPM-runnable packages run via swift test on host; xcodebuild skips their
     # test targets to avoid double coverage. Keep in sync with SPM_RUNNABLE in
     # step 8a below.
-    local spm_all="AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit Concerts WXUI"
+    local spm_all="AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit ListenerAuth Concerts WXUI"
     local skip="-skip-testing:WXYCUITests"
     skip="$skip -skip-testing:AnalyticsMacrosTests"
     skip="$skip -skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests"
     skip="$skip -skip-testing:PlaylistTests -skip-testing:LikedSongsTests"
-    skip="$skip -skip-testing:MetadataTests -skip-testing:MusicShareKitTests"
+    skip="$skip -skip-testing:MetadataTests -skip-testing:MusicShareKitTests -skip-testing:ListenerAuthTests"
     # ConcertsTests and WXUITests are deliberately absent from WXYC.xctestplan
     # (they run via the swift-test step against the auto-generated per-package
     # scheme instead — see docs/build-test.md), so these flags are inert today.
@@ -303,7 +303,8 @@ DEPS[LikedSongs]="Core Playlist Logger"
 DEPS[Playback]="Caching Core Analytics Logger"
 DEPS[Artwork]="Core Caching Playlist Logger"
 DEPS[ColorPalette]="Core"
-DEPS[MusicShareKit]="WXUI Logger Core Analytics Caching"
+DEPS[MusicShareKit]="WXUI Logger Core Analytics Caching ListenerAuth"
+DEPS[ListenerAuth]="Logger Core Analytics Caching"
 DEPS[Wallpaper]="Analytics Caching ColorPalette Core Logger WXUI"
 DEPS[Metadata]="Core Caching Playlist Logger WXYCAPIModels"
 DEPS[PlayerHeaderView]="Caching Playback Wallpaper WXUI"
@@ -388,6 +389,7 @@ TEST_TARGETS[ColorPalette]="ColorPaletteTests"
 TEST_TARGETS[Wallpaper]="WallpaperTests"
 TEST_TARGETS[Metadata]="MetadataTests"
 TEST_TARGETS[MusicShareKit]="MusicShareKitTests"
+TEST_TARGETS[ListenerAuth]="ListenerAuthTests"
 TEST_TARGETS[PlayerHeaderView]="PlayerHeaderViewTests"
 TEST_TARGETS[DebugPanel]="DebugPanelTests"
 TEST_TARGETS[AppServices]="AppServicesTests"
@@ -492,7 +494,7 @@ TEST_TARGETS[WXUI]="WXUITests"
 #                             all. Simulator-only via WXYC.xctestplan.
 # ---------------------------------------------------------------------------
 
-local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit Concerts WXUI)
+local -a SPM_RUNNABLE=(AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit ListenerAuth Concerts WXUI)
 typeset -A SPM_RUNNABLE_SET
 for pkg in $SPM_RUNNABLE; do
     SPM_RUNNABLE_SET[$pkg]=1
@@ -555,6 +557,7 @@ local all_test_plan_targets=(
     MP3StreamerTests
     CachingTests
     MusicShareKitTests
+    ListenerAuthTests
     PlayerHeaderViewTests
     DebugPanelTests
     MetadataTests

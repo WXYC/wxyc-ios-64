@@ -89,8 +89,8 @@ if [[ "${FORCE_RUN_ALL:-false}" != "true" ]]; then
     echo "simulated internal crash" >&2
     exit 1
 fi
-spm_all="AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit Concerts WXUI"
-skip="-skip-testing:WXYCUITests -skip-testing:AnalyticsMacrosTests -skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests -skip-testing:PlaylistTests -skip-testing:LikedSongsTests -skip-testing:MetadataTests -skip-testing:MusicShareKitTests -skip-testing:ConcertsTests -skip-testing:WXUITests"
+spm_all="AnalyticsMacros Core Caching Analytics Playlist LikedSongs Metadata MusicShareKit ListenerAuth Concerts WXUI"
+skip="-skip-testing:WXYCUITests -skip-testing:AnalyticsMacrosTests -skip-testing:CoreTests -skip-testing:CachingTests -skip-testing:AnalyticsTests -skip-testing:PlaylistTests -skip-testing:LikedSongsTests -skip-testing:MetadataTests -skip-testing:MusicShareKitTests -skip-testing:ListenerAuthTests -skip-testing:ConcertsTests -skip-testing:WXUITests"
 {
     echo "run_all=true"
     echo "skip_testing_flags=$skip"

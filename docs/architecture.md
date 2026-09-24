@@ -17,9 +17,10 @@ The app uses a highly modular architecture with local Swift packages in `Shared/
 | **DebugPanel** | DEBUG-only settings/HUD panel: performance metrics overlay, feature toggles, cache purge |
 | **Intents** | App Intents (`WXYCIntents` product): Siri/Spotlight entities and queries (PlayWXYC, artist/release/venue lookups). Also home to `PlayMediaIntentHandler` (#829) — the repo's first SiriKit `INPlayMediaIntentHandling` conformer, a different technology from App Intents, returned by `WXYC/iOS/AppDelegate.swift` so a media-suggestion tile's `INPlayMediaIntent` can dispatch in the background |
 | **LikedSongs** | On-device liked-songs store (#492): folded song identity, durable never-evict JSON file store (Core's `FileStorage` seam), artist-id healing for the For You shelf |
+| **ListenerAuth** | The app-wide anonymous-auth stack (extracted from `MusicShareKit`, #1099): `AuthenticationService`, `AuthNetworkClient`, `AuthSession`, Keychain token and device-fingerprint storage, JWT decode, and the `MusicShareKit` composition-root enum (temporarily still so-named — see the package's `README.md`) |
 | **Logger** | Logging infrastructure |
 | **Metadata** | Playlist metadata parsing |
-| **MusicShareKit** | Share extension support for music sharing |
+| **MusicShareKit** | Share extension support for music sharing: music-link parsing/services and `ShareExtensionView`, plus the request line (`RequestService`, `RequestLineComposer`, the send HUD). Depends on `ListenerAuth` for anonymous auth and re-exports it so existing `import MusicShareKit` sites keep compiling |
 | **PartyHorn** | An easter egg. Users must scroll to the bottom of the playlist view and tap 'what the freq?' to access it.' |
 | **Playback** | Houses several playback engines. Eventually this will whittle down to 1 or 2, but is currently in an experimental phase. |
 | **PlayerHeaderView** | Now playing header UI component |
