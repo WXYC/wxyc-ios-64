@@ -1,0 +1,137 @@
+//
+//  AuthSessionTests.swift
+//  ListenerAuth
+//
+//  Tests for AuthSession model and expiration logic.
+//
+//  Created by Jake Bromberg on 01/20/26.
+//  Copyright © 2026 WXYC. All rights reserved.
+//
+
+import Foundation
+import Testing
+@testable import ListenerAuth
+
+@Suite("AuthSession Tests")
+struct AuthSessionTests {
+
+    @Test("Session without expiration is never expired")
+    func sessionWithoutExpirationNeverExpires() {
+        let session = AuthSession(
+            sessionToken: "test-session", jwt: "test-token",
+            userId: "test-user",
+            createdAt: Date().addingTimeInterval(-86400), // Created yesterday
+            expiresAt: nil
+        )
+
+        #expect(session.isExpired == false)
+    }
+
+    @Test("Session with future expiration is not expired")
+    func sessionWithFutureExpirationNotExpired() {
+        let session = AuthSession(
+            sessionToken: "test-session", jwt: "test-token",
+            userId: "test-user",
+            createdAt: Date(),
+            expiresAt: Date().addingTimeInterval(3600) // Expires in 1 hour
+        )
+
+        #expect(session.isExpired == false)
+    }
+
+    @Test("Session with past expiration is expired")
+    func sessionWithPastExpirationIsExpired() {
+        let session = AuthSession(
+            sessionToken: "test-session", jwt: "test-token",
+            userId: "test-user",
+            createdAt: Date().addingTimeInterval(-7200), // Created 2 hours ago
+            expiresAt: Date().addingTimeInterval(-3600) // Expired 1 hour ago
+        )
+
+        #expect(session.isExpired == true)
+    }
+
+    @Test("Session expiring now is considered expired")
+    func sessionExpiringNowIsExpired() {
+        let session = AuthSession(
+            sessionToken: "test-session", jwt: "test-token",
+            userId: "test-user",
+            createdAt: Date().addingTimeInterval(-3600),
+            expiresAt: Date() // Expires right now
+        )
+
+        #expect(session.isExpired == true)
+    }
+
+    @Test("Session is Codable")
+    func sessionIsCodable() throws {
+        let original = AuthSession(
+            sessionToken: "test-session", jwt: "test-token",
+            userId: "test-user",
+            createdAt: Date(timeIntervalSince1970: 1000000),
+            expiresAt: Date(timeIntervalSince1970: 2000000)
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(original)
+
+        let decoder = JSONDecoder()
+        let decoded = try decoder.decode(AuthSession.self, from: data)
+
+        #expect(decoded.sessionToken == original.sessionToken)
+        #expect(decoded.jwt == original.jwt)
+        #expect(decoded.userId == original.userId)
+        #expect(decoded.createdAt == original.createdAt)
+        #expect(decoded.expiresAt == original.expiresAt)
+    }
+
+    @Test("Session with nil expiresAt is Codable")
+    func sessionWithNilExpiresAtIsCodable() throws {
+        let original = AuthSession(
+            sessionToken: "test-session", jwt: "test-token",
+            userId: "test-user",
+            createdAt: Date(timeIntervalSince1970: 1000000),
+            expiresAt: nil
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(original)
+
+        let decoder = JSONDecoder()
+        let decoded = try decoder.decode(AuthSession.self, from: data)
+
+        #expect(decoded.sessionToken == original.sessionToken)
+        #expect(decoded.jwt == original.jwt)
+        #expect(decoded.userId == original.userId)
+        #expect(decoded.expiresAt == nil)
+    }
+
+    @Test("with(jwt:expiresAt:) preserves sessionToken, userId, createdAt")
+    func withPreservesNonJWTFields() {
+        let original = AuthSession(
+            sessionToken: "long-lived-session-token",
+            jwt: "old-jwt",
+            userId: "stable-user-id",
+            createdAt: Date(timeIntervalSince1970: 1_000_000),
+            expiresAt: Date(timeIntervalSince1970: 2_000_000)
+        )
+
+        let updated = original.with(
+            jwt: "new-jwt",
+            expiresAt: Date(timeIntervalSince1970: 3_000_000)
+        )
+
+        // The new JWT + expiry land on the result.
+        #expect(updated.jwt == "new-jwt")
+        #expect(updated.expiresAt == Date(timeIntervalSince1970: 3_000_000))
+
+        // CRITICAL: the long-lived refresh credential, user identity, and
+        // creation timestamp must NOT change across JWT rotations. The
+        // ban-target stability (server-side user.id ban) and the persisted
+        // session reuse (no re-sign-in on every JWT cycle) both depend on
+        // these surviving every call to with().
+        #expect(updated.sessionToken == original.sessionToken)
+        #expect(updated.userId == original.userId)
+        #expect(updated.createdAt == original.createdAt)
+    }
+}

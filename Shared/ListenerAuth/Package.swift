@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "MusicShareKit",
+    name: "ListenerAuth",
     platforms: [
         .iOS("18.4"),
         .watchOS(.v11),
@@ -12,33 +12,26 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "MusicShareKit",
-            targets: ["MusicShareKit"]),
+            name: "ListenerAuth",
+            targets: ["ListenerAuth"]),
     ],
     dependencies: [
-        .package(path: "../WXUI"),
         .package(path: "../Logger"),
         .package(path: "../Core"),
         .package(path: "../Analytics"),
         .package(path: "../Caching"),
-        .package(path: "../ListenerAuth"),
     ],
     targets: [
         .target(
-            name: "MusicShareKit",
-            dependencies: ["WXUI", "Logger", "Core", "Analytics", "Caching", "ListenerAuth"],
-            resources: [
-                .process("Resources/Assets.xcassets")
-            ],
-        ),
+            name: "ListenerAuth",
+            dependencies: ["Logger", "Core", "Analytics", "Caching"]),
         .testTarget(
-            name: "MusicShareKitTests",
+            name: "ListenerAuthTests",
             dependencies: [
-                "MusicShareKit",
+                "ListenerAuth",
                 .product(name: "AnalyticsTesting", package: "Analytics"),
                 .product(name: "Caching", package: "Caching"),
                 .product(name: "CoreTesting", package: "Core"),
             ]),
     ]
 )
-
