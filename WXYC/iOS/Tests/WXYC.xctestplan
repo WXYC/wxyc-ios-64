@@ -89,6 +89,14 @@
     {
       "parallelizable" : true,
       "target" : {
+        "containerPath" : "container:Shared\/ListenerAuth",
+        "identifier" : "ListenerAuthTests",
+        "name" : "ListenerAuthTests"
+      }
+    },
+    {
+      "parallelizable" : true,
+      "target" : {
         "containerPath" : "container:Shared\/PlayerHeaderView",
         "identifier" : "PlayerHeaderViewTests",
         "name" : "PlayerHeaderViewTests"

@@ -51,6 +51,8 @@
 		DBB13191767501A2D580FD30 /* Request Share Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */; platformFilter = ios; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		DCF27381E7D5EC54633BE58E /* Logger in Frameworks */ = {isa = PBXBuildFile; productRef = B5DEC242C4D59E9B40D0E365 /* Logger */; };
 		LIKEDSONGSFWBUILD000001 /* LikedSongs in Frameworks */ = {isa = PBXBuildFile; productRef = LIKEDSONGSPRODDEP000001 /* LikedSongs */; };
+		LISTENERAUTH0BUILDFILE01 /* ListenerAuth in Frameworks */ = {isa = PBXBuildFile; productRef = LISTENERAUTH0PRODDEP0001 /* ListenerAuth */; };
+		LISTENERAUTH0BUILDFILE02 /* ListenerAuth in Frameworks */ = {isa = PBXBuildFile; productRef = LISTENERAUTH0PRODDEP0002 /* ListenerAuth */; };
 		PLAYBACKWATCHOSBUILD0001 /* PlaybackWatchOS in Frameworks */ = {isa = PBXBuildFile; productRef = PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */; };
 		WXYCINTENTS00000001 /* WXYCIntents in Frameworks */ = {isa = PBXBuildFile; productRef = WXYCINTENTS00000005 /* WXYCIntents */; };
 		WXYCINTENTS00000002 /* WXYCIntents in Frameworks */ = {isa = PBXBuildFile; productRef = WXYCINTENTS00000006 /* WXYCIntents */; };
@@ -152,6 +154,7 @@
 		FF0D2C45269DEE0E530C46D3 /* PartyHorn */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyHorn; path = Shared/PartyHorn; sourceTree = SOURCE_ROOT; };
 		INTENTSPKGFILEREF000001 /* Intents */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Intents; path = Shared/Intents; sourceTree = SOURCE_ROOT; };
 		LIKEDSONGSFILEREF000001 /* LikedSongs */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LikedSongs; path = Shared/LikedSongs; sourceTree = SOURCE_ROOT; };
+		LISTENERAUTH0FILEREF0001 /* ListenerAuth */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ListenerAuth; path = Shared/ListenerAuth; sourceTree = SOURCE_ROOT; };
 		WALLPAPER0FILEREF0000001 /* Wallpaper */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Wallpaper; path = Shared/Wallpaper; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -429,6 +432,7 @@
 				7127691612A44A229E553EDE /* Sentry in Frameworks */,
 				WXYCINTENTS00000001 /* WXYCIntents in Frameworks */,
 				CONCERTS0BUILDFILE0001 /* Concerts in Frameworks */,
+				LISTENERAUTH0BUILDFILE01 /* ListenerAuth in Frameworks */,
 			);
 		};
 		5282D69CBC6C3EAF27DE8CBE /* Frameworks */ = {
@@ -436,6 +440,7 @@
 			files = (
 				1529CE89784D4CABA78CA19E /* AppServices in Frameworks */,
 				ADF9E4264AD37AE291C15EF5 /* MusicShareKit in Frameworks */,
+				LISTENERAUTH0BUILDFILE02 /* ListenerAuth in Frameworks */,
 			);
 		};
 		64915BA4D2117A923D5E4476 /* Frameworks */ = {
@@ -501,6 +506,7 @@
 				DEBUGPNL0FILEREF0000001 /* DebugPanel */,
 				INTENTSPKGFILEREF000001 /* Intents */,
 				LIKEDSONGSFILEREF000001 /* LikedSongs */,
+				LISTENERAUTH0FILEREF0001 /* ListenerAuth */,
 				21C88FF06CCC47E090003EAD /* Logger */,
 				2E2DA266F8734B81F467E9C3 /* Metadata */,
 				1CA6C2A20CF184C75A3C62E5 /* MusicShareKit */,
@@ -570,6 +576,7 @@
 			packageProductDependencies = (
 				4F7FBFF8641D4F629866EB1F /* AppServices */,
 				B1E128B6E39E90EA57C68C69 /* MusicShareKit */,
+				LISTENERAUTH0PRODDEP0002 /* ListenerAuth */,
 			);
 			productName = "Request Share Extension";
 			productReference = 0C1F6BD9A7F7287CD5CF91CF /* Request Share Extension.appex */;
@@ -709,6 +716,7 @@
 				23B42F962F0209CB007351F1 /* ColorPalette */,
 				WXYCINTENTS00000005 /* WXYCIntents */,
 				CONCERTS0PRODDEP000001 /* Concerts */,
+				LISTENERAUTH0PRODDEP0001 /* ListenerAuth */,
 			);
 			productName = WXYC;
 			productReference = 87ED2724FB87B5D288BBFFFB /* WXYC.app */;
@@ -765,6 +773,7 @@
 				FB80F1F8555F55C5B02D41B4 /* XCLocalSwiftPackageReference "Shared/Core" */,
 				23D4181B2EF2C8000DBGPNL /* XCLocalSwiftPackageReference "Shared/DebugPanel" */,
 				LIKEDSONGSPKGREF0000001 /* XCLocalSwiftPackageReference "Shared/LikedSongs" */,
+				LISTENERAUTH0PKGREF00001 /* XCLocalSwiftPackageReference "Shared/ListenerAuth" */,
 				D23B4D7A8AFC723FA2812948 /* XCLocalSwiftPackageReference "Shared/Logger" */,
 				8556716B922ADAEAD20A238A /* XCLocalSwiftPackageReference "Shared/Metadata" */,
 				9E445D20EDBF8A92397DA93F /* XCLocalSwiftPackageReference "Shared/PartyHorn" */,
@@ -2531,6 +2540,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/LikedSongs;
 		};
+		LISTENERAUTH0PKGREF00001 /* XCLocalSwiftPackageReference "Shared/ListenerAuth" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Shared/ListenerAuth;
+		};
 		WXYCINTENTS00000004 /* XCLocalSwiftPackageReference "Shared/Intents" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Shared/Intents;
@@ -2764,6 +2777,16 @@
 		LIKEDSONGSPRODDEP000001 /* LikedSongs */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LikedSongs;
+		};
+		LISTENERAUTH0PRODDEP0001 /* ListenerAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = LISTENERAUTH0PKGREF00001 /* XCLocalSwiftPackageReference "Shared/ListenerAuth" */;
+			productName = ListenerAuth;
+		};
+		LISTENERAUTH0PRODDEP0002 /* ListenerAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = LISTENERAUTH0PKGREF00001 /* XCLocalSwiftPackageReference "Shared/ListenerAuth" */;
+			productName = ListenerAuth;
 		};
 		PLAYBACKWATCHOSDEP00001 /* PlaybackWatchOS */ = {
 			isa = XCSwiftPackageProductDependency;
