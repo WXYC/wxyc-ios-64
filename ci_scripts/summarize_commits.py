@@ -17,14 +17,20 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm as atqdm
 
 
+# The API publishes a requests-per-minute limit, not a concurrency limit, so
+# there is nothing to probe for: pick a value that stays well inside any tier
+# and let --max-concurrent override it when the account allows more.
+DEFAULT_MAX_CONCURRENT = 5
+
+
 class CommitSummarizer:
     def __init__(self, page_size: int = 5, api_key: str = None, max_concurrent: int = None, focus_topics: List[str] = None):
         self.page_size = page_size
         self.client = anthropic.AsyncAnthropic(api_key=api_key or os.environ.get("ANTHROPIC_API_KEY"))
-        self.model = "claude-sonnet-4-5-20250929"
+        self.model = "claude-sonnet-5"
         self.max_concurrent = max_concurrent
         self.focus_topics = focus_topics or []
-        self.semaphore = None  # Will be initialized after detecting rate limits
+        self.semaphore = None  # Created on first use, once max_concurrent is known
 
     def get_commits(self, commit_range: str) -> List[Dict[str, str]]:
         """Get commits in the specified range."""
@@ -76,28 +82,6 @@ class CommitSummarizer:
         if commit['diffstat']:
             result += f"Changes:\n{commit['diffstat']}\n"
         return result
-
-    async def detect_rate_limits(self) -> int:
-        """Make a test request to detect rate limits from response headers."""
-        try:
-            print("Detecting API rate limits...", file=sys.stderr)
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=10,
-                messages=[{"role": "user", "content": "Hi"}]
-            )
-
-            # Try to get rate limit info from response headers
-            # Note: The Python SDK may not expose headers directly, so we'll use a conservative default
-            # The Anthropic API typically allows 5 concurrent requests for most tiers
-            default_concurrent = 5
-
-            print(f"Using max concurrent requests: {default_concurrent}", file=sys.stderr)
-            return default_concurrent
-
-        except Exception as e:
-            print(f"Warning: Could not detect rate limits ({e}), using conservative default of 3", file=sys.stderr)
-            return 3
 
     async def summarize_page(self, items: List[Any], level: int, page_num: int) -> str:
         """Summarize a page of items (either commits or previous summaries)."""
@@ -196,10 +180,8 @@ class CommitSummarizer:
         # Initialize semaphore if not already set
         if self.semaphore is None:
             if self.max_concurrent is None:
-                # Auto-detect rate limits
-                self.max_concurrent = await self.detect_rate_limits()
-            else:
-                print(f"Using max concurrent requests: {self.max_concurrent}", file=sys.stderr)
+                self.max_concurrent = DEFAULT_MAX_CONCURRENT
+            print(f"Using max concurrent requests: {self.max_concurrent}", file=sys.stderr)
             self.semaphore = asyncio.Semaphore(self.max_concurrent)
 
         if self.focus_topics:
@@ -258,7 +240,7 @@ Examples:
         "--max-concurrent", "-c",
         type=int,
         default=None,
-        help="Maximum concurrent API requests (default: auto-detect from rate limits)"
+        help="Maximum concurrent API requests (default: {})".format(DEFAULT_MAX_CONCURRENT)
     )
     parser.add_argument(
         "--focus", "-f",
