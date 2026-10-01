@@ -74,4 +74,25 @@ struct TabBarBackgroundClearerTests {
         let found = TabBarBackgroundClearer.clearBackgrounds(from: orphan)
         #expect(found == nil)
     }
+
+    /// The launch flash: a clear that lands even one main-actor hop after the
+    /// probe enters the window lets the first frame commit with the tab
+    /// controller's systemBackground still painted over the wallpaper. The
+    /// status bar's glyph color is settled in those same first moments and
+    /// held until the scene next reactivates, so a flash that lasts long enough
+    /// costs a dark status bar for the whole session. Deliberately synchronous
+    /// — no `await` between the probe entering the window and the assertion —
+    /// because any suspension here is exactly the gap the first frame slips
+    /// through.
+    @Test("The probe clears the backing in the same turn it enters a window")
+    func probeClearsSynchronouslyOnEnteringWindow() {
+        let (tab, child, _) = makeHierarchy()
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        window.addSubview(tab.view)
+
+        child.view.addSubview(TabBarTransparencyProbe.ProbeView())
+
+        #expect(tab.view.backgroundColor == .clear)
+        #expect(child.view.backgroundColor == .clear)
+    }
 }

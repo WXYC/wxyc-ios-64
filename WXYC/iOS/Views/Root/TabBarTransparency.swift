@@ -46,7 +46,7 @@ enum TabBarBackgroundClearer {
 // MARK: - SwiftUI probe
 
 /// A zero-size background probe that clears the enclosing tab controller's
-/// opaque backing once it lands in the window.
+/// opaque backing as it lands in the window.
 struct TabBarTransparencyProbe: UIViewRepresentable {
     func makeUIView(context: Context) -> ProbeView { ProbeView() }
     func updateUIView(_ uiView: ProbeView, context: Context) {}
@@ -55,8 +55,19 @@ struct TabBarTransparencyProbe: UIViewRepresentable {
         override func didMoveToWindow() {
             super.didMoveToWindow()
             guard window != nil else { return }
-            // Defer one main-actor hop so SwiftUI finishes installing the tab
-            // controller's view tree before we walk it.
+            // Clear in the turn that put this view in the window, so no frame
+            // commits with the backing still painted. A clear that waits even
+            // one main-actor hop races the first frame, and when it loses the
+            // launch flashes systemBackground over the wallpaper. The status
+            // bar pays for it too: its glyph color is settled by what is on
+            // screen in the window's first moments and holds until the scene
+            // next reactivates, so a flash that lasts long enough leaves dark
+            // glyphs on the wallpaper for the rest of the session.
+            TabBarBackgroundClearer.clearBackgrounds(from: self)
+            // And again one hop later, for anything SwiftUI installs after this
+            // turn. On iOS 27 the pass above already reaches the tab controller
+            // and nothing repaints it; this one stays because that has not been
+            // checked back to the 18.6 floor.
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 TabBarBackgroundClearer.clearBackgrounds(from: self)
