@@ -84,8 +84,11 @@ public final class MP3Streamer {
     public let configuration: MP3StreamerConfiguration
     @ObservationIgnored
     private let httpClient: any HTTPStreamClientProtocol
+    /// The decoder generation currently attached to the stream. `internal`, not
+    /// part of the public API — readable so tests (`@testable import`) can tell
+    /// by identity whether a recovery path replaced it. See issue #1130.
     @ObservationIgnored
-    private var mp3Decoder: MP3StreamDecoder
+    internal private(set) var mp3Decoder: MP3StreamDecoder
     @ObservationIgnored
     private let bufferQueue: PCMBufferQueue
     @ObservationIgnored
@@ -464,7 +467,8 @@ public final class MP3Streamer {
     /// clears the buffer queue, and replaces the decoder with a fresh instance —
     /// without touching `startupConnectTask`, `streamingState`, or the backoff timer.
     /// Shared by `stop()` and `play()`'s stuck-state teardown so the latter does not
-    /// self-cancel its own deferred connect Task. See issue #488.
+    /// self-cancel its own deferred connect Task. See issue #488. Also run by the
+    /// startup watchdog's escalation, so its reconnect gets a fresh decoder (#1130).
     private func resetStreamIO() {
         httpClient.disconnect()
         audioPlayer.stop()
@@ -769,6 +773,14 @@ public final class MP3Streamer {
             // leaking the pending task to run to completion alongside the new one.
             reconnectTask?.cancel()
             reconnectTask = nil
+            // Start the reconnect from clean stream I/O rather than the decoder that
+            // just failed to produce audio. A decoder whose converter has stopped stays
+            // stopped, so reusing it makes every reconnect another timeout: the stream
+            // connects, nothing is decoded, and this fires again a deadline later for as
+            // long as the listener waits (#1130). Must follow the `.error` assignment
+            // above — the teardown yields `.disconnected`, which is ignored there but
+            // would start a second reconnect from `.buffering`.
+            resetStreamIO()
             attemptReconnect()
         default:
             // Already playing, stopped, or errored via another path — nothing to do.

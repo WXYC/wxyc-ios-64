@@ -87,6 +87,8 @@ stateDiagram-v2
 
 On `stop()`, the decoder is replaced with a fresh instance. The old decoder's `deinit` calls `bufferContinuation.finish()`, terminating its `AsyncStream` and discarding up to 32 stale PCM buffers.
 
+The same replacement happens in two other places, both through `resetStreamIO()`: when `play()` is called from a stuck state, and when the startup watchdog escalates. The watchdog case exists because a decoder that connected and still produced no audio may itself be what is broken, and a reconnect that reused it would time out again (#1130). A reconnect after a mid-playback HTTP drop keeps its decoder.
+
 ## Data Flow
 
 ```mermaid
