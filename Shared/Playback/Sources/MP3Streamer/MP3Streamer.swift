@@ -774,12 +774,16 @@ public final class MP3Streamer {
             reconnectTask?.cancel()
             reconnectTask = nil
             // Start the reconnect from clean stream I/O rather than the decoder that
-            // just failed to produce audio. A decoder whose converter has stopped stays
-            // stopped, so reusing it makes every reconnect another timeout: the stream
-            // connects, nothing is decoded, and this fires again a deadline later for as
-            // long as the listener waits (#1130). Must follow the `.error` assignment
-            // above — the teardown yields `.disconnected`, which is ignored there but
-            // would start a second reconnect from `.buffering`.
+            // just failed to produce audio. A failure local to a decoder lasts for that
+            // decoder's lifetime — #1129's stopped converter is one instance — so
+            // reusing it makes every reconnect another timeout (#1130). This
+            // deliberately discards any buffers already queued: a slow but healthy
+            // link refills from zero rather than from where it left off.
+            //
+            // The teardown yields `.disconnected`. It is handled after this method
+            // returns, by which point the state is `.error`, where the reconnect guard
+            // ignores it; the reconnect's own `.connected` is behind it in the same
+            // stream.
             resetStreamIO()
             attemptReconnect()
         default:

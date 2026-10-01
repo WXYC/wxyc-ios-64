@@ -116,7 +116,19 @@ struct MP3StreamerStartupWatchdogTests {
         gate.release()
         await pollUntil { mockHTTP.connectCallCount >= 2 }
 
-        #expect(mockHTTP.connectCallCount >= 2, "Precondition: the watchdog escalated into a reconnect")
+        // Wait for the reconnect's `.connected` to land. The teardown's
+        // `.disconnected` is ahead of it in the same event stream, so reaching
+        // `.buffering` again proves that event has been handled too — and
+        // handled without starting a reconnect of its own.
+        await pollUntil {
+            if case .buffering = streamer.streamingState { return true }
+            return false
+        }
+
+        #expect(mockHTTP.connectCallCount == 2,
+                "The escalation must issue exactly one reconnect; the teardown's own .disconnected must not start another")
+        #expect(mockHTTP.disconnectCallCount == 1,
+                "The escalation must tear down stream I/O exactly once")
         #expect(streamer.mp3Decoder !== starvedDecoder,
                 "The escalation reconnect must start with a fresh decoder, not the one that starved")
     }
