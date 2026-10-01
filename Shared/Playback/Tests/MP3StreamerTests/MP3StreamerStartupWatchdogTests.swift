@@ -78,6 +78,49 @@ struct MP3StreamerStartupWatchdogTests {
                 "Startup watchdog should escalate a starved buffering phase into a reconnect")
     }
 
+    /// #1130: the escalation must not hand the reconnect the decoder that just
+    /// failed to produce audio. A decoder whose converter has stopped (#1129)
+    /// stays stopped, so reusing it turns every reconnect into another timeout:
+    /// the stream connects, the decoder emits nothing, and the watchdog fires
+    /// again 12 seconds later, for as long as the listener waits. Asserted on
+    /// decoder identity rather than by wedging a real decoder, so the test does
+    /// not depend on any one way of breaking it.
+    @Test("Escalation hands the reconnect a fresh decoder")
+    func escalationReplacesDecoder() async throws {
+        let config = MP3StreamerConfiguration(url: Self.testStreamURL, connectionTimeout: 0, startupTimeout: 0.1)
+        let mockHTTP = MockHTTPStreamClient()
+        let mockPlayer = MockAudioEnginePlayer()
+        let gate = StartupWatchdogGate()
+        defer { gate.releaseAll() }
+
+        // Connect succeeds, but no data ever arrives → stuck in buffering(0/5).
+        mockHTTP.shouldSucceed = true
+        mockHTTP.testData = nil
+
+        let streamer = MP3Streamer(
+            configuration: config,
+            httpClient: mockHTTP,
+            audioPlayer: mockPlayer,
+            startupWatchdogSleep: gate.sleep
+        )
+
+        streamer.play()
+
+        try await gate.waitForArm()
+        await pollUntil {
+            if case .buffering = streamer.streamingState { return true }
+            return false
+        }
+        let starvedDecoder = streamer.mp3Decoder
+
+        gate.release()
+        await pollUntil { mockHTTP.connectCallCount >= 2 }
+
+        #expect(mockHTTP.connectCallCount >= 2, "Precondition: the watchdog escalated into a reconnect")
+        #expect(streamer.mp3Decoder !== starvedDecoder,
+                "The escalation reconnect must start with a fresh decoder, not the one that starved")
+    }
+
     /// IOS-34: a reconnect that connects (HTTP 200 → `.buffering`) but starves
     /// before reaching `.playing` must itself be watched. Before #487 the watchdog
     /// armed only in `play()` and was never re-armed by `attemptReconnect()`, so the
@@ -537,6 +580,7 @@ struct MP3StreamerStartupWatchdogTests {
         await pollUntil { streamer.isWaitingForConnectivity }
         #expect(streamer.isWaitingForConnectivity,
                 "Precondition: the streamer observed the waiting-for-connectivity signal")
+        let parkedDecoder = streamer.mp3Decoder
 
         // Fire the watchdog's deadline twice while still parked. Each fire must
         // defer (not escalate) and re-arm — proven directly by waiting for the
@@ -555,6 +599,8 @@ struct MP3StreamerStartupWatchdogTests {
                 "A task known to be waiting for connectivity must not be reconnected")
         #expect(mockHTTP.disconnectCallCount == 0,
                 "A task known to be waiting for connectivity must not be torn down")
+        #expect(streamer.mp3Decoder === parkedDecoder,
+                "A parked task's decoder has seen no data and must not be replaced (#1130)")
         #expect(streamer.streamingState == .connecting,
                 "State must stay parked at .connecting, not escalate to .error")
         #expect(collector.count == 0,
