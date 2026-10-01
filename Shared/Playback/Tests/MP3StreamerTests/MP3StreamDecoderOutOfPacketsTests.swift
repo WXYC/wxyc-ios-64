@@ -31,9 +31,12 @@ import Foundation
 /// and a regression test nothing runs would guard nothing.
 @Suite("MP3StreamDecoder running out of packets")
 struct MP3StreamDecoderOutOfPacketsTests {
-    /// What `MP3StreamerConfiguration.minimumBuffersBeforePlayback` defaults to: the
-    /// number of buffers a stream must produce before playback can begin at all.
-    static let buffersNeededToStartPlayback = 5
+    /// The number of buffers a stream must produce before playback can begin at all.
+    /// Read from the configuration's default rather than restated, so the suite keeps
+    /// proving the decoder reaches the real threshold if that default ever moves.
+    static let buffersNeededToStartPlayback = MP3StreamerConfiguration(
+        url: URL(string: "https://audio-mp3.ibiblio.org/wxyc.mp3")!
+    ).minimumBuffersBeforePlayback
 
     /// Straddles the first-chunk sizes at which the fixture queues exactly four packets
     /// (4,704 to 6,784 bytes), with a healthy size on either side.
