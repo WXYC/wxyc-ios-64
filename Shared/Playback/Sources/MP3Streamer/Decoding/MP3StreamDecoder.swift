@@ -619,6 +619,22 @@ final class MP3StreamDecoder: @unchecked Sendable {
         converter = audioConverter
     }
 
+    /// What the conversion input proc returns, with zero packets, when it has no packet
+    /// to hand over *yet*.
+    ///
+    /// The value is arbitrary; that it is not `noErr` is the point. `AudioConverter`
+    /// reads `noErr` with zero packets as end of stream: it flushes what it holds and
+    /// returns no frames on any later call. Any other status makes
+    /// `AudioConverterFillComplexBuffer` hand back what it has converted so far along
+    /// with that status, and leaves the converter usable.
+    ///
+    /// Running dry is routine rather than exceptional. The conversion loop starts at four
+    /// queued packets, and the first conversion also absorbs the decoder's priming frames,
+    /// so it asks for a fifth. A first network chunk small enough to queue exactly four
+    /// used to end the stream on the very first call, leaving the decoder dead two buffers
+    /// into startup (#1129).
+    private static let outOfPacketsStatus: OSStatus = 0x6E6D_6F72 // 'nmor'
+
     private func convertToPCM() {
         guard let converter else { return }
         guard !packetDescriptions.isEmpty else { return }
@@ -676,7 +692,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
 
                     guard context.packetIndex < context.packetDescriptions.count else {
                         ioNumberDataPackets.pointee = 0
-                        return noErr
+                        return MP3StreamDecoder.outOfPacketsStatus
                     }
 
                     // Provide one packet at a time
@@ -690,7 +706,7 @@ final class MP3StreamDecoder: @unchecked Sendable {
                           packetOffset < context.dataCount,
                           context.dataCount - packetOffset >= packetSize else {
                         ioNumberDataPackets.pointee = 0
-                        return noErr
+                        return MP3StreamDecoder.outOfPacketsStatus
                     }
 
                     // Copy packet data to our buffer - source is already a pointer, no Data copy needed
@@ -727,10 +743,12 @@ final class MP3StreamDecoder: @unchecked Sendable {
             consumedPackets = context.packetIndex
         }
 
-        if status == noErr && ioOutputDataPacketSize > 0 {
-            pcmBuffer.frameLength = ioOutputDataPacketSize
-
-            // Track consumed packets without O(n) data removal
+        // Running dry is not a failure: the converter returns whatever it converted before
+        // the input proc came up empty, and resumes on the next call.
+        if status == noErr || status == Self.outOfPacketsStatus {
+            // Track consumed packets without O(n) data removal. Done even when no frames
+            // came back: the converter has taken those packets into its own state, and
+            // leaving them queued would decode the same audio twice.
             if consumedPackets > 0 && consumedPackets <= packetDescriptions.count {
                 // Find the end offset of consumed data
                 let lastConsumedDesc = packetDescriptions[consumedPackets - 1]
@@ -750,9 +768,13 @@ final class MP3StreamDecoder: @unchecked Sendable {
                 }
             }
 
-            // Yield the decoded buffer
-            bufferContinuation.yield(pcmBuffer)
-        } else if status != noErr && status != kAudioConverterErr_InvalidInputSize {
+            // Yield the decoded buffer. It is shorter than a full one when the input ran
+            // dry partway through; consumers count buffers, not frames.
+            if ioOutputDataPacketSize > 0 {
+                pcmBuffer.frameLength = ioOutputDataPacketSize
+                bufferContinuation.yield(pcmBuffer)
+            }
+        } else if status != kAudioConverterErr_InvalidInputSize {
             // Only clear on non-recoverable errors
             packetDescriptions.removeAll()
             packetData.removeAll()
