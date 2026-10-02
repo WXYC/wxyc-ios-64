@@ -102,7 +102,15 @@ final class Singletonia {
     /// production; the shelf falls back to a local default when it is offline.
     let featureFlagProvider: any FeatureFlagProvider = PostHogFeatureFlagProvider.shared
 
-    let themeConfiguration = ThemeConfiguration()
+    /// Prewarmed where it is created, rather than from `init()`: this is the earliest point at
+    /// which the selected theme is known, and the wallpaper's Metal pipelines have to be built
+    /// before SwiftUI lays the wallpaper out for it to be in the app's first frame (#1144). The
+    /// build runs off the main actor, so nothing here waits on it.
+    let themeConfiguration: ThemeConfiguration = {
+        let configuration = ThemeConfiguration()
+        configuration.prewarmSelectedTheme()
+        return configuration
+    }()
     let themePickerState = ThemePickerState()
 
     /// Show/retire state for the Box Office ticket discovery CTA. Held here — not
