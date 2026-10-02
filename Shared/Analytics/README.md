@@ -31,3 +31,21 @@ Both concrete `ErrorReporter`s route through `ErrorEvent`, so their property key
 `ErrorReporting.shared` defaults to a no-op, so an entry point that does not install a reporter discards every error the shared packages report. A new platform target has to wire one.
 
 Historical note: `PostHogErrorReporter` previously emitted the message under a `description` key. Older builds still in the wild carry that key; queries that must include pre-migration data should coalesce `error` and `description` until those builds age out.
+
+## Platform labels
+
+The PostHog SDK labels iOS, iPadOS, macOS and tvOS events with `$os`, `$os_name`, `$os_version` and `$device_type` on its own. It has no watchOS branch for any of the four, so `AnalyticsBootstrap.start` stamps them on every watch event through a before-send hook (`$os_name = watchOS`, `$device_type = Wearable`). The hook is installed on the config before `setup` runs, which is what lets it reach the lifecycle events `setup` captures itself.
+
+| Platform | `$os_name` | `$device_type` | Labeled by |
+|----------|------------|----------------|------------|
+| iPhone | `iOS` | `Mobile` | SDK |
+| iPad | `iPadOS` | `Tablet` | SDK |
+| Mac | `macOS` | `Desktop` | SDK |
+| Apple TV | `tvOS` | `TV` | SDK |
+| Apple Watch | `watchOS` | `Wearable` | `AnalyticsBootstrap` |
+
+The Apple TV row is read from the SDK source, not from observed events: as of 2026-10-01 no tvOS build that reports has shipped.
+
+Watch events from 3.1 and earlier carry none of these, and 3.2.x watch builds carry the OS keys but no `$device_type`. To count the watch across every build, filter on `$app_namespace = org.wxyc.iphoneapp.watchkitapp` instead.
+
+A watch `app_launch` is not evidence that anyone opened the watch app. Over the 120 days to 2026-10-01, 255 of 1,161 watch launches followed a phone `play` from the same IP address by under two minutes, against 3 or 4 when the same match is run at a shifted time. That is the signature of watchOS opening an audio app's watch companion by itself when the phone starts playing. Count watch `play` events to measure watch listening.
