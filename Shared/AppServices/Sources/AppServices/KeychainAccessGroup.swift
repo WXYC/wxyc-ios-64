@@ -82,11 +82,12 @@ public enum KeychainAccessGroup {
     internal static func resolve(declared: String?) -> String? {
         // A prefix is required, not merely a suffix match. In an unsigned build
         // `$(AppIdentifierPrefix)` expands to nothing, leaving the bare
-        // `group.wxyc.iphone` — and simulator builds are unsigned by project
-        // policy (`CODE_SIGNING_ALLOWED[sdk=*simulator*] = NO`), so they carry
-        // no entitlements and can use no access group at all. Rejecting the
-        // unprefixed form is what turns that into `nil` instead of a group
-        // nothing is entitled to.
+        // `group.wxyc.iphone`, and such a build carries no entitlements and
+        // can use no access group at all. The test gate and CI build the app
+        // that way (`CODE_SIGNING_ALLOWED=NO` on the command line); an
+        // ordinary simulator build is signed ad hoc and gets the Team ID as
+        // its prefix. Rejecting the unprefixed form is what turns the
+        // unsigned case into `nil` instead of a group nothing is entitled to.
         guard let declared, declared.hasSuffix(".\(groupName)") else { return nil }
         return declared
     }

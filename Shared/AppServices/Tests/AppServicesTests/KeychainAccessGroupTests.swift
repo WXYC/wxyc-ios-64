@@ -44,9 +44,10 @@ struct KeychainAccessGroupTests {
     ///
     /// The bare `group.wxyc.iphone` row is the load-bearing one: that is what
     /// `$(AppIdentifierPrefix)group.wxyc.iphone` expands to in an **unsigned**
-    /// build, and simulator builds are unsigned by project policy
-    /// (`CODE_SIGNING_ALLOWED[sdk=*simulator*] = NO`), so they hold no
-    /// entitlements and can use no access group at all.
+    /// build, which holds no entitlements and can use no access group at all.
+    /// `scripts/test-affected.sh` and CI build the app that way
+    /// (`CODE_SIGNING_ALLOWED=NO` on the command line), so it is the value the
+    /// test gate's own host app carries.
     @Test("refuses anything that is not a prefixed wxyc group", arguments: [
         nil,                                  // key absent from Info.plist
         "",                                   // key present but empty
