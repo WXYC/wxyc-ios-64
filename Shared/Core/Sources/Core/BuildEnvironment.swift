@@ -72,7 +72,7 @@ public extension BuildEnvironment {
     /// ``init(isDebugBuild:isSimulator:hasSandboxReceipt:hasProvisioningProfile:)``,
     /// ``hasSandboxReceipt(at:)`` and ``containsProvisioningProfile(at:relativePath:)``
     /// instead — the same split
-    /// `AnalyticsBootstrap.watchOSOSSuperProperties(systemVersion:)` uses to
+    /// `AnalyticsBootstrap.watchOSPlatformProperties(systemVersion:)` uses to
     /// keep its own platform gate out of the testable part.
     static let current: BuildEnvironment = {
         #if targetEnvironment(simulator)
