@@ -26,5 +26,8 @@ Both concrete `ErrorReporter`s route through `ErrorEvent`, so their property key
 
 - **iOS** — `CompositeErrorReporter` (local log + PostHog `ErrorEvent` + Sentry). Wired in `WXYCApp.init()`.
 - **watchOS** — `PostHogErrorReporter` (local log + PostHog `ErrorEvent`; no Sentry on watch). Wired in `WatchXYC.init()`.
+- **tvOS** — `PostHogErrorReporter`, for the same reason. Wired in `WXYCTVApp.init()`.
+
+`ErrorReporting.shared` defaults to a no-op, so an entry point that does not install a reporter discards every error the shared packages report. A new platform target has to wire one.
 
 Historical note: `PostHogErrorReporter` previously emitted the message under a `description` key. Older builds still in the wild carry that key; queries that must include pre-migration data should coalesce `error` and `description` until those builds age out.

@@ -9,6 +9,7 @@
 //
 
 import Analytics
+import Logger
 import Playback
 import Playlist
 import AppServices
@@ -27,6 +28,11 @@ struct WXYCTVApp: App {
 
     init() {
         setUpAnalytics()
+        // tvOS links no Sentry, so PostHog is the only sink, as on watchOS.
+        // Left at its `NoOpErrorReporter` default, every error the shared
+        // packages report through `ErrorReporting` is discarded on this
+        // platform.
+        ErrorReporting.shared = PostHogErrorReporter.shared
         StructuredPostHogAnalytics.shared.capture(AppLaunchSimple())
     }
 
