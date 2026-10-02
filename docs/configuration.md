@@ -113,6 +113,19 @@ If a runner ever does build something shipping, the phase will fail it — delib
 - Code Sign Style: Automatic
 - All targets (including extensions) must have `DevelopmentTeam` in their TargetAttributes
 
+### Simulator builds
+
+Simulator builds are signed too: ad hoc ("Sign to Run Locally"), which needs no certificate, profile, or Apple ID. Do not turn that off in the project with `CODE_SIGNING_ALLOWED = NO`, whether conditional on the simulator SDK or not. Two things ride on it:
+
+- **The launch screen.** An unsigned bundle has no resource seal, and SpringBoard will not render a launch storyboard out of an unsealed bundle. It logs `Resource validation error: Security error -67056`, denylists the app, and every launch from then on starts from solid black instead of `LaunchScreen.storyboard`. Nothing in the build reports it, and launch-time appearance measured on such a build is not what a device shows (#1137).
+- **Entitlements.** They are embedded as part of signing. Without them every Keychain call fails with `errSecMissingEntitlement (-34018)`, and `group.wxyc.iphone` is not a shared container: the suite's defaults are written into each app's private data container instead.
+
+On the simulator the App ID prefix is the Team ID (`92V374HC38`) for every bundle ID, so a signed simulator build's Keychain access group is `92V374HC38.group.wxyc.iphone`. The production prefix `Q43UJWVEZV` exists only on a device build of `org.wxyc.iphoneapp` — see `KeychainAccessGroup`.
+
+`scripts/test-affected.sh` and the CI workflows pass `CODE_SIGNING_ALLOWED=NO` on the command line, so the test host they build is still unsigned and unentitled. That is scoped to those invocations. `SimulatorCodeSigningTests` fails if the setting returns to the project file or an xcconfig.
+
+To see whether a simulator install has a launch image, look for a `<bundle id> - {DEFAULT GROUP}` folder under `Library/SplashBoard/Snapshots/` in the app's data container, or read SpringBoard's side of it with `xcrun simctl spawn <udid> log show --last 5m --predicate 'subsystem == "com.apple.SplashBoard"'`. Installing a signed build over a denylisted one clears the denylist.
+
 ### Extension Targets
 
 - **Request Share Extension**: Share sheet integration for sharing songs

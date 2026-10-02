@@ -216,6 +216,7 @@
 				iOS/Tests/WXYCTests/RoutePickerButtonTests.swift,
 				iOS/Tests/WXYCTests/SentryLaunchProfilingGateTests.swift,
 				iOS/Tests/WXYCTests/SentryLogsDestinationTests.swift,
+				iOS/Tests/WXYCTests/SimulatorCodeSigningTests.swift,
 				iOS/Tests/WXYCTests/SingletoniaDismissedConcertsStorageTests.swift,
 				iOS/Tests/WXYCTests/SingletoniaForegroundRoutingTests.swift,
 				iOS/Tests/WXYCTests/SingletoniaLikedStorageTests.swift,
@@ -312,6 +313,7 @@
 				iOS/Tests/WXYCTests/RoutePickerButtonTests.swift,
 				iOS/Tests/WXYCTests/SentryLaunchProfilingGateTests.swift,
 				iOS/Tests/WXYCTests/SentryLogsDestinationTests.swift,
+				iOS/Tests/WXYCTests/SimulatorCodeSigningTests.swift,
 				iOS/Tests/WXYCTests/SingletoniaDismissedConcertsStorageTests.swift,
 				iOS/Tests/WXYCTests/SingletoniaForegroundRoutingTests.swift,
 				iOS/Tests/WXYCTests/SingletoniaLikedStorageTests.swift,
@@ -998,7 +1000,6 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGNING_ALLOWED[sdk=*simulator*]" = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -1500,7 +1501,6 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGNING_ALLOWED[sdk=*simulator*]" = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -1910,7 +1910,6 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGNING_ALLOWED[sdk=*simulator*]" = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -2007,7 +2006,6 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGNING_ALLOWED[sdk=*simulator*]" = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 92V374HC38;
@@ -2073,7 +2071,6 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGNING_ALLOWED[sdk=*simulator*]" = NO;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 92V374HC38;
