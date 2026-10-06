@@ -17,16 +17,21 @@ import Synchronization
 /// The normalizer property is protected with Mutex for thread-safe access when normalization mode changes from MainActor.
 final class RMSProcessor: @unchecked Sendable, SignalProcessor {
     let normalizerMutex: Mutex<any Normalizer>
+    let barCount: Int
     
-    init(normalizationMode: NormalizationMode = .ema) {
-        self.normalizerMutex = Mutex(normalizationMode.createNormalizer())
+    /// - Parameters:
+    ///   - barCount: Number of bars the frame is bucketed into
+    ///   - normalizationMode: How to normalize RMS values for display
+    init(barCount: Int = VisualizerConstants.barAmount, normalizationMode: NormalizationMode = .ema) {
+        self.barCount = barCount
+        self.normalizerMutex = Mutex(normalizationMode.createNormalizer(bandCount: barCount))
     }
     
     func process(data: UnsafeMutablePointer<Float>, frameLength: Int) -> [Float] {
-        let samplesPerBar = frameLength / VisualizerConstants.barAmount
-        var rmsValues = [Float](repeating: 0, count: VisualizerConstants.barAmount)
+        let samplesPerBar = frameLength / barCount
+        var rmsValues = [Float](repeating: 0, count: barCount)
         
-        for barIndex in 0..<VisualizerConstants.barAmount {
+        for barIndex in 0..<barCount {
             let startSample = barIndex * samplesPerBar
             let endSample = min(startSample + samplesPerBar, frameLength)
             let sampleCount = endSample - startSample

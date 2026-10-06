@@ -20,6 +20,9 @@ import Synchronization
 /// free from the extension below.
 protocol SignalProcessor: AudioProcessor {
     var normalizerMutex: Mutex<any Normalizer> { get }
+
+    /// Number of bars (bands) the processor outputs per frame
+    var barCount: Int { get }
 }
 
 extension SignalProcessor {
@@ -31,7 +34,7 @@ extension SignalProcessor {
 
     func setNormalizationMode(_ mode: NormalizationMode) {
         normalizerMutex.withLock { normalizer in
-            normalizer = mode.createNormalizer()
+            normalizer = mode.createNormalizer(bandCount: barCount)
         }
     }
 }
