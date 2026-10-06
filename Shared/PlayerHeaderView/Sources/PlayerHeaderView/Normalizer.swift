@@ -137,7 +137,8 @@ final class PerBandEMANormalizer: @unchecked Sendable, Normalizer {
 
 extension NormalizationMode {
     /// Create a normalizer instance for this mode
-    func createNormalizer() -> any Normalizer {
+    /// - Parameter bandCount: Number of bands a per-band normalizer tracks; ignored by the other modes
+    func createNormalizer(bandCount: Int = VisualizerConstants.barAmount) -> any Normalizer {
         switch self {
         case .none:
             return NoNormalizer()
@@ -146,7 +147,7 @@ extension NormalizationMode {
         case .circularBuffer:
             return CircularBufferNormalizer()
         case .perBandEMA:
-            return PerBandEMANormalizer()
+            return PerBandEMANormalizer(bandCount: bandCount)
         }
     }
 }

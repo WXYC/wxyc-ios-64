@@ -42,7 +42,7 @@ public struct VisualizerTimelineView: View {
     }
     
     /// Falling dot positions (one per bar) - used when playback stops
-    @State private var fallingDots: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
+    @State private var fallingDots: [Float]
     
     /// Whether the falling animation is active
     @State private var isFalling: Bool = false
@@ -52,7 +52,7 @@ public struct VisualizerTimelineView: View {
     private let fallDecayFactor: Float = 0.92
     
     /// Smoothed display values that animate at frame rate (interpolates between audio updates)
-    @State private var smoothedValues: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
+    @State private var smoothedValues: [Float]
     
     /// Attack factor for rising values (higher = faster response to increases)
     /// At 60 FPS, 0.5 gives quick attack (~2 frames to reach target)
@@ -69,9 +69,7 @@ public struct VisualizerTimelineView: View {
     @State private var cachedShowFPS = false
     
     /// Pre-allocated BarData array to avoid allocations each frame
-    @State private var barDataCache: [BarData] = (0..<VisualizerConstants.barAmount).map {
-        BarData(category: String($0), value: 0)
-    }
+    @State private var barDataCache: [BarData]
     
     /// Animation runs while the visualizer is active (consuming or draining) OR while dots are falling
     private var isAnimating: Bool {
@@ -86,6 +84,12 @@ public struct VisualizerTimelineView: View {
         self.visualizer = visualizer
         self._barHistory = barHistory
         self.onDebugTapped = onDebugTapped
+        let barCount = visualizer.barCount
+        self._fallingDots = State(initialValue: Array(repeating: 0, count: barCount))
+        self._smoothedValues = State(initialValue: Array(repeating: 0, count: barCount))
+        self._barDataCache = State(initialValue: (0..<barCount).map {
+            BarData(category: String($0), value: 0)
+        })
     }
     
     public var body: some View {
@@ -120,8 +124,8 @@ public struct VisualizerTimelineView: View {
         .onChange(of: visualizer.isActive) { wasActive, nowActive in
             if !wasActive && nowActive {
                 // Resuming — clear stale smoothed values so bars start from zero
-                smoothedValues = Array(repeating: 0, count: VisualizerConstants.barAmount)
-                for barIndex in 0..<VisualizerConstants.barAmount {
+                smoothedValues = Array(repeating: 0, count: visualizer.barCount)
+                for barIndex in 0..<visualizer.barCount {
                     barDataCache[barIndex] = BarData(category: String(barIndex), value: 0)
                 }
                 isFalling = false
@@ -146,7 +150,7 @@ public struct VisualizerTimelineView: View {
     /// Capture current bar tops and start the falling animation
     private func startFalling() {
         // Capture the top position of each bar as a falling dot
-        for barIndex in 0..<VisualizerConstants.barAmount {
+        for barIndex in 0..<visualizer.barCount {
             fallingDots[barIndex] = barHistory[barIndex][0]
         }
         isFalling = true
@@ -169,7 +173,7 @@ public struct VisualizerTimelineView: View {
         // Cache displayData to avoid repeated computed property access
         let currentDisplayData = displayData
         
-        for barIndex in 0..<VisualizerConstants.barAmount {
+        for barIndex in 0..<visualizer.barCount {
             // Get target value from audio data
             let targetValue = barIndex < currentDisplayData.count 
                 ? min(currentDisplayData[barIndex], VisualizerConstants.magnitudeLimit) 
@@ -202,7 +206,7 @@ public struct VisualizerTimelineView: View {
     private func updateFallingDots() {
         var allZero = true
         
-        for barIndex in 0..<VisualizerConstants.barAmount {
+        for barIndex in 0..<visualizer.barCount {
             if fallingDots[barIndex] > 0.5 {
                 // Decay exponentially
                 fallingDots[barIndex] *= fallDecayFactor
