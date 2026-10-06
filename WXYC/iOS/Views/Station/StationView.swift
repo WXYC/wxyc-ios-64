@@ -269,12 +269,13 @@ struct StationView: View {
 /// of text.
 struct StationHero: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .center, spacing: 8) {
             Image("logo white")
                 .resizable()
                 .scaledToFit()
-                .frame(maxWidth: .infinity)
-                .scaleEffect(0.85)
+                .containerRelativeFrame(.horizontal) { available, _ in
+                    StationHeroLayout.logoWidth(in: available)
+                }
                 .padding(.top, 10)
                 .accessibilityHidden(true)
 
@@ -283,6 +284,19 @@ struct StationHero: View {
                 .foregroundStyle(.white)
                 .padding(.vertical, 8)
         }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// The width rule for the hero logo: a fixed share of the available width (it
+/// participates in layout, unlike a post-layout scale), capped so it stops
+/// growing on wide windows.
+nonisolated enum StationHeroLayout {
+    static let logoWidthFraction: CGFloat = 0.85
+    static let maxLogoWidth: CGFloat = 360
+
+    static func logoWidth(in available: CGFloat) -> CGFloat {
+        min(available * logoWidthFraction, maxLogoWidth)
     }
 }
 
@@ -476,9 +490,9 @@ struct FittingText: View {
         Text(text)
             .font(.system(size: 100))   // large “base” size
             .lineLimit(1)               // single line only
-            .minimumScaleFactor(0.01)   // allow shrinking down to 1% if needed
+            .minimumScaleFactor(0.01)   // the base size is a maximum; it only shrinks
             .allowsTightening(true)     // optional: tighter kerning
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 
