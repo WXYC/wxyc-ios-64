@@ -16,7 +16,11 @@ import Foundation
 
 /// Configuration constants for the audio visualizer
 enum VisualizerConstants {
-    static let updateInterval = 1.0 / 60.0
+    /// The visualizer's baseline timeline interval.
+    ///
+    /// ``VisualizerRefreshRate`` owns the rate itself, since it also decides when
+    /// the visualizer is allowed to exceed it.
+    static let updateInterval = 1.0 / Double(VisualizerRefreshRate.baselineFramesPerSecond)
     static let barAmount = 16
     static let historyLength = 8
     static let magnitudeLimit: Float = 64
@@ -81,6 +85,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         static let fftProcessingEnabled = "visualizer.fftProcessingEnabled"
         static let rmsProcessingEnabled = "visualizer.rmsProcessingEnabled"
         static let showFPS = "visualizer.showFPS"
+        static let highRefreshRateEnabled = "visualizer.highRefreshRateEnabled"
     }
 
     // MARK: - Observable Output (not persisted)
@@ -178,6 +183,16 @@ public final class VisualizerDataSource: @unchecked Sendable {
         didSet { defaults.set(showFPS, forKey: DefaultsKeys.showFPS) }
     }
 
+    /// Whether the visualizer may run above 60 FPS on a high-refresh-rate display.
+    ///
+    /// Off by default: the extra frames are pure power cost on a display that
+    /// cannot show them, and on the displays that can, most listeners are not
+    /// watching the bars closely enough to notice. See ``VisualizerRefreshRate``
+    /// for how this becomes a timeline interval.
+    public var highRefreshRateEnabled: Bool = false {
+        didSet { defaults.set(highRefreshRateEnabled, forKey: DefaultsKeys.highRefreshRateEnabled) }
+    }
+
     // MARK: - Stream Consumption State
 
     @ObservationIgnored
@@ -244,6 +259,9 @@ public final class VisualizerDataSource: @unchecked Sendable {
         }
         if defaults.object(forKey: DefaultsKeys.showFPS) != nil {
             self.showFPS = defaults.bool(forKey: DefaultsKeys.showFPS)
+        }
+        if defaults.object(forKey: DefaultsKeys.highRefreshRateEnabled) != nil {
+            self.highRefreshRateEnabled = defaults.bool(forKey: DefaultsKeys.highRefreshRateEnabled)
         }
     }
         
@@ -364,6 +382,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         // displayProcessor's didSet will set the processing flags appropriately
         displayProcessor = .rms
         showFPS = false
+        highRefreshRateEnabled = false
     }
 
     /// Sets the signal boost level
