@@ -286,6 +286,7 @@ struct OnTourTabView: View {
             }
             .padding(.vertical, 8)
         }
+        .contentColumn()
         .refreshable { await model.load() }
     }
 
