@@ -17,6 +17,8 @@ import Foundation
 /// Configuration constants for the audio visualizer
 enum VisualizerConstants {
     static let updateInterval = 1.0 / 60.0
+    /// Default bar count. Production constructs the pipeline with this; every sized
+    /// array derives from the count the pipeline was constructed with instead.
     static let barAmount = 16
     static let historyLength = 8
     static let magnitudeLimit: Float = 64
@@ -83,13 +85,22 @@ public final class VisualizerDataSource: @unchecked Sendable {
         static let showFPS = "visualizer.showFPS"
     }
 
+    // MARK: - Configuration
+
+    /// Bar count production constructs the pipeline with.
+    public static let defaultBarCount = VisualizerConstants.barAmount
+
+    /// Number of bars the pipeline produces; fixed at construction.
+    @ObservationIgnored
+    public let barCount: Int
+
     // MARK: - Observable Output (not persisted)
 
     /// FFT magnitude values for visualization
     public var fftMagnitudes: [Float] = []
 
     /// RMS values per frequency bar
-    public var rmsPerBar: [Float] = Array(repeating: 0, count: VisualizerConstants.barAmount)
+    public var rmsPerBar: [Float]
 
     /// Whether the visualizer should be considered active (consuming or draining).
     /// True when consuming a stream or when the delay buffer still has frames to display.
@@ -205,7 +216,15 @@ public final class VisualizerDataSource: @unchecked Sendable {
 
     // MARK: - Initialization
 
-    public init(defaults: DefaultsStorage = UserDefaults.standard) {
+    /// - Parameters:
+    ///   - barCount: Number of bars the FFT/RMS processors and view layer size themselves to
+    ///   - defaults: Storage for persisted visualizer settings
+    public init(
+        barCount: Int = VisualizerDataSource.defaultBarCount,
+        defaults: DefaultsStorage = UserDefaults.standard
+    ) {
+        self.barCount = barCount
+        self.rmsPerBar = Array(repeating: 0, count: barCount)
         self.defaults = defaults
 
         // Load persisted values from UserDefaults
@@ -217,10 +236,11 @@ public final class VisualizerDataSource: @unchecked Sendable {
     
         // Initialize processors with stored values
         self.fftProcessor = FFTProcessor(
+            barCount: barCount,
             normalizationMode: storedNormMode,
             frequencyWeightingExponent: storedWeighting
         )
-        self.rmsProcessor = RMSProcessor(normalizationMode: storedRmsNormMode)
+        self.rmsProcessor = RMSProcessor(barCount: barCount, normalizationMode: storedRmsNormMode)
 
         // Load all other persisted settings
         if let boost = defaults.object(forKey: DefaultsKeys.signalBoost) as? Float {
@@ -304,7 +324,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         // visualizer starts from silence rather than showing a frozen frame.
         delayBuffer.clear()
         fftMagnitudes = []
-        rmsPerBar = Array(repeating: 0, count: VisualizerConstants.barAmount)
+        rmsPerBar = Array(repeating: 0, count: barCount)
 
         let viz = self
         consumptionTask = Task.detached(priority: .userInitiated) {
@@ -333,7 +353,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
             fftMagnitudes = frame.fftMagnitudes
 
             let rmsValues = frame.rmsPerBar
-            for i in 0..<VisualizerConstants.barAmount {
+            for i in 0..<barCount {
                 let newValue = i < rmsValues.count ? rmsValues[i] : 0
                 rmsPerBar[i] = rmsSmoothing * rmsPerBar[i] + (1 - rmsSmoothing) * newValue
             }
@@ -351,7 +371,7 @@ public final class VisualizerDataSource: @unchecked Sendable {
         delayBuffer.clear()
 
         fftMagnitudes = []
-        rmsPerBar = Array(repeating: 0, count: VisualizerConstants.barAmount)
+        rmsPerBar = Array(repeating: 0, count: barCount)
         fftProcessor.reset()
         rmsProcessor.reset()
 

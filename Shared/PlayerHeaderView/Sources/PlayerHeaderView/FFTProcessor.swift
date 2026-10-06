@@ -19,13 +19,14 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
     private let bufferSize = 2048  // Larger buffer for better frequency resolution
     private var fftSetup: OpaquePointer?
     let normalizerMutex: Mutex<any Normalizer>
+    let barCount: Int
     
     /// Pre-computed Hann window to reduce spectral leakage
     private let hannWindow: [Float]
     
     /// Pre-computed logarithmic band boundaries (FFT bin indices)
     /// Each bar covers bins from bandBoundaries[i] to bandBoundaries[i+1]-1
-    private let bandBoundaries: [Int]
+    let bandBoundaries: [Int]
     
     /// Minimum FFT bin (used for gain calculations)
     private let minBin: Int
@@ -36,10 +37,16 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
     private let bandGainsMutex: Mutex<[Float]>
     
     /// - Parameters:
+    ///   - barCount: Number of logarithmic frequency bands (one per bar)
     ///   - normalizationMode: How to normalize FFT magnitudes for display
     ///   - frequencyWeightingExponent: Exponent for frequency compensation (0 = raw/bass-heavy, 0.5 = balanced, 1.0 = treble-emphasized)
-    init(normalizationMode: NormalizationMode, frequencyWeightingExponent: Float) {
-        self.normalizerMutex = Mutex(normalizationMode.createNormalizer())
+    init(
+        barCount: Int = VisualizerConstants.barAmount,
+        normalizationMode: NormalizationMode,
+        frequencyWeightingExponent: Float
+    ) {
+        self.barCount = barCount
+        self.normalizerMutex = Mutex(normalizationMode.createNormalizer(bandCount: barCount))
         
         // Create Hann window: w[n] = 0.5 * (1 - cos(2πn / N))
         // This reduces spectral leakage by tapering the signal at the edges
@@ -48,9 +55,8 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
         self.hannWindow = window
         
         // Pre-compute logarithmic frequency band boundaries
-        // Maps barAmount bars to FFT bins with logarithmic spacing
+        // Maps barCount bars to FFT bins with logarithmic spacing
         let fftBins = bufferSize / 2  // Usable bins (Nyquist bin excluded)
-        let barCount = VisualizerConstants.barAmount
         
         // Define frequency range: ~30Hz to ~16kHz (assuming 44.1kHz sample rate)
         // Bin frequency = bin_index * sample_rate / bufferSize
@@ -74,7 +80,8 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
         let gains = Self.computeBandGains(
             boundaries: boundaries,
             minBin: minBin,
-            exponent: frequencyWeightingExponent
+            exponent: frequencyWeightingExponent,
+            barCount: barCount
         )
         self.bandGainsMutex = Mutex(gains)
         
@@ -86,12 +93,13 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
     ///   - boundaries: Pre-computed FFT bin boundaries for each bar
     ///   - minBin: Minimum FFT bin (reference for frequency ratio)
     ///   - exponent: Weighting exponent (0 = no boost, 0.5 = sqrt/balanced, 1.0 = linear/max boost)
+    ///   - barCount: Number of bars (bands)
     private static func computeBandGains(
         boundaries: [Int],
         minBin: Int,
-        exponent: Float
+        exponent: Float,
+        barCount: Int
     ) -> [Float] {
-        let barCount = VisualizerConstants.barAmount
         var gains = [Float](repeating: 1.0, count: barCount)
         
         guard exponent > 0 else { return gains }
@@ -112,7 +120,7 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
     }
     
     func process(data: UnsafeMutablePointer<Float>, frameLength: Int) -> [Float] {
-        guard let setup = fftSetup else { return Array(repeating: 0, count: VisualizerConstants.barAmount) }
+        guard let setup = fftSetup else { return Array(repeating: 0, count: barCount) }
         
         // Ensure we have enough data (pad with zeros if needed, or truncate)
         let samplesToUse = min(frameLength, bufferSize)
@@ -144,9 +152,9 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
         
         // Map FFT bins to visualization bars using pre-computed logarithmic boundaries
         // Each bar averages the magnitudes in its frequency band, then applies gain compensation
-        var magnitudes = [Float](repeating: 0, count: VisualizerConstants.barAmount)
+        var magnitudes = [Float](repeating: 0, count: barCount)
         
-        for barIndex in 0..<VisualizerConstants.barAmount {
+        for barIndex in 0..<barCount {
             let startBin = bandBoundaries[barIndex]
             let endBin = bandBoundaries[barIndex + 1]
             
@@ -167,7 +175,7 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
         
         // Apply per-band gain compensation for natural frequency roll-off (thread-safe access)
         bandGainsMutex.withLock { bandGains in
-            for i in 0..<VisualizerConstants.barAmount {
+            for i in 0..<barCount {
                 magnitudes[i] *= bandGains[i]
             }
         }
@@ -186,7 +194,8 @@ final class FFTProcessor: @unchecked Sendable, SignalProcessor {
         let newGains = Self.computeBandGains(
             boundaries: bandBoundaries,
             minBin: minBin,
-            exponent: exponent
+            exponent: exponent,
+            barCount: barCount
         )
         bandGainsMutex.withLock { bandGains in
             bandGains = newGains

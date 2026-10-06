@@ -48,7 +48,7 @@ public struct PlayerHeaderView: View {
         } else {
             _barHistory = State(initialValue: Array(
                 repeating: Array(repeating: 0, count: VisualizerConstants.historyLength),
-                count: VisualizerConstants.barAmount
+                count: visualizer.barCount
             ))
         }
     }
@@ -111,7 +111,10 @@ public struct PlayerHeaderView: View {
 // MARK: - Helper Functions
 
 /// Creates an initial bar history array with optional preview values
-func createBarHistory(previewValues: [Float]? = nil) -> [[Float]] {
+func createBarHistory(
+    barCount: Int = VisualizerConstants.barAmount,
+    previewValues: [Float]? = nil
+) -> [[Float]] {
     if let values = previewValues {
         return values.map { value in
             var history = Array(repeating: Float(0), count: VisualizerConstants.historyLength)
@@ -121,7 +124,7 @@ func createBarHistory(previewValues: [Float]? = nil) -> [[Float]] {
     } else {
         return Array(
             repeating: Array(repeating: 0, count: VisualizerConstants.historyLength),
-            count: VisualizerConstants.barAmount
+            count: barCount
         )
     }
 }
