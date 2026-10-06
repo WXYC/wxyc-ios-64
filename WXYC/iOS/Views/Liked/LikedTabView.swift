@@ -150,6 +150,7 @@ struct LikedTabView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .contentColumn()
     }
 
     private var emptyState: some View {

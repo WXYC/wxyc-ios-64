@@ -145,6 +145,7 @@ struct StationView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
         }
+        .contentColumn()
         .accessibilityIdentifier("stationView")
         .task {
             for await playlist in appState.playlistService.updates() {
