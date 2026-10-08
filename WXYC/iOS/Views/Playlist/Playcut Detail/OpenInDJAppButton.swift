@@ -52,8 +52,8 @@ struct OpenInDJAppButton: View {
     /// app isn't installed. Checked as the body renders rather than in an
     /// `onAppear`: a hidden button has no view to hang one on, and a
     /// placeholder would still take a slot in the detail's spaced `VStack`.
-    /// Liked-tab details never qualify — `LikedSongSnapshot.toPlaycut()` carries
-    /// no `albumId`.
+    /// Liked-tab details qualify too: `LikedSongSnapshot.toPlaycut()` carries
+    /// the album id the like was saved (or later healed) with.
     private var openableURL: URL? {
         #if targetEnvironment(macCatalyst)
         // The DJ app is iPhone-only.
