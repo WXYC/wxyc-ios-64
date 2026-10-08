@@ -8,7 +8,9 @@
 //  state correct at first paint with no load/toggle race. Likes never leave
 //  the device. `heal(from:)` stamps catalog artist ids onto name-only rows
 //  when id-bearing plays of the same folded artist name are observed, which
-//  is what makes free-text likes eligible for the For You shelf (#493).
+//  is what makes free-text likes eligible for the For You shelf (#493), and
+//  album ids onto rows saved without one, which is what gives them the detail
+//  card's "Open in WXYC DJ" link (#1151).
 //
 //  Created by Jake Bromberg on 07/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -77,27 +79,49 @@ public final class LikedSongsStore {
         persist()
     }
 
-    /// Observation-time id healing: any id-bearing playcut whose folded artist
-    /// name matches a nil-id liked row stamps that id onto the row. `likedAt`
-    /// is preserved; rows that already carry an id are never touched. Saves
-    /// only when something changed.
+    /// Observation-time id healing. Any id-bearing playcut whose folded artist
+    /// name matches a nil-id liked row stamps its artist id onto the row. A
+    /// playcut with an album id stamps it onto a nil-album row only when the
+    /// song key *and* the folded release title match: a like's identity
+    /// excludes the album, so the same song from a different release must not
+    /// point the row's "Open in WXYC DJ" link at an album other than the one
+    /// it shows. `likedAt` is preserved; ids a row already carries are never
+    /// touched. Saves only when something changed.
     public func heal(from playcuts: [Playcut]) {
         var idsByFoldedArtist: [String: Int] = [:]
+        var albumIdsBySongRelease: [String: Int] = [:]
         for playcut in playcuts {
             if let artistId = playcut.artistId {
                 idsByFoldedArtist[SongKey.fold(playcut.artistName)] = artistId
             }
+            if let albumId = playcut.albumId, let key = Self.songReleaseKey(playcut) {
+                albumIdsBySongRelease[key] = albumId
+            }
         }
-        guard !idsByFoldedArtist.isEmpty else { return }
+        guard !idsByFoldedArtist.isEmpty || !albumIdsBySongRelease.isEmpty else { return }
 
         var changed = false
-        for index in songs.indices where songs[index].artistId == nil {
-            if let artistId = idsByFoldedArtist[SongKey.fold(songs[index].artistName)] {
+        for index in songs.indices {
+            if songs[index].artistId == nil,
+               let artistId = idsByFoldedArtist[SongKey.fold(songs[index].artistName)] {
                 songs[index].artistId = artistId
+                changed = true
+            }
+            if songs[index].albumId == nil,
+               let key = Self.songReleaseKey(songs[index]),
+               let albumId = albumIdsBySongRelease[key] {
+                songs[index].albumId = albumId
                 changed = true
             }
         }
         if changed { persist() }
+    }
+
+    /// The song key plus the folded release title, or nil when there is no
+    /// release to match on.
+    private static func songReleaseKey(_ song: some SongDisplayable) -> String? {
+        guard let releaseTitle = song.releaseTitle else { return nil }
+        return SongKey.key(artist: song.artistName, title: song.songTitle) + "|" + SongKey.fold(releaseTitle)
     }
 
     /// Distinct catalog artist ids across liked songs — the For You shelf's

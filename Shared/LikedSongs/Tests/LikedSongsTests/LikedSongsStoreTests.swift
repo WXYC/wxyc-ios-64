@@ -3,9 +3,9 @@
 //  LikedSongs
 //
 //  Store behavior: toggle/dedupe across release and casing variants, newest-
-//  first ordering, observation-time id healing, the For You id projection,
-//  analytics bucketing, and persistence (write-through, round-trip, corrupt-
-//  data recovery) — all through InMemoryFileStorage so the real encode/decode
+//  first ordering, observation-time artist- and album-id healing, the For You
+//  id projection, analytics bucketing, and persistence (write-through,
+//  round-trip, legacy rows, corrupt-data recovery) — all through InMemoryFileStorage so the real encode/decode
 //  paths run with no disk.
 //
 //  Created by Jake Bromberg on 07/18/26.
@@ -158,6 +158,55 @@ struct LikedSongsStoreTests {
         store.heal(from: [Playcut.stub(songTitle: "Anotherlife", artistName: "Nilüfer Yanya", releaseTitle: nil, artistId: 1502)])
         let (reloaded, _, _) = makeStore(storage: storage)
         #expect(reloaded.songs.first?.artistId == 1502)
+    }
+
+    // MARK: - Album id (the Liked tab's "Open in WXYC DJ" link, #1151)
+
+    @Test("A like keeps the playcut's album id, and the bridged playcut carries it back")
+    func likeKeepsAlbumId() {
+        let (store, _, _) = makeStore()
+        store.toggle(Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again", albumId: 4417))
+        #expect(store.songs[0].albumId == 4417)
+        #expect(store.songs[0].toPlaycut().albumId == 4417)
+    }
+
+    @Test("A like stored before album ids decodes with none")
+    func legacyRowDecodesWithoutAlbumId() throws {
+        let legacy = #"[{"songTitle":"la paradoja","artistName":"Juana Molina","releaseTitle":"DOGA","likedAt":0}]"#
+        let (store, _, _) = makeStore(storage: InMemoryFileStorage(initial: Data(legacy.utf8)))
+        #expect(store.songs.count == 1)
+        #expect(store.songs[0].albumId == nil)
+    }
+
+    @Test("Heal stamps an album id only from a replay of the same song on the same release", arguments: [
+        ("JESSICA PRATT", "back, baby", "on your own love again", 4417 as Int?),
+        ("Jessica Pratt", "Back, Baby", "Jessica Pratt", nil),
+        ("Jessica Pratt", "Back, Baby", nil, nil),
+        ("Jessica Pratt", "Game That I Play", "On Your Own Love Again", nil),
+    ])
+    func healAlbumId(artist: String, title: String, release: String?, expected: Int?) {
+        let (store, _, _) = makeStore()
+        store.toggle(Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again"))
+        store.heal(from: [Playcut.stub(songTitle: title, artistName: artist, releaseTitle: release, albumId: 4417)])
+        #expect(store.songs[0].albumId == expected)
+    }
+
+    @Test("Heal never replaces an album id the like already carries")
+    func healSkipsAlbumIdBearing() {
+        let (store, _, _) = makeStore()
+        store.toggle(Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again", albumId: 4417))
+        store.heal(from: [Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again", albumId: 9001)])
+        #expect(store.songs[0].albumId == 4417)
+    }
+
+    @Test("A healed album id survives a reload from the same storage")
+    func healAlbumIdPersists() {
+        let storage = InMemoryFileStorage()
+        let (store, _, _) = makeStore(storage: storage)
+        store.toggle(Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again"))
+        store.heal(from: [Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again", albumId: 4417)])
+        let (reloaded, _, _) = makeStore(storage: storage)
+        #expect(reloaded.songs.first?.albumId == 4417)
     }
 
     // MARK: - For You projection + analytics bucket
