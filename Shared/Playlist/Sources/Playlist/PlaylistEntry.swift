@@ -363,8 +363,8 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// Catalog album id for this play, from the v2 flowsheet's `album_id` —
     /// the `library.id` the DJ app's `wxycdj://album/<id>` link opens (see
     /// `DJAppLink`). `nil` for free-text plays (no catalog link), the v1 API,
-    /// liked-song snapshots, and cache blobs written before the field. Additive
-    /// and nullable, exactly like ``artistId``.
+    /// likes saved before liked-song snapshots kept it, and cache blobs written
+    /// before the field. Additive and nullable, exactly like ``artistId``.
     public let albumId: Int?
 
     /// An upcoming Triangle-area show for this track's artist, embedded on the
