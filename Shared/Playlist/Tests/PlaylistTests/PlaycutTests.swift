@@ -376,6 +376,43 @@ struct PlaycutArtistIdTests {
     }
 }
 
+// MARK: - albumId (#1151)
+
+@Suite("Playcut albumId Tests")
+struct PlaycutAlbumIdTests {
+
+    @Test("albumId survives an encode/decode round-trip (disk-cached playlists)")
+    func albumIdRoundTrip() throws {
+        let original = Playcut(
+            id: 1,
+            hour: 1706544000000,
+            chronOrderID: 1,
+            timeCreated: 1706549400000,
+            songTitle: "la paradoja",
+            labelName: "Sonamos",
+            artistName: "Juana Molina",
+            releaseTitle: "DOGA",
+            albumId: 4417
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Playcut.self, from: data)
+        #expect(decoded.albumId == 4417)
+        #expect(decoded == original)
+    }
+
+    @Test("A cache blob written before the field existed decodes with albumId == nil")
+    func preFieldBlobDecodesNil() throws {
+        let json = """
+        {
+            "id": 1, "hour": 1706544000000, "chronOrderID": 1, "timeCreated": 1706549400000,
+            "songTitle": "la paradoja", "artistName": "Juana Molina", "artistId": 645
+        }
+        """
+        let legacy = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
+        #expect(legacy.albumId == nil)
+    }
+}
+
 // MARK: - discogsUnavailable (#390)
 
 @Suite("Playcut discogsUnavailable Tests")
@@ -454,6 +491,7 @@ struct HasV2MetadataTests {
         genres: [String]? = nil,
         styles: [String]? = nil,
         artistId: Int? = nil,
+        albumId: Int? = nil,
         upcomingShow: Concert? = nil,
         criticReviews: [CriticReview]? = nil,
         metadataStatus: MetadataStatus? = nil,
@@ -481,6 +519,7 @@ struct HasV2MetadataTests {
             genres: genres,
             styles: styles,
             artistId: artistId,
+            albumId: albumId,
             upcomingShow: upcomingShow,
             criticReviews: criticReviews,
             metadataStatus: metadataStatus,
@@ -557,27 +596,30 @@ struct HasV2MetadataTests {
         #expect(playcut(genres: ["Rock"], metadataStatus: .failedNoRetry).hasV2Metadata == true)
     }
 
-    // MARK: - Excluded fields (artistId, upcomingShow, criticReviews — #695; discogsUnavailable — #390)
+    // MARK: - Excluded fields (artistId, upcomingShow, criticReviews — #695; discogsUnavailable — #390; albumId — #1151)
 
-    /// `artistId`, `upcomingShow`, `criticReviews`, and `discogsUnavailable`
-    /// are real, additive inline fields — decoded onto `Playcut` and (except
-    /// `artistId`/`upcomingShow`) also folded into the `PlaycutDetailView`
-    /// inline builder — but none of them is part of the 12-field predicate.
-    /// Each is gated by its own independent mechanism instead: `artistId` by
-    /// the likes feature, `upcomingShow` by the Box Office CTA,
+    /// `artistId`, `albumId`, `upcomingShow`, `criticReviews`, and
+    /// `discogsUnavailable` are real, additive inline fields — decoded onto
+    /// `Playcut` and (except `artistId`/`albumId`/`upcomingShow`) also folded
+    /// into the `PlaycutDetailView` inline builder — but none of them is part
+    /// of the 12-field predicate. Each is gated by its own independent
+    /// mechanism instead: `artistId` by the likes feature, `albumId` by the
+    /// "Open in WXYC DJ" button, `upcomingShow` by the Box Office CTA,
     /// `criticReviews` by `AlbumMetadata.hasCriticReviews` /
     /// `CriticReviewsFeature.shouldShowReviews`, and `discogsUnavailable` by
     /// the artwork-rendering gate (`ArtworkLoader`, `PlaycutDetailView`'s
     /// artwork fetch).
     @Test(
         "nil status, exactly one excluded field alone is still false",
-        arguments: ["artistId", "upcomingShow", "criticReviews", "discogsUnavailable"]
+        arguments: ["artistId", "albumId", "upcomingShow", "criticReviews", "discogsUnavailable"]
     )
     func excludedFieldAloneIsFalse(field: String) {
         let p: Playcut
         switch field {
         case "artistId":
             p = playcut(artistId: 812)
+        case "albumId":
+            p = playcut(albumId: 4417)
         case "upcomingShow":
             p = playcut(upcomingShow: .stub())
         case "criticReviews":

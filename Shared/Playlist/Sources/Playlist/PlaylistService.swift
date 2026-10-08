@@ -870,6 +870,7 @@ private extension Playcut {
             genres: genres,
             styles: styles,
             artistId: artistId,
+            albumId: albumId,
             upcomingShow: upcomingShow,
             criticReviews: criticReviews,
             metadataStatus: metadataStatus,
