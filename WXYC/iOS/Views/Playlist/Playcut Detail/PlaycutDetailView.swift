@@ -196,6 +196,10 @@ struct PlaycutDetailView: View {
                     )
                     .foregroundStyle(.white)
                 }
+
+                // Outside the condition above: a catalog-linked play often has
+                // no Discogs/Wikipedia link yet.
+                OpenInDJAppButton(playcut: playcut)
                 
                 Spacer(minLength: 40)
             }

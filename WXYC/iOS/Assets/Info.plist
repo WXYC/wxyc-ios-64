@@ -49,6 +49,10 @@
 	<false/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.music</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>wxycdj</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
