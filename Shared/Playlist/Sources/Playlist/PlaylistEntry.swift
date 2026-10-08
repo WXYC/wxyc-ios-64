@@ -360,6 +360,13 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// ``artistBio`` metadata precedent.
     public let artistId: Int?
 
+    /// Catalog album id for this play, from the v2 flowsheet's `album_id` —
+    /// the `library.id` the DJ app's `wxycdj://album/<id>` link opens (see
+    /// `DJAppLink`). `nil` for free-text plays (no catalog link), the v1 API,
+    /// liked-song snapshots, and cache blobs written before the field. Additive
+    /// and nullable, exactly like ``artistId``.
+    public let albumId: Int?
+
     /// An upcoming Triangle-area show for this track's artist, embedded on the
     /// flowsheet feed by Backend-Service when the played track's resolved artist
     /// matches a curated upcoming concert (the soonest one). `nil` when the artist
@@ -422,11 +429,12 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// `enrichedNoMatch`/`failedNoRetry` — enrichment is done, so render from
     /// whatever inline fields exist, even zero of them, rather than issuing a
     /// degradable `/proxy/metadata/album` fetch) OR when any of the 12 inline
-    /// enriched fields is present. `artistId` (a likes key), `upcomingShow`
-    /// (a touring CTA), and `criticReviews` (gated independently by
-    /// `AlbumMetadata.hasCriticReviews` / `CriticReviewsFeature.shouldShowReviews`
-    /// — #695) are excluded — none of the three is playcut-detail metadata in
-    /// the sense this predicate cares about. See #685: checking only
+    /// enriched fields is present. `artistId` (a likes key), `albumId` (a
+    /// DJ-app link key), `upcomingShow` (a touring CTA), and `criticReviews`
+    /// (gated independently by `AlbumMetadata.hasCriticReviews` /
+    /// `CriticReviewsFeature.shouldShowReviews` — #695) are excluded — none of
+    /// the four is playcut-detail metadata in the sense this predicate cares
+    /// about. See #685: checking only
     /// artwork/Discogs/Spotify classified sparse-but-valid terminal rows as
     /// "no metadata."
     ///
@@ -436,10 +444,10 @@ public struct Playcut: PlaylistEntry, Hashable {
     /// construction in `PlaycutMetadataResolver.inlineMetadata(for:)`
     /// (`Metadata`). There's no compiler-enforced link between the three —
     /// #685 itself was partly a fix for one such drift (`artworkURL` was in
-    /// this predicate but missing from the resolver's builder). `artistId` and
-    /// `upcomingShow` are decoded onto `Playcut` (so they do appear in the
-    /// decoder) but have no `PlaycutMetadata`/`AlbumMetadata` counterpart, so
-    /// they never appear in the resolver's builder either. `criticReviews` is
+    /// this predicate but missing from the resolver's builder). `artistId`,
+    /// `albumId`, and `upcomingShow` are decoded onto `Playcut` (so they do
+    /// appear in the decoder) but have no `PlaycutMetadata`/`AlbumMetadata`
+    /// counterpart, so they never appear in the resolver's builder either. `criticReviews` is
     /// different: `AlbumMetadata` *does* have a `criticReviews` field, so it
     /// rides along in the decoder AND the resolver's builder (#695) — it's
     /// just excluded from this predicate specifically, exactly like the other
@@ -487,6 +495,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         case genres
         case styles
         case artistId
+        case albumId
         // The wire field is snake_case (the backend `Concert` embed), unlike the
         // camelCase legacy playcut keys around it. Named to match the contract so
         // the value round-trips through `Concert`'s own snake_case Codable.
@@ -522,6 +531,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         genres: [String]? = nil,
         styles: [String]? = nil,
         artistId: Int? = nil,
+        albumId: Int? = nil,
         upcomingShow: Concert? = nil,
         criticReviews: [CriticReview]? = nil,
         metadataStatus: MetadataStatus? = nil,
@@ -550,6 +560,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.genres = genres
         self.styles = styles
         self.artistId = artistId
+        self.albumId = albumId
         self.upcomingShow = upcomingShow
         self.criticReviews = criticReviews
         self.metadataStatus = metadataStatus
@@ -610,6 +621,7 @@ public struct Playcut: PlaylistEntry, Hashable {
             self.genres = try container.decodeIfPresent([String].self, forKey: .genres)
             self.styles = try container.decodeIfPresent([String].self, forKey: .styles)
             self.artistId = try container.decodeIfPresent(Int.self, forKey: .artistId)
+            self.albumId = try container.decodeIfPresent(Int.self, forKey: .albumId)
             // Optional, additive, and tolerant: an absent/null embed decodes to
             // `nil`, `Concert`'s own tolerant decode absorbs an unknown status, and
             // a present-but-malformed embed (a missing required sub-field from a

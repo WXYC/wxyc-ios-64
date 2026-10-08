@@ -35,6 +35,8 @@ extension Playcut {
     ///   - artistId: Resolved WXYC catalog artist id (the `artists.id` keyspace
     ///     shared with `Concert.headliningArtistId`). Defaults to nil, matching
     ///     free-text plays with no catalog link.
+    ///   - albumId: Resolved WXYC catalog album id (`library.id`). Defaults to
+    ///     nil, matching free-text plays with no catalog link.
     ///   - criticReviews: Optional feed-inline critic-review snippets (ADR 0012).
     ///     Defaults to nil.
     ///   - metadataStatus: Optional enrichment lifecycle state. Defaults to nil.
@@ -55,6 +57,7 @@ extension Playcut {
         genres: [String]? = nil,
         styles: [String]? = nil,
         artistId: Int? = nil,
+        albumId: Int? = nil,
         upcomingShow: Concert? = nil,
         criticReviews: [CriticReview]? = nil,
         metadataStatus: MetadataStatus? = nil,
@@ -75,6 +78,7 @@ extension Playcut {
             genres: genres,
             styles: styles,
             artistId: artistId,
+            albumId: albumId,
             upcomingShow: upcomingShow,
             criticReviews: criticReviews,
             metadataStatus: metadataStatus,

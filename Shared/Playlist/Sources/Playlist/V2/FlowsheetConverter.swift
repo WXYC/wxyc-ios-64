@@ -74,6 +74,7 @@ enum FlowsheetConverter {
                     genres: entry.genres,
                     styles: entry.styles,
                     artistId: entry.artist_id,
+                    albumId: entry.album_id,
                     upcomingShow: entry.upcoming_show?.concert,
                     criticReviews: entry.criticReviews,
                     metadataStatus: entry.metadataStatus
