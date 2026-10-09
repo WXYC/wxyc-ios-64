@@ -23,8 +23,6 @@ struct DJAppLinkTests {
             (4417 as Int?, "wxycdj://album/4417" as String?),
             (1, "wxycdj://album/1"),
             (nil, nil),
-            (0, nil),
-            (-5, nil),
         ]
     )
     func albumURL(albumId: Int?, expected: String?) {

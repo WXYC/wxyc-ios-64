@@ -20,9 +20,10 @@ public enum DJAppLink {
     public static let scheme = "wxycdj"
 
     /// The DJ-app link for a play's catalog album id, or `nil` when the play
-    /// isn't catalog-linked (`albumId` nil or not a positive library id).
+    /// isn't catalog-linked. `FlowsheetConverter` already turns a non-positive
+    /// `album_id` into `nil`, so any id here is a real `library.id`.
     public static func albumURL(albumId: Int?) -> URL? {
-        guard let albumId, albumId > 0 else { return nil }
+        guard let albumId else { return nil }
         return URL(string: "\(scheme)://album/\(albumId)")
     }
 }

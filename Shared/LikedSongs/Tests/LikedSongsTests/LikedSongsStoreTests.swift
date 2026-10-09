@@ -132,12 +132,13 @@ struct LikedSongsStoreTests {
         #expect(store.songs[0].likedAt == likedAt)
     }
 
-    @Test("Heal never touches rows that already carry an id")
+    @Test("Heal never replaces an artist or album id the row already carries")
     func healSkipsIdBearing() {
         let (store, _, _) = makeStore()
-        store.toggle(Playcut.stub(songTitle: "Percolator", artistName: "Stereolab", releaseTitle: nil, artistId: 118))
-        store.heal(from: [Playcut.stub(songTitle: "French Disko", artistName: "Stereolab", releaseTitle: nil, artistId: 999)])
+        store.toggle(Playcut.stub(songTitle: "Percolator", artistName: "Stereolab", releaseTitle: "Emperor Tomato Ketchup", artistId: 118, albumId: 4417))
+        store.heal(from: [Playcut.stub(songTitle: "Metronomic Underground", artistName: "Stereolab", releaseTitle: "Emperor Tomato Ketchup", artistId: 999, albumId: 9001)])
         #expect(store.songs[0].artistId == 118)
+        #expect(store.songs[0].albumId == 4417)
     }
 
     @Test("Heal with no folded-name match changes nothing and does not save")
@@ -150,14 +151,15 @@ struct LikedSongsStoreTests {
         #expect(storage.saveCount == savesBefore)
     }
 
-    @Test("A healed id survives a reload from the same storage")
+    @Test("Healed artist and album ids survive a reload from the same storage")
     func healPersists() {
         let storage = InMemoryFileStorage()
         let (store, _, _) = makeStore(storage: storage)
-        store.toggle(Playcut.stub(songTitle: "Midnight Sun", artistName: "NILÜFER YANYA", releaseTitle: nil))
-        store.heal(from: [Playcut.stub(songTitle: "Anotherlife", artistName: "Nilüfer Yanya", releaseTitle: nil, artistId: 1502)])
+        store.toggle(Playcut.stub(songTitle: "Midnight Sun", artistName: "NILÜFER YANYA", releaseTitle: "My Method Actor"))
+        store.heal(from: [Playcut.stub(songTitle: "Like I Say", artistName: "Nilüfer Yanya", releaseTitle: "My Method Actor", artistId: 1502, albumId: 6120)])
         let (reloaded, _, _) = makeStore(storage: storage)
         #expect(reloaded.songs.first?.artistId == 1502)
+        #expect(reloaded.songs.first?.albumId == 6120)
     }
 
     // MARK: - Album id (the Liked tab's "Open in WXYC DJ" link, #1151)
@@ -178,11 +180,13 @@ struct LikedSongsStoreTests {
         #expect(store.songs[0].albumId == nil)
     }
 
-    @Test("Heal stamps an album id only from a replay of the same song on the same release", arguments: [
+    @Test("Heal stamps an album id from any play of the same folded artist and release", arguments: [
         ("JESSICA PRATT", "back, baby", "on your own love again", 4417 as Int?),
+        // Another track from the same release identifies the same album.
+        ("Jessica Pratt", "Game That I Play", "On Your Own Love Again", 4417),
         ("Jessica Pratt", "Back, Baby", "Jessica Pratt", nil),
         ("Jessica Pratt", "Back, Baby", nil, nil),
-        ("Jessica Pratt", "Game That I Play", "On Your Own Love Again", nil),
+        ("Cat Power", "Back, Baby", "On Your Own Love Again", nil),
     ])
     func healAlbumId(artist: String, title: String, release: String?, expected: Int?) {
         let (store, _, _) = makeStore()
@@ -191,22 +195,12 @@ struct LikedSongsStoreTests {
         #expect(store.songs[0].albumId == expected)
     }
 
-    @Test("Heal never replaces an album id the like already carries")
-    func healSkipsAlbumIdBearing() {
+    @Test("The heal key is structured, so a separator inside a name can't make two releases collide")
+    func healKeyDoesNotCollideOnSeparators() {
         let (store, _, _) = makeStore()
-        store.toggle(Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again", albumId: 4417))
-        store.heal(from: [Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again", albumId: 9001)])
-        #expect(store.songs[0].albumId == 4417)
-    }
-
-    @Test("A healed album id survives a reload from the same storage")
-    func healAlbumIdPersists() {
-        let storage = InMemoryFileStorage()
-        let (store, _, _) = makeStore(storage: storage)
-        store.toggle(Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again"))
-        store.heal(from: [Playcut.stub(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again", albumId: 4417)])
-        let (reloaded, _, _) = makeStore(storage: storage)
-        #expect(reloaded.songs.first?.albumId == 4417)
+        store.toggle(Playcut.stub(songTitle: "Song", artistName: "Artist", releaseTitle: "Release|Edition"))
+        store.heal(from: [Playcut.stub(songTitle: "Song", artistName: "Artist|Release", releaseTitle: "Edition", albumId: 4417)])
+        #expect(store.songs[0].albumId == nil)
     }
 
     // MARK: - For You projection + analytics bucket
