@@ -18,8 +18,12 @@ struct ExternalLinkButton: View {
 
     var body: some View {
         Button {
-            onTap?(title)
-            openURL(url)
+            // Recorded only once the system accepts the URL, so a link that
+            // couldn't open (an uninstalled app, a rejected scheme) isn't
+            // counted as a tap that went somewhere.
+            openURL(url) { accepted in
+                if accepted { onTap?(title) }
+            }
         } label: {
             LinkButtonLabel(
                 icon: icon,

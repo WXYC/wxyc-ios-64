@@ -74,7 +74,11 @@ enum FlowsheetConverter {
                     genres: entry.genres,
                     styles: entry.styles,
                     artistId: entry.artist_id,
-                    albumId: entry.album_id,
+                    // `library.id` is a serial from 1, so anything else is
+                    // not a catalog link. Normalized here, where the id enters
+                    // the app, so nothing downstream (the DJ-app link, a liked
+                    // row that would then never heal) re-checks it.
+                    albumId: entry.album_id.flatMap { $0 > 0 ? $0 : nil },
                     upcomingShow: entry.upcoming_show?.concert,
                     criticReviews: entry.criticReviews,
                     metadataStatus: entry.metadataStatus

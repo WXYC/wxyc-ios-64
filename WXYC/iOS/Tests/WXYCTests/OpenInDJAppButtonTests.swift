@@ -25,7 +25,6 @@ struct OpenInDJAppButtonTests {
             (4417 as Int?, true, "wxycdj://album/4417" as String?),
             (4417, false, nil),
             (nil, true, nil),
-            (0, true, nil),
         ]
     )
     func visibility(albumId: Int?, canOpen: Bool, expected: String?) {

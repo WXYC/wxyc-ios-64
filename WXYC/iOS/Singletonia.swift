@@ -596,15 +596,17 @@ final class Singletonia {
         }
     }
 
-    /// Heals name-only likes on every playlist tick.
+    /// Heals likes saved without catalog ids, on every playlist tick.
     ///
     /// Subscribes to `PlaylistService.updates()` (a multi-observer broadcast),
     /// the same insertion pattern as `startSpotlightDonation()`. Each tick's
     /// id-bearing playcuts stamp catalog artist ids onto liked rows whose like
-    /// predates the id being on the wire (free-text plays, the v1 API path) —
-    /// what makes those likes eligible for the For You shelf (#493). `heal` is
-    /// cheap (a dictionary pass over ~KB of snapshots) and saves only when
-    /// something changed.
+    /// predates the id being on the wire (free-text plays, the v1 API path),
+    /// which makes those likes eligible for the For You shelf (#493), and
+    /// album ids onto rows saved without one, which gives them the detail's
+    /// "Open in WXYC DJ" link (#1151). `heal` gates each pass on its own
+    /// lookup table, folds each name once, and saves only when something
+    /// changed.
     ///
     /// The captures are intentionally strong: the task's lifetime is bound to
     /// `Singletonia.shared` (a static let), so there is no cycle to break and

@@ -46,4 +46,18 @@ struct SongKeyTests {
                 != SongKey.key(artist: "Jessica Pratt", title: "la paradoja")
         )
     }
+
+    @Test("Release keys fold like song keys and need a non-blank release title")
+    func releaseKeys() {
+        #expect(
+            SongKey.releaseKey(artist: "JESSICA  PRATT", release: "On Your Own Love Again")
+                == SongKey.releaseKey(artist: "Jessica Pratt", release: "on your own love again")
+        )
+        #expect(
+            SongKey.releaseKey(artist: "Jessica Pratt", release: "On Your Own Love Again")
+                != SongKey.releaseKey(artist: "Cat Power", release: "On Your Own Love Again")
+        )
+        #expect(SongKey.releaseKey(artist: "Jessica Pratt", release: nil) == nil)
+        #expect(SongKey.releaseKey(artist: "Jessica Pratt", release: "  ") == nil)
+    }
 }

@@ -1201,4 +1201,30 @@ struct FlowsheetConverterArtistIdTests {
         #expect(playlist.playcuts.first?.artistId == nil)
         #expect(playlist.playcuts.first?.albumId == nil)
     }
+
+    @Test("A non-positive album_id is not a catalog link and becomes nil", arguments: [
+        (789 as Int?, 789 as Int?),
+        (0, nil),
+        (-5, nil),
+        (nil, nil),
+    ])
+    func normalizesAlbumId(albumId: Int?, expected: Int?) {
+        let entry = FlowsheetEntry(
+            id: 127,
+            show_id: 456,
+            album_id: albumId,
+            artist_name: "Stereolab",
+            album_title: "Aluminum Tunes",
+            track_title: "Aluminum Tunes",
+            record_label: "Duophonic",
+            rotation_id: nil,
+            rotation_play_freq: nil,
+            request_flag: false,
+            message: nil,
+            play_order: 5,
+            add_time: "2026-04-17T22:53:48.500Z"
+        )
+
+        #expect(FlowsheetConverter.convert([entry]).playcuts.first?.albumId == expected)
+    }
 }

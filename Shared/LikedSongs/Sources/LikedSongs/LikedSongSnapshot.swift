@@ -30,8 +30,8 @@ public struct LikedSongSnapshot: Codable, Equatable, Sendable, Identifiable, Son
     /// Catalog album id (`library.id` keyspace), the target of the detail
     /// card's "Open in WXYC DJ" link (#1151). Nil for an unlinked play and for
     /// every like saved before this field existed (a missing key decodes as
-    /// nil); healed by ``LikedSongsStore/heal(from:)`` from a later play of the
-    /// same song on the same release.
+    /// nil); healed by ``LikedSongsStore/heal(from:)`` from a later play of any
+    /// track on the same artist and release.
     public internal(set) var albumId: Int?
 
     public let releaseTitle: String?

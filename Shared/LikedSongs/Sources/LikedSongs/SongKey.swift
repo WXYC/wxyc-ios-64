@@ -8,6 +8,8 @@
 //  ALL-CAPS free-text replay, and the single vs. LP cut of the same song
 //  dedupe to one row. The album is deliberately excluded from identity, and
 //  the catalog artistId is an attribute, never part of the key (#492).
+//  `releaseKey` is the separate, release-level key that album-id healing
+//  matches on (#1151).
 //
 //  Created by Jake Bromberg on 07/18/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -38,5 +40,28 @@ public enum SongKey {
     /// practice ("|" survives folding untouched but never terminates a fold).
     public static func key(artist: String, title: String) -> String {
         fold(artist) + "|" + fold(title)
+    }
+
+    /// A release's identity for album-id healing: folded artist and folded
+    /// release title, kept as separate fields so a separator inside either
+    /// name can't make two releases collide.
+    struct ReleaseKey: Hashable, Sendable {
+        let artist: String
+        let release: String
+    }
+
+    /// The release key for an artist and release title, or `nil` without a
+    /// non-blank release title.
+    static func releaseKey(artist: String, release: String?) -> ReleaseKey? {
+        releaseKey(foldedArtist: fold(artist), release: release)
+    }
+
+    /// ``releaseKey(artist:release:)`` for a caller that has already folded
+    /// the artist name.
+    static func releaseKey(foldedArtist: String, release: String?) -> ReleaseKey? {
+        guard let release else { return nil }
+        let folded = fold(release)
+        guard !folded.isEmpty else { return nil }
+        return ReleaseKey(artist: foldedArtist, release: folded)
     }
 }

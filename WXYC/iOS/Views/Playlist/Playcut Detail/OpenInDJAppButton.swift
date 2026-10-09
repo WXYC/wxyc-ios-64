@@ -18,10 +18,15 @@ import WXUI
 
 struct OpenInDJAppButton: View {
     @Environment(\.canOpenURL) private var canOpenURL
+    @Environment(\.scenePhase) private var scenePhase
     let playcut: Playcut
     var onTap: (() -> Void)?
 
     var body: some View {
+        // Read so the body re-runs, and the DJ app is asked about again, each
+        // time the app returns to the foreground: it may have been installed
+        // or deleted while the detail was open.
+        let _ = scenePhase
         if let url = openableURL {
             DetailCard {
                 ExternalLinkButton(
@@ -48,7 +53,7 @@ struct OpenInDJAppButton: View {
     }
 
     /// The button's visibility rule, separated from the environment so it can
-    /// be tested: a positive catalog album id, and a DJ app that can be opened.
+    /// be tested: a catalog album id, and a DJ app that can be opened.
     static func openableURL(albumId: Int?, canOpen: (URL) -> Bool) -> URL? {
         guard let url = DJAppLink.albumURL(albumId: albumId), canOpen(url) else { return nil }
         return url
