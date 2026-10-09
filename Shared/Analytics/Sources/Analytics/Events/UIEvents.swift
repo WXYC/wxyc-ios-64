@@ -146,6 +146,26 @@ public struct ExternalLinkTapped {
     }
 }
 
+/// Event fired when the playcut detail's "Open in WXYC DJ" button opens the
+/// DJ app.
+///
+/// Answers one question: do DJs use the listener app's button to reach the DJ
+/// app? It carries no properties on purpose. The button shows only when the DJ
+/// app is installed, so the tap identifies the listener as a DJ, and a song,
+/// artist, album or id on it would tie that DJ's listening to that fact. The
+/// play the tap opened is not recorded anywhere, which is why this is not an
+/// ``ExternalLinkTapped`` with a "WXYC DJ" service. `UIEventsTests` fails if a
+/// property is added.
+///
+/// The name is spelled out rather than derived, so the "DJ" in it does not
+/// rest on the macro's acronym splitting.
+@AnalyticsEvent
+public struct OpenInDJAppTapped {
+    public static let name = "open_in_dj_app_tapped"
+
+    public init() {}
+}
+
 // MARK: - CarPlay
 
 /// Event fired when CarPlay connects.

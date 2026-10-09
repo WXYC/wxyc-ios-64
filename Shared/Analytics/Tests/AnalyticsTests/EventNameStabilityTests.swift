@@ -34,6 +34,7 @@ private let expectedEventNames: [(String, String)] = [
     (PlaycutDetailViewPresented.name, "playcut_detail_view_presented"),
     (StreamingLinkTapped.name, "streaming_link_tapped"),
     (ExternalLinkTapped.name, "external_link_tapped"),
+    (OpenInDJAppTapped.name, "open_in_dj_app_tapped"),
     (CarPlayConnected.name, "carplay_connected"),
     (WidgetGetSnapshot.name, "widget_get_snapshot"),
     (WidgetGetTimeline.name, "widget_get_timeline"),
