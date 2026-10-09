@@ -104,6 +104,15 @@ struct PlaycutDetailView: View {
                 )
                 .padding(.top, 30)
 
+                // Directly under the header because nothing above it loads
+                // late: the cards below resolve after the detail opens and
+                // would push a button beneath them while a DJ reaches for it.
+                // Renders nothing for listeners (no DJ app). Its tap is
+                // recorded without the play's identity: see `OpenInDJAppTapped`.
+                OpenInDJAppButton(playcut: playcut, onTap: {
+                    StructuredPostHogAnalytics.shared.capture(OpenInDJAppTapped())
+                })
+
                 // Box Office ticket — shown when the played artist has an
                 // upcoming Triangle-area show.
                 if let upcomingShow {
@@ -182,13 +191,6 @@ struct PlaycutDetailView: View {
                     )
                     .foregroundStyle(.white)
                 }
-
-                // Outside the condition above: a catalog-linked play often has
-                // no Discogs/Wikipedia link yet. Its tap is recorded without
-                // the play's identity: see `OpenInDJAppTapped`.
-                OpenInDJAppButton(playcut: playcut, onTap: {
-                    StructuredPostHogAnalytics.shared.capture(OpenInDJAppTapped())
-                })
                 
                 Spacer(minLength: 40)
             }

@@ -558,12 +558,14 @@ private extension TicketColors {
     )
 }
 
-/// Recreates `PlaycutDetailView`'s section stack — a faithful mock header, the
-/// ticket slotted in right after it, then two placeholder sibling section cards
-/// in the app's standard `.opacity(0.1)` container — so the ticket can be judged
-/// *in context* against normal sections. Preview-only; touches no production
-/// detail view. When the data source is wired, this is the layout the real
-/// `BoxOfficeTicketView(show:)` drops into (see `PlaycutDetailView` line ~55).
+/// Recreates `PlaycutDetailView`'s section stack as a listener sees it — a
+/// faithful mock header, the ticket slotted in right after it (a DJ with the DJ
+/// app also gets "Open in WXYC DJ" between the two), then two placeholder
+/// sibling section cards in the app's standard `.opacity(0.1)` container — so
+/// the ticket can be judged *in context* against normal sections. Preview-only;
+/// touches no production detail view. When the data source is wired, this is
+/// the layout the real `BoxOfficeTicketView(show:)` drops into (see
+/// `PlaycutDetailView` line ~55).
 private struct BoxOfficeTicketDetailContextPreview: View {
     // Deliberately *not* one of the four `docs/test-fixtures.md` tracks, and
     // deliberately not `Playcut.stub()` (the app target doesn't link
