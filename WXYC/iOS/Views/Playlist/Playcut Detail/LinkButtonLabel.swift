@@ -3,7 +3,8 @@
 //  WXYC
 //
 //  A reusable button label with an icon, title, and rounded rectangle background.
-//  Used by StreamingButton and ExternalLinkButton to share their common layout
+//  Used by StreamingButton and ExternalLinkButton (and, through it,
+//  OpenInDJAppButton) to share their common layout
 //  structure while allowing each to customize color, font, and icon source.
 //
 //  Created by Jake Bromberg on 03/29/26.

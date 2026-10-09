@@ -19,10 +19,10 @@ public enum DJAppLink {
     /// lives in wxyc-dj-ios with no shared source; `DJAppLinkTests` pins it.
     public static let scheme = "wxycdj"
 
-    /// The DJ-app link for `playcut`'s catalog album, or `nil` when the play
+    /// The DJ-app link for a play's catalog album id, or `nil` when the play
     /// isn't catalog-linked (`albumId` nil or not a positive library id).
-    public static func albumURL(for playcut: Playcut) -> URL? {
-        guard let albumId = playcut.albumId, albumId > 0 else { return nil }
+    public static func albumURL(albumId: Int?) -> URL? {
+        guard let albumId, albumId > 0 else { return nil }
         return URL(string: "\(scheme)://album/\(albumId)")
     }
 }

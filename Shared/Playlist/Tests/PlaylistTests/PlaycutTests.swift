@@ -331,12 +331,12 @@ struct PlaycutTests {
     }
 }
 
-// MARK: - artistId (BS#1625 / #492)
+// MARK: - artistId (BS#1625 / #492) and albumId (#1151)
 
-@Suite("Playcut artistId Tests")
+@Suite("Playcut artistId and albumId Tests")
 struct PlaycutArtistIdTests {
 
-    @Test("artistId decodes when present and is nil when absent")
+    @Test("artistId decodes when present; artistId and albumId are nil in a blob written before them")
     func decodesArtistId() throws {
         let json = """
         {
@@ -355,9 +355,10 @@ struct PlaycutArtistIdTests {
         """
         let legacy = try JSONDecoder().decode(Playcut.self, from: Data(jsonAbsent.utf8))
         #expect(legacy.artistId == nil)
+        #expect(legacy.albumId == nil)
     }
 
-    @Test("artistId survives an encode/decode round-trip (disk-cached playlists)")
+    @Test("artistId and albumId survive an encode/decode round-trip (disk-cached playlists)")
     func artistIdRoundTrip() throws {
         let original = Playcut(
             id: 1,
@@ -368,48 +369,14 @@ struct PlaycutArtistIdTests {
             labelName: "Sonamos",
             artistName: "Juana Molina",
             releaseTitle: "DOGA",
-            artistId: 645
-        )
-        let data = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(Playcut.self, from: data)
-        #expect(decoded.artistId == 645)
-    }
-}
-
-// MARK: - albumId (#1151)
-
-@Suite("Playcut albumId Tests")
-struct PlaycutAlbumIdTests {
-
-    @Test("albumId survives an encode/decode round-trip (disk-cached playlists)")
-    func albumIdRoundTrip() throws {
-        let original = Playcut(
-            id: 1,
-            hour: 1706544000000,
-            chronOrderID: 1,
-            timeCreated: 1706549400000,
-            songTitle: "la paradoja",
-            labelName: "Sonamos",
-            artistName: "Juana Molina",
-            releaseTitle: "DOGA",
+            artistId: 645,
             albumId: 4417
         )
         let data = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(Playcut.self, from: data)
+        #expect(decoded.artistId == 645)
         #expect(decoded.albumId == 4417)
         #expect(decoded == original)
-    }
-
-    @Test("A cache blob written before the field existed decodes with albumId == nil")
-    func preFieldBlobDecodesNil() throws {
-        let json = """
-        {
-            "id": 1, "hour": 1706544000000, "chronOrderID": 1, "timeCreated": 1706549400000,
-            "songTitle": "la paradoja", "artistName": "Juana Molina", "artistId": 645
-        }
-        """
-        let legacy = try JSONDecoder().decode(Playcut.self, from: Data(json.utf8))
-        #expect(legacy.albumId == nil)
     }
 }
 

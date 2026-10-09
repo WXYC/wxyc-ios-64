@@ -95,6 +95,7 @@ struct PlaylistServiceLiveUpdatesTests {
             .update(.stub(
                 id: 5_304_111, chronOrderID: 5_304_111,
                 artworkURL: URL(string: "https://example.com/art.jpg"),
+                albumId: 4417,
                 metadataStatus: .enrichedMatch
             ))
         ])
@@ -109,43 +110,12 @@ struct PlaylistServiceLiveUpdatesTests {
 
         let afterUpdate = await iterator.next()
         let row = afterUpdate?.playcuts.first
-        // The enrichment lands...
+        // The enrichment lands, with every other incoming field...
         #expect(row?.metadataStatus == .enrichedMatch)
         #expect(row?.artworkURL == URL(string: "https://example.com/art.jpg"))
+        #expect(row?.albumId == 4417)
         // ...but the ordering key is not downgraded to the bare id.
         #expect(row?.chronOrderID == packedKey)
-    }
-
-    @Test("Keeping the stored packed key on a bare-id update does not drop albumId", .timeLimit(.minutes(1)))
-    func updateKeepingStoredPackedKeyPreservesAlbumId() async throws {
-        // `retainingOrderingKey(of:)` rebuilds the row field by field, so a
-        // field it forgets to copy silently vanishes from exactly the rows
-        // that took this path — here, the "Open in WXYC DJ" button's album id
-        // (#1151).
-        let packedKey = UInt64(42) << 32 | 9
-        let fetcher = MockPlaylistFetcher()
-        fetcher.playlistToReturn = .stub(playcuts: [
-            .stub(id: 5_304_111, chronOrderID: packedKey, albumId: 4417, metadataStatus: .pending)
-        ])
-        let source = MockLiveFsEventSource(events: [
-            .update(.stub(
-                id: 5_304_111, chronOrderID: 5_304_111,
-                albumId: 4417,
-                metadataStatus: .enrichedMatch
-            ))
-        ])
-        let service = PlaylistService(
-            fetcher: fetcher, interval: 3600,
-            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
-        )
-
-        var iterator = service.updates().makeAsyncIterator()
-        #expect(await iterator.next()?.playcuts.map(\.id) == [5_304_111])
-        await service.setForegrounded(true)
-
-        let row = await iterator.next()?.playcuts.first
-        #expect(row?.chronOrderID == packedKey)
-        #expect(row?.albumId == 4417)
     }
 
     @Test("An update for an id not yet present appends (out-of-order delivery)", .timeLimit(.minutes(1)))

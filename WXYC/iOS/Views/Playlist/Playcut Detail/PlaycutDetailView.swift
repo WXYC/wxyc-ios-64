@@ -143,14 +143,7 @@ struct PlaycutDetailView: View {
                 ) {
                     ReviewsSection(
                         reviews: metadata.album.criticReviews ?? [],
-                        onLinkTapped: { source in
-                            StructuredPostHogAnalytics.shared.capture(ExternalLinkTapped(
-                                service: source,
-                                songTitle: playcut.songTitle,
-                                artist: playcut.artistName,
-                                album: playcut.releaseTitle ?? ""
-                            ))
-                        }
+                        onLinkTapped: recordExternalLink
                     )
                     .foregroundStyle(.white)
                 }
@@ -185,21 +178,14 @@ struct PlaycutDetailView: View {
                 if metadata.discogsURL != nil || metadata.wikipediaURL != nil {
                     ExternalLinksSection(
                         metadata: metadata,
-                        onLinkTapped: { service in
-                            StructuredPostHogAnalytics.shared.capture(ExternalLinkTapped(
-                                service: service,
-                                songTitle: playcut.songTitle,
-                                artist: playcut.artistName,
-                                album: playcut.releaseTitle ?? ""
-                            ))
-                        }
+                        onLinkTapped: recordExternalLink
                     )
                     .foregroundStyle(.white)
                 }
 
                 // Outside the condition above: a catalog-linked play often has
                 // no Discogs/Wikipedia link yet.
-                OpenInDJAppButton(playcut: playcut)
+                OpenInDJAppButton(playcut: playcut, onTap: { recordExternalLink("WXYC DJ") })
                 
                 Spacer(minLength: 40)
             }
@@ -410,6 +396,17 @@ struct PlaycutDetailView: View {
             fields: LikeAnalyticsFields.make(from: playcut, liked: liked),
             surface: "detail",
             totalBucket: appState.likedSongsStore.totalBucket
+        ))
+    }
+
+    /// Records a tap on one of the detail's outbound links (Discogs,
+    /// Wikipedia, a critic review, the DJ app), with the play's identity.
+    private func recordExternalLink(_ service: String) {
+        StructuredPostHogAnalytics.shared.capture(ExternalLinkTapped(
+            service: service,
+            songTitle: playcut.songTitle,
+            artist: playcut.artistName,
+            album: playcut.releaseTitle ?? ""
         ))
     }
 

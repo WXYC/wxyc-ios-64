@@ -1155,7 +1155,7 @@ struct FlowsheetConverterArtistIdTests {
         #expect(legacy.artist_id == nil)
     }
 
-    @Test("Carries artist_id through to Playcut.artistId")
+    @Test("Carries artist_id and album_id through to Playcut")
     func carriesArtistId() {
         let entry = FlowsheetEntry(
             id: 125,
@@ -1176,9 +1176,10 @@ struct FlowsheetConverterArtistIdTests {
 
         let playlist = FlowsheetConverter.convert([entry])
         #expect(playlist.playcuts.first?.artistId == 812)
+        #expect(playlist.playcuts.first?.albumId == 789)
     }
 
-    @Test("Playcut.artistId is nil for a free-text entry (no artist_id on the wire)")
+    @Test("Playcut.artistId and albumId are nil for a free-text entry")
     func freeTextEntryHasNilArtistId() {
         let entry = FlowsheetEntry(
             id: 126,
@@ -1198,55 +1199,6 @@ struct FlowsheetConverterArtistIdTests {
 
         let playlist = FlowsheetConverter.convert([entry])
         #expect(playlist.playcuts.first?.artistId == nil)
-    }
-}
-
-// MARK: - album_id projection (#1151)
-
-@Suite("FlowsheetConverter album_id Tests")
-struct FlowsheetConverterAlbumIdTests {
-
-    @Test("Carries album_id through to Playcut.albumId")
-    func carriesAlbumId() {
-        let entry = FlowsheetEntry(
-            id: 127,
-            show_id: 456,
-            album_id: 789,
-            artist_name: "Stereolab",
-            album_title: "Aluminum Tunes",
-            track_title: "Aluminum Tunes",
-            record_label: "Duophonic",
-            rotation_id: nil,
-            rotation_play_freq: nil,
-            request_flag: false,
-            message: nil,
-            play_order: 5,
-            add_time: "2026-04-17T22:53:48.500Z"
-        )
-
-        let playlist = FlowsheetConverter.convert([entry])
-        #expect(playlist.playcuts.first?.albumId == 789)
-    }
-
-    @Test("Playcut.albumId is nil for a free-text entry (no album_id on the wire)")
-    func freeTextEntryHasNilAlbumId() {
-        let entry = FlowsheetEntry(
-            id: 128,
-            show_id: 456,
-            album_id: nil,
-            artist_name: "Chuquimamani-Condori",
-            album_title: "Edits",
-            track_title: "Call Your Name",
-            record_label: nil,
-            rotation_id: nil,
-            rotation_play_freq: nil,
-            request_flag: false,
-            message: nil,
-            play_order: 6,
-            add_time: "2026-04-17T22:53:48.500Z"
-        )
-
-        let playlist = FlowsheetConverter.convert([entry])
         #expect(playlist.playcuts.first?.albumId == nil)
     }
 }

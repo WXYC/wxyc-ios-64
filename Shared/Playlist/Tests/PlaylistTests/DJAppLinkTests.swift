@@ -12,7 +12,6 @@
 
 import Testing
 import Foundation
-import PlaylistTesting
 @testable import Playlist
 
 @Suite("DJAppLink Tests")
@@ -29,12 +28,6 @@ struct DJAppLinkTests {
         ]
     )
     func albumURL(albumId: Int?, expected: String?) {
-        let playcut = Playcut.stub(
-            songTitle: "Aluminum Tunes",
-            artistName: "Stereolab",
-            releaseTitle: "Aluminum Tunes",
-            albumId: albumId
-        )
-        #expect(DJAppLink.albumURL(for: playcut)?.absoluteString == expected)
+        #expect(DJAppLink.albumURL(albumId: albumId)?.absoluteString == expected)
     }
 }
