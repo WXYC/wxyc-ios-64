@@ -184,8 +184,11 @@ struct PlaycutDetailView: View {
                 }
 
                 // Outside the condition above: a catalog-linked play often has
-                // no Discogs/Wikipedia link yet.
-                OpenInDJAppButton(playcut: playcut, onTap: { recordExternalLink("WXYC DJ") })
+                // no Discogs/Wikipedia link yet. Its tap is recorded without
+                // the play's identity: see `OpenInDJAppTapped`.
+                OpenInDJAppButton(playcut: playcut, onTap: {
+                    StructuredPostHogAnalytics.shared.capture(OpenInDJAppTapped())
+                })
                 
                 Spacer(minLength: 40)
             }
@@ -400,7 +403,8 @@ struct PlaycutDetailView: View {
     }
 
     /// Records a tap on one of the detail's outbound links (Discogs,
-    /// Wikipedia, a critic review, the DJ app), with the play's identity.
+    /// Wikipedia, a critic review), with the play's identity. Not the DJ-app
+    /// link, whose tap is `OpenInDJAppTapped` and carries no identity.
     private func recordExternalLink(_ service: String) {
         StructuredPostHogAnalytics.shared.capture(ExternalLinkTapped(
             service: service,

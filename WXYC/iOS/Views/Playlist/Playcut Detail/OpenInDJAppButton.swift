@@ -6,7 +6,8 @@
 //  in the DJ app (wxyc-dj-ios) via `wxycdj://album/<id>`, where the DJ's Add to
 //  Bin finishes the job. Renders nothing unless the play is catalog-linked and
 //  the DJ app is installed, so listeners never see it (#1151). The tile itself
-//  is an ExternalLinkButton; the parent records the tap, as for the other links.
+//  is an ExternalLinkButton; the parent records the tap as OpenInDJAppTapped,
+//  which carries no song details because the tap identifies a DJ.
 //
 //  Created by Jake Bromberg on 10/08/26.
 //  Copyright © 2026 WXYC. All rights reserved.
