@@ -9,6 +9,7 @@
 //
 
 import SwiftUI
+import Playlist
 import Metadata
 import WXUI
 
@@ -22,7 +23,7 @@ struct ExternalLinksSection: View {
                 if let discogsURL = metadata.discogsURL {
                     ExternalLinkButton(
                         title: "Discogs",
-                        imageName: "discogs",
+                        icon: .custom(name: "discogs", bundle: .playlist),
                         url: discogsURL,
                         onTap: onLinkTapped
                     )
@@ -31,7 +32,7 @@ struct ExternalLinksSection: View {
                 if let wikipediaURL = metadata.wikipediaURL {
                     ExternalLinkButton(
                         title: "Wikipedia",
-                        imageName: "wikipedia",
+                        icon: .custom(name: "wikipedia", bundle: .playlist),
                         url: wikipediaURL,
                         onTap: onLinkTapped
                     )

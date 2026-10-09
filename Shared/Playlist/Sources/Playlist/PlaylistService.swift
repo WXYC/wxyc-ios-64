@@ -847,35 +847,10 @@ private extension Playcut {
     /// bare, incoming packed) is an upgrade and is taken as-is.
     func retainingOrderingKey(of stored: Playcut) -> Playcut {
         guard chronOrderID == id, stored.chronOrderID != stored.id else { return self }
-        return Playcut(
-            id: id,
-            hour: hour,
-            chronOrderID: stored.chronOrderID,
-            timeCreated: timeCreated,
-            songTitle: songTitle,
-            labelName: labelName,
-            artistName: artistName,
-            releaseTitle: releaseTitle,
-            rotation: rotation,
-            artworkURL: artworkURL,
-            discogsURL: discogsURL,
-            releaseYear: releaseYear,
-            spotifyURL: spotifyURL,
-            appleMusicURL: appleMusicURL,
-            youtubeMusicURL: youtubeMusicURL,
-            bandcampURL: bandcampURL,
-            soundcloudURL: soundcloudURL,
-            artistBio: artistBio,
-            artistWikipediaURL: artistWikipediaURL,
-            genres: genres,
-            styles: styles,
-            artistId: artistId,
-            albumId: albumId,
-            upcomingShow: upcomingShow,
-            criticReviews: criticReviews,
-            metadataStatus: metadataStatus,
-            discogsUnavailable: discogsUnavailable,
-            discogsUnavailableNote: discogsUnavailableNote
-        )
+        // Copy the incoming row and change only the key, so a field added to
+        // `Playcut` later can't be left behind by a hand-written rebuild.
+        var row = self
+        row.chronOrderID = stored.chronOrderID
+        return row
     }
 }

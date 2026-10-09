@@ -302,7 +302,9 @@ public extension ShowMarker {
 public struct Playcut: PlaylistEntry, Hashable {
     public let id: UInt64
     public let hour: UInt64
-    public let chronOrderID: UInt64
+    /// Mutable inside the package only, so `PlaylistService` can keep a
+    /// stored row's packed ordering key without rebuilding the whole row.
+    public internal(set) var chronOrderID: UInt64
     public let timeCreated: UInt64
 
     public let songTitle: String

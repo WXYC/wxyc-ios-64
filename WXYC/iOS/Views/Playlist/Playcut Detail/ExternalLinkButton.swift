@@ -12,7 +12,7 @@ import Playlist
 struct ExternalLinkButton: View {
     @Environment(\.openURL) private var openURL
     let title: String
-    let imageName: String
+    let icon: LinkButtonLabel.Icon
     let url: URL
     var onTap: ((String) -> Void)?
 
@@ -22,7 +22,7 @@ struct ExternalLinkButton: View {
             openURL(url)
         } label: {
             LinkButtonLabel(
-                icon: .custom(name: imageName, bundle: .playlist),
+                icon: icon,
                 title: title,
                 font: .subheadline,
                 foregroundShapeStyle: AnyShapeStyle(.primary),
