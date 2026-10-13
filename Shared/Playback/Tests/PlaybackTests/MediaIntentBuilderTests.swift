@@ -27,7 +27,7 @@ struct MediaIntentBuilderTests {
         let mediaItem = intent.mediaItems?.first
 
         #expect(mediaItem?.identifier == RadioStation.WXYC.identifier)
-        #expect(mediaItem?.title == "WXYC 89.3 FM")
+        #expect(mediaItem?.title == "WXYC")
         #expect(mediaItem?.type == .radioStation)
         // A live stream can't be resumed — see the design doc's canonical
         // identity block.

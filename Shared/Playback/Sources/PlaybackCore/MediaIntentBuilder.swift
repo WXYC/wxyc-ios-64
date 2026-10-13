@@ -41,7 +41,7 @@ public enum MediaIntentBuilder {
     public static func makePlayMediaIntent(artwork: INImage?) -> INPlayMediaIntent {
         let mediaItem = INMediaItem(
             identifier: RadioStation.WXYC.identifier,
-            title: "WXYC 89.3 FM",
+            title: RadioStation.WXYC.name,
             type: .radioStation,
             artwork: artwork
         )

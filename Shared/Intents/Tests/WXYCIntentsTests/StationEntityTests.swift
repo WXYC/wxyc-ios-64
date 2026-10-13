@@ -30,7 +30,7 @@ struct StationEntityTests {
         let station = StationEntity()
 
         #expect(station.id == "wxyc")
-        #expect(String(localized: station.displayRepresentation.title) == "WXYC 89.3 FM")
+        #expect(String(localized: station.displayRepresentation.title) == "WXYC")
     }
 
     @Test("two independent constructions carry the same singleton id")
@@ -51,7 +51,7 @@ struct StationEntityTests {
 
         let place = StationEntity().placeDescriptor
 
-        #expect(place.commonName == "WXYC 89.3 FM")
+        #expect(place.commonName == "WXYC")
         #expect(
             place.representations == [
                 .coordinate(CLLocationCoordinate2D(latitude: 35.9103868, longitude: -79.0474769))
