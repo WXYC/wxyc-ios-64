@@ -40,6 +40,7 @@
 //
 
 import AppIntents
+import Core
 import Foundation
 import GeoToolbox
 
@@ -54,7 +55,7 @@ public struct StationEntity: AppEntity, UniqueAppEntity {
     public let id = "wxyc"
 
     public var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "WXYC 89.3 FM")
+        DisplayRepresentation(title: "\(RadioStation.WXYC.name)")
     }
 
     public init() {}
@@ -69,7 +70,7 @@ extension StationEntity {
             representations: [
                 .coordinate(CLLocationCoordinate2D(latitude: 35.9103868, longitude: -79.0474769))
             ],
-            commonName: "WXYC 89.3 FM"
+            commonName: RadioStation.WXYC.name
         )
     }
 

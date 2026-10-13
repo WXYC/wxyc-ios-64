@@ -67,7 +67,7 @@ The real new *platform* exposure is **`PlaybackCore`, not `Core`.** `Core` recei
 
 ```swift
 identifier: RadioStation.WXYC.identifier   // "org.wxyc.live"
-title: "WXYC 89.3 FM"
+title: RadioStation.WXYC.name              // "WXYC"
 type: .radioStation
 resumePlayback: false                      // a live stream cannot be resumed
 suggestedInvocationPhrase: "Play WXYC"
@@ -76,7 +76,7 @@ artwork: INImage?                          // parameter, not baked in
 
 `suggestedInvocationPhrase` is part of the builder, not an afterthought: `WXYCApp.swift:391` sets it today and routing that call site through a builder that omits it would silently drop the phrase. Neither existing test would catch that — `WXYCAppShortcutsTests.swift:90-101` asserts only intent type and artwork presence.
 
-**The Shortcuts entry's title changes, visibly.** The launch-time donation currently uses `title: "Play WXYC"` (`WXYCApp.swift:379`); the canonical identity uses `"WXYC 89.3 FM"`. This is intentional — a media item's title should name the station, not an imperative, and it matches `LiveRadioStationEntity.title`. The invocation phrase, which is what the user actually says, stays `"Play WXYC"`.
+**The Shortcuts entry's title changes, visibly.** The launch-time donation currently uses `title: "Play WXYC"` (`WXYCApp.swift:379`); the canonical identity uses `RadioStation.WXYC.name`. This is intentional — a media item's title should name the station, not an imperative, and it matches `LiveRadioStationEntity.title`. The invocation phrase, which is what the user actually says, stays `"Play WXYC"`. (The title shipped as `"WXYC 89.3 FM"` in #828 and was cut to `"WXYC"` in October 2026: the title is what Siri says back and what Shortcuts lists, and with iOS 27 routing `"Play WXYC"` to Apple Music the frequency had become the only phrasing that worked — the fix there was the audio entity's `IntentValueQuery`, and the title followed so the one visible shortcut and the spoken response both read plain "WXYC".)
 
 Adopting `org.wxyc.live` — rather than `RadioStation.WXYC.name` — collapses all three identities onto the one already published to the media domain by `LiveRadioStationEntity`. `LiveRadioStationEntity.init()` is updated to read the new `RadioStation.WXYC.identifier` so the literal exists once; `PlayWXYCAudioTests.swift:36-37` asserts that value and must keep passing. Changing the SiriKit identifier discards whatever donation history exists under `"WXYC"` / `"Play WXYC"`, which is acceptable — that history is already split two ways and is demonstrably not producing suggestions.
 

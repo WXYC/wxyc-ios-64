@@ -101,7 +101,7 @@ struct WXYCAppSiriIntentInteractionTests {
         let mediaItem = intent?.mediaItems?.first
 
         #expect(mediaItem?.identifier == RadioStation.WXYC.identifier)
-        #expect(mediaItem?.title == "WXYC 89.3 FM")
+        #expect(mediaItem?.title == "WXYC")
         #expect(intent?.resumePlayback == false)
         #expect(intent?.suggestedInvocationPhrase == "Play WXYC")
     }
