@@ -32,6 +32,10 @@ Both concrete `ErrorReporter`s route through `ErrorEvent`, so their property key
 
 Historical note: `PostHogErrorReporter` previously emitted the message under a `description` key. Older builds still in the wild carry that key; queries that must include pre-migration data should coalesce `error` and `description` until those builds age out.
 
+## MetricKit diagnostics
+
+On iOS, `MetricKitSubscriber` (started from `AppBootstrap.setUpAnalytics`) forwards each `MXHangDiagnostic` and `MXCrashDiagnostic` as a PostHog `$exception` event (`ExceptionEvent`) with `source = metrickit` and `diagnostic_kind` of `hang` or `crash`. `MetricKitDiagnosticMapper` builds the event from the diagnostic's JSON, taking the attributed thread's heaviest call path as raw frames (`module`, `debug_id`, `image_offset`, `instruction_addr`). Frames are not symbolicated on device; symbolication is checked in ops step O5. Sentry's `enableMetricKit` stays off.
+
 ## Platform labels
 
 The PostHog SDK labels iOS, iPadOS, macOS and tvOS events with `$os`, `$os_name`, `$os_version` and `$device_type` on its own. It has no watchOS branch for any of the four, so `AnalyticsBootstrap.start` stamps them on every watch event through a before-send hook (`$os_name = watchOS`, `$device_type = Wearable`). The hook is installed on the config before `setup` runs, which is what lets it reach the lifecycle events `setup` captures itself.

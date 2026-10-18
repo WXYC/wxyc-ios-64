@@ -26,6 +26,9 @@ enum AppBootstrap {
             apiKey: AppConfiguration.defaults.posthogApiKey,
             host: AppConfiguration.defaults.posthogHost
         )
+        #if os(iOS)
+        MetricKitSubscriber.shared.start()
+        #endif
     }
 
     static func setUpSentry() {
