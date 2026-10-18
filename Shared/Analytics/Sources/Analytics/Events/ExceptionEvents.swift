@@ -22,6 +22,8 @@ public struct ExceptionEvent: AnalyticsEvent {
     public let source: String
     /// What kind of diagnostic it is, e.g. `"hang"` or `"crash"`.
     public let diagnosticKind: String
+    /// PostHog's `$exception_level`: `"fatal"` when the app terminated, `"error"` otherwise.
+    public let level: String
     public let exceptionList: [[String: any Sendable]]
     /// The binary images the frames reference, sent as `$debug_images` so PostHog can
     /// match each frame's `image_addr` to a dSYM. Omitted when empty.
@@ -33,7 +35,7 @@ public struct ExceptionEvent: AnalyticsEvent {
     public var properties: [String: Any]? {
         var result: [String: Any] = [
             "$exception_list": exceptionList,
-            "$exception_level": "fatal",
+            "$exception_level": level,
             "source": source,
             "diagnostic_kind": diagnosticKind,
         ]
@@ -47,12 +49,14 @@ public struct ExceptionEvent: AnalyticsEvent {
     public init(
         source: String,
         diagnosticKind: String,
+        level: String,
         exceptionList: [[String: any Sendable]],
         debugImages: [[String: any Sendable]] = [],
         additionalProperties: [String: any Sendable] = [:]
     ) {
         self.source = source
         self.diagnosticKind = diagnosticKind
+        self.level = level
         self.exceptionList = exceptionList
         self.debugImages = debugImages
         self.additionalProperties = additionalProperties

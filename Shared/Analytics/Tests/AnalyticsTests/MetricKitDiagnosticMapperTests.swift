@@ -64,6 +64,16 @@ struct MetricKitDiagnosticMapperTests {
 
     /// PostHog's error-tracking processor reads a frame as Apple only when `platform` is `apple`;
     /// without it a frame carrying `module` is read as Python and the whole event is rejected.
+    /// A hang the app recovers from is not a crash, so only crashes are fatal.
+    @Test("Exception level is error for a hang and fatal for a crash", arguments: [
+        (MetricKitDiagnosticMapper.Kind.hang, "error"),
+        (MetricKitDiagnosticMapper.Kind.crash, "fatal"),
+    ])
+    func exceptionLevel(kind: MetricKitDiagnosticMapper.Kind, level: String) throws {
+        let event = try #require(MetricKitDiagnosticMapper.event(kind: kind, json: Data(Self.hangJSON.utf8)))
+        #expect(try #require(event.properties)["$exception_level"] as? String == level)
+    }
+
     @Test("Every frame has the Apple frame shape PostHog accepts")
     func framesHaveAppleShape() throws {
         let event = try #require(

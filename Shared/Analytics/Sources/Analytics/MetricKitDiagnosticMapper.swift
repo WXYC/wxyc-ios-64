@@ -85,6 +85,8 @@ public enum MetricKitDiagnosticMapper {
         return ExceptionEvent(
             source: "metrickit",
             diagnosticKind: kind.rawValue,
+            // A hang the app recovers from is not a crash; only a crash is fatal.
+            level: kind == .crash ? "fatal" : "error",
             exceptionList: [exception],
             debugImages: debugImages(frames),
             additionalProperties: properties(metaData: metaData, period: period)
