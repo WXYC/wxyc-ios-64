@@ -36,8 +36,7 @@ public enum AnalyticsBootstrap {
     ///   - host: PostHog instance host URL.
     public static func start(apiKey: String, host: String) {
         let config = PostHogConfig(apiKey: apiKey, host: host)
-        // Off while Sentry's crash handler is installed; only explicit `captureException` calls are sent.
-        config.errorTrackingConfig.autoCapture = false
+        applyErrorTrackingPolicy(to: config)
 
         #if os(watchOS)
         // Installed on the config, so it is in place before `setup` captures its first event.
@@ -55,6 +54,20 @@ public enum AnalyticsBootstrap {
 
         let buildType = (Bundle.main.infoDictionary?["WXYC_BUILD_TYPE"] as? String) ?? "unknown"
         PostHogSDK.shared.register(["Build Configuration": buildType])
+    }
+
+    /// Configures PostHog error tracking: crash autocapture is off, so only explicit
+    /// `captureException` calls reach error tracking. Sentry's crash handler stays installed
+    /// during the dual run, and two crash handlers must not compete for the same signals.
+    ///
+    /// The SDK marks `autoCapture` unavailable on watchOS and visionOS, where it has no crash
+    /// handler to turn off, so the setting is compiled only on the other platforms.
+    ///
+    /// - Parameter config: The configuration `start(apiKey:host:)` passes to `setup`.
+    static func applyErrorTrackingPolicy(to config: PostHogConfig) {
+        #if !os(watchOS) && !os(visionOS)
+        config.errorTrackingConfig.autoCapture = false
+        #endif
     }
 
     /// Asks the analytics SDK to send any buffered events. Fire-and-forget: the actual network
