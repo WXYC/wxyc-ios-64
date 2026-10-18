@@ -10,6 +10,7 @@
 //
 
 import Foundation
+import PostHog
 import Testing
 @testable import Analytics
 
@@ -25,6 +26,21 @@ struct AnalyticsBootstrapTests {
             AnalyticsBootstrap.start(apiKey: apiKey, host: host)
         }
     }
+
+    #if !os(watchOS) && !os(visionOS)
+    @Test("error-tracking policy turns crash autocapture off (PD5)")
+    func errorTrackingPolicyTurnsCrashAutocaptureOff() {
+        // Sentry's crash handler stays installed during the dual run, so PostHog must not install
+        // a second one. Start from `true` so the test proves the policy sets the flag rather than
+        // relying on the SDK default. The property does not exist on watchOS or visionOS.
+        let config = PostHogConfig(apiKey: "test-key", host: "https://example.invalid")
+        config.errorTrackingConfig.autoCapture = true
+
+        AnalyticsBootstrap.applyErrorTrackingPolicy(to: config)
+
+        #expect(config.errorTrackingConfig.autoCapture == false)
+    }
+    #endif
 
     @Test("watchOSPlatformProperties labels the OS and the device type")
     func watchOSPlatformPropertiesLabelsOSAndDeviceType() {
