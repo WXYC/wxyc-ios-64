@@ -340,5 +340,6 @@ enum AppBootstrap {
         ErrorReporting.shared = CompositeErrorReporter()
         Logger.addDestination(SentryBreadcrumbDestination())
         Logger.addDestination(SentryLogsDestination())
+        Logger.addDestination(PostHogLogsDestination())
     }
 }
