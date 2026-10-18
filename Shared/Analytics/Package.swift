@@ -14,7 +14,7 @@ let package = Package(
     dependencies: [
         .package(path: "../AnalyticsMacros"),
         .package(path: "../Logger"),
-        .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.35.0")),
+        .package(url: "https://github.com/PostHog/posthog-ios.git", .upToNextMajor(from: "3.58.0")),
     ],
     targets: [
         .target(
