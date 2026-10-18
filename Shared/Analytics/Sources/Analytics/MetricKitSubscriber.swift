@@ -31,17 +31,21 @@ public final class MetricKitSubscriber: NSObject, MXMetricManagerSubscriber, Sen
 
     public func didReceive(_ payloads: [MXDiagnosticPayload]) {
         for payload in payloads {
+            let period = DateInterval(start: payload.timeStampBegin, end: max(payload.timeStampBegin, payload.timeStampEnd))
             for diagnostic in payload.hangDiagnostics ?? [] {
-                forward(.hang, json: diagnostic.jsonRepresentation())
+                forward(.hang, json: diagnostic.jsonRepresentation(), period: period)
             }
             for diagnostic in payload.crashDiagnostics ?? [] {
-                forward(.crash, json: diagnostic.jsonRepresentation())
+                forward(.crash, json: diagnostic.jsonRepresentation(), period: period)
             }
         }
     }
 
-    private func forward(_ kind: MetricKitDiagnosticMapper.Kind, json: Data) {
-        guard let event = MetricKitDiagnosticMapper.event(kind: kind, json: json) else { return }
+    private func forward(_ kind: MetricKitDiagnosticMapper.Kind, json: Data, period: DateInterval) {
+        let appBinaryName = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String
+        guard let event = MetricKitDiagnosticMapper.event(kind: kind, json: json, appBinaryName: appBinaryName, period: period) else {
+            return
+        }
         analytics.capture(event)
     }
 }
