@@ -23,19 +23,38 @@ public struct ExceptionEvent: AnalyticsEvent {
     /// What kind of diagnostic it is, e.g. `"hang"` or `"crash"`.
     public let diagnosticKind: String
     public let exceptionList: [[String: any Sendable]]
+    /// The binary images the frames reference, sent as `$debug_images` so PostHog can
+    /// match each frame's `image_addr` to a dSYM. Omitted when empty.
+    public let debugImages: [[String: any Sendable]]
+    /// Per-occurrence details, such as a hang's duration. Kept out of the exception's
+    /// `value` so they do not split one failure into many issues.
+    public let additionalProperties: [String: any Sendable]
 
     public var properties: [String: Any]? {
-        [
+        var result: [String: Any] = [
             "$exception_list": exceptionList,
             "$exception_level": "fatal",
             "source": source,
             "diagnostic_kind": diagnosticKind,
         ]
+        if !debugImages.isEmpty {
+            result["$debug_images"] = debugImages
+        }
+        result.merge(additionalProperties) { current, _ in current }
+        return result
     }
 
-    public init(source: String, diagnosticKind: String, exceptionList: [[String: any Sendable]]) {
+    public init(
+        source: String,
+        diagnosticKind: String,
+        exceptionList: [[String: any Sendable]],
+        debugImages: [[String: any Sendable]] = [],
+        additionalProperties: [String: any Sendable] = [:]
+    ) {
         self.source = source
         self.diagnosticKind = diagnosticKind
         self.exceptionList = exceptionList
+        self.debugImages = debugImages
+        self.additionalProperties = additionalProperties
     }
 }
