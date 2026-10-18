@@ -12,6 +12,27 @@ import Foundation
 import Testing
 @testable import Analytics
 
+@Suite("StructuredPostHogAnalytics exception capture")
+struct StructuredPostHogAnalyticsExceptionTests {
+
+    @Test("captureReportedError sends the error event and the exception, both carrying context and category")
+    func reportedErrorFiresEventAndException() throws {
+        let captured = CapturingPostHogClient()
+        let sut = StructuredPostHogAnalytics(client: captured, buildType: "Debug")
+        let error = NSError(domain: "TestDomain", code: 7, userInfo: [NSLocalizedDescriptionKey: "boom"])
+
+        sut.captureReportedError(error, context: "ctx", category: "Network", additionalData: ["k": "v"])
+
+        #expect(captured.events.map(\.name) == ["error"])
+        let exception = try #require(captured.exceptions.first)
+        #expect((exception.error as NSError).code == 7)
+        #expect(exception.properties?["context"] as? String == "ctx")
+        #expect(exception.properties?["category"] as? String == "Network")
+        #expect(exception.properties?["k"] as? String == "v")
+        #expect(exception.properties?["build_type"] as? String == "Debug")
+    }
+}
+
 @Suite("StructuredPostHogAnalytics build_type stamping")
 struct StructuredPostHogAnalyticsTests {
 
@@ -99,6 +120,19 @@ final class CapturingPostHogClient: PostHogClientProtocol, @unchecked Sendable {
     func capture(_ name: String, properties: [String: Any]?) {
         lock.withLock {
             _events.append(Captured(name: name, properties: properties))
+        }
+    }
+
+    /// Exceptions recorded by `captureException`, in capture order.
+    var exceptions: [(error: any Error, properties: [String: Any]?)] {
+        lock.withLock { _exceptions }
+    }
+
+    private var _exceptions: [(error: any Error, properties: [String: Any]?)] = []
+
+    func captureException(_ error: any Error, properties: [String: Any]?) {
+        lock.withLock {
+            _exceptions.append((error, properties))
         }
     }
 }

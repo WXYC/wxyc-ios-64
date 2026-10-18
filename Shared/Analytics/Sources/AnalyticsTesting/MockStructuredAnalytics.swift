@@ -20,6 +20,7 @@ public final class MockStructuredAnalytics: AnalyticsService {
     private struct RecordedState {
         var events: [any AnalyticsEvent] = []
         var eventNames: [String] = []
+        var exceptions: [(error: any Error, properties: [String: String])] = []
     }
 
     private let state = Mutex<RecordedState>(RecordedState())
@@ -38,10 +39,22 @@ public final class MockStructuredAnalytics: AnalyticsService {
         }
     }
 
+    /// A snapshot of all captured exceptions, in capture order. Property values are stringified so
+    /// they can live behind the `Mutex`.
+    public var exceptions: [(error: any Error, properties: [String: String])] {
+        state.withLock { $0.exceptions }
+    }
+
+    public func captureException(_ error: any Error, properties: [String: Any]?) {
+        let stringified = (properties ?? [:]).mapValues { String(describing: $0) }
+        state.withLock { $0.exceptions.append((error, stringified)) }
+    }
+
     public func reset() {
         state.withLock {
             $0.events.removeAll()
             $0.eventNames.removeAll()
+            $0.exceptions.removeAll()
         }
     }
 

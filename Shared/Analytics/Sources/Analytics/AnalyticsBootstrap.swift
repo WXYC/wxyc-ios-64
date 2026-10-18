@@ -36,6 +36,8 @@ public enum AnalyticsBootstrap {
     ///   - host: PostHog instance host URL.
     public static func start(apiKey: String, host: String) {
         let config = PostHogConfig(apiKey: apiKey, host: host)
+        // Off while Sentry's crash handler is installed; only explicit `captureException` calls are sent.
+        config.errorTrackingConfig.autoCapture = false
 
         #if os(watchOS)
         // Installed on the config, so it is in place before `setup` captures its first event.

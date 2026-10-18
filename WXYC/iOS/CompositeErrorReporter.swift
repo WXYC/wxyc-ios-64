@@ -26,12 +26,12 @@ struct CompositeErrorReporter: ErrorReporter {
         Log(.error, category: category, "\(context): \(error)")
 
         // 2. PostHog
-        StructuredPostHogAnalytics.shared.capture(ErrorEvent(
-            error: error,
+        StructuredPostHogAnalytics.shared.captureReportedError(
+            error,
             context: context,
             category: category.rawValue,
             additionalData: additionalData
-        ))
+        )
 
         // 3. Sentry
         let event = Event(level: .error)

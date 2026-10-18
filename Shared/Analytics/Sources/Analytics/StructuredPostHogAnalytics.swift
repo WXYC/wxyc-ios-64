@@ -21,11 +21,16 @@ import PostHog
 /// mutable state with a lock).
 protocol PostHogClientProtocol: Sendable {
     func capture(_ name: String, properties: [String: Any]?)
+    func captureException(_ error: any Error, properties: [String: Any]?)
 }
 
 private struct PostHogSDKClient: PostHogClientProtocol {
     func capture(_ name: String, properties: [String: Any]?) {
         PostHogSDK.shared.capture(name, properties: properties)
+    }
+
+    func captureException(_ error: any Error, properties: [String: Any]?) {
+        PostHogSDK.shared.captureException(error, properties: properties)
     }
 }
 
@@ -56,5 +61,13 @@ public struct StructuredPostHogAnalytics: AnalyticsService, Sendable {
             properties["build_type"] = buildType
         }
         client.capture(T.name, properties: properties)
+    }
+
+    public func captureException(_ error: any Error, properties: [String: Any]?) {
+        var properties = properties ?? [:]
+        if properties["build_type"] == nil {
+            properties["build_type"] = buildType
+        }
+        client.captureException(error, properties: properties)
     }
 }
