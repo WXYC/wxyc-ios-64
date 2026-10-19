@@ -94,10 +94,10 @@ struct PostHogLogsDestinationTests {
 
 /// File-local but referenced from a `@Test` parameter, so it cannot be `private`.
 enum PostHogEmitterMethod: Sendable {
-    case warn, error
+    case debug, info, warn, error, flush
 }
 
-private nonisolated final class RecordingPostHogEmitter: PostHogLogEmitter, @unchecked Sendable {
+nonisolated final class RecordingPostHogEmitter: PostHogLogEmitter, @unchecked Sendable {
     struct Call {
         let method: PostHogEmitterMethod
         let message: String
@@ -109,6 +109,18 @@ private nonisolated final class RecordingPostHogEmitter: PostHogLogEmitter, @unc
 
     var calls: [Call] {
         lock.withLock { _calls }
+    }
+
+    func debug(_ message: String, attributes: [String: Any]) {
+        lock.withLock { _calls.append(Call(method: .debug, message: message, attributes: attributes)) }
+    }
+
+    func info(_ message: String, attributes: [String: Any]) {
+        lock.withLock { _calls.append(Call(method: .info, message: message, attributes: attributes)) }
+    }
+
+    func flush() {
+        lock.withLock { _calls.append(Call(method: .flush, message: "", attributes: [:])) }
     }
 
     func warn(_ message: String, attributes: [String: Any]) {

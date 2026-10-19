@@ -188,9 +188,9 @@ struct StationView: View {
         #endif
         .sheet(isPresented: $showingBugReport) {
             BugReportView(
-                submitter: SentryBugReportSubmitter(),
+                submitter: PostHogBugReportSubmitter(),
                 analytics: StructuredPostHogAnalytics.shared,
-                logsProvider: collectBugReportLogs
+                logsProvider: collectBugReportLogLines
             )
         }
     }
@@ -499,26 +499,11 @@ struct FittingText: View {
 
 // MARK: - Bug-report logs
 
-/// Collects log files for a bug-report submission. Each file becomes its own
-/// `LogAttachment`; oversized files are truncated to their last 20 MB so they
-/// fit under Sentry's default per-attachment cap (anything larger is silently
-/// dropped server-side). `nonisolated` + top-level so it can be passed to
-/// `BugReportView`'s `@Sendable` `logsProvider` from the MainActor view body.
-nonisolated func collectBugReportLogs() -> [LogAttachment] {
-    let maxBytes = 20 * 1024 * 1024
-    let contentType = UTType.plainText.preferredMIMEType ?? "text/plain"
-    return Logger.fetchAllLogs()
-        .sorted { $0.logName > $1.logName }
-        .map { entry in
-            let trimmed = entry.data.count > maxBytes
-                ? entry.data.suffix(maxBytes)
-                : entry.data
-            return LogAttachment(
-                data: Data(trimmed),
-                filename: entry.logName,
-                contentType: contentType
-            )
-        }
+/// Collects the most recent log lines for a bug-report submission. `nonisolated` +
+/// top-level so it can be passed to `BugReportView`'s `@Sendable` `logsProvider`
+/// from the MainActor view body.
+nonisolated func collectBugReportLogLines() -> [String] {
+    BugReportLogLines.recent(from: Logger.fetchAllLogs())
 }
 
 #Preview("Station") {

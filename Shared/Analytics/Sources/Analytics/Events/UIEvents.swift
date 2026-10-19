@@ -40,10 +40,19 @@ public struct BugReportPresented {
     public init() {}
 }
 
-/// Event fired when a bug report is submitted to Sentry.
+/// Event fired when a bug report is submitted.
+///
+/// `reportId` also tags the log lines pushed to PostHog Logs for the same
+/// report, so the two can be joined.
 @AnalyticsEvent
-public struct BugReportSent {
-    public init() {}
+public struct BugReportSubmitted {
+    public let reportId: String
+    public let message: String
+
+    public init(reportId: String, message: String) {
+        self.reportId = reportId
+        self.message = message
+    }
 }
 
 // MARK: - Request Line

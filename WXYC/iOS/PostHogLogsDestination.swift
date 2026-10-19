@@ -21,8 +21,12 @@ import PostHog
 /// The methods are `nonisolated` because `LogDestination.receive(...)` is
 /// invoked from arbitrary threads (`Logger` does no actor hopping).
 protocol PostHogLogEmitter: Sendable {
+    nonisolated func debug(_ message: String, attributes: [String: Any])
+    nonisolated func info(_ message: String, attributes: [String: Any])
     nonisolated func warn(_ message: String, attributes: [String: Any])
     nonisolated func error(_ message: String, attributes: [String: Any])
+    /// Sends everything queued so far instead of waiting for the SDK's flush interval.
+    nonisolated func flush()
 }
 
 /// Adapter exposing `PostHogSDK.shared.logger` through the `PostHogLogEmitter`
@@ -30,6 +34,14 @@ protocol PostHogLogEmitter: Sendable {
 /// it (or after `close()`), so it is resolved on every emission; lines logged
 /// outside that window are dropped.
 struct PostHogSDKLoggerEmitter: PostHogLogEmitter {
+    nonisolated func debug(_ message: String, attributes: [String: Any]) {
+        PostHogSDK.shared.logger?.debug(message, attributes: attributes)
+    }
+
+    nonisolated func info(_ message: String, attributes: [String: Any]) {
+        PostHogSDK.shared.logger?.info(message, attributes: attributes)
+    }
+
     nonisolated func warn(_ message: String, attributes: [String: Any]) {
         PostHogSDK.shared.logger?.warn(message, attributes: attributes)
     }
@@ -37,9 +49,14 @@ struct PostHogSDKLoggerEmitter: PostHogLogEmitter {
     nonisolated func error(_ message: String, attributes: [String: Any]) {
         PostHogSDK.shared.logger?.error(message, attributes: attributes)
     }
+
+    nonisolated func flush() {
+        PostHogSDK.shared.flush()
+    }
 }
 
-/// Forwards warning and error log messages to PostHog Logs.
+/// Forwards warning and error log messages to PostHog Logs. Info and debug
+/// lines reach the emitter only through the bug-report push, never from here.
 ///
 /// Registered via `Logger.addDestination(_:)` at app launch. The incoming
 /// `message` is the fully formatted log string from `Logger`; the prefix is
