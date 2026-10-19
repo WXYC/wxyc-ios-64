@@ -28,6 +28,8 @@ public enum AnalyticsBootstrap {
     /// is registered as the `"Build Configuration"` super-property on every event for backward
     /// compatibility with existing PostHog insights that filter on that key.
     ///
+    /// Every `$exception_list` has its URL queries and fragments removed before it is sent: see ``ExceptionListScrub``.
+    ///
     /// On watchOS it also labels every event with the platform, which the SDK does not do there:
     /// see ``watchOSPlatformProperties(systemVersion:)``.
     ///
@@ -39,16 +41,21 @@ public enum AnalyticsBootstrap {
         applyErrorTrackingPolicy(to: config)
 
         #if os(watchOS)
-        // Installed on the config, so it is in place before `setup` captures its first event.
-        // See `stamping(_:onto:)` for why this is a before-send hook and not a super-property.
+        // See `stamping(_:onto:)` for why this is applied in a before-send hook and not as a super-property.
         let platformProperties = watchOSPlatformProperties(
             systemVersion: WKInterfaceDevice.current().systemVersion
         )
+        #endif
+
+        // Installed on the config, so it is in place before `setup` captures its first event. One hook
+        // does both jobs because the config holds a single before-send closure.
         config.setBeforeSend { event in
+            #if os(watchOS)
             event.properties = stamping(platformProperties, onto: event.properties)
+            #endif
+            event.properties = ExceptionListScrub.scrub(event.properties)
             return event
         }
-        #endif
 
         PostHogSDK.shared.setup(config)
 
