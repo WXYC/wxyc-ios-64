@@ -28,22 +28,36 @@ nonisolated protocol BugReportSubmitter: Sendable {
 /// over the cap is dropped silently at capture, so the newest records are the ones
 /// lost. Lines are therefore pushed newest first, and at most `maxRecords` of them,
 /// so an overflow costs the oldest lines and a normal live stream still fits in the
-/// same window. Each record carries the time `Logger` wrote it in `logged_at`
-/// (`yyyy-MM-dd HH:mm:ss.SSS`, device local time), because the SDK stamps records
-/// with the push time and the push order is reversed.
+/// same window. Each record carries the time `Logger` wrote it in `logged_at`, because
+/// the SDK stamps records with the push time and the push order is reversed. `Logger`
+/// writes zone-less local time, so the stamp is read in the device's current zone at
+/// push time and sent as ISO-8601 with its offset (`2026-10-19T09:41:07.123-04:00`),
+/// which lines up with the absolute timestamps on the live warning and error records.
 nonisolated struct PostHogBugReportSubmitter: BugReportSubmitter {
     /// The most records one push emits: 100 below posthog-ios's 500-per-10-s cap.
     static let maxRecords = 400
 
     private let emitter: any PostHogLogEmitter
+    /// The zone `Logger` wrote its local-time stamps in; the device's current zone in production.
+    private let timeZone: TimeZone
 
-    init(emitter: any PostHogLogEmitter = PostHogSDKLoggerEmitter()) {
+    init(emitter: any PostHogLogEmitter = PostHogSDKLoggerEmitter(), timeZone: TimeZone = .current) {
         self.emitter = emitter
+        self.timeZone = timeZone
     }
 
     /// Pushes the newest `maxRecords` info and debug lines of `logLines` (oldest first,
     /// as `BugReportLogLines.recent` returns them), newest first, then flushes.
     func submit(reportID: String, logLines: [String]) {
+        let loggerFormat = DateFormatter()
+        loggerFormat.locale = Locale(identifier: "en_US_POSIX")
+        loggerFormat.calendar = Calendar(identifier: .gregorian)
+        loggerFormat.timeZone = timeZone
+        loggerFormat.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
+        let isoFormat = ISO8601DateFormatter()
+        isoFormat.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        isoFormat.timeZone = timeZone
+
         var emitted = 0
         for line in logLines.reversed() {
             if emitted >= Self.maxRecords {
@@ -53,7 +67,7 @@ nonisolated struct PostHogBugReportSubmitter: BugReportSubmitter {
             let attributes: [String: Any] = [
                 "category": category,
                 "report_id": reportID,
-                "logged_at": timestamp
+                "logged_at": Self.isoTimestamp(timestamp, from: loggerFormat, to: isoFormat)
             ]
             switch level {
             case LogLevel.info.description:
@@ -67,6 +81,18 @@ nonisolated struct PostHogBugReportSubmitter: BugReportSubmitter {
             }
         }
         emitter.flush()
+    }
+
+    /// The `Logger` stamp as ISO-8601 with offset; the raw stamp when it does not parse.
+    private static func isoTimestamp(
+        _ timestamp: String,
+        from loggerFormat: DateFormatter,
+        to isoFormat: ISO8601DateFormatter
+    ) -> String {
+        guard let date = loggerFormat.date(from: timestamp) else {
+            return timestamp
+        }
+        return isoFormat.string(from: date)
     }
 
     /// Splits `"<date> <time> <location> [<category>/<level>] <body>"`; nil for untagged lines.

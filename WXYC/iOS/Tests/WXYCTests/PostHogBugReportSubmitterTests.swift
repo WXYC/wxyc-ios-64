@@ -36,23 +36,26 @@ struct PostHogBugReportSubmitterTests {
         #expect(calls[1].attributes["category"] as? String == "playback")
     }
 
-    @Test("lines are pushed newest first, each carrying the timestamp it was logged at")
-    func pushesNewestFirstWithTimestamps() {
+    @Test("lines are pushed newest first, each carrying the ISO-8601 time, with offset, it was logged at")
+    func pushesNewestFirstWithTimestamps() throws {
         let emitter = RecordingPostHogEmitter()
-        let submitter = PostHogBugReportSubmitter(emitter: emitter)
+        let submitter = PostHogBugReportSubmitter(
+            emitter: emitter,
+            timeZone: try #require(TimeZone(identifier: "America/New_York"))
+        )
 
         submitter.submit(reportID: "r-1", logLines: [
             line("INFO", "playback", "first", at: "2026-10-19 12:00:00.000"),
             line("INFO", "playback", "second", at: "2026-10-19 12:00:01.000"),
-            line("DEBUG", "playback", "third", at: "2026-10-19 12:00:02.000")
+            line("DEBUG", "playback", "third", at: "2026-12-01 12:00:02.123")
         ])
 
         let records = emitter.calls.filter { $0.method != .flush }
         #expect(records.map(\.message) == ["third", "second", "first"])
         #expect(records.map { $0.attributes["logged_at"] as? String } == [
-            "2026-10-19 12:00:02.000",
-            "2026-10-19 12:00:01.000",
-            "2026-10-19 12:00:00.000"
+            "2026-12-01T12:00:02.123-05:00",
+            "2026-10-19T12:00:01.000-04:00",
+            "2026-10-19T12:00:00.000-04:00"
         ])
     }
 
