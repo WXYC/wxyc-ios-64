@@ -2,76 +2,73 @@
 //  BugReportSubmitter.swift
 //  WXYC
 //
-//  Abstraction over Sentry's user feedback API so the bug report flow can be
-//  exercised in tests without invoking the live SDK.
+//  Pushes a bug report's recent log lines to PostHog Logs, tagged with the
+//  report ID, through the PostHogLogEmitter seam so the flow can be exercised
+//  in tests without invoking the live SDK.
 //
 //  Created by Jake Bromberg on 05/30/26.
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
 import Foundation
-import Sentry
-
-nonisolated struct LogAttachment: Equatable, Sendable {
-    let data: Data
-    let filename: String
-    let contentType: String
-}
+import Logger
 
 nonisolated protocol BugReportSubmitter: Sendable {
-    /// Submits a bug report to the underlying feedback backend.
-    ///
-    /// - Returns: `true` if the backend was enabled and accepted the envelope for transport,
-    ///   `false` if submission was skipped (e.g., the Sentry SDK is disabled). Callers should
-    ///   only fire success analytics when this returns `true`.
-    func submit(message: String, name: String?, email: String?, attachments: [LogAttachment]) -> Bool
+    /// Pushes `logLines` (raw `Logger` output) to PostHog Logs tagged with `reportID`, then flushes.
+    func submit(reportID: String, logLines: [String])
 }
 
-nonisolated struct SentryBugReportSubmitter: BugReportSubmitter {
-    // SentryFeedback's own `attachments` parameter rewrites every Data blob to
-    // `screenshot.png` / `application/png` (see sentry-cocoa SentryFeedback.swift),
-    // so log files sent through it arrive at Sentry mislabeled and the web UI
-    // refuses to render them. We route attachments through the global scope
-    // (SentryClient.captureFeedback:withScope: concatenates scope.attachments with
-    // the feedback envelope, preserving filename + content type) and unconditionally
-    // clear the scope's attachments afterwards so a previous submission whose clear
-    // was preempted does not leak into the next event.
-    //
-    // Trade-off: `clearAttachments` wipes the scope's full attachment list, not just
-    // the entries we added. This is safe today because nothing else in the WXYC app
-    // uses scope attachments. Revisit if another integration starts attaching to
-    // the global scope.
-    func submit(message: String, name: String?, email: String?, attachments: [LogAttachment]) -> Bool {
-        guard SentrySDK.isEnabled else { return false }
+/// Only info and debug lines are pushed: `PostHogLogsDestination` already streams
+/// warning and error lines live, so repeating them would spend the SDK's
+/// 500-records-per-10-s cap on duplicates. Lines carry whatever `Logger` wrote to
+/// disk, the same content the Sentry attachments carried; there is no extra scrubbing.
+nonisolated struct PostHogBugReportSubmitter: BugReportSubmitter {
+    private let emitter: any PostHogLogEmitter
 
-        let sentryAttachments = attachments.map { attachment in
-            Attachment(
-                data: attachment.data,
-                filename: attachment.filename,
-                contentType: attachment.contentType
-            )
-        }
+    init(emitter: any PostHogLogEmitter = PostHogSDKLoggerEmitter()) {
+        self.emitter = emitter
+    }
 
-        SentrySDK.configureScope { scope in
-            for attachment in sentryAttachments {
-                scope.addAttachment(attachment)
+    func submit(reportID: String, logLines: [String]) {
+        for line in logLines {
+            guard let (category, level, body) = Self.parse(line) else { continue }
+            let attributes: [String: Any] = ["category": category, "report_id": reportID]
+            switch level {
+            case LogLevel.info.description: emitter.info(body, attributes: attributes)
+            case LogLevel.debug.description: emitter.debug(body, attributes: attributes)
+            default: break // warning and error already streamed live
             }
         }
+        emitter.flush()
+    }
 
-        let feedback = SentryFeedback(
-            message: message,
-            name: name,
-            email: email,
-            source: .custom,
-            associatedEventId: nil,
-            attachments: nil
-        )
-        SentrySDK.capture(feedback: feedback)
+    /// Splits `"<prefix> [<category>/<level>] <body>"`; nil for untagged lines.
+    private static func parse(_ line: String) -> (category: String, level: String, body: String)? {
+        guard let close = line.range(of: "] "),
+              let open = line[..<close.lowerBound].lastIndex(of: "[") else { return nil }
+        let tag = line[line.index(after: open)..<close.lowerBound].split(separator: "/")
+        guard tag.count == 2 else { return nil }
+        return (String(tag[0]), String(tag[1]), String(line[close.upperBound...]))
+    }
+}
 
-        SentrySDK.configureScope { scope in
-            scope.clearAttachments()
+nonisolated enum BugReportLogLines {
+    static let maxLines = 500
+
+    /// The last `limit` lines across `files`, oldest first. Files are read newest
+    /// name first; older ones are zlib-compressed by `Logger` and inflated here.
+    static func recent(from files: [(logName: String, data: Data)], limit: Int = maxLines) -> [String] {
+        var collected: [String] = []
+        for file in files.sorted(by: { $0.logName > $1.logName }) {
+            let data = file.logName.hasSuffix(".log")
+                ? file.data
+                : (try? (file.data as NSData).decompressed(using: .zlib) as Data) ?? file.data
+            let lines = String(decoding: data, as: UTF8.self)
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .map(String.init)
+            collected = lines + collected
+            if collected.count >= limit { break }
         }
-
-        return true
+        return Array(collected.suffix(limit))
     }
 }

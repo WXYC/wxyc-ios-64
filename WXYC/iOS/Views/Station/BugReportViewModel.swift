@@ -3,7 +3,8 @@
 //  WXYC
 //
 //  Holds the editable state for BugReportView and routes submissions through
-//  an injected BugReportSubmitter so the flow is testable end-to-end.
+//  an injected BugReportSubmitter so the flow is testable end-to-end. Reports
+//  are anonymous: the event carries the listener's text and a generated ID.
 //
 //  Created by Jake Bromberg on 05/30/26.
 //  Copyright © 2026 WXYC. All rights reserved.
@@ -17,23 +18,20 @@ import Foundation
 final class BugReportViewModel {
     enum SubmissionResult: Equatable {
         case sent
-        case failed
     }
 
     var message: String = ""
-    var name: String = ""
-    var email: String = ""
     private(set) var isSubmitting: Bool = false
     var presentResult: SubmissionResult?
 
     private let submitter: any BugReportSubmitter
     private let analytics: any AnalyticsService
-    private let logsProvider: @Sendable () -> [LogAttachment]
+    private let logsProvider: @Sendable () -> [String]
 
     init(
         submitter: any BugReportSubmitter,
         analytics: any AnalyticsService,
-        logsProvider: @escaping @Sendable () -> [LogAttachment]
+        logsProvider: @escaping @Sendable () -> [String]
     ) {
         self.submitter = submitter
         self.analytics = analytics
@@ -48,9 +46,9 @@ final class BugReportViewModel {
         analytics.capture(BugReportPresented())
     }
 
-    /// Submits the report. Disk reads and Sentry envelope serialization run off the
-    /// MainActor so the UI does not hitch on multi-MB log files. The Send button is
-    /// gated on `isSubmitting` to prevent a double-tap from firing two envelopes.
+    /// Captures `bug_report_submitted`, then pushes the tagged log lines. Disk reads run
+    /// off the MainActor so the UI does not hitch on multi-MB log files. The Send button is
+    /// gated on `isSubmitting` to prevent a double-tap from filing two reports.
     func submit() async {
         guard canSend else { return }
         isSubmitting = true
@@ -59,38 +57,18 @@ final class BugReportViewModel {
         let submitter = self.submitter
         let provider = self.logsProvider
         let message = trimmedMessage
-        let name = trimmedName
-        let email = trimmedEmail
+        let reportID = UUID().uuidString
 
-        let sent = await Task.detached(priority: .userInitiated) {
-            let attachments = provider()
-            return submitter.submit(
-                message: message,
-                name: name,
-                email: email,
-                attachments: attachments
-            )
+        analytics.capture(BugReportSubmitted(reportId: reportID, message: message))
+
+        await Task.detached(priority: .userInitiated) {
+            submitter.submit(reportID: reportID, logLines: provider())
         }.value
 
-        if sent {
-            analytics.capture(BugReportSent())
-            presentResult = .sent
-        } else {
-            presentResult = .failed
-        }
+        presentResult = .sent
     }
 
     private var trimmedMessage: String {
         message.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var trimmedName: String? {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-
-    private var trimmedEmail: String? {
-        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 }
