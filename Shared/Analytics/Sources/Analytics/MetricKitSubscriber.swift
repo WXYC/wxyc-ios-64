@@ -11,6 +11,7 @@
 
 #if os(iOS)
 import Foundation
+import Logger
 import MetricKit
 
 /// Subscribes to `MXMetricManager` and captures each hang and crash diagnostic through the
@@ -44,6 +45,7 @@ public final class MetricKitSubscriber: NSObject, MXMetricManagerSubscriber, Sen
     private func forward(_ kind: MetricKitDiagnosticMapper.Kind, json: Data, period: DateInterval) {
         let appBinaryName = Bundle.main.object(forInfoDictionaryKey: "CFBundleExecutable") as? String
         guard let event = MetricKitDiagnosticMapper.event(kind: kind, json: json, appBinaryName: appBinaryName, period: period) else {
+            Log(.error, category: .general, "Dropped MetricKit \(kind.rawValue) diagnostic: its JSON (\(json.count) bytes) mapped to no event")
             return
         }
         analytics.capture(event)
