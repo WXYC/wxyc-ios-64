@@ -25,7 +25,10 @@ protocol PostHogLogEmitter: Sendable {
     nonisolated func info(_ message: String, attributes: [String: Any])
     nonisolated func warn(_ message: String, attributes: [String: Any])
     nonisolated func error(_ message: String, attributes: [String: Any])
-    /// Sends everything queued so far instead of waiting for the SDK's flush interval.
+    /// Asks the SDK to send one batch now instead of waiting for its flush interval.
+    /// `PostHogSDK.flush()` sends at most one batch (50 records by default) per
+    /// queue, and does nothing while a batch is already in flight; the rest of the
+    /// queue drains on the SDK's own flush timer.
     nonisolated func flush()
 }
 
