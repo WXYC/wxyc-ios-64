@@ -87,9 +87,10 @@ struct MetricKitDiagnosticMapperTests {
             #expect(!frame.keys.contains("image_offset"))
         }
         let first = try #require(frames.first)
-        // address 4_300_000_000 = 0x1004ccb00; minus the 4096-byte text offset = 0x1004cbb00.
+        // address 4_300_000_000 = 0x1004ccb00; minus the 4096-byte text offset = 0x1004cbb00,
+        // page-aligned to 0x1004cb000.
         #expect(first["instruction_addr"] as? String == "0x00000001004ccb00")
-        #expect(first["image_addr"] as? String == "0x00000001004cbb00")
+        #expect(first["image_addr"] as? String == "0x00000001004cb000")
         #expect(first["image_uuid"] as? String == "AAAA")
         #expect(first["package"] as? String == "WXYC")
         #expect(first["in_app"] as? Bool == true)
@@ -106,7 +107,7 @@ struct MetricKitDiagnosticMapperTests {
         let first = try #require(images.first)
         #expect(first["type"] as? String == "macho")
         #expect(first["code_file"] as? String == "WXYC")
-        #expect(first["image_addr"] as? String == "0x00000001004cbb00")
+        #expect(first["image_addr"] as? String == "0x00000001004cb000")
     }
 
     @Test("Hang duration, app version and the payload period are properties, not part of the exception value")
@@ -128,12 +129,44 @@ struct MetricKitDiagnosticMapperTests {
         #expect(props["diagnostic_period_end"] as? String == "2027-01-16T08:00:00Z")
     }
 
-    @Test("A stack deeper than the cap keeps the frames nearest the crash site")
+    /// A real MetricKit crash call stack starts at the crash site: the root frame is the crashing
+    /// frame, and its sub-frames walk out to dyld's `start`. PostHog wants the crash site last.
+    static let crashJSON = """
+    {"callStackTree": {"callStackPerThread": true, "callStacks": [{"threadAttributed": true, "callStackRootFrames": [
+       {"binaryUUID": "APP", "offsetIntoBinaryTextSegment": 20480, "sampleCount": 1, "binaryName": "WXYC", "address": 4362096640,
+        "subFrames": [
+          {"binaryUUID": "UIKIT", "offsetIntoBinaryTextSegment": 1048577, "sampleCount": 1, "binaryName": "UIKitCore", "address": 6443499521,
+           "subFrames": [
+             {"binaryUUID": "CF", "offsetIntoBinaryTextSegment": 524289, "sampleCount": 1, "binaryName": "CoreFoundation", "address": 6442975233,
+              "subFrames": [
+                {"binaryUUID": "DYLD", "offsetIntoBinaryTextSegment": 8193, "sampleCount": 1, "binaryName": "dyld", "address": 6442459137}
+              ]}
+           ]}
+        ]}
+    ]}]},
+     "diagnosticMetaData": {"signal": 6, "terminationReason": "Namespace SIGNAL"}}
+    """
+
+    @Test("A crash stack is reversed so dyld start is first and the crash site is last")
+    func crashStackEndsAtCrashSite() throws {
+        let event = try #require(
+            MetricKitDiagnosticMapper.event(kind: .crash, json: Data(Self.crashJSON.utf8), appBinaryName: "WXYC")
+        )
+        let frames = try Self.frames(Self.exception(try #require(event.properties)))
+
+        #expect(frames.compactMap { $0["module"] as? String } == ["dyld", "CoreFoundation", "UIKitCore", "WXYC"])
+        let last = try #require(frames.last)
+        #expect(last["image_uuid"] as? String == "APP")
+        #expect(last["in_app"] as? Bool == true)
+    }
+
+    @Test("A crash stack deeper than the cap keeps the frames nearest the crash site, crash site last")
     func capsFrames() throws {
-        var node = #"{"binaryUUID": "LEAF", "offsetIntoBinaryTextSegment": 0, "sampleCount": 1, "binaryName": "WXYC", "address": 1}"#
-        for index in 2...40 {
+        var node = #"{"binaryUUID": "START", "offsetIntoBinaryTextSegment": 0, "sampleCount": 1, "binaryName": "dyld", "address": 1}"#
+        for index in (2...40).reversed() {
             node = #"{"binaryUUID": "U\#(index)", "offsetIntoBinaryTextSegment": 0, "sampleCount": 1, "binaryName": "WXYC", "address": \#(index), "subFrames": [\#(node)]}"#
         }
+        node = #"{"binaryUUID": "CRASH", "offsetIntoBinaryTextSegment": 0, "sampleCount": 1, "binaryName": "WXYC", "address": 41, "subFrames": [\#(node)]}"#
         let json = #"{"callStackTree": {"callStacks": [{"threadAttributed": true, "callStackRootFrames": [\#(node)]}]}}"#
 
         let event = try #require(MetricKitDiagnosticMapper.event(kind: .crash, json: Data(json.utf8), maxFrames: 16))
@@ -141,7 +174,32 @@ struct MetricKitDiagnosticMapperTests {
 
         #expect(frames.count == 16)
         #expect(frames.first?["image_uuid"] as? String == "U16")
-        #expect(frames.last?["image_uuid"] as? String == "LEAF")
+        #expect(frames.last?["image_uuid"] as? String == "CRASH")
+    }
+
+    /// A leaf frame's address minus its text offset lands on the page-aligned image base; a caller
+    /// frame's return address lands one byte past it. Both must match the binary's one debug image.
+    @Test("Frames of one binary at image offset +0 and +1 share the debug image's page-aligned image_addr")
+    func pageAlignsImageAddress() throws {
+        let json = """
+        {"callStackTree": {"callStacks": [{"threadAttributed": true, "callStackRootFrames": [
+           {"binaryUUID": "APP", "offsetIntoBinaryTextSegment": 8192, "sampleCount": 1, "binaryName": "WXYC", "address": 4362084352,
+            "subFrames": [
+              {"binaryUUID": "APP", "offsetIntoBinaryTextSegment": 12288, "sampleCount": 1, "binaryName": "WXYC", "address": 4362088449}
+            ]}
+        ]}]}}
+        """
+
+        let event = try #require(MetricKitDiagnosticMapper.event(kind: .crash, json: Data(json.utf8)))
+        let props = try #require(event.properties)
+        let frames = try Self.frames(Self.exception(props))
+        let images = try #require(props["$debug_images"] as? [[String: Any]])
+
+        // 0x104002000 - 0x2000 = 0x104000000 and 0x104003001 - 0x3000 = 0x104000001.
+        #expect(frames.count == 2)
+        #expect(frames.allSatisfy { $0["image_addr"] as? String == "0x0000000104000000" })
+        #expect(images.count == 1)
+        #expect(images.first?["image_addr"] as? String == "0x0000000104000000")
     }
 
     @Test("Crash carries kind=crash and the termination details")

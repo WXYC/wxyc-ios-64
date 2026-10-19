@@ -14,22 +14,25 @@ import Foundation
 
 /// Builds PostHog `$exception` events from MetricKit diagnostics.
 ///
-/// The frame and debug-image shapes mirror what posthog-ios's own crash processor emits
+/// The frame and debug-image shapes follow what posthog-ios's own crash processor emits
 /// (`PostHogStackFrame` and `PostHogBinaryImageInfo`), because PostHog's error-tracking
 /// processor reads a frame as Apple only when it says `platform: "apple"`, and symbolicates
 /// it only by matching the frame's `image_addr` to an entry in the event's `$debug_images`.
+/// They are not identical: these frames also carry `image_uuid`, which posthog-ios frames do
+/// not, and these debug images carry no `image_size`, which posthog-ios images do.
 public enum MetricKitDiagnosticMapper {
     public enum Kind: String, Sendable {
         case hang
         case crash
     }
 
-    /// The most frames one stack carries by default. A deeper stack keeps the frames nearest
+    /// The most frames one stack carries by default: a backstop that keeps the frames nearest
     /// the crash or hang site and drops the oldest ones.
     ///
-    /// Each frame nests two JSON levels deep (an object inside its parent's `subFrames` array),
-    /// and `JSONSerialization` rejects JSON nested more than 512 levels. So a stack deeper than
-    /// about 254 frames fails to parse at all, and that diagnostic is not sent.
+    /// The default cannot trigger on a real payload. Each frame nests two JSON levels deep (an
+    /// object inside its parent's `subFrames` array), and `JSONSerialization` rejects JSON nested
+    /// more than 512 levels. So a stack deeper than about 254 frames fails to parse first, and
+    /// that diagnostic is dropped at parse time.
     public static let maxFrames = 256
 
     /// Builds an ``ExceptionEvent`` from one diagnostic's `jsonRepresentation()`.
@@ -37,8 +40,10 @@ public enum MetricKitDiagnosticMapper {
     /// The stack is the attributed thread's (the first thread when none is attributed). A crash
     /// thread's call stack is a single chain, so the stack is that thread's full backtrace. A hang
     /// thread's call stack is a tree of samples, so the stack follows the most-sampled sub-frame
-    /// at each level. MetricKit lists root frames oldest first, which is PostHog's frame order
-    /// too: the crash or hang site is the last frame. Other threads are not sent.
+    /// at each level. PostHog wants frames oldest first, with the crash or hang site last. A hang
+    /// stack already runs that way. A crash stack runs the other way: its root frame is the crash
+    /// site and its sub-frames walk out to dyld's `start`, so the mapper reverses it. Other threads
+    /// are not sent.
     /// - Parameters:
     ///   - kind: Whether the JSON is a hang or a crash diagnostic.
     ///   - json: The diagnostic's `jsonRepresentation()`.
@@ -70,6 +75,9 @@ public enum MetricKitDiagnosticMapper {
         guard !rawFrames.isEmpty else {
             return nil
         }
+        if kind == .crash {
+            rawFrames.reverse()
+        }
         let frames = rawFrames.suffix(maxFrames).map { Frame($0) }
 
         let metaData = root["diagnosticMetaData"] as? [String: Any] ?? [:]
@@ -96,7 +104,10 @@ public enum MetricKitDiagnosticMapper {
     // MARK: - Frames
 
     /// One MetricKit frame. The image load address is the frame's address minus its offset
-    /// into the binary's text segment, as Sentry's MetricKit integration derives it.
+    /// into the binary's text segment, as Sentry's MetricKit integration derives it, aligned down
+    /// to the 4 KiB page. A caller frame's return address yields the image base plus one byte,
+    /// where a leaf frame yields the base itself, so without the alignment two frames of one binary
+    /// carry different addresses and only one matches the binary's `$debug_images` entry.
     private struct Frame {
         let address: UInt64?
         let binaryName: String?
@@ -109,7 +120,7 @@ public enum MetricKitDiagnosticMapper {
             binaryUUID = json["binaryUUID"] as? String
             let offset = (json["offsetIntoBinaryTextSegment"] as? NSNumber)?.uint64Value
             if let address, let offset, binaryUUID != nil, offset <= address {
-                imageAddress = address - offset
+                imageAddress = (address - offset) & ~0xFFF
             } else {
                 imageAddress = nil
             }
