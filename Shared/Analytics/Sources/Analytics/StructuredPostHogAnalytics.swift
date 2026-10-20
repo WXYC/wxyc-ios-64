@@ -44,15 +44,17 @@ public struct StructuredPostHogAnalytics: AnalyticsService, Sendable {
 
     private let client: PostHogClientProtocol
     private let buildType: String
+    private let exceptionGate: ExceptionGate
 
     private init() {
         let buildType = (Bundle.main.infoDictionary?["WXYC_BUILD_TYPE"] as? String) ?? "unknown"
         self.init(client: PostHogSDKClient(), buildType: buildType)
     }
 
-    internal init(client: PostHogClientProtocol, buildType: String) {
+    internal init(client: PostHogClientProtocol, buildType: String, exceptionGate: ExceptionGate = ExceptionGate()) {
         self.client = client
         self.buildType = buildType
+        self.exceptionGate = exceptionGate
     }
 
     public func capture<T: AnalyticsEvent>(_ event: T) {
@@ -63,11 +65,34 @@ public struct StructuredPostHogAnalytics: AnalyticsService, Sendable {
         client.capture(T.name, properties: properties)
     }
 
+    /// Sends a handled error as `$exception` if it passes the ``ExceptionGate``. `capture(_:)`
+    /// is not gated, so MetricKit crash and hang diagnostics always go out.
     public func captureException(_ error: any Error, properties: [String: Any]?) {
+        guard exceptionGate.admit(key: Self.dedupeKey(for: error, properties: properties)) else {
+            return
+        }
         var properties = properties ?? [:]
         if properties["build_type"] == nil {
             properties["build_type"] = buildType
         }
         client.captureException(error, properties: properties)
+    }
+
+    /// The error's type plus its fingerprint when it has one, otherwise its message (domain and
+    /// code for an `NSError`) and the `context` property.
+    private static func dedupeKey(for error: any Error, properties: [String: Any]?) -> String {
+        let type = String(reflecting: Swift.type(of: error))
+        if let fingerprint = properties?["$exception_fingerprint"] as? String {
+            return "\(type)|\(fingerprint)"
+        }
+        let message: String
+        if Swift.type(of: error) == NSError.self {
+            let nsError = error as NSError
+            message = "\(nsError.domain)#\(nsError.code)"
+        } else {
+            message = "\(error)"
+        }
+        let context = properties?["context"] as? String ?? ""
+        return "\(type)|\(message)|\(context)"
     }
 }
