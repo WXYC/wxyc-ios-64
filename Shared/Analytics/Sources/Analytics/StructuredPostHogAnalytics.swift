@@ -86,7 +86,10 @@ public struct StructuredPostHogAnalytics: AnalyticsService, Sendable {
             return "\(type)|\(fingerprint)"
         }
         let message: String
-        if Swift.type(of: error) == NSError.self {
+        // `is NSError.Type` matches subclasses such as the `NSURLError` that URLSession returns,
+        // whose description embeds addresses and timings. Swift-native errors fail the check
+        // and keep their message.
+        if Swift.type(of: error) is NSError.Type {
             let nsError = error as NSError
             message = "\(nsError.domain)#\(nsError.code)"
         } else {

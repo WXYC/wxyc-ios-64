@@ -48,14 +48,21 @@ public final class ExceptionGate: Sendable {
 
     private let burst: Double
     private let now: @Sendable () -> Duration
+    private let log: @Sendable (String) -> Void
     private let state: Mutex<State>
 
     /// - Parameters:
     ///   - burst: The bucket's capacity, and the number of tokens it starts with.
     ///   - now: A monotonic clock, as the time elapsed since any fixed origin.
-    public init(burst: Int = 20, now: @escaping @Sendable () -> Duration) {
+    public convenience init(burst: Int = 20, now: @escaping @Sendable () -> Duration) {
+        self.init(burst: burst, now: now, log: { Log(.warning, category: .general, $0) })
+    }
+
+    /// - Parameter log: Receives the rate-limited drop warning. Tests inject a recorder.
+    init(burst: Int = 20, now: @escaping @Sendable () -> Duration, log: @escaping @Sendable (String) -> Void) {
         self.burst = Double(burst)
         self.now = now
+        self.log = log
         self.state = Mutex(State(tokens: Double(burst), lastRefill: now()))
     }
 
@@ -76,8 +83,10 @@ public final class ExceptionGate: Sendable {
 
     /// Returns whether an event with this dedupe key may be sent, spending a token if so.
     public func admit(key: String) -> Bool {
-        let time = now()
         let (admitted, warning) = state.withLock { state -> (Bool, String?) in
+            // Read inside the lock so concurrent callers see time in lock order and the refill
+            // timestamp never moves backwards.
+            let time = now()
             let elapsed = time - state.lastRefill
             state.tokens = min(burst, state.tokens + elapsed / Self.refillInterval)
             state.lastRefill = time
@@ -101,7 +110,7 @@ public final class ExceptionGate: Sendable {
             return (true, nil)
         }
         if let warning {
-            Log(.warning, category: .general, warning)
+            log(warning)
         }
         return admitted
     }
