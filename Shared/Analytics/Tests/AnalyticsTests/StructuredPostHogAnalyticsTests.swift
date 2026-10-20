@@ -60,6 +60,36 @@ struct StructuredPostHogAnalyticsExceptionGateTests {
         #expect(client.exceptions.count == 1)
     }
 
+    /// Stands in for the `NSURLError` subclass that URLSession hands back, whose description
+    /// embeds per-instance addresses and timings.
+    private final class SubclassedError: NSError, @unchecked Sendable {
+        let note: String
+
+        init(domain: String, code: Int, note: String) {
+            self.note = note
+            super.init(domain: domain, code: code, userInfo: ["note": note])
+        }
+
+        required init?(coder: NSCoder) {
+            fatalError("not used")
+        }
+
+        override var description: String {
+            "\(domain) \(code) \(note)"
+        }
+    }
+
+    @Test("NSError subclasses with the same domain and code dedupe despite different descriptions")
+    func nsErrorSubclassDedupesOnDomainAndCode() {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        sut.captureException(SubclassedError(domain: NSURLErrorDomain, code: -1001, note: "0x7b0b7c8ea0 163ms"), properties: nil)
+        sut.captureException(SubclassedError(domain: NSURLErrorDomain, code: -1001, note: "0x7b0b7c8d50 0ms"), properties: nil)
+        sut.captureException(SubclassedError(domain: NSURLErrorDomain, code: -1009, note: "0x7b0b7c8d50 0ms"), properties: nil)
+
+        #expect(client.exceptions.count == 2)
+    }
+
     @Test("The same domain and code with a different context is a different key")
     func contextSeparatesKeys() {
         let (sut, client) = makeSUT(clock: ManualClock())

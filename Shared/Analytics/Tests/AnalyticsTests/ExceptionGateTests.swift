@@ -30,6 +30,48 @@ final class ManualClock: @unchecked Sendable {
 @Suite("ExceptionGate")
 struct ExceptionGateTests {
 
+    private final class LogSink: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: [String] = []
+
+        var messages: [String] {
+            lock.withLock { stored }
+        }
+
+        func record(_ message: String) {
+            lock.withLock { stored.append(message) }
+        }
+    }
+
+    @Test("Drops are logged at most once a minute, with the count accumulated since the last log")
+    func dropLogIsRateLimited() {
+        let clock = ManualClock()
+        let sink = LogSink()
+        let gate = ExceptionGate(now: { clock.now }, log: { sink.record($0) })
+
+        #expect(gate.admit(key: "a"))
+        for _ in 0..<5 {
+            #expect(!gate.admit(key: "a"))
+        }
+        #expect(sink.messages.count == 1)
+        #expect(sink.messages[0].contains("Dropped 1 "))
+
+        clock.advance(by: .seconds(59))
+        #expect(!gate.admit(key: "a"))
+        #expect(sink.messages.count == 1)
+
+        // At 61 seconds the dedupe window has lapsed, so "a" is admitted again; the repeat after it
+        // is the first drop past the one-minute log interval.
+        clock.advance(by: .seconds(2))
+        #expect(gate.admit(key: "a"))
+        #expect(sink.messages.count == 1)
+        clock.advance(by: .seconds(1))
+        #expect(!gate.admit(key: "a"))
+        #expect(sink.messages.count == 2)
+        #expect(sink.messages[1].contains("Dropped 6 "))
+        #expect(sink.messages[1].contains("(7 since launch)"))
+    }
+
     private func makeGate(clock: ManualClock) -> ExceptionGate {
         ExceptionGate(now: { clock.now })
     }
