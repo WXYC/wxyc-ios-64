@@ -33,6 +33,94 @@ struct StructuredPostHogAnalyticsExceptionTests {
     }
 }
 
+@Suite("StructuredPostHogAnalytics exception gate")
+struct StructuredPostHogAnalyticsExceptionGateTests {
+
+    private func makeSUT(clock: ManualClock) -> (sut: StructuredPostHogAnalytics, client: CapturingPostHogClient) {
+        let client = CapturingPostHogClient()
+        let sut = StructuredPostHogAnalytics(
+            client: client,
+            buildType: "Debug",
+            exceptionGate: ExceptionGate(now: { clock.now })
+        )
+        return (sut, client)
+    }
+
+    private func error(_ code: Int) -> NSError {
+        NSError(domain: "TestDomain", code: code)
+    }
+
+    @Test("A repeat of the same error inside 60 seconds is not sent")
+    func repeatIsNotSent() {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        sut.captureException(error(1), properties: nil)
+        sut.captureException(error(1), properties: nil)
+
+        #expect(client.exceptions.count == 1)
+    }
+
+    @Test("The same domain and code with a different context is a different key")
+    func contextSeparatesKeys() {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        sut.captureException(error(1), properties: ["context": "playlist"])
+        sut.captureException(error(1), properties: ["context": "stream"])
+
+        #expect(client.exceptions.count == 2)
+    }
+
+    @Test("An explicit fingerprint replaces the message as the dedupe key")
+    func fingerprintKeysTheDedupe() {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        sut.captureException(error(1), properties: ["$exception_fingerprint": "retry-loop"])
+        sut.captureException(error(2), properties: ["$exception_fingerprint": "retry-loop"])
+
+        #expect(client.exceptions.count == 1)
+    }
+
+    @Test("The twenty-first distinct error is not sent")
+    func burstIsCapped() {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        for code in 0..<25 {
+            sut.captureException(error(code), properties: nil)
+        }
+
+        #expect(client.exceptions.count == 20)
+    }
+
+    @Test("An admitted exception is still stamped with build_type")
+    func admittedExceptionKeepsBuildType() throws {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        sut.captureException(error(1), properties: nil)
+
+        let sent = try #require(client.exceptions.first)
+        #expect(sent.properties?["build_type"] as? String == "Debug")
+    }
+
+    @Test("A MetricKit crash ExceptionEvent still goes out when the bucket is empty")
+    func metricKitCrashBypassesGate() throws {
+        let (sut, client) = makeSUT(clock: ManualClock())
+        for code in 0..<25 {
+            sut.captureException(error(code), properties: nil)
+        }
+
+        let crash = ExceptionEvent(
+            source: "metrickit",
+            diagnosticKind: "crash",
+            level: "fatal",
+            exceptionList: [["type": "EXC_BAD_ACCESS"]]
+        )
+        sut.capture(crash)
+        sut.capture(crash)
+
+        #expect(client.events.map(\.name) == ["$exception", "$exception"])
+    }
+}
+
 @Suite("StructuredPostHogAnalytics build_type stamping")
 struct StructuredPostHogAnalyticsTests {
 
