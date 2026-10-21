@@ -55,13 +55,21 @@ extension AnalyticsService {
 
     /// Captures the custom `error` event and a PostHog exception for the same error. The event keeps
     /// existing insights (shared with Android) working; the exception feeds error tracking.
+    ///
+    /// - Parameter dedupeLabel: The call site's compile-time label for the exception's dedupe key.
+    ///   `context` is a runtime string, so it is sent as a property and never enters the key.
     public func captureReportedError(
         _ error: any Error,
         context: String,
         category: String,
-        additionalData: [String: String]
+        additionalData: [String: String],
+        dedupeLabel: StaticString = ""
     ) {
         captureError(error, context: context, category: category, additionalData: additionalData)
-        captureException(error, properties: additionalData.merging(["context": context, "category": category]) { _, new in new })
+        captureException(
+            error,
+            properties: additionalData.merging(["context": context, "category": category]) { _, new in new },
+            dedupeLabel: dedupeLabel
+        )
     }
 }
