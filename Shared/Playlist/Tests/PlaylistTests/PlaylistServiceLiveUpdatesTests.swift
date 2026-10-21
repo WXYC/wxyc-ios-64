@@ -352,3 +352,110 @@ struct PlaylistServiceLiveUpdatesTests {
         #expect(received == [42])
     }
 }
+
+// MARK: - on_air catch-up refresh (#1197)
+
+private func show(_ id: UInt64) -> OnAir {
+    .dj("Cat Power Hour", show: OnAirShow(id: id, title: nil, specialty: nil))
+}
+
+/// Closes the live-event script: it is stored and broadcast last, after every case row,
+/// and carries no show id, so it can never trigger a refresh itself.
+private let sentinelID: UInt64 = 999
+
+struct OnAirRefreshCase: Sendable, CustomTestStringConvertible {
+    let name: String
+    let stored: [Playcut]
+    let onAir: OnAir
+    let events: [LiveFsEvent]
+    /// Fetches beyond the initial baseline poll.
+    let expectedRefreshes: Int
+    var testDescription: String { name }
+}
+
+private let onAirRefreshCases: [OnAirRefreshCase] = [
+    OnAirRefreshCase(name: "inserted row from a newer show than on_air names", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 1),
+    OnAirRefreshCase(name: "updated row from a newer show than on_air names", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.update(.stub(id: 2, showID: 43))], expectedRefreshes: 1),
+    OnAirRefreshCase(name: "newer show while on_air is unknown", stored: [.stub(id: 1, showID: 42)], onAir: .unknown, events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 1),
+    OnAirRefreshCase(name: "newer show during automation", stored: [.stub(id: 1, showID: 42)], onAir: .automation, events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 1),
+    OnAirRefreshCase(name: "row from the open show", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.insert(.stub(id: 2, showID: 42))], expectedRefreshes: 0),
+    OnAirRefreshCase(name: "row from an older show", stored: [.stub(id: 5, showID: 42)], onAir: show(42), events: [.insert(.stub(id: 6, showID: 41))], expectedRefreshes: 0),
+    OnAirRefreshCase(name: "row with no show id", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.insert(.stub(id: 2))], expectedRefreshes: 0),
+    OnAirRefreshCase(name: "update with no show id", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.update(.stub(id: 1, songTitle: "Back, Baby"))], expectedRefreshes: 0),
+    OnAirRefreshCase(name: "automation enrichment updates for the previous show", stored: [.stub(id: 1, showID: 42), .stub(id: 2, showID: 42)], onAir: .automation, events: [.update(.stub(id: 1, showID: 42, songTitle: "Back, Baby")), .update(.stub(id: 2, showID: 42, songTitle: "Call Your Name")), .update(.stub(id: 1, showID: 41, songTitle: "In a Sentimental Mood"))], expectedRefreshes: 0),
+    OnAirRefreshCase(name: "no show id known anywhere", stored: [.stub(id: 1)], onAir: .unknown, events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 0),
+]
+
+/// Returns the baseline poll at once and holds every later fetch until ``open()``,
+/// so a test can observe the service while a refresh is in flight.
+private final class GatedPlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
+    var playlistToReturn: Playlist = .empty
+    private(set) var callCount = 0
+    private var isOpen = false
+
+    func open() { isOpen = true }
+
+    func fetchPlaylist() async -> Playlist {
+        callCount += 1
+        if callCount > 1 {
+            while !isOpen { try? await Task.sleep(for: .milliseconds(1)) }
+        }
+        return playlistToReturn
+    }
+}
+
+extension PlaylistServiceLiveUpdatesTests {
+    @Test("A live row newer than the known show refreshes on_air once; anything else does not", arguments: onAirRefreshCases)
+    func onAirRefresh(_ testCase: OnAirRefreshCase) async throws {
+        let sentinel = Playcut.stub(id: sentinelID)
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: testCase.stored, onAir: testCase.onAir)
+        let source = MockLiveFsEventSource(events: testCase.events + [.insert(sentinel)])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        _ = await iterator.next()
+        let baseline = fetcher.callCount
+        await service.setForegrounded(true)
+
+        // Read broadcasts until the sentinel row shows up, i.e. every earlier event has been
+        // applied, then let any refresh those events started reach the fetcher.
+        while await iterator.next()?.playcuts.contains(where: { $0.id == sentinelID }) != true {}
+        for _ in 0..<50 { await Task.yield() }
+        if testCase.expectedRefreshes > 0 {
+            #expect(await waitUntil(timeout: .seconds(2)) { fetcher.callCount == baseline + testCase.expectedRefreshes })
+            for _ in 0..<50 { await Task.yield() }
+        }
+        #expect(fetcher.callCount == baseline + testCase.expectedRefreshes)
+    }
+
+    @Test("Rows that arrive while an on_air refresh is in flight are absorbed by it", .timeLimit(.minutes(1)))
+    func inFlightRefreshCoalesces() async throws {
+        let sentinel = Playcut.stub(id: sentinelID)
+        let fetcher = GatedPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [.stub(id: 1, showID: 42)], onAir: show(42))
+        let source = MockLiveFsEventSource(events: [
+            .insert(.stub(id: 2, showID: 43)), .insert(.stub(id: 3, showID: 44)), .insert(sentinel),
+        ])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        _ = await iterator.next()
+        await service.setForegrounded(true)
+
+        // Read broadcasts until the sentinel row shows up, i.e. every earlier event has been
+        // applied, then let any refresh those events started reach the fetcher.
+        while await iterator.next()?.playcuts.contains(where: { $0.id == sentinelID }) != true {}
+        for _ in 0..<50 { await Task.yield() }
+        #expect(fetcher.callCount == 2) // the baseline plus the one held refresh
+        fetcher.open()
+        for _ in 0..<50 { await Task.yield() }
+        #expect(fetcher.callCount == 2)
+    }
+}
