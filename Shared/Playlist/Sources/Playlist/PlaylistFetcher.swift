@@ -105,7 +105,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     /// report as a structured `api_version` property.
     public func fetchPlaylist() async -> Playlist {
         let timer = Core.Timer.start()
-        let context = "fetchPlaylist(API \(Self.apiVersionTag))"
+        let context: StaticString = "fetchPlaylist"
 
         do {
             let playlist = try await dataSource.getPlaylist()

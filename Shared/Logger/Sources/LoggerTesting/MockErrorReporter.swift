@@ -32,14 +32,14 @@ public final class MockErrorReporter: ErrorReporter, @unchecked Sendable {
 
     public func report(
         _ error: any Error,
-        context: String,
+        context: StaticString,
         category: LogCategory,
         additionalData: [String: String]
     ) {
         lock.withLock {
             _errors.append(ReportedError(
                 error: error,
-                context: context,
+                context: String(describing: context),
                 category: category,
                 additionalData: additionalData
             ))
@@ -53,9 +53,9 @@ public final class MockErrorReporter: ErrorReporter, @unchecked Sendable {
         lock.withLock { _errors }
     }
 
-    /// Errors reported with a specific context string.
-    public func errors(in context: String) -> [ReportedError] {
-        lock.withLock { _errors.filter { $0.context == context } }
+    /// Errors reported with a specific context.
+    public func errors(in context: StaticString) -> [ReportedError] {
+        lock.withLock { _errors.filter { $0.context == String(describing: context) } }
     }
 
     /// Clears all recorded errors.

@@ -37,7 +37,7 @@ public struct PostHogErrorReporter: ErrorReporter {
 
     public func report(
         _ error: any Error,
-        context: String,
+        context: StaticString,
         category: LogCategory,
         additionalData: [String: String]
     ) {
@@ -45,7 +45,7 @@ public struct PostHogErrorReporter: ErrorReporter {
 
         analytics.capture(ErrorEvent(
             error: error,
-            context: context,
+            context: String(describing: context),
             category: category.rawValue,
             additionalData: additionalData
         ))

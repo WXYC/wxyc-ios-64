@@ -30,7 +30,9 @@ import Logger
 ///
 /// - Parameters:
 ///   - context: A short label describing the operation (e.g., `"fetchPlaylist"`).
-///     Used in log messages and error reports.
+///     Used in log messages and error reports. A `StaticString` because it
+///     becomes the error report's dedupe label; runtime values go in
+///     `additionalData`.
 ///   - category: The log category for filtering (e.g., `.network`, `.caching`).
 ///   - fallback: The value to return when the operation fails or is cancelled.
 ///   - errorReporter: Where to send non-cancellation errors. Defaults to the
@@ -43,7 +45,7 @@ import Logger
 ///   - operation: The async throwing closure to execute.
 /// - Returns: The operation's result on success, or `fallback` on failure.
 public func timedOperation<T: Sendable>(
-    context: String,
+    context: StaticString,
     category: LogCategory,
     fallback: T,
     errorReporter: any ErrorReporter = ErrorReporting.shared,

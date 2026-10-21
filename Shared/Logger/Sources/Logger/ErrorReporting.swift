@@ -36,7 +36,7 @@ public struct NoOpErrorReporter: ErrorReporter {
 
     public func report(
         _ error: any Error,
-        context: String,
+        context: StaticString,
         category: Category,
         additionalData: [String: String]
     ) {

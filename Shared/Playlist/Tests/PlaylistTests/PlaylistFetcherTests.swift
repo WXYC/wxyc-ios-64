@@ -59,7 +59,8 @@ struct PlaylistFetcherTests {
         #expect(result == .empty)
         #expect(mockDataSource.fetchCount == 1)
         #expect(mockErrorReporter.allReportedErrors.count == 1)
-        #expect(mockErrorReporter.allReportedErrors.first?.context == "fetchPlaylist(API v2)")
+        #expect(mockErrorReporter.allReportedErrors.first?.context == "fetchPlaylist")
+        #expect(mockErrorReporter.allReportedErrors.first?.additionalData["api_version"] == "v2")
     }
 
     @Test("fetchPlaylist returns empty playlist on URLError")

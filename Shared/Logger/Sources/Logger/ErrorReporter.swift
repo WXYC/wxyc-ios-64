@@ -22,12 +22,15 @@ public protocol ErrorReporter: Sendable {
     /// - Parameters:
     ///   - error: The error to report.
     ///   - context: A short description of where/why the error occurred
-    ///     (e.g., `"DiskCache data(for:): failed to read file"`).
+    ///     (e.g., `"DiskCache data(for:): failed to read file"`). A `StaticString`
+    ///     so only a compile-time constant can be passed: it is the call site's
+    ///     dedupe label in the exception gate, and runtime values belong in
+    ///     `additionalData`.
     ///   - category: The log category for filtering and organization.
     ///   - additionalData: Extra key-value pairs attached to the report.
     func report(
         _ error: any Error,
-        context: String,
+        context: StaticString,
         category: LogCategory,
         additionalData: [String: String]
     )
@@ -39,7 +42,7 @@ public extension ErrorReporter {
     /// Reports an error with default category (`.general`) and no additional data.
     func report(
         _ error: any Error,
-        context: String,
+        context: StaticString,
         category: LogCategory = .general,
         additionalData: [String: String] = [:]
     ) {
