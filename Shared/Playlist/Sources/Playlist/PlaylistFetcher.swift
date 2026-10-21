@@ -105,12 +105,12 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     /// report as a structured `api_version` property.
     public func fetchPlaylist() async -> Playlist {
         let timer = Core.Timer.start()
-        let context: StaticString = "fetchPlaylist"
+        let context: StaticString = "PlaylistFetcher fetchPlaylist"
 
         do {
             let playlist = try await dataSource.getPlaylist()
             let duration = timer.duration()
-            Log(.info, category: .network, "\(context): succeeded in \(duration)s")
+            Log(.info, category: .network, "\(context) (API \(Self.apiVersionTag)): succeeded in \(duration)s")
             // A task cancelled after the data already arrived is not a real
             // outcome; keep it out of the success/failure denominator.
             if !Task.isCancelled {
