@@ -39,7 +39,7 @@ public struct RequestLine: Equatable, Sendable {
 
     public init(onAir: OnAir) {
         switch onAir {
-        case .dj(let name):
+        case .dj(let name, _):
             djName = name
             boothIsOpen = true
         case .automation:
