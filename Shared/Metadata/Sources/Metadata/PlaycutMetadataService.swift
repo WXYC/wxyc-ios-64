@@ -469,7 +469,7 @@ public actor PlaycutMetadataService {
         let fallbackStreaming = cachedStreaming ?? .empty
 
         return await timedOperation(
-            context: "fetchAlbumAndStreaming(\(playcut.artistName))",
+            context: "fetchAlbumAndStreaming",
             category: .network,
             fallback: (fallbackAlbum, fallbackStreaming),
             errorReporter: errorReporter

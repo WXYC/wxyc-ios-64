@@ -129,12 +129,12 @@ private final class FakeErrorReporter: ErrorReporter, @unchecked Sendable {
 
     func report(
         _ error: any Error,
-        context: String,
+        context: StaticString,
         category: LogCategory,
         additionalData: [String: String]
     ) {
         lock.withLock {
-            _reportedErrors.append(Report(error: error, context: context))
+            _reportedErrors.append(Report(error: error, context: String(describing: context)))
         }
     }
 }

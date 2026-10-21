@@ -21,6 +21,7 @@ public final class MockStructuredAnalytics: AnalyticsService {
         var events: [any AnalyticsEvent] = []
         var eventNames: [String] = []
         var exceptions: [(error: any Error, properties: [String: String])] = []
+        var dedupeLabels: [String] = []
     }
 
     private let state = Mutex<RecordedState>(RecordedState())
@@ -47,7 +48,15 @@ public final class MockStructuredAnalytics: AnalyticsService {
 
     public func captureException(_ error: any Error, properties: [String: Any]?, dedupeLabel: StaticString) {
         let stringified = (properties ?? [:]).mapValues { String(describing: $0) }
-        state.withLock { $0.exceptions.append((error, stringified)) }
+        state.withLock {
+            $0.exceptions.append((error, stringified))
+            $0.dedupeLabels.append(String(describing: dedupeLabel))
+        }
+    }
+
+    /// The dedupe label of each captured exception, in capture order. Empty when the caller passed none.
+    public var dedupeLabels: [String] {
+        state.withLock { $0.dedupeLabels }
     }
 
     public func reset() {
@@ -55,6 +64,7 @@ public final class MockStructuredAnalytics: AnalyticsService {
             $0.events.removeAll()
             $0.eventNames.removeAll()
             $0.exceptions.removeAll()
+            $0.dedupeLabels.removeAll()
         }
     }
 
