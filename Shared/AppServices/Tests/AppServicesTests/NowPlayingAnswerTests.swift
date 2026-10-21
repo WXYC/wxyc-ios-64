@@ -77,7 +77,7 @@ struct NowPlayingAnswerTests {
         #expect(answer.spokenDialog == testCase.expectedDialog)
     }
 
-    @Test("times out to nothing playing when no playlist arrives", .timeLimit(.minutes(1)))
+    @Test("times out to unavailable, spoken as can't reach, when no playlist arrives", .timeLimit(.minutes(1)))
     func timesOutWithoutPlaylist() async {
         // The fetcher returns nothing and the cache is empty, so no playlist is ever broadcast.
         let playlistService = PlaylistService(
@@ -88,6 +88,7 @@ struct NowPlayingAnswerTests {
 
         let answer = await service.currentAnswer(timeout: .milliseconds(200))
 
-        #expect(answer == .lead(.none))
+        #expect(answer == .unavailable)
+        #expect(answer.spokenDialog == "Can't reach WXYC right now. Try again in a moment.")
     }
 }

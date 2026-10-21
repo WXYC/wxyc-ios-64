@@ -67,6 +67,8 @@ public enum NowPlayingAnswer: Sendable, Equatable {
     /// Something other than a song leads: a specialty card, a DJ handle, or nothing.
     /// Never ``NowPlayingLead/song(_:)``.
     case lead(NowPlayingLead)
+    /// No playlist could be read (a timeout or a failed fetch), so nothing is known.
+    case unavailable
 
     /// The sentence to speak for this answer.
     public var spokenDialog: String {
@@ -77,6 +79,8 @@ public enum NowPlayingAnswer: Sendable, Equatable {
             "\(show.name) is on the air on WXYC."
         case .lead(.djHandle(let name)):
             "\(name) is on the air on WXYC."
+        case .unavailable:
+            "Can't reach WXYC right now. Try again in a moment."
         case .lead(.song), .lead(.none):
             "Nothing is playing on WXYC right now."
         }
@@ -150,7 +154,7 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
     ///
     /// Reads the first playlist the service has and answers from ``Playlist/nowPlayingLead``:
     /// the leading song with its artwork, or the specialty card, DJ handle, or nothing. If no
-    /// playlist arrives within `timeout`, the answer is nothing.
+    /// playlist arrives within `timeout`, the answer is ``NowPlayingAnswer/unavailable``.
     public func currentAnswer(timeout: Duration = .seconds(8)) async -> NowPlayingAnswer {
         let service = playlistService
         let playlist: Playlist? = await withTaskGroup(of: Playlist?.self) { group in
@@ -167,7 +171,7 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
             return first
         }
         guard let playlist else {
-            return .lead(.none)
+            return .unavailable
         }
         switch playlist.nowPlayingLead {
         case .song(let playcut):

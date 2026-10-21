@@ -87,7 +87,12 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
         // never happens during automation or before a new show's first song.
         let answer = await nowPlayingService.currentAnswer()
 
-        StructuredPostHogAnalytics.shared.capture(WhatsPlayingOnWXYCIntent())
+        if case .unavailable = answer {
+            let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
+            ErrorReporting.shared.report(error, context: "fetchPlaylist")
+        } else {
+            StructuredPostHogAnalytics.shared.capture(WhatsPlayingOnWXYCIntent())
+        }
         let value: PlaycutEntity?
         if case .song(let nowPlayingItem) = answer {
             value = PlaycutEntity(playcut: nowPlayingItem.playcut)

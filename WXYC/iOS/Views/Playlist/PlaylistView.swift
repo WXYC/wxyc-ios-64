@@ -67,6 +67,8 @@ struct PlaylistView: View {
     let zoomNamespace: Namespace.ID
 
     @State private var timelineItems: [TimelineItem] = []
+    /// The playlist behind `timelineItems`, read for which playcut leads now playing.
+    @State private var playlist = Playlist.empty
     @State private var onAir: OnAir = .unknown
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
@@ -163,10 +165,15 @@ struct PlaylistView: View {
                         ForEach(Array(timelineItems.enumerated()), id: \.element.id) { index, item in
                             let playcutIndex = playcutIndex(for: index)
 
-                            if playcutIndex == 0 {
-                                PlaylistSectionHeader(text: "now playing")
-                            } else if playcutIndex == 1 {
-                                PlaylistSectionHeader(text: "recently played")
+                            if let playcutIndex, case .playcut(let playcut) = item {
+                                switch playlist.section(forPlaycutAt: playcutIndex, id: playcut.id) {
+                                case .nowPlaying:
+                                    PlaylistSectionHeader(text: "now playing")
+                                case .recentlyPlayed:
+                                    PlaylistSectionHeader(text: "recently played")
+                                case nil:
+                                    EmptyView()
+                                }
                             }
 
                             playlistRow(for: item)
@@ -257,6 +264,7 @@ struct PlaylistView: View {
                 withAnimation {
                     self.onAir = playlist.onAir
                     self.timelineItems = playlist.timelineItems
+                    self.playlist = playlist
                 }
                 // Publish the now-playing (first) playcut id for the debug
                 // touring-shows mock to target. Harmless in release (unread).

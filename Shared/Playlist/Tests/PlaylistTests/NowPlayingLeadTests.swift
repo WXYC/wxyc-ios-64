@@ -70,3 +70,53 @@ struct NowPlayingLeadTests {
         #expect(Playlist.stub(playcuts: [staleSong, ownSong], onAir: openFreeform).currentPlaycut == ownSong)
     }
 }
+
+// MARK: - Consumers of the lead: list headers and the widget
+
+struct SectionCase: Sendable, CustomTestStringConvertible {
+    let name: String
+    let playcuts: [Playcut]
+    let onAir: OnAir
+    /// Expected header for each playcut, newest first.
+    let expected: [PlaylistSection?]
+    var testDescription: String { name }
+}
+
+private let newestFirst: [Playcut] = [ownSong, staleSong]
+
+private let sectionCases: [SectionCase] = [
+    SectionCase(name: "open show's song is now playing, the next is recent", playcuts: newestFirst, onAir: openFreeform, expected: [.nowPlaying, .recentlyPlayed]),
+    SectionCase(name: "previous show's last song is never labelled now playing", playcuts: [staleSong, Playcut.stub(id: 7, showID: 40)], onAir: openFreeform, expected: [.recentlyPlayed, nil]),
+    SectionCase(name: "automation labels nothing now playing", playcuts: newestFirst, onAir: .automation, expected: [.recentlyPlayed, nil]),
+    SectionCase(name: "unknown on-air keeps the newest as now playing", playcuts: newestFirst, onAir: .unknown, expected: [.nowPlaying, .recentlyPlayed]),
+]
+
+@Suite("Now Playing Lead consumers")
+struct NowPlayingLeadConsumerTests {
+    @Test("section header for each playcut row", arguments: sectionCases)
+    func sections(_ testCase: SectionCase) {
+        let playlist = Playlist.stub(playcuts: testCase.playcuts, onAir: testCase.onAir)
+        let headers = testCase.playcuts.enumerated().map { index, playcut in
+            playlist.section(forPlaycutAt: index, id: playcut.id)
+        }
+
+        #expect(headers == testCase.expected)
+    }
+
+    @Test("widget recents skip the leading song and keep the rest when no song leads")
+    func widgetRecents() {
+        let leading = Playlist.stub(playcuts: [staleSong, ownSong], onAir: openFreeform)
+        #expect(leading.widgetRecents.map(\.id) == [9])
+
+        let noSongLeads = Playlist.stub(playcuts: [staleSong, ownSong], onAir: .automation)
+        #expect(noSongLeads.widgetRecents.map(\.id) == [10, 9])
+    }
+
+    @Test("headline names the DJ or the specialty show, and nothing for automation")
+    func headlines() {
+        #expect(NowPlayingLead.djHandle("Cat Power Hour").headline == NowPlayingHeadline(title: "Cat Power Hour", detail: "is on the air"))
+        #expect(NowPlayingLead.specialtyCard(hogwash).headline == NowPlayingHeadline(title: "Hogwash", detail: "Weird and wonderful"))
+        #expect(NowPlayingLead.none.headline == NowPlayingHeadline(title: "Auto DJ", detail: "Tune in to WXYC 89.3 FM"))
+        #expect(NowPlayingLead.song(ownSong).headline == nil)
+    }
+}

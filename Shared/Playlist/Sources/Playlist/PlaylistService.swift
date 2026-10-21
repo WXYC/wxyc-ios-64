@@ -751,7 +751,8 @@ public final actor PlaylistService: Sendable {
         guard onAirRefreshTask == nil, let rowShowID = row.showID else { return }
         switch onAir {
         case .dj(_, let show?):
-            guard let openID = show.id, openID != rowShowID else { return }
+            // Show ids are serial, so only a newer show proves `onAir` is behind.
+            guard let openID = show.id, openID < rowShowID else { return }
         case .automation:
             break
         case .dj(_, nil), .unknown:

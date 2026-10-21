@@ -40,6 +40,11 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.family = family
     }
 
+    /// An entry led by a show rather than a song: the DJ, the specialty show, or automation.
+    init(headline: NowPlayingHeadline, recentItems: [NowPlayingItem], family: WidgetFamily) {
+        self.init(artist: headline.title, songTitle: headline.detail, artwork: nil, recentItems: recentItems, family: family)
+    }
+
     static func placeholder(family: WidgetFamily) -> Self {
         NowPlayingTimelineEntry(
             nowPlayingItem: NowPlayingItem.placeholder,
