@@ -90,14 +90,42 @@ struct StructuredPostHogAnalyticsExceptionGateTests {
         #expect(client.exceptions.count == 2)
     }
 
-    @Test("The same domain and code with a different context is a different key")
-    func contextSeparatesKeys() {
+    @Test("A runtime context property does not enter the dedupe key")
+    func runtimeContextPropertyIsNotInTheKey() {
         let (sut, client) = makeSUT(clock: ManualClock())
 
         sut.captureException(error(1), properties: ["context": "playlist"])
         sut.captureException(error(1), properties: ["context": "stream"])
 
+        #expect(client.exceptions.count == 1)
+    }
+
+    @Test("The same domain and code with a different static label is a different key")
+    func staticLabelSeparatesKeys() {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        sut.captureException(error(1), properties: nil, dedupeLabel: "playlist")
+        sut.captureException(error(1), properties: nil, dedupeLabel: "stream")
+        sut.captureException(error(1), properties: nil, dedupeLabel: "stream")
+
         #expect(client.exceptions.count == 2)
+    }
+
+    @Test("dropped_since_last rides on the next sent exception and is not repeated")
+    func droppedSinceLastIsAttachedOnce() {
+        let clock = ManualClock()
+        let (sut, client) = makeSUT(clock: clock)
+
+        sut.captureException(error(1), properties: nil)
+        sut.captureException(error(1), properties: nil)
+        sut.captureException(error(1), properties: nil)
+        clock.advance(by: .seconds(60))
+        sut.captureException(error(1), properties: nil)
+        clock.advance(by: .seconds(60))
+        sut.captureException(error(1), properties: nil)
+
+        let sent = client.exceptions.map { $0.properties?["dropped_since_last"] as? Int }
+        #expect(sent == [0, 2, 0])
     }
 
     @Test("An explicit fingerprint replaces the message as the dedupe key")
