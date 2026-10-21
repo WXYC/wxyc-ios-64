@@ -254,6 +254,20 @@ struct FlowsheetContractParityTests {
 
     // MARK: - Fixture helpers
 
+    /// The vendored generated `OnAirInfo` predates `show_id` / `show_name` / `specialty`
+    /// (WXYC/wxyc-shared#702), so it can't enumerate them yet. This guards the part that can be
+    /// checked today: the generated type still decodes a payload carrying the new keys, and the app
+    /// decoder reads them. Once the contract pin advances, assert the generated keys here instead.
+    @Test("An on_air payload with the show fields decodes on both the generated and the app type")
+    func onAirShowFieldsDecodeOnBothTypes() throws {
+        let onAir = #"{"dj_name":"DJ MONSTER","show_id":42,"show_name":"Hogwash Hour","specialty":{"id":3,"slug":"hogwash","name":"Hogwash"}}"#
+        let generated = try JSONDecoder().decode(OnAirInfo.self, from: Data(onAir.utf8))
+        #expect(generated.djName == "DJ MONSTER")
+
+        let response = try JSONDecoder().decode(FlowsheetResponse.self, from: Data(#"{"entries":[],"on_air":\#(onAir)}"#.utf8))
+        #expect(response.onAir == .dj("DJ MONSTER", show: OnAirShow(id: 42, title: "Hogwash Hour", specialty: SpecialtyShowRef(id: 3, slug: "hogwash", name: "Hogwash"))))
+    }
+
     /// Extracts the single fully-populated track row from `flowsheet-v2-sample.json`
     /// as its own JSON payload, so it can be decoded directly as a per-variant
     /// entry. The fixture's `entries` array is heterogeneous (talkset /

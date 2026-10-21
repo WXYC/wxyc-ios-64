@@ -16,7 +16,7 @@ import Foundation
 /// Also carries the top-level `on_air` field as a tri-state ``OnAir``. `CodingKeys`
 /// alone can't distinguish a JSON `null` from a missing key, so the on-air state is
 /// decoded by key presence: absent → ``OnAir/unknown``, explicit `null` →
-/// ``OnAir/automation``, an object with `dj_name` → ``OnAir/dj(_:)``.
+/// ``OnAir/automation``, an object with `dj_name` → ``OnAir/dj(_:show:)``.
 struct FlowsheetResponse: Codable, Sendable {
     let entries: [FlowsheetEntry]
     let onAir: OnAir
@@ -26,9 +26,25 @@ struct FlowsheetResponse: Codable, Sendable {
         case onAir = "on_air"
     }
 
-    /// Minimal decode shape for the `on_air` object (`{ "dj_name": "..." }`).
-    private struct OnAirInfo: Codable {
+    /// Minimal decode shape for the `on_air` object. Only `dj_name` is required; the show fields
+    /// are decoded leniently in `init(from:)` so a bad one never costs the DJ name.
+    private struct OnAirInfo: Decodable {
         let dj_name: String
+        let show_id: Int?
+        let show_name: String?
+        let specialty: SpecialtyShowRef?
+
+        private enum CodingKeys: String, CodingKey {
+            case dj_name, show_id, show_name, specialty
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            dj_name = try container.decode(String.self, forKey: .dj_name)
+            show_id = (try? container.decodeIfPresent(Int.self, forKey: .show_id)) ?? nil
+            show_name = (try? container.decodeIfPresent(String.self, forKey: .show_name)) ?? nil
+            specialty = (try? container.decodeIfPresent(SpecialtyShowRef.self, forKey: .specialty)) ?? nil
+        }
     }
 
     init(from decoder: Decoder) throws {
@@ -44,7 +60,12 @@ struct FlowsheetResponse: Codable, Sendable {
         } else if let info = try? container.decode(OnAirInfo.self, forKey: .onAir),
                   case let djName = info.dj_name.trimmingCharacters(in: .whitespacesAndNewlines),
                   !djName.isEmpty {
-            onAir = .dj(djName)
+            let show = OnAirShow(
+                id: info.show_id.flatMap { UInt64(exactly: $0) },
+                title: info.show_name,
+                specialty: info.specialty
+            )
+            onAir = .dj(djName, show: show.id == nil && show.title == nil && show.specialty == nil ? nil : show)
         } else {
             // `on_air` is present but not a usable named-DJ object — a malformed
             // shape (wrong type, missing/empty `dj_name`). Degrade to `.unknown`

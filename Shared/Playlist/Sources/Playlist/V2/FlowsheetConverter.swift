@@ -56,6 +56,7 @@ enum FlowsheetConverter {
                     hour: hour,
                     chronOrderID: chronOrderID,
                     timeCreated: hour,
+                    showID: entry.show_id.flatMap { UInt64(exactly: $0) },
                     songTitle: (entry.track_title ?? "Unknown").htmlDecoded,
                     labelName: entry.record_label?.htmlDecoded,
                     artistName: (entry.artist_name ?? "Unknown").htmlDecoded,

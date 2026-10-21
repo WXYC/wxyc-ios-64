@@ -307,6 +307,10 @@ public struct Playcut: PlaylistEntry, Hashable {
     public internal(set) var chronOrderID: UInt64
     public let timeCreated: UInt64
 
+    /// The flowsheet show this play belongs to (`show_id`), so the app can tell whether the
+    /// current song belongs to the open show. `nil` for v1, feeds that predate it, and old caches.
+    public let showID: UInt64?
+
     public let songTitle: String
     public let labelName: String?
     public let artistName: String
@@ -479,6 +483,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         case hour
         case chronOrderID
         case timeCreated
+        case showID
         case songTitle
         case labelName
         case artistName
@@ -515,6 +520,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         hour: UInt64,
         chronOrderID: UInt64,
         timeCreated: UInt64,
+        showID: UInt64? = nil,
         songTitle: String,
         labelName: String?,
         artistName: String,
@@ -544,6 +550,7 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.hour = hour
         self.chronOrderID = chronOrderID
         self.timeCreated = timeCreated
+        self.showID = showID
         self.songTitle = songTitle
         self.labelName = labelName
         self.artistName = artistName
@@ -578,6 +585,8 @@ public struct Playcut: PlaylistEntry, Hashable {
         self.hour = header.hour
         self.chronOrderID = header.chronOrderID
         self.timeCreated = header.timeCreated
+
+        self.showID = try container.decodeIfPresent(UInt64.self, forKey: .showID)
 
         do {
             self.songTitle = try container.decode(String.self, forKey: .songTitle).htmlDecoded
