@@ -107,6 +107,15 @@ If a runner ever does build something shipping, the phase will fail it — delib
 1. `sentry-cli` on the runner's `PATH` before the build step, or a `SENTRY_CLI_SEARCH_DIRS` pointing at wherever the step put it.
 2. `SENTRY_AUTH_TOKEN` in the build environment, from a repository secret. Mint it as an **organization auth token** (the `sntrys_…` kind) at https://sentry.io/settings/wxyc/auth-tokens/ — scope fixed at `org:ci` / `project:releases`, enough to upload debug files and not enough to administer the project. Don't substitute a personal user token: those carry the minting user's full access and die with their account. The token belongs in the CI provider's secret store and never in this repo.
 
+## PostHog Debug Symbols (dSYM upload)
+
+PostHog symbolicates exception stacks from dSYMs uploaded by the `Upload Debug Symbols to PostHog` build phase on the WXYC target, which sits right after the Sentry phase. Like that one it is a one-line `exec`, of `scripts/upload-dsyms-posthog.sh`, tested by `scripts/tests/test-upload-dsyms-posthog.sh`. It runs `posthog-cli dsym upload --directory "$DWARF_DSYM_FOLDER_PATH" --include-source` against project `134292` (set in the script). There are no release flags yet; those come with [#1167](https://github.com/WXYC/wxyc-ios-64/issues/1167).
+
+**It warns and never fails.** With no `posthog-cli` or no `POSTHOG_CLI_API_KEY`, or if the upload is rejected, the phase prints a `warning:` line on every build and exits 0, archives included. That lasts until the release and credential work in #1167 lands.
+
+- Install: `brew install posthog/tap/posthog-cli`. The script also looks in `/opt/homebrew/bin` and `/usr/local/bin` (override with `POSTHOG_CLI_SEARCH_DIRS`), because a build phase under Xcode.app does not get Homebrew on its `PATH`.
+- Credentials: put `POSTHOG_CLI_API_KEY=<personal API key>` in `~/.posthog-cli.env`. The script sources that file only when `POSTHOG_CLI_API_KEY` is unset, so an exported key wins, and a file is the one channel that reaches an archive started from Xcode.app. The key is never echoed.
+
 ## Code Signing
 
 - Development Team: `92V374HC38`

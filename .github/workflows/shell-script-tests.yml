@@ -6,7 +6,8 @@ name: Shell Script Tests
 # deploy key and costs 20-30 minutes). These suites are different in kind —
 # hand-rolled zsh regression tests for the CI scripts themselves
 # (.github/scripts/affected-tests.sh, scripts/test-affected.sh,
-# scripts/hooks/pre-push, scripts/upload-debug-symbols.sh). They need no
+# scripts/hooks/pre-push, scripts/upload-debug-symbols.sh,
+# scripts/upload-dsyms-posthog.sh). They need no
 # simulator, no submodule, and no secrets — the dSYM suite stubs the
 # sentry-cli binary, so nothing here touches the network or needs a real auth
 # token; the whole set runs in under two seconds. That asymmetry — cheap
@@ -80,6 +81,9 @@ jobs:
 
       - name: Sentry dSYM upload regression suite
         run: zsh scripts/tests/test-upload-debug-symbols.sh
+
+      - name: PostHog dSYM upload regression suite
+        run: zsh scripts/tests/test-upload-dsyms-posthog.sh
 
       - name: Simulator-resolution regression suite
         run: zsh scripts/tests/test-simulator-resolution.sh

@@ -699,6 +699,7 @@
 				2E5A435D75D8811BBFB1D9CA /* Embed Watch Content */,
 				23FB21BA2EEA854F0064E6FD /* Resources */,
 				EE041E6CCD134EE28A57C03B /* Upload Debug Symbols to Sentry */,
+				A11650D5C0DE4E0F8B2C7D31 /* Upload Debug Symbols to PostHog */,
 			);
 			buildRules = (
 			);
@@ -866,6 +867,26 @@
 				"# check. Don't add the script itself as an input — under",
 				"# alwaysOutOfDate it can't cause a run that wasn't already happening.",
 				"exec \"${SRCROOT}/scripts/upload-debug-symbols.sh\"",
+				"",
+			);
+		};
+		A11650D5C0DE4E0F8B2C7D31 /* Upload Debug Symbols to PostHog */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+			);
+			name = "Upload Debug Symbols to PostHog";
+			shellPath = /bin/sh;
+			shellScript = (
+				"# The logic lives in scripts/upload-dsyms-posthog.sh so it can be",
+				"# regression-tested (scripts/tests/test-upload-dsyms-posthog.sh).",
+				"# It warns and exits 0 on every failure; see the script's header.",
+				"#",
+				"# alwaysOutOfDate is what makes the phase run every build; the one",
+				"# input above is the ordering dependency on dsymutil, not a staleness",
+				"# check. Don't add the script itself as an input.",
+				"exec \"${SRCROOT}/scripts/upload-dsyms-posthog.sh\"",
 				"",
 			);
 		};
