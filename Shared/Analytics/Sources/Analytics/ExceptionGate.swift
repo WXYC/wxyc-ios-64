@@ -21,7 +21,7 @@ import Synchronization
 ///
 /// 1. **Dedupe, 60 seconds.** A key admitted less than 60 seconds ago is dropped. This runs
 ///    first, so a suppressed repeat costs no token. The table holds at most 1,000 keys.
-/// 2. **Token bucket.** Burst 20, one token back every 30 minutes (a steady-state ceiling of
+/// 2. **Token bucket.** Burst 20, one whole token back every 30 minutes (a steady-state ceiling of
 ///    48 a day). Twenty is room for the distinct failures of a bad launch; 30 minutes keeps a
 ///    stuck device at 48 a day, so the fleet's exceptions stay a small share of the cap. The
 ///    bucket lives in memory and starts full at each launch.
@@ -30,23 +30,25 @@ import Synchronization
 /// MetricKit crash and hang diagnostics and PostHog's crash autocapture never do.
 ///
 /// Time comes from an injected monotonic clock so tests can advance it by hand. Drops are
-/// counted and logged as a warning at most once a minute; they are never sent.
+/// counted and logged as a warning at most once every 15 minutes. The count since the last sent
+/// event rides on that next `$exception` as `dropped_since_last`; a drop is never an event.
 public final class ExceptionGate: Sendable {
     static let dedupeWindow: Duration = .seconds(60)
     static let dedupeCapacity = 1_000
     static let refillInterval: Duration = .seconds(30 * 60)
-    static let logInterval: Duration = .seconds(60)
+    static let logInterval: Duration = .seconds(15 * 60)
 
     private struct State {
         var recent: [String: Duration] = [:]
-        var tokens: Double
+        var tokens: Int
         var lastRefill: Duration
         var dropped = 0
         var droppedSinceLog = 0
+        var droppedSinceLast = 0
         var lastLog: Duration?
     }
 
-    private let burst: Double
+    private let burst: Int
     private let now: @Sendable () -> Duration
     private let log: @Sendable (String) -> Void
     private let state: Mutex<State>
@@ -60,10 +62,10 @@ public final class ExceptionGate: Sendable {
 
     /// - Parameter log: Receives the rate-limited drop warning. Tests inject a recorder.
     init(burst: Int = 20, now: @escaping @Sendable () -> Duration, log: @escaping @Sendable (String) -> Void) {
-        self.burst = Double(burst)
+        self.burst = burst
         self.now = now
         self.log = log
-        self.state = Mutex(State(tokens: Double(burst), lastRefill: now()))
+        self.state = Mutex(State(tokens: burst, lastRefill: now()))
     }
 
     /// A gate on the system's continuous clock, for production use.
@@ -83,19 +85,27 @@ public final class ExceptionGate: Sendable {
 
     /// Returns whether an event with this dedupe key may be sent, spending a token if so.
     public func admit(key: String) -> Bool {
-        let (admitted, warning) = state.withLock { state -> (Bool, String?) in
+        admitReportingDrops(key: key) != nil
+    }
+
+    /// Like ``admit(key:)``, but returns the number of events dropped since the last admitted one
+    /// (zero when none), or `nil` when this event is refused. Reading the count resets it.
+    public func admitReportingDrops(key: String) -> Int? {
+        let (droppedSinceLast, warning) = state.withLock { state -> (Int?, String?) in
             // Read inside the lock so concurrent callers see time in lock order and the refill
             // timestamp never moves backwards.
             let time = now()
-            let elapsed = time - state.lastRefill
-            state.tokens = min(burst, state.tokens + elapsed / Self.refillInterval)
-            state.lastRefill = time
+            // Whole tokens only, advancing the refill clock by the intervals earned, so a token
+            // due at exactly one interval is granted and no rounding accumulates across calls.
+            let earned = Int((time - state.lastRefill) / Self.refillInterval)
+            state.tokens = min(burst, state.tokens + earned)
+            state.lastRefill = state.tokens >= burst ? time : state.lastRefill + Self.refillInterval * earned
 
             if let admittedAt = state.recent[key], time - admittedAt < Self.dedupeWindow {
-                return (false, Self.recordDrop(in: &state, at: time))
+                return (nil, Self.recordDrop(in: &state, at: time))
             }
             guard state.tokens >= 1 else {
-                return (false, Self.recordDrop(in: &state, at: time))
+                return (nil, Self.recordDrop(in: &state, at: time))
             }
             state.tokens -= 1
 
@@ -107,18 +117,21 @@ public final class ExceptionGate: Sendable {
                 state.recent[oldest] = nil
             }
             state.recent[key] = time
-            return (true, nil)
+            let dropped = state.droppedSinceLast
+            state.droppedSinceLast = 0
+            return (dropped, nil)
         }
         if let warning {
             log(warning)
         }
-        return admitted
+        return droppedSinceLast
     }
 
     /// Counts a drop and returns the warning to log, if one is due.
     private static func recordDrop(in state: inout State, at time: Duration) -> String? {
         state.dropped += 1
         state.droppedSinceLog += 1
+        state.droppedSinceLast += 1
         if let lastLog = state.lastLog, time - lastLog < logInterval {
             return nil
         }

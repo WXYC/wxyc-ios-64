@@ -18,11 +18,19 @@ public protocol AnalyticsService: Sendable {
 
     /// Sends an error object to PostHog error tracking. Defaults to a no-op so
     /// conformers that only record events need not implement it.
-    func captureException(_ error: any Error, properties: [String: Any]?)
+    ///
+    /// - Parameter dedupeLabel: Joins the error's type and message in the dedupe key. A
+    ///   `StaticString` so only a compile-time constant can; runtime values go in `properties`.
+    func captureException(_ error: any Error, properties: [String: Any]?, dedupeLabel: StaticString)
 }
 
 extension AnalyticsService {
-    public func captureException(_ error: any Error, properties: [String: Any]?) {}
+    public func captureException(_ error: any Error, properties: [String: Any]?, dedupeLabel: StaticString) {}
+
+    /// Sends an error object with no call-site label in its dedupe key.
+    public func captureException(_ error: any Error, properties: [String: Any]?) {
+        captureException(error, properties: properties, dedupeLabel: "")
+    }
 }
 
 // MARK: - Error Capture Convenience

@@ -67,11 +67,12 @@ public struct StructuredPostHogAnalytics: AnalyticsService, Sendable {
 
     /// Sends a handled error as `$exception` if it passes the ``ExceptionGate``. `capture(_:)`
     /// is not gated, so MetricKit crash and hang diagnostics always go out.
-    public func captureException(_ error: any Error, properties: [String: Any]?) {
-        guard exceptionGate.admit(key: Self.dedupeKey(for: error, properties: properties)) else {
+    public func captureException(_ error: any Error, properties: [String: Any]?, dedupeLabel: StaticString) {
+        guard let dropped = exceptionGate.admitReportingDrops(key: Self.dedupeKey(for: error, properties: properties, label: dedupeLabel)) else {
             return
         }
         var properties = properties ?? [:]
+        properties["dropped_since_last"] = dropped
         if properties["build_type"] == nil {
             properties["build_type"] = buildType
         }
@@ -79,8 +80,8 @@ public struct StructuredPostHogAnalytics: AnalyticsService, Sendable {
     }
 
     /// The error's type plus its fingerprint when it has one, otherwise its message (domain and
-    /// code for an `NSError`) and the `context` property.
-    private static func dedupeKey(for error: any Error, properties: [String: Any]?) -> String {
+    /// code for an `NSError`) and the call site's static label. Runtime values never enter the key.
+    private static func dedupeKey(for error: any Error, properties: [String: Any]?, label: StaticString) -> String {
         let type = String(reflecting: Swift.type(of: error))
         if let fingerprint = properties?["$exception_fingerprint"] as? String {
             return "\(type)|\(fingerprint)"
@@ -95,7 +96,6 @@ public struct StructuredPostHogAnalytics: AnalyticsService, Sendable {
         } else {
             message = "\(error)"
         }
-        let context = properties?["context"] as? String ?? ""
-        return "\(type)|\(message)|\(context)"
+        return "\(type)|\(message)|\(label)"
     }
 }

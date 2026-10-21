@@ -45,7 +45,7 @@ public final class MockStructuredAnalytics: AnalyticsService {
         state.withLock { $0.exceptions }
     }
 
-    public func captureException(_ error: any Error, properties: [String: Any]?) {
+    public func captureException(_ error: any Error, properties: [String: Any]?, dedupeLabel: StaticString) {
         let stringified = (properties ?? [:]).mapValues { String(describing: $0) }
         state.withLock { $0.exceptions.append((error, stringified)) }
     }
