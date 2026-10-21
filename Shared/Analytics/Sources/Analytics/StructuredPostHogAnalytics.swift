@@ -72,30 +72,34 @@ public struct StructuredPostHogAnalytics: AnalyticsService, Sendable {
             return
         }
         var properties = properties ?? [:]
-        properties["dropped_since_last"] = dropped
+        // Absent when nothing was dropped, per wiki `patterns/error-tracking.md` §5.
+        if dropped > 0 {
+            properties["dropped_since_last"] = dropped
+        }
         if properties["build_type"] == nil {
             properties["build_type"] = buildType
         }
         client.captureException(error, properties: properties)
     }
 
-    /// The error's type plus its fingerprint when it has one, otherwise its message (domain and
-    /// code for an `NSError`) and the call site's static label. Runtime values never enter the key.
+    /// `<type>:<fingerprint or message>[:<label>]`, per wiki `patterns/error-tracking.md` §5: the
+    /// error's type, its fingerprint when it has one, otherwise its message (domain and code for an
+    /// `NSError`), then the call site's static label when it has one. Runtime values never enter it.
     private static func dedupeKey(for error: any Error, properties: [String: Any]?, label: StaticString) -> String {
         let type = String(reflecting: Swift.type(of: error))
-        if let fingerprint = properties?["$exception_fingerprint"] as? String {
-            return "\(type)|\(fingerprint)"
-        }
         let message: String
-        // `is NSError.Type` matches subclasses such as the `NSURLError` that URLSession returns,
-        // whose description embeds addresses and timings. Swift-native errors fail the check
-        // and keep their message.
-        if Swift.type(of: error) is NSError.Type {
+        if let fingerprint = properties?["$exception_fingerprint"] as? String {
+            message = fingerprint
+        } else if Swift.type(of: error) is NSError.Type {
+            // `is NSError.Type` matches subclasses such as the `NSURLError` that URLSession returns,
+            // whose description embeds addresses and timings. Swift-native errors fail the check
+            // and keep their message.
             let nsError = error as NSError
             message = "\(nsError.domain)#\(nsError.code)"
         } else {
             message = "\(error)"
         }
-        return "\(type)|\(message)|\(label)"
+        let labelText = "\(label)"
+        return labelText.isEmpty ? "\(type):\(message)" : "\(type):\(message):\(labelText)"
     }
 }

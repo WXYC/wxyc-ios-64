@@ -56,8 +56,8 @@ struct ExceptionGateTests {
         #expect(sink.messages.count == 1)
         #expect(sink.messages[0].contains("Dropped 1 "))
 
-        // The dedupe window lapses at 60 seconds, so 15 minutes of repeats are all admitted
-        // singly; the drop that follows is the first one past the log interval.
+        // The dedupe window has lapsed by 14:59, so "a" is admitted afresh; the drop that
+        // follows at 15:00 is the first one past the log interval.
         clock.advance(by: .seconds(15 * 60 - 1))
         #expect(gate.admit(key: "a"))
         clock.advance(by: .seconds(1))
@@ -86,6 +86,73 @@ struct ExceptionGateTests {
         clock.advance(by: .seconds(1))
         #expect(!gate.admit(key: "a"))
         #expect(sink.messages.count == 2)
+    }
+
+    /// One row of the client gate scenario table in wiki `patterns/error-tracking.md` §5.
+    struct ScenarioStep: Sendable, CustomTestStringConvertible {
+        let step: String
+        let clockSeconds: Int
+        let keys: [String]
+        let admitted: Bool
+        /// The drop count the admitted event carries; zero means the property is absent.
+        let droppedSinceLast: Int
+        let warns: Bool
+
+        var testDescription: String { step }
+    }
+
+    private static func keys(_ range: ClosedRange<Int>) -> [String] {
+        range.map { "k\($0)" }
+    }
+
+    static let scenarios: [(name: String, steps: [ScenarioStep])] = [
+        ("A: 20/21 boundary, refill", [
+            ScenarioStep(step: "A1", clockSeconds: 0, keys: keys(1...20), admitted: true, droppedSinceLast: 0, warns: false),
+            ScenarioStep(step: "A2", clockSeconds: 0, keys: ["k21"], admitted: false, droppedSinceLast: 0, warns: true),
+            ScenarioStep(step: "A3", clockSeconds: 29 * 60 + 59, keys: ["k22"], admitted: false, droppedSinceLast: 0, warns: true),
+            ScenarioStep(step: "A4", clockSeconds: 30 * 60, keys: ["k23"], admitted: true, droppedSinceLast: 2, warns: false),
+            ScenarioStep(step: "A5", clockSeconds: 30 * 60, keys: ["k24"], admitted: false, droppedSinceLast: 0, warns: false),
+            ScenarioStep(step: "A6", clockSeconds: 60 * 60, keys: ["k25"], admitted: true, droppedSinceLast: 1, warns: false),
+            ScenarioStep(step: "A7", clockSeconds: 90 * 60, keys: ["k26"], admitted: true, droppedSinceLast: 0, warns: false),
+            ScenarioStep(step: "A7 bucket empty", clockSeconds: 90 * 60, keys: ["k27"], admitted: false, droppedSinceLast: 0, warns: true),
+        ]),
+        ("C: refill capped at 20", [
+            ScenarioStep(step: "C1", clockSeconds: 0, keys: ["k1"], admitted: true, droppedSinceLast: 0, warns: false),
+            ScenarioStep(step: "C2", clockSeconds: 600 * 60, keys: ["k2"], admitted: true, droppedSinceLast: 0, warns: false),
+            // 19 tokens left after C2, and no more.
+            ScenarioStep(step: "C2 tokens left", clockSeconds: 600 * 60, keys: keys(3...21), admitted: true, droppedSinceLast: 0, warns: false),
+            ScenarioStep(step: "C2 bucket empty", clockSeconds: 600 * 60, keys: ["k22"], admitted: false, droppedSinceLast: 0, warns: true),
+        ]),
+        ("D: a full bucket restarts the refill clock", [
+            ScenarioStep(step: "D1", clockSeconds: 29 * 60, keys: keys(1...20), admitted: true, droppedSinceLast: 0, warns: false),
+            ScenarioStep(step: "D2", clockSeconds: 30 * 60, keys: ["k21"], admitted: false, droppedSinceLast: 0, warns: true),
+            ScenarioStep(step: "D3", clockSeconds: 58 * 60 + 59, keys: ["k22"], admitted: false, droppedSinceLast: 0, warns: true),
+            ScenarioStep(step: "D4", clockSeconds: 59 * 60, keys: ["k23"], admitted: true, droppedSinceLast: 2, warns: false),
+            ScenarioStep(step: "D4 tokens left", clockSeconds: 59 * 60, keys: ["k24"], admitted: false, droppedSinceLast: 0, warns: false),
+        ]),
+    ]
+
+    @Test("Client gate scenario table rows match the wiki", arguments: scenarios.map(\.name))
+    func scenarioTable(name: String) {
+        let steps = Self.scenarios.first { $0.name == name }!.steps
+        let clock = ManualClock()
+        let sink = LogSink()
+        let gate = ExceptionGate(now: { clock.now }, log: { sink.record($0) })
+
+        for row in steps {
+            clock.advance(by: .seconds(row.clockSeconds) - clock.now)
+            let warningsBefore = sink.messages.count
+            for (index, key) in row.keys.enumerated() {
+                let result = gate.admitReportingDrops(key: key)
+                if row.admitted {
+                    let expected = index == 0 ? row.droppedSinceLast : 0
+                    #expect(result == expected, "\(row.step) \(key)")
+                } else {
+                    #expect(result == nil, "\(row.step) \(key)")
+                }
+            }
+            #expect((sink.messages.count > warningsBefore) == row.warns, "\(row.step) warning")
+        }
     }
 
     @Test("dropped_since_last is the drop count on the next admit, then resets")

@@ -125,7 +125,31 @@ struct StructuredPostHogAnalyticsExceptionGateTests {
         sut.captureException(error(1), properties: nil)
 
         let sent = client.exceptions.map { $0.properties?["dropped_since_last"] as? Int }
-        #expect(sent == [0, 2, 0])
+        #expect(sent == [nil, 2, nil])
+        #expect(client.exceptions.map { $0.properties?.keys.contains("dropped_since_last") } == [false, true, false])
+    }
+
+    @Test("captureReportedError puts its static label in the dedupe key, and its runtime context stays out")
+    func reportedErrorLabelReachesTheKey() {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        sut.captureReportedError(error(1), context: "a", category: "Network", additionalData: [:], dedupeLabel: "playlist")
+        sut.captureReportedError(error(1), context: "b", category: "Network", additionalData: [:], dedupeLabel: "playlist")
+        sut.captureReportedError(error(1), context: "a", category: "Network", additionalData: [:], dedupeLabel: "stream")
+        sut.captureReportedError(error(1), context: "c", category: "Network", additionalData: [:])
+
+        #expect(client.exceptions.count == 3)
+    }
+
+    @Test("A static label separates keys that share a fingerprint")
+    func staticLabelSeparatesFingerprintedKeys() {
+        let (sut, client) = makeSUT(clock: ManualClock())
+
+        sut.captureException(error(1), properties: ["$exception_fingerprint": "retry-loop"], dedupeLabel: "playlist")
+        sut.captureException(error(1), properties: ["$exception_fingerprint": "retry-loop"], dedupeLabel: "stream")
+        sut.captureException(error(1), properties: ["$exception_fingerprint": "retry-loop"], dedupeLabel: "stream")
+
+        #expect(client.exceptions.count == 2)
     }
 
     @Test("An explicit fingerprint replaces the message as the dedupe key")
