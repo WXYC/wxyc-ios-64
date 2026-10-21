@@ -29,6 +29,9 @@ public final actor PlaylistService: Sendable {
 
     // MARK: - Live updates (SSE)
 
+    /// The in-flight `on_air` catch-up fetch, if any. See ``refreshOnAirIfBehind(row:knownShowID:)``.
+    private var onAirRefreshTask: Task<Void, Never>?
+
     /// Poll cadence used only as a reconciliation backstop when SSE live
     /// updates are actually wired in (the caller opted in). Defensible only
     /// because inserts/updates already arrive over the push channel while
@@ -706,6 +709,7 @@ public final actor PlaylistService: Sendable {
     /// the two stopped coinciding once the key became composite (#839). An
     /// identical replay is a no-op so it doesn't churn observers or the cache.
     private func upsertPlaycut(_ playcut: Playcut) async {
+        let knownShowID = newestKnownShowID
         var playcuts = currentPlaylist.playcuts
         if let index = playcuts.firstIndex(where: { $0.id == playcut.id }) {
             let incoming = playcut.retainingOrderingKey(of: playcuts[index])
@@ -715,9 +719,9 @@ public final actor PlaylistService: Sendable {
             playcuts.append(playcut)
         }
 
-        // Row inserts/updates never change who's on the air, so `onAir` (and the
-        // non-track arrays) carry through untouched; the periodic poll refreshes
-        // them on its own cadence.
+        // The SSE stream carries rows only, never `on_air`, so `onAir` (and the
+        // non-track arrays) carry through untouched here; `refreshOnAirIfBehind`
+        // catches up when the row proves a new show has opened.
         let updated = Playlist(
             playcuts: playcuts,
             breakpoints: currentPlaylist.breakpoints,
@@ -729,6 +733,42 @@ public final actor PlaylistService: Sendable {
         currentPlaylist = updated
         await cacheCoordinator.set(value: updated, for: cacheKey, lifespan: Self.cacheLifespan)
         broadcast(updated)
+        refreshOnAirIfBehind(row: playcut, knownShowID: knownShowID)
+    }
+
+    /// The largest show id the service has seen: the open show's, or any stored row's.
+    private var newestKnownShowID: UInt64? {
+        var openShowID: UInt64?
+        if case .dj(_, let show?) = currentPlaylist.onAir {
+            openShowID = show.id
+        }
+        return (currentPlaylist.playcuts.compactMap(\.showID) + [openShowID].compactMap { $0 }).max()
+    }
+
+    /// Fetches a fresh playlist now, instead of waiting for the reconciliation poll, when a
+    /// pushed row belongs to a show newer than any the service knows of.
+    ///
+    /// The live stream delivers rows and `refetch` hints but no `on_air`, so after a sign-on
+    /// `onAir` stays on the old show until the next poll, up to
+    /// ``liveUpdatesReconciliationInterval`` later. The stale-song rule
+    /// (``Playlist/nowPlayingLead``) hides every song whose `showID` differs from
+    /// `on_air.show_id`, so the new show's first songs would be hidden for that whole stretch.
+    /// Show ids are serial, so only a newer id proves `onAir` is behind: rows from the open
+    /// show, an older show, or with no show id trigger nothing. That includes the enrichment
+    /// updates for the previous show's rows during automation, which would otherwise refetch
+    /// once per update. A refresh already in flight absorbs further rows.
+    private func refreshOnAirIfBehind(row: Playcut, knownShowID: UInt64?) {
+        guard onAirRefreshTask == nil,
+              let rowShowID = row.showID,
+              let knownShowID,
+              rowShowID > knownShowID
+        else {
+            return
+        }
+        onAirRefreshTask = Task {
+            _ = await self.fetchAndCachePlaylist()
+            self.onAirRefreshTask = nil
+        }
     }
 
     /// Single background fetch loop shared by all observers.
