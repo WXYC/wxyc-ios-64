@@ -190,6 +190,55 @@ struct PlaylistServiceLiveUpdatesTests {
         #expect(fetcher.callCount >= 2) // initial baseline poll + the refetch
     }
 
+    @Test("A row from a newer show than on_air names triggers an immediate on_air refresh", .timeLimit(.minutes(1)))
+    func rowFromNewShowRefreshesOnAir() async throws {
+        // SSE carries rows only, so after a sign-on `onAir` would stay on show 42 until
+        // the 300 s poll and the stale-song rule would hide show 43's first song.
+        let showA = OnAir.dj("A", show: OnAirShow(id: 42, title: nil, specialty: nil))
+        let showB = OnAir.dj("B", show: OnAirShow(id: 43, title: nil, specialty: nil))
+        let old = Playcut.stub(id: 1, chronOrderID: 1, showID: 42)
+        let first = Playcut.stub(id: 2, chronOrderID: 2, showID: 43, songTitle: "Back, Baby")
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [old], onAir: showA)
+        let source = MockLiveFsEventSource(events: [.insert(first)])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        #expect(await iterator.next()?.nowPlayingLead == NowPlayingLead.song(old))
+        // The refresh pulls this snapshot, which names the new show.
+        fetcher.playlistToReturn = .stub(playcuts: [old, first], onAir: showB)
+        await service.setForegrounded(true)
+
+        // The insert alone leaves the old show's `onAir`, so the new song is hidden...
+        #expect(await iterator.next()?.currentPlaycut == nil)
+        // ...and the immediate refresh, not the hour-long poll, lets it lead.
+        #expect(await iterator.next()?.nowPlayingLead == NowPlayingLead.song(first))
+    }
+
+    @Test("A row from the open show does not trigger an on_air refresh", .timeLimit(.minutes(1)))
+    func rowFromOpenShowDoesNotRefresh() async throws {
+        let showA = OnAir.dj("A", show: OnAirShow(id: 42, title: nil, specialty: nil))
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [.stub(id: 1, chronOrderID: 1, showID: 42)], onAir: showA)
+        let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, chronOrderID: 2, showID: 42))])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        _ = await iterator.next()
+        let callsBefore = fetcher.callCount
+        await service.setForegrounded(true)
+
+        #expect(await iterator.next()?.playcuts.count == 2)
+        await Task.yield()
+        #expect(fetcher.callCount == callsBefore)
+    }
+
     @Test("Events are gated on foreground: nothing is applied until setForegrounded(true)", .timeLimit(.minutes(1)))
     func eventsGatedOnForeground() async throws {
         let fetcher = MockPlaylistFetcher()

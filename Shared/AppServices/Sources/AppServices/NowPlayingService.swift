@@ -60,6 +60,29 @@ public struct NowPlayingItem: Sendable, Equatable, Comparable {
     }
 }
 
+/// The answer to a one-shot "what's playing" question. See ``NowPlayingService/currentAnswer(timeout:)``.
+public enum NowPlayingAnswer: Sendable, Equatable {
+    /// A song leads.
+    case song(NowPlayingItem)
+    /// Something other than a song leads: a specialty card, a DJ handle, or nothing.
+    /// Never ``NowPlayingLead/song(_:)``.
+    case lead(NowPlayingLead)
+
+    /// The sentence to speak for this answer.
+    public var spokenDialog: String {
+        switch self {
+        case .song(let item):
+            "\(item.playcut.songTitle) by \(item.playcut.artistName) is now playing on WXYC."
+        case .lead(.specialtyCard(let show)):
+            "\(show.name) is on the air on WXYC."
+        case .lead(.djHandle(let name)):
+            "\(name) is on the air on WXYC."
+        case .lead(.song), .lead(.none):
+            "Nothing is playing on WXYC right now."
+        }
+    }
+}
+
 public final actor NowPlayingService: Sendable, AsyncSequence {
     public typealias Element = NowPlayingItem
 
@@ -99,21 +122,58 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
                     continue
                 }
 
-                // Fetch artwork for the playcut
-                let artwork: Image?
-                do {
-                    let cgImage = try await service.artworkService.fetchArtwork(for: playcut)
-                    #if canImport(UIKit)
-                    artwork = UIImage(cgImage: cgImage)
-                    #else
-                    artwork = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-                    #endif
-                } catch {
-                    Log(.warning, "Artwork fetch failed for playcut \(playcut.id): \(error)")
-                    artwork = nil
-                }
-                return NowPlayingItem(playcut: playcut, artwork: artwork)
+                return await service.item(for: playcut)
             }
+        }
+    }
+
+    /// Fetches the artwork for `playcut`; a failed fetch yields an item with no artwork.
+    func item(for playcut: Playcut) async -> NowPlayingItem {
+        let artwork: Image?
+        do {
+            let cgImage = try await artworkService.fetchArtwork(for: playcut)
+            #if canImport(UIKit)
+            artwork = UIImage(cgImage: cgImage)
+            #else
+            artwork = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+            #endif
+        } catch {
+            Log(.warning, "Artwork fetch failed for playcut \(playcut.id): \(error)")
+            artwork = nil
+        }
+        return NowPlayingItem(playcut: playcut, artwork: artwork)
+    }
+
+    /// One prompt answer to "what's playing", for callers (the Siri/Shortcuts intent) that
+    /// cannot wait on the stream: the iterator suspends until a song leads, which never
+    /// happens during automation or before a new show's first song.
+    ///
+    /// Reads the first playlist the service has and answers from ``Playlist/nowPlayingLead``:
+    /// the leading song with its artwork, or the specialty card, DJ handle, or nothing. If no
+    /// playlist arrives within `timeout`, the answer is nothing.
+    public func currentAnswer(timeout: Duration = .seconds(8)) async -> NowPlayingAnswer {
+        let service = playlistService
+        let playlist: Playlist? = await withTaskGroup(of: Playlist?.self) { group in
+            group.addTask {
+                var iterator = service.updates().makeAsyncIterator()
+                return await iterator.next()
+            }
+            group.addTask {
+                try? await Task.sleep(for: timeout)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
+        }
+        guard let playlist else {
+            return .lead(.none)
+        }
+        switch playlist.nowPlayingLead {
+        case .song(let playcut):
+            return .song(await item(for: playcut))
+        case let lead:
+            return .lead(lead)
         }
     }
 }

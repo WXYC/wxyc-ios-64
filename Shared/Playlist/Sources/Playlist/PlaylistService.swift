@@ -29,6 +29,9 @@ public final actor PlaylistService: Sendable {
 
     // MARK: - Live updates (SSE)
 
+    /// The in-flight `on_air` catch-up fetch, if any. See ``refreshOnAirIfBehind(row:onAir:)``.
+    private var onAirRefreshTask: Task<Void, Never>?
+
     /// Poll cadence used only as a reconciliation backstop when SSE live
     /// updates are actually wired in (the caller opted in). Defensible only
     /// because inserts/updates already arrive over the push channel while
@@ -715,9 +718,9 @@ public final actor PlaylistService: Sendable {
             playcuts.append(playcut)
         }
 
-        // Row inserts/updates never change who's on the air, so `onAir` (and the
-        // non-track arrays) carry through untouched; the periodic poll refreshes
-        // them on its own cadence.
+        // The SSE stream carries rows only, never `on_air`, so `onAir` (and the
+        // non-track arrays) carry through untouched here; `refreshOnAirIfBehind`
+        // catches up when the row proves a new show has opened.
         let updated = Playlist(
             playcuts: playcuts,
             breakpoints: currentPlaylist.breakpoints,
@@ -729,6 +732,35 @@ public final actor PlaylistService: Sendable {
         currentPlaylist = updated
         await cacheCoordinator.set(value: updated, for: cacheKey, lifespan: Self.cacheLifespan)
         broadcast(updated)
+        refreshOnAirIfBehind(row: playcut, onAir: updated.onAir)
+    }
+
+    /// Fetches a fresh playlist now, instead of waiting for the reconciliation poll, when a
+    /// pushed row belongs to a show other than the one `on_air` names.
+    ///
+    /// The live stream delivers rows and `refetch` hints but no `on_air` and no show
+    /// transitions, so after a sign-on `onAir` stays on the old show until the next poll,
+    /// up to ``liveUpdatesReconciliationInterval`` later. The stale-song rule
+    /// (``Playlist/nowPlayingLead``) hides every song whose `showID` differs from
+    /// `on_air.show_id`, so the new show's first songs would be hidden for that whole
+    /// stretch. The rule stays as it is, so the old show's last song still never leads into
+    /// the new show; the refresh makes `onAir` catch up as soon as the first row shows it
+    /// is behind. A refresh already in flight absorbs further rows, and a row with no show
+    /// id, or an `onAir` that names no show, proves nothing and triggers nothing.
+    private func refreshOnAirIfBehind(row: Playcut, onAir: OnAir) {
+        guard onAirRefreshTask == nil, let rowShowID = row.showID else { return }
+        switch onAir {
+        case .dj(_, let show?):
+            guard let openID = show.id, openID != rowShowID else { return }
+        case .automation:
+            break
+        case .dj(_, nil), .unknown:
+            return
+        }
+        onAirRefreshTask = Task {
+            _ = await self.fetchAndCachePlaylist()
+            self.onAirRefreshTask = nil
+        }
     }
 
     /// Single background fetch loop shared by all observers.
@@ -846,11 +878,16 @@ private extension Playcut {
     /// composite, so it stays authoritative; the reverse direction (stored
     /// bare, incoming packed) is an upgrade and is taken as-is.
     func retainingOrderingKey(of stored: Playcut) -> Playcut {
-        guard chronOrderID == id, stored.chronOrderID != stored.id else { return self }
-        // Copy the incoming row and change only the key, so a field added to
-        // `Playcut` later can't be left behind by a hand-written rebuild.
+        // Copy the incoming row and change only the key (and the show id the same
+        // payload omitted), so a field added to `Playcut` later can't be left
+        // behind by a hand-written rebuild.
         var row = self
-        row.chronOrderID = stored.chronOrderID
+        if row.showID == nil {
+            row.showID = stored.showID
+        }
+        if chronOrderID == id, stored.chronOrderID != stored.id {
+            row.chronOrderID = stored.chronOrderID
+        }
         return row
     }
 }

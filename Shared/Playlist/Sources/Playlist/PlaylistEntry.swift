@@ -309,7 +309,7 @@ public struct Playcut: PlaylistEntry, Hashable {
 
     /// The flowsheet show this play belongs to (`show_id`), so the app can tell whether the
     /// current song belongs to the open show. `nil` for v1, feeds that predate it, and old caches.
-    public let showID: UInt64?
+    public var showID: UInt64?
 
     public let songTitle: String
     public let labelName: String?

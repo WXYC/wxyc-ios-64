@@ -80,25 +80,37 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
     )
 
     public init() { }
-    public func perform() async throws -> some ReturnsValue<PlaycutEntity> & ProvidesDialog & ShowsSnippetView {
+    public func perform() async throws -> some ReturnsValue<PlaycutEntity?> & ProvidesDialog & ShowsSnippetView {
         let nowPlayingService = await AppIntentServices.nowPlayingService()
 
-        // Get the first item from the now playing service
-        var iterator = nowPlayingService.makeAsyncIterator()
-        guard let nowPlayingItem = try await iterator.next() else {
-            let error = IntentError(description: "Could not fetch now playing item for WhatsPlayingOnWXYC intent.")
-            ErrorReporting.shared.report(error, context: "fetchPlaylist")
-            throw error
-        }
+        // One prompt answer: iterating the service would wait for a song to lead, which
+        // never happens during automation or before a new show's first song.
+        let answer = await nowPlayingService.currentAnswer()
 
         StructuredPostHogAnalytics.shared.capture(WhatsPlayingOnWXYCIntent())
-        let playcutEntity = PlaycutEntity(playcut: nowPlayingItem.playcut)
-        let dialog = "\(nowPlayingItem.playcut.songTitle) by \(nowPlayingItem.playcut.artistName) is now playing on WXYC."
+        let value: PlaycutEntity?
+        if case .song(let nowPlayingItem) = answer {
+            value = PlaycutEntity(playcut: nowPlayingItem.playcut)
+        } else {
+            value = nil
+        }
         return .result(
-            value: playcutEntity,
-            dialog: IntentDialog(stringLiteral: dialog),
-            view: NowPlayingView(item: nowPlayingItem)
+            value: value,
+            dialog: IntentDialog(stringLiteral: answer.spokenDialog),
+            view: AnswerView(answer: answer)
         )
+    }
+
+    struct AnswerView: View {
+        let answer: NowPlayingAnswer
+
+        var body: some View {
+            if case .song(let item) = answer {
+                NowPlayingView(item: item)
+            } else {
+                Text(answer.spokenDialog).padding()
+            }
+        }
     }
 
     struct NowPlayingView: View {
