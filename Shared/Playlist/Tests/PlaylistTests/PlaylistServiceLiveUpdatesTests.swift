@@ -378,6 +378,7 @@ private let onAirRefreshCases: [OnAirRefreshCase] = [
     OnAirRefreshCase(name: "updated row from a newer show than on_air names", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.update(.stub(id: 2, showID: 43))], expectedRefreshes: 1),
     OnAirRefreshCase(name: "newer show while on_air is unknown", stored: [.stub(id: 1, showID: 42)], onAir: .unknown, events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 1),
     OnAirRefreshCase(name: "newer show during automation", stored: [.stub(id: 1, showID: 42)], onAir: .automation, events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 1),
+    OnAirRefreshCase(name: "row from the open show when only the open show is newer than the stored rows", stored: [.stub(id: 1, showID: 42)], onAir: show(43), events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 0),
     OnAirRefreshCase(name: "row from the open show", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.insert(.stub(id: 2, showID: 42))], expectedRefreshes: 0),
     OnAirRefreshCase(name: "row from an older show", stored: [.stub(id: 5, showID: 42)], onAir: show(42), events: [.insert(.stub(id: 6, showID: 41))], expectedRefreshes: 0),
     OnAirRefreshCase(name: "row with no show id", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.insert(.stub(id: 2))], expectedRefreshes: 0),
@@ -387,11 +388,14 @@ private let onAirRefreshCases: [OnAirRefreshCase] = [
 ]
 
 /// Returns the baseline poll at once and holds every later fetch until ``open()``,
-/// so a test can observe the service while a refresh is in flight.
-private final class GatedPlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
-    var playlistToReturn: Playlist = .empty
+/// so a test can observe the service while a refresh is in flight. An actor, so the
+/// service's refresh task and the test body never race on its state.
+private actor GatedPlaylistFetcher: PlaylistFetcherProtocol {
+    private let playlistToReturn: Playlist
     private(set) var callCount = 0
     private var isOpen = false
+
+    init(playlistToReturn: Playlist) { self.playlistToReturn = playlistToReturn }
 
     func open() { isOpen = true }
 
@@ -435,8 +439,7 @@ extension PlaylistServiceLiveUpdatesTests {
     @Test("Rows that arrive while an on_air refresh is in flight are absorbed by it", .timeLimit(.minutes(1)))
     func inFlightRefreshCoalesces() async throws {
         let sentinel = Playcut.stub(id: sentinelID)
-        let fetcher = GatedPlaylistFetcher()
-        fetcher.playlistToReturn = .stub(playcuts: [.stub(id: 1, showID: 42)], onAir: show(42))
+        let fetcher = GatedPlaylistFetcher(playlistToReturn: .stub(playcuts: [.stub(id: 1, showID: 42)], onAir: show(42)))
         let source = MockLiveFsEventSource(events: [
             .insert(.stub(id: 2, showID: 43)), .insert(.stub(id: 3, showID: 44)), .insert(sentinel),
         ])
@@ -453,9 +456,33 @@ extension PlaylistServiceLiveUpdatesTests {
         // applied, then let any refresh those events started reach the fetcher.
         while await iterator.next()?.playcuts.contains(where: { $0.id == sentinelID }) != true {}
         for _ in 0..<50 { await Task.yield() }
-        #expect(fetcher.callCount == 2) // the baseline plus the one held refresh
-        fetcher.open()
+        #expect(await fetcher.callCount == 2) // the baseline plus the one held refresh
+        await fetcher.open()
+        // The released refresh ingests [row 1], which differs from the live window, so its
+        // broadcast is the completion signal; a trailing refresh would fetch after it.
+        _ = await iterator.next()
         for _ in 0..<50 { await Task.yield() }
-        #expect(fetcher.callCount == 2)
+        #expect(await fetcher.callCount == 2)
+    }
+
+    @Test("A finished on_air refresh releases the latch so a later newer show refreshes again", .timeLimit(.minutes(1)))
+    func finishedRefreshReleasesLatch() async throws {
+        // Every refresh returns a window still on show 42, so the stream's replay of the
+        // show-43 row after the reconnect backoff is newer than anything known and must
+        // trigger a second refresh, which only happens once the first one released the latch.
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [.stub(id: 1, showID: 42)], onAir: show(42))
+        let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, showID: 43))], finishesAfterScript: true)
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        _ = await iterator.next()
+        let baseline = fetcher.callCount
+        await service.setForegrounded(true)
+
+        #expect(await waitUntil(timeout: .seconds(10)) { fetcher.callCount >= baseline + 2 })
     }
 }
