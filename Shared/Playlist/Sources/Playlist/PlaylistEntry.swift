@@ -778,7 +778,7 @@ public extension Playlist {
     /// wins. An all-bare playlist (v1 payloads, a feed that dropped
     /// `show_id` wholesale, a pre-#839 cache) reduces to the pre-#839
     /// newest-id rule.
-    var currentPlaycut: Playcut? {
+    var newestPlaycut: Playcut? {
         // The fallback key IS the row id, and a packed key can't collide with
         // one until ids reach 2^32, so `chronOrderID == id` identifies every
         // bare-keyed row (v2 fallback, v1 payloads, pre-#839 cache rows).
@@ -791,6 +791,46 @@ public extension Playlist {
               bareHead.id > newestPackedID
         else { return packedHead }
         return bareHead
+    }
+
+    /// The song that leads now playing, or `nil` when something else (or nothing) does.
+    ///
+    /// Every now-playing surface reads this; ``nowPlayingLead`` decides whether
+    /// ``newestPlaycut`` belongs to the open show.
+    var currentPlaycut: Playcut? {
+        guard case .song(let playcut) = nowPlayingLead else {
+            return nil
+        }
+        return playcut
+    }
+
+    /// What leads now playing, given the newest song and who is on the air.
+    ///
+    /// A song leads only when it belongs to the open show, so a new show with no
+    /// song yet no longer inherits the previous show's last song. A playcut with
+    /// no show id (an old cache entry) cannot be shown to belong, so it never
+    /// leads once the open show's id is known. Automation leads with nothing. When
+    /// the backend does not say which show is open (`unknown`, or no show id) the
+    /// newest song leads, as before.
+    var nowPlayingLead: NowPlayingLead {
+        let newest = newestPlaycut
+        switch onAir {
+        case .automation:
+            return .none
+        case .unknown:
+            return newest.map { .song($0) } ?? .none
+        case .dj(let name, let show):
+            guard let showID = show?.id else {
+                return newest.map { .song($0) } ?? .djHandle(name)
+            }
+            if let newest, newest.showID == showID {
+                return .song(newest)
+            }
+            if let specialty = show?.specialty {
+                return .specialtyCard(specialty)
+            }
+            return .djHandle(name)
+        }
     }
 
     /// True when the playlist carries no timeline content, ignoring `onAir`.
