@@ -468,6 +468,8 @@ public actor PlaycutMetadataService {
         let fallbackAlbum = cachedAlbum ?? AlbumMetadata(label: playcut.labelName)
         let fallbackStreaming = cachedStreaming ?? .empty
 
+        Log(.info, category: .network, "Fetching album+streaming for \(playcut.artistName)")
+
         return await timedOperation(
             context: "fetchAlbumAndStreaming",
             category: .network,
