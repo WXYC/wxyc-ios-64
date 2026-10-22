@@ -123,6 +123,59 @@ struct PlaylistFetcherTests {
         #expect(mockAnalytics.events(named: FetchPlaylistEvent.name).isEmpty)
     }
 
+    // MARK: - fetchPlaylistResult
+    //
+    // `fetchPlaylist()` folds a failure into `.empty`, which a caller that must not speak a
+    // failure as "nothing is playing" cannot tell from a quiet night. `fetchPlaylistResult()`
+    // is the same fetch with the failure kept.
+
+    @Test("fetchPlaylistResult returns the playlist on success")
+    func fetchPlaylistResultReturnsPlaylistOnSuccess() async throws {
+        let dataSource = MockPlaylistDataSource()
+        let expected = Playlist.stub(playcuts: [.stub(songTitle: "la paradoja", artistName: "Juana Molina")])
+        dataSource.playlistToReturn = expected
+        let fetcher = PlaylistFetcher(dataSource: dataSource, errorReporter: MockErrorReporter(), analytics: MockStructuredAnalytics())
+
+        let result = await fetcher.fetchPlaylistResult()
+
+        #expect(try result.get() == expected)
+    }
+
+    @Test("fetchPlaylistResult keeps the failure, still reports it, and counts it")
+    func fetchPlaylistResultKeepsFailure() async {
+        let dataSource = MockPlaylistDataSource()
+        dataSource.errorToThrow = URLError(.notConnectedToInternet)
+        let errorReporter = MockErrorReporter()
+        let fetcher = PlaylistFetcher(dataSource: dataSource, errorReporter: errorReporter, analytics: MockStructuredAnalytics())
+
+        let result = await fetcher.fetchPlaylistResult()
+
+        guard case .failure(let error) = result else {
+            Issue.record("Expected a failure, got \(result)")
+            return
+        }
+        #expect((error as? URLError)?.code == .notConnectedToInternet)
+        #expect(errorReporter.allReportedErrors.count == 1)
+        #expect(fetcher.fetchErrorCount == 1)
+    }
+
+    @Test("fetchPlaylistResult reports a cancellation as a failure without reporting or counting it")
+    func fetchPlaylistResultCancellation() async {
+        let dataSource = MockPlaylistDataSource()
+        dataSource.errorToThrow = CancellationError()
+        let errorReporter = MockErrorReporter()
+        let fetcher = PlaylistFetcher(dataSource: dataSource, errorReporter: errorReporter, analytics: MockStructuredAnalytics())
+
+        let result = await fetcher.fetchPlaylistResult()
+
+        guard case .failure = result else {
+            Issue.record("Expected a failure, got \(result)")
+            return
+        }
+        #expect(errorReporter.allReportedErrors.isEmpty)
+        #expect(fetcher.fetchErrorCount == 0)
+    }
+
     // MARK: - fetchErrorCount (WXYC/wxyc-ios-64#267)
     //
     // `fetchPlaylist()` swallows every thrown error to `.empty` with no signal

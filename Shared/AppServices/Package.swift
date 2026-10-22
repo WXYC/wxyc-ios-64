@@ -64,6 +64,7 @@ let package = Package(
             dependencies: [
                 "AppServices",
                 .product(name: "CoreTesting", package: "Core"),
+                .product(name: "LoggerTesting", package: "Logger"),
                 "Caching",
                 "Playlist",
                 .product(name: "PlaylistTesting", package: "Playlist"),
