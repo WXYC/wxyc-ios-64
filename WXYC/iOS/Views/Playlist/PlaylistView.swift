@@ -70,6 +70,7 @@ struct PlaylistView: View {
     /// Which rows open a section, computed once per playlist next to ``timelineItems``.
     @State private var sections: [UInt64: PlaylistSection] = [:]
     @State private var onAir: OnAir = .unknown
+    @State private var specialtyCard: SpecialtyCard?
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
     /// The banner's visual theme. Reads ``OnAirBannerTheme/default`` in Release;
@@ -158,6 +159,16 @@ struct PlaylistView: View {
                             appState.themePickerState.recordTipDismissedByUser()
                         }
                         .padding(.vertical, 8)
+                    }
+
+                    // Specialty program card: the now-playing item for a show that logs no
+                    // songs, otherwise the head of the song list for the whole show.
+                    if let specialtyCard {
+                        if specialtyCard.placement == .nowPlaying {
+                            PlaylistSectionHeader(text: "now playing")
+                        }
+                        SpecialtyCardView(card: specialtyCard)
+                            .padding(.vertical, 8)
                     }
 
                     // Playlist entries
@@ -262,6 +273,7 @@ struct PlaylistView: View {
                     let items = playlist.timelineItems
                     self.timelineItems = items
                     self.sections = Playlist.sections(of: items, lead: playlist.nowPlayingLead)
+                    self.specialtyCard = playlist.specialtyCard
                 }
                 // Publish the first playcut's id for the debug touring-shows mock
                 // to target. It is the first playcut in timeline order, which is not
