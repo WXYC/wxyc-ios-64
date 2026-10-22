@@ -60,6 +60,12 @@ struct PlaylistPage: View {
         case .showMarker:
             // watchOS has never surfaced show markers; keep it that way.
             EmptyView()
+
+        case .spotlight(let entry):
+            Text(entry.roleLine ?? "")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .listRowBackground(Color.black)
         }
     }
     

@@ -29,6 +29,9 @@ enum FlowsheetEntryType: Equatable, Sendable {
     case breakpoint
     case showStart(djName: String?)
     case showEnd(djName: String?)
+    /// A who's-on row. The role is kept as the raw string; `from(_:)` returns `nil` instead when the
+    /// row names no one, since there is nothing to render.
+    case spotlight(role: String, name: String)
 
     /// Determines the entry type from a flowsheet entry's fields.
     ///
@@ -52,6 +55,9 @@ enum FlowsheetEntryType: Equatable, Sendable {
                 return .showStart(djName: entry.dj_name?.nilIfEmpty)
             case "show_end":
                 return .showEnd(djName: entry.dj_name?.nilIfEmpty)
+            case "spotlight":
+                guard let role = entry.spotlight_role, let name = entry.spotlight_name?.nilIfEmpty else { return nil }
+                return .spotlight(role: role, name: name)
             case "dj_join", "dj_leave":
                 // Guest-DJ joins/leaves an in-progress show. These marker rows
                 // carry only id/show_id/play_order/add_time/entry_type/dj_name —

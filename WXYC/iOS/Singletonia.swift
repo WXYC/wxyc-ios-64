@@ -210,6 +210,7 @@ final class Singletonia {
     }
 
     private var nowPlayingObservationTask: Task<Void, Never>?
+    private var nowPlayingSpotlightTask: Task<Void, Never>?
     private var playbackStateTask: Task<Void, Never>?
     private var spotlightDonationTask: Task<Void, Never>?
     private var spotlightMetadataEnrichmentTask: Task<Void, Never>?
@@ -406,6 +407,15 @@ final class Singletonia {
                 }
             } catch {
                 Log(.error, "NowPlaying observation error: \(error)")
+            }
+        }
+        // `NowPlayingService` yields no song while a who's-on entry leads; this writes the entry.
+        nowPlayingSpotlightTask = Task { [weak self, playlistService] in
+            for await playlist in playlistService.updates() {
+                guard !Task.isCancelled else { break }
+                if let spotlight = playlist.nowPlayingSpotlight {
+                    self?.nowPlayingInfoCenterManager.handleSpotlight(spotlight)
+                }
             }
         }
     }

@@ -33,9 +33,10 @@ struct FlowsheetResponse: Codable, Sendable {
         let show_id: Int?
         let show_name: String?
         let specialty: SpecialtyShowRef?
+        let spotlight: SpotlightEntry?
 
         private enum CodingKeys: String, CodingKey {
-            case dj_name, show_id, show_name, specialty
+            case dj_name, show_id, show_name, specialty, spotlight
         }
 
         init(from decoder: Decoder) throws {
@@ -44,6 +45,8 @@ struct FlowsheetResponse: Codable, Sendable {
             show_id = (try? container.decodeIfPresent(Int.self, forKey: .show_id)) ?? nil
             show_name = (try? container.decodeIfPresent(String.self, forKey: .show_name)) ?? nil
             specialty = (try? container.decodeIfPresent(SpecialtyShowRef.self, forKey: .specialty)) ?? nil
+            spotlight = ((try? container.decodeIfPresent(FlowsheetEntry.self, forKey: .spotlight)) ?? nil)
+                .flatMap { FlowsheetConverter.convert([$0]).spotlights.first }
         }
     }
 
@@ -63,9 +66,10 @@ struct FlowsheetResponse: Codable, Sendable {
             let show = OnAirShow(
                 id: info.show_id.flatMap { UInt64(exactly: $0) },
                 title: info.show_name,
-                specialty: info.specialty
+                specialty: info.specialty,
+                spotlight: info.spotlight
             )
-            onAir = .dj(djName, show: show.id == nil && show.title == nil && show.specialty == nil ? nil : show)
+            onAir = .dj(djName, show: show.id == nil && show.title == nil && show.specialty == nil && show.spotlight == nil ? nil : show)
         } else {
             // `on_air` is present but not a usable named-DJ object — a malformed
             // shape (wrong type, missing/empty `dj_name`). Degrade to `.unknown`
@@ -81,7 +85,7 @@ struct FlowsheetResponse: Codable, Sendable {
 /// Raw response model for a single entry from the v2 flowsheet API.
 ///
 /// Entry type is determined by the `entry_type` field (`"track"`, `"talkset"`,
-/// `"breakpoint"`, `"show_start"`, `"show_end"`). The older `message`-based
+/// `"breakpoint"`, `"show_start"`, `"show_end"`, `"spotlight"`). The older `message`-based
 /// detection is used as a fallback when `entry_type` is absent.
 ///
 /// **Why this stays hand-written and is *not* replaced by the generated
@@ -128,6 +132,11 @@ struct FlowsheetEntry: Codable, Sendable {
 
     /// DJ name for show start/end markers. Present only in v2 responses.
     var dj_name: String? = nil
+
+    /// Who a spotlight row puts in the spotlight, and in what role. Present only on
+    /// `entry_type: "spotlight"` rows; the role is a raw string so an unknown one survives.
+    var spotlight_role: String? = nil
+    var spotlight_name: String? = nil
 
     /// Resolved catalog artist id (`library.artist_id` → the `artists.id`
     /// keyspace shared with `Concert.headlining_artist_id`). Additive and

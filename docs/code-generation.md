@@ -111,6 +111,7 @@ Two mechanisms, not one, protect against upstream contract drift reaching this a
 `api.yaml` models a flowsheet entry as a polymorphic `oneOf` family. The app instead decodes every variant into one flat, tolerant `FlowsheetEntry` (`Shared/Playlist/Sources/Playlist/V2/FlowsheetEntry.swift`) with degrade-don't-throw resilience that a plain-`Codable` generated struct can't express:
 
 - `FlowsheetResponse`'s tri-state `on_air` decoded by *key presence* (absent → unknown, explicit `null` → automation, an object with `dj_name` → that DJ) — something `Codable` alone can't distinguish.
+- `on_air.spotlight` and `entry_type: "spotlight"` rows: the role stays a raw `spotlight_role` string, so an unknown role renders with a neutral label (`SpotlightEntry.roleLine`, the one role-copy table) instead of failing the decode, and a malformed `on_air.spotlight` is dropped without costing the DJ name.
 - `TolerantConcert` swallowing a malformed embedded `upcoming_show` rather than failing the whole decode.
 - Forward-compatible `metadataStatus` handling for unknown enum values.
 - An `entry_type` → `message` fallback for older response shapes.

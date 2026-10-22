@@ -135,6 +135,8 @@ class CarPlaySceneDelegate: NSObject, CPTemplateApplicationSceneDelegate, CPNowP
                 CPListItem(text: nil, detailText: seam.plainLabel, image: nil)
             case .showMarker:
                 nil
+            case .spotlight(let entry):
+                CPListItem(text: entry.roleLine, detailText: nil, image: nil)
             }
         }
         

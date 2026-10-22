@@ -63,6 +63,18 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         )
     }
 
+    /// Creates an entry for a leading who's-on entry: the same title and artist as the system Now
+    /// Playing info, with the recents under it and no artwork, never the previous song's.
+    static func whosOn(_ spotlight: NowPlayingSpotlight, recentItems: [NowPlayingItem], family: WidgetFamily) -> Self {
+        NowPlayingTimelineEntry(
+            artist: spotlight.artist,
+            songTitle: spotlight.title,
+            artwork: nil,
+            recentItems: recentItems,
+            family: family
+        )
+    }
+
     /// Creates an entry representing an empty playlist state.
     /// Used when the playlist service returns no playcuts.
     static func emptyState(family: WidgetFamily) -> Self {

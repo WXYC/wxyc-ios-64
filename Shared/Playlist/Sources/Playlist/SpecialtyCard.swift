@@ -28,17 +28,21 @@ public struct SpecialtyCard: Sendable, Equatable {
     /// Whether the tagline shows: until the first song (or who's-on entry) of the open show.
     public let showsTagline: Bool
     /// Whether the card draws its own "now playing" header. Only when it is the now-playing item
-    /// and no song leads: a show that logs no songs but logs one anyway has a leading song, which
-    /// takes the one "now playing" header (``Playlist/sections(of:lead:)``).
+    /// and no row leads: a show that logs no songs but logs one anyway has a leading song, and a
+    /// leading who's-on entry is a row too; either takes the one "now playing" header
+    /// (``Playlist/sections(of:lead:)``).
     public let showsNowPlayingHeader: Bool
+    /// The open show's who's-on line ("Live in the studio: Weirs"), shown as the card's "now" line.
+    public let nowLine: String?
 
-    public init(program: SpecialtyShowRef, showName: String?, djHandle: String, placement: Placement, showsTagline: Bool, showsNowPlayingHeader: Bool) {
+    public init(program: SpecialtyShowRef, showName: String?, djHandle: String, placement: Placement, showsTagline: Bool, showsNowPlayingHeader: Bool, nowLine: String? = nil) {
         self.program = program
         self.showName = showName
         self.djHandle = djHandle
         self.placement = placement
         self.showsTagline = showsTagline
         self.showsNowPlayingHeader = showsNowPlayingHeader
+        self.nowLine = nowLine
     }
 }
 
@@ -48,7 +52,10 @@ public extension Playlist {
     var specialtyCard: SpecialtyCard? {
         guard case .dj(let handle, let show?) = onAir, let program = show.specialty else { return nil }
         let showsTagline = if case .specialtyCard = nowPlayingLead { true } else { false }
-        let songLeads = if case .song = nowPlayingLead { true } else { false }
+        let rowLeads = switch nowPlayingLead {
+        case .song, .spotlight: true
+        case .specialtyCard, .djHandle, .nothing: false
+        }
         let placement: SpecialtyCard.Placement = program.logsPlaycuts == false ? .nowPlaying : .aboveSongList
         return SpecialtyCard(
             program: program,
@@ -56,7 +63,8 @@ public extension Playlist {
             djHandle: handle,
             placement: placement,
             showsTagline: showsTagline,
-            showsNowPlayingHeader: placement == .nowPlaying && !songLeads
+            showsNowPlayingHeader: placement == .nowPlaying && !rowLeads,
+            nowLine: nowLine
         )
     }
 }

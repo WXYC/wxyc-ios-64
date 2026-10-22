@@ -130,6 +130,12 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
                     return nil
                 }
 
+                // A who's-on entry newer than the song leads: `NowPlayingInfoCenterManager.handleSpotlight`
+                // writes it, and the song must not overwrite it until the next one lands.
+                if case .spotlight = playlist.nowPlayingLead {
+                    continue
+                }
+
                 guard let playcut = playlist.currentPlaycut else {
                     Log(.info, "No playcut found in playlist, waiting for next update")
                     continue

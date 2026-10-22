@@ -177,6 +177,7 @@ struct PlaylistTimelineItemsTests {
             case .playcut: "playcut"
             case .seam: "seam"
             case .showMarker: "marker"
+            case .spotlight: "spotlight"
             }
         }
 
@@ -349,6 +350,37 @@ struct PlaylistTimelineItemsTests {
         let seam = Seam(id: 1, hasMicBreak: false, breakpoint: breakpoint)
         #expect(seam.plainLabel == breakpoint.formattedDate)
         #expect(!seam.plainLabel.isEmpty)
+    }
+
+    // MARK: - Spotlight rows
+
+    @Test("A spotlight row is its own timeline item and breaks a seam run in two")
+    func spotlightRowBreaksSeams() {
+        let playlist = Playlist.stub(
+            playcuts: [.stub(id: 6, chronOrderID: 6), .stub(id: 1, chronOrderID: 1)],
+            talksets: [.stub(id: 5, chronOrderID: 5), .stub(id: 3, chronOrderID: 3)],
+            spotlights: [.stub(id: 4, chronOrderID: 4, role: "guest")]
+        )
+
+        let kinds = playlist.timelineItems.map { item -> String in
+            switch item {
+            case .playcut: "playcut"
+            case .seam: "seam"
+            case .showMarker: "marker"
+            case .spotlight: "spotlight"
+            }
+        }
+        #expect(kinds == ["playcut", "seam", "spotlight", "seam", "playcut"])
+    }
+
+    @Test("A host row hands the focus back and draws no card")
+    func hostRowDrawsNothing() {
+        let playlist = Playlist.stub(
+            playcuts: [.stub(id: 6, chronOrderID: 6)],
+            spotlights: [.stub(id: 4, chronOrderID: 4, role: "host")]
+        )
+
+        #expect(playlist.timelineItems.count == 1)
     }
 }
 

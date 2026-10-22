@@ -191,6 +191,51 @@ struct PlaylistServiceLiveUpdatesTests {
         #expect(fetcher.callCount >= 2) // initial baseline poll + the refetch
     }
 
+    @Test("A refetch after a who's-on insert refreshes on_air and the spotlight rows without waiting for a poll", .timeLimit(.minutes(1)))
+    func refetchRefreshesWhosOn() async throws {
+        let openShow = OnAirShow(id: 42, title: nil, specialty: nil)
+        let weirs = SpotlightEntry.stub(id: 5, role: "performer", name: "Weirs")
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [.stub(id: 1, showID: 42)], onAir: .dj("DJ Sidechain", show: openShow))
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: MockLiveFsEventSource(events: [.refetch(source: "spotlight")])
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        #expect(await iterator.next()?.nowLine == nil)
+        fetcher.playlistToReturn = .stub(
+            playcuts: [.stub(id: 1, showID: 42)],
+            onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: weirs)),
+            spotlights: [weirs]
+        )
+        await service.setForegrounded(true)
+
+        let afterRefetch = await iterator.next()
+        #expect(afterRefetch?.nowLine == "Live in the studio: Weirs")
+        #expect(afterRefetch?.spotlights == [weirs])
+    }
+
+    @Test("A song insert carries the spotlight rows through untouched", .timeLimit(.minutes(1)))
+    func songInsertKeepsSpotlights() async throws {
+        let weirs = SpotlightEntry.stub(id: 5, role: "performer", name: "Weirs")
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [.stub(id: 1, chronOrderID: 1)], spotlights: [weirs])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(),
+            liveEventSource: MockLiveFsEventSource(events: [.insert(.stub(id: 6, chronOrderID: 6))])
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        _ = await iterator.next()
+        await service.setForegrounded(true)
+
+        let afterInsert = await iterator.next()
+        #expect(afterInsert?.playcuts.map(\.id).sorted() == [1, 6])
+        #expect(afterInsert?.spotlights == [weirs])
+    }
+
     @Test("Events are gated on foreground: nothing is applied until setForegrounded(true)", .timeLimit(.minutes(1)))
     func eventsGatedOnForeground() async throws {
         let fetcher = MockPlaylistFetcher()

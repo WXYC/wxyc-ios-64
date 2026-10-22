@@ -18,6 +18,7 @@ private let newest = Playcut.stub(id: 12, showID: 42)
 private let middle = Playcut.stub(id: 11, showID: 42)
 private let oldest = Playcut.stub(id: 10, showID: 42)
 private let previousShow = Playcut.stub(id: 9, showID: 41)
+private let entry = SpotlightEntry.stub(id: 13)
 
 struct PlaylistSectionCase: Sendable, CustomTestStringConvertible {
     let name: String
@@ -34,6 +35,7 @@ private let sectionCases: [PlaylistSectionCase] = [
     PlaylistSectionCase(name: "leader sorting second still gets the one now playing header", items: [.playcut(newest), .playcut(middle), .playcut(oldest)], lead: .song(middle), expected: [11: .nowPlaying, 12: .recentlyPlayed]),
     PlaylistSectionCase(name: "leader sorting third still gets the one now playing header", items: [.playcut(newest), .playcut(middle), .playcut(oldest)], lead: .song(oldest), expected: [10: .nowPlaying, 12: .recentlyPlayed]),
     PlaylistSectionCase(name: "a lone leader has no recently played row", items: [.playcut(newest)], lead: .song(newest), expected: [12: .nowPlaying]),
+    PlaylistSectionCase(name: "a leading who's-on entry opens now playing, and the newest song is recent", items: [.spotlight(entry), .playcut(newest), .playcut(middle)], lead: .spotlight(entry), expected: [13: .nowPlaying, 12: .recentlyPlayed]),
     PlaylistSectionCase(name: "no playcuts, no headers", items: [], lead: .nothing, expected: [:]),
 ]
 
@@ -50,16 +52,21 @@ struct PlaylistSectionTests {
 
         #expect(Playlist.widgetRecents(of: playcuts, lead: .song(newest)).map(\.id) == [11, 10, 9])
         #expect(Playlist.widgetRecents(of: playcuts, lead: .nothing).map(\.id) == [12, 11, 10])
+        #expect(Playlist.widgetRecents(of: playcuts, lead: .spotlight(entry)).map(\.id) == [12, 11, 10])
         #expect(Playlist.widgetRecents(of: [], lead: .nothing).isEmpty)
     }
 
-    @Test("widget content: lead, recents under the station line, or the empty state", arguments: [
-        (true, true, WidgetContent.lead),
-        (true, false, .lead),
-        (false, true, .stationLine),
-        (false, false, .empty),
+    @Test("widget content: song, who's-on line, recents under the station line, or the empty state", arguments: [
+        (NowPlayingLead.song(newest), true, WidgetContent.lead),
+        (.song(newest), false, .lead),
+        (.spotlight(entry), true, .whosOn),
+        (.spotlight(entry), false, .whosOn),
+        (.djHandle("Cat Power Hour"), true, .stationLine),
+        (.djHandle("Cat Power Hour"), false, .empty),
+        (.nothing, true, .stationLine),
+        (.nothing, false, .empty),
     ])
-    func widgetContent(hasLead: Bool, hasRecents: Bool, expected: WidgetContent) {
-        #expect(Playlist.widgetContent(hasLead: hasLead, hasRecents: hasRecents) == expected)
+    func widgetContent(lead: NowPlayingLead, hasRecents: Bool, expected: WidgetContent) {
+        #expect(Playlist.widgetContent(lead: lead, hasRecents: hasRecents) == expected)
     }
 }

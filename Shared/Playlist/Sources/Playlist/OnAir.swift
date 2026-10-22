@@ -33,18 +33,21 @@ public enum OnAir: Codable, Sendable, Equatable {
     case unknown
 }
 
-/// The open show behind a live ``OnAir/dj(_:show:)``: its id, its title, and the specialty
-/// program the DJ signed on as. The app shows a program only when `specialty` is set; it never
-/// infers one from the time slot.
+/// The open show behind a live ``OnAir/dj(_:show:)``: its id, its title, the specialty
+/// program the DJ signed on as, and its current who's-on entry. The app shows a program only when
+/// `specialty` is set; it never infers one from the time slot.
 public struct OnAirShow: Codable, Sendable, Hashable {
     public let id: UInt64?
     public let title: String?
     public let specialty: SpecialtyShowRef?
+    /// The newest spotlight row of the open show, as the server computes it (`on_air.spotlight`).
+    public let spotlight: SpotlightEntry?
 
-    public init(id: UInt64?, title: String?, specialty: SpecialtyShowRef?) {
+    public init(id: UInt64?, title: String?, specialty: SpecialtyShowRef?, spotlight: SpotlightEntry? = nil) {
         self.id = id
         self.title = title
         self.specialty = specialty
+        self.spotlight = spotlight
     }
 }
 

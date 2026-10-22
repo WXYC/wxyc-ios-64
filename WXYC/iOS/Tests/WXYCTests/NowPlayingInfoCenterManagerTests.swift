@@ -122,6 +122,26 @@ struct NowPlayingInfoTests {
         #expect(info?[MPMediaItemPropertyAlbumTitle] as? String == "My Album")
     }
 
+    @Test("A leading who's-on entry writes the table's strings over the previous song, with the station artwork")
+    func spotlightInfoOverwritesSong() {
+        let mockInfoCenter = MockNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(
+            infoCenter: mockInfoCenter,
+            boundsSize: CGSize(width: 100, height: 100)
+        )
+        manager.handleNowPlayingItem(makeNowPlayingItem(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again"))
+
+        manager.handleSpotlight(NowPlayingSpotlight(
+            title: "In the studio: Ana Lucía Ríos", artist: "DJ Sidechain", album: "WXYC 89.3 FM", artwork: .station
+        ))
+
+        let info = mockInfoCenter.nowPlayingInfo
+        #expect(info?[MPMediaItemPropertyTitle] as? String == "In the studio: Ana Lucía Ríos")
+        #expect(info?[MPMediaItemPropertyArtist] as? String == "DJ Sidechain")
+        #expect(info?[MPMediaItemPropertyAlbumTitle] as? String == "WXYC 89.3 FM")
+        #expect(info?[MPMediaItemPropertyArtwork] is MPMediaItemArtwork)
+    }
+
     @Test("Artwork is set when provided")
     func artworkIsSetWhenProvided() {
         let mockInfoCenter = MockNowPlayingInfoCenter()

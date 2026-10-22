@@ -209,6 +209,37 @@ struct NowPlayingServiceTests {
         #expect(secondItem?.playcut.artistName == "Second Artist")
     }
 
+    @Test("AsyncSequence yields no song while a who's-on entry leads, and resumes with the next song")
+    func asyncSequenceSkipsWhileSpotlightLeads() async throws {
+        let openShow = { (spotlight: SpotlightEntry) in
+            OnAir.dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: spotlight))
+        }
+        let weirs = SpotlightEntry.stub(id: 11, role: "performer", name: "Weirs")
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = Playlist.stub(
+            playcuts: [.stub(id: 10, showID: 42, songTitle: "Back, Baby", artistName: "Jessica Pratt")],
+            onAir: openShow(weirs)
+        )
+        let playlistService = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 0.05,
+            cacheCoordinator: makeNowPlayingTestCacheCoordinator()
+        )
+        let nowPlayingService = NowPlayingService(playlistService: playlistService, artworkService: MockArtworkService())
+
+        var iterator = nowPlayingService.makeAsyncIterator()
+        Task {
+            try await Task.sleep(for: .milliseconds(300))
+            mockFetcher.playlistToReturn = Playlist.stub(
+                playcuts: [.stub(id: 10, showID: 42), .stub(id: 12, showID: 42, songTitle: "la paradoja", artistName: "Juana Molina")],
+                onAir: openShow(weirs)
+            )
+        }
+        let item = try await iterator.next()
+
+        #expect(item?.playcut.id == 12)
+    }
+
     @Test("AsyncSequence uses first playcut from playlist")
     func asyncSequenceUsesFirstPlaycut() async throws {
         // Given
