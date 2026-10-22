@@ -36,6 +36,12 @@ public final actor PlaylistService: Sendable {
     /// a later row of the same show retry a fetch that did not move `on_air` there.
     private var lastOnAirRefresh: (showID: UInt64, at: ContinuousClock.Instant)?
 
+    /// The newest open show id any accepted fetch has reported, which only ever rises. Unlike
+    /// ``openShowID`` it survives the show ending, when `onAir` goes to automation and no show
+    /// is open, so a row of a show that was already caught up is never mistaken for one `onAir`
+    /// is still behind.
+    private var confirmedShowID: UInt64?
+
     /// The minimum time between catch-up fetches for the same show id.
     private let onAirRetrySpacing: Duration
 
@@ -772,8 +778,9 @@ public final actor PlaylistService: Sendable {
     ///   the row names one; or
     /// - an earlier catch-up fetch for that show did not move `onAir` to it (it failed, or the
     ///   server had not caught up) and ``onAirRetrySpacing`` has passed since that fetch.
-    ///   This compares against the open show a successful fetch confirmed, not against the
-    ///   stored rows, which the triggering row has already raised.
+    ///   This compares against the newest show a successful fetch confirmed
+    ///   (``confirmedShowID``), not against the stored rows, which the triggering row has
+    ///   already raised, nor against the show open right now, which is nil once a show ends.
     ///
     /// Rows from the open show, an older show, or with no show id trigger nothing. That includes
     /// the enrichment updates for the previous show's rows during automation, which would
@@ -784,7 +791,7 @@ public final actor PlaylistService: Sendable {
         let now = ContinuousClock.now
         let isNewer = knownShowID.map { rowShowID > $0 } ?? true
         var isRetry = false
-        if let last = lastOnAirRefresh, last.showID == rowShowID, rowShowID > (openShowID ?? 0) {
+        if let last = lastOnAirRefresh, last.showID == rowShowID, rowShowID > (confirmedShowID ?? 0) {
             isRetry = now - last.at >= onAirRetrySpacing
         }
         guard isNewer || isRetry else { return }
@@ -856,6 +863,10 @@ public final actor PlaylistService: Sendable {
         // `.empty` sentinel and would otherwise slip past this guard and clear the
         // visible feed. See `Playlist.isContentEmpty`.
         guard !playlist.isContentEmpty || currentPlaylist.isContentEmpty else { return false }
+
+        if case .dj(_, let show?) = playlist.onAir, let showID = show.id {
+            confirmedShowID = max(confirmedShowID ?? 0, showID)
+        }
 
         // A content-empty playlist reaching this line has been accepted in memory — the
         // guard above just did — but it is never persisted.

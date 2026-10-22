@@ -423,6 +423,21 @@ private final class FailThenRecoverFetcher: PlaylistFetcherProtocol, @unchecked 
     }
 }
 
+/// Serves `responses` one fetch at a time, then repeats the last one.
+private final class ScriptedPlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
+    private let responses: [Playlist]
+    private let calls = Mutex(0)
+
+    init(_ responses: [Playlist]) { self.responses = responses }
+
+    var callCount: Int { calls.withLock { $0 } }
+
+    func fetchPlaylist() async -> Playlist {
+        let index = calls.withLock { value -> Int in defer { value += 1 }; return value }
+        return responses[min(index, responses.count - 1)]
+    }
+}
+
 struct OnAirRetryCase: Sendable, CustomTestStringConvertible {
     let name: String
     let spacing: Duration
@@ -521,6 +536,40 @@ extension PlaylistServiceLiveUpdatesTests {
         #expect(await waitUntil(timeout: .seconds(2)) { fetcher.callCount == 1 + testCase.expectedRefreshes })
         for _ in 0..<100 { await Task.yield() }
         #expect(fetcher.callCount == 1 + testCase.expectedRefreshes)
+    }
+
+    @Test("Updates to a show whose catch-up succeeded do not refetch after it ends")
+    func endedShowUpdatesDoNotRefetch() async throws {
+        let rows: [Playcut] = [.stub(id: 1, showID: 42), .stub(id: 2, showID: 43)]
+        let fetcher = ScriptedPlaylistFetcher([
+            .stub(playcuts: [.stub(id: 1, showID: 42)], onAir: show(42)),
+            .stub(playcuts: rows, onAir: show(43)),
+            .stub(playcuts: rows, onAir: .automation),
+        ])
+        let source = PushableLiveFsEventSource()
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            onAirRetrySpacing: .zero
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        _ = await iterator.next()
+        await service.setForegrounded(true)
+
+        // Row 2 of show 43 proves on_air is behind, and the catch-up confirms show 43.
+        source.push(.insert(.stub(id: 2, showID: 43)))
+        #expect(await waitUntil(timeout: .seconds(2)) { fetcher.callCount == 2 })
+        for _ in 0..<100 { await Task.yield() }
+
+        // Show 43 ends: the next poll reports automation, so no show is open any more.
+        _ = await service.fetchAndCachePlaylist()
+        #expect(fetcher.callCount == 3)
+
+        // Enrichment updates for the ended show's rows must not refetch.
+        source.push(.update(.stub(id: 2, showID: 43, songTitle: "Back, Baby")))
+        for _ in 0..<100 { await Task.yield() }
+        #expect(fetcher.callCount == 3)
     }
 
     @Test("A burst of rows naming a show while none is known starts one refresh", .timeLimit(.minutes(1)))
