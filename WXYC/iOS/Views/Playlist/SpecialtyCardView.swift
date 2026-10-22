@@ -89,7 +89,8 @@ struct SpecialtyCardView: View {
             showName: "Hogwash Hour",
             djHandle: "DJ Monster",
             placement: .aboveSongList,
-            showsTagline: true
+            showsTagline: true,
+            showsNowPlayingHeader: false
         ))
     }
     .padding()

@@ -39,27 +39,31 @@ struct SpecialtyCardCase: Sendable, CustomTestStringConvertible {
     let onAir: OnAir
     let placement: SpecialtyCard.Placement?
     let showsTagline: Bool
+    /// Whether the card draws its own "now playing" header: only when it is the now-playing item.
+    let showsNowPlayingHeader: Bool
     var testDescription: String { name }
 }
 
 private let specialtyCardCases: [SpecialtyCardCase] = [
-    SpecialtyCardCase(name: "logging show with no song sits above the list with the tagline", playcuts: [staleSong], onAir: onAir(program(logsPlaycuts: true)), placement: .aboveSongList, showsTagline: true),
-    SpecialtyCardCase(name: "logging show keeps the card above the list once a song lands, without the tagline", playcuts: [staleSong, ownSong], onAir: onAir(program(logsPlaycuts: true)), placement: .aboveSongList, showsTagline: false),
-    SpecialtyCardCase(name: "non-logging show's card is the now-playing item", playcuts: [staleSong], onAir: onAir(program(logsPlaycuts: false)), placement: .nowPlaying, showsTagline: true),
-    SpecialtyCardCase(name: "unspecified logging flag keeps the song list", playcuts: [], onAir: onAir(program(logsPlaycuts: nil)), placement: .aboveSongList, showsTagline: true),
-    SpecialtyCardCase(name: "freeform show has no card", playcuts: [ownSong], onAir: onAir(nil), placement: nil, showsTagline: false),
-    SpecialtyCardCase(name: "automation has no card", playcuts: [ownSong], onAir: .automation, placement: nil, showsTagline: false),
-    SpecialtyCardCase(name: "unknown on-air has no card", playcuts: [], onAir: .unknown, placement: nil, showsTagline: false),
+    SpecialtyCardCase(name: "logging show with no song sits above the list with the tagline", playcuts: [staleSong], onAir: onAir(program(logsPlaycuts: true)), placement: .aboveSongList, showsTagline: true, showsNowPlayingHeader: false),
+    SpecialtyCardCase(name: "logging show keeps the card above the list once a song lands, without the tagline", playcuts: [staleSong, ownSong], onAir: onAir(program(logsPlaycuts: true)), placement: .aboveSongList, showsTagline: false, showsNowPlayingHeader: false),
+    SpecialtyCardCase(name: "non-logging show's card is the now-playing item", playcuts: [staleSong], onAir: onAir(program(logsPlaycuts: false)), placement: .nowPlaying, showsTagline: true, showsNowPlayingHeader: true),
+    SpecialtyCardCase(name: "non-logging show that logs a song anyway leaves the one header to the leading song", playcuts: [staleSong, ownSong], onAir: onAir(program(logsPlaycuts: false)), placement: .nowPlaying, showsTagline: false, showsNowPlayingHeader: false),
+    SpecialtyCardCase(name: "unspecified logging flag keeps the song list", playcuts: [], onAir: onAir(program(logsPlaycuts: nil)), placement: .aboveSongList, showsTagline: true, showsNowPlayingHeader: false),
+    SpecialtyCardCase(name: "freeform show has no card", playcuts: [ownSong], onAir: onAir(nil), placement: nil, showsTagline: false, showsNowPlayingHeader: false),
+    SpecialtyCardCase(name: "automation has no card", playcuts: [ownSong], onAir: .automation, placement: nil, showsTagline: false, showsNowPlayingHeader: false),
+    SpecialtyCardCase(name: "unknown on-air has no card", playcuts: [], onAir: .unknown, placement: nil, showsTagline: false, showsNowPlayingHeader: false),
 ]
 
 @Suite("Specialty Card Tests")
 struct SpecialtyCardTests {
-    @Test("Card placement and tagline", arguments: specialtyCardCases)
+    @Test("Card placement, tagline, and now-playing header", arguments: specialtyCardCases)
     func card(_ testCase: SpecialtyCardCase) {
         let playlist = Playlist.stub(playcuts: testCase.playcuts, onAir: testCase.onAir)
         let card = playlist.specialtyCard
         #expect(card?.placement == testCase.placement)
         #expect(card?.showsTagline ?? false == testCase.showsTagline)
+        #expect(card?.showsNowPlayingHeader ?? false == testCase.showsNowPlayingHeader)
     }
 
     @Test("Card carries the program, the show name, and the DJ handle")
