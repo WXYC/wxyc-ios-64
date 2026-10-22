@@ -74,13 +74,14 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         recents: [NowPlayingItem],
         family: WidgetFamily
     ) -> NowPlayingTimelineEntry? {
-        if let lead {
-            return NowPlayingTimelineEntry(nowPlayingItem: lead, recentItems: recents, family: family)
+        switch Playlist.widgetContent(hasLead: lead != nil, hasRecents: !recents.isEmpty) {
+        case .lead:
+            lead.map { NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: recents, family: family) }
+        case .stationLine:
+            .stationLine(recentItems: recents, family: family)
+        case .empty:
+            nil
         }
-        if !recents.isEmpty {
-            return .stationLine(recentItems: recents, family: family)
-        }
-        return nil
     }
 
     func placeholder(in context: Context) -> NowPlayingTimelineEntry {

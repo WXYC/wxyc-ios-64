@@ -52,4 +52,14 @@ struct PlaylistSectionTests {
         #expect(Playlist.widgetRecents(of: playcuts, lead: .nothing).map(\.id) == [12, 11, 10])
         #expect(Playlist.widgetRecents(of: [], lead: .nothing).isEmpty)
     }
+
+    @Test("widget content: lead, recents under the station line, or the empty state", arguments: [
+        (true, true, WidgetContent.lead),
+        (true, false, .lead),
+        (false, true, .stationLine),
+        (false, false, .empty),
+    ])
+    func widgetContent(hasLead: Bool, hasRecents: Bool, expected: WidgetContent) {
+        #expect(Playlist.widgetContent(hasLead: hasLead, hasRecents: hasRecents) == expected)
+    }
 }

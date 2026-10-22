@@ -48,12 +48,15 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         )
     }
     
+    /// The station line the widget shows when it has no song to name.
+    private static let stationLineText = "Tune in to WXYC 89.3 FM"
+
     /// Creates an entry for when no song leads (automation, or a show with no song yet) but
-    /// recents exist: the station line leads and the recents follow it.
+    /// recents exist: the station line takes the bold lead line and the recents follow it.
     static func stationLine(recentItems: [NowPlayingItem], family: WidgetFamily) -> Self {
         NowPlayingTimelineEntry(
-            artist: "No Data Available",
-            songTitle: "Tune in to WXYC 89.3 FM",
+            artist: stationLineText,
+            songTitle: "",
             artwork: nil,
             recentItems: recentItems,
             family: family
@@ -65,13 +68,13 @@ struct NowPlayingTimelineEntry: TimelineEntry {
     static func emptyState(family: WidgetFamily) -> Self {
         NowPlayingTimelineEntry(
             artist: "No Data Available",
-            songTitle: "Tune in to WXYC 89.3 FM",
+            songTitle: stationLineText,
             artwork: nil,
             recentItems: [],
             family: family
         )
     }
-    
+
     /// Private initializer for creating entries with raw values (used for empty state)
     private init(artist: String, songTitle: String, artwork: SwiftUI.Image?, recentItems: [NowPlayingItem], family: WidgetFamily) {
         self.date = .now

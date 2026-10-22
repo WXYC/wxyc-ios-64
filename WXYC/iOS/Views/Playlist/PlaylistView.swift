@@ -263,8 +263,10 @@ struct PlaylistView: View {
                     self.timelineItems = items
                     self.sections = Playlist.sections(of: items, lead: playlist.nowPlayingLead)
                 }
-                // Publish the now-playing (first) playcut id for the debug
-                // touring-shows mock to target. Harmless in release (unread).
+                // Publish the first playcut's id for the debug touring-shows mock
+                // to target. It is the first playcut in timeline order, which is not
+                // necessarily the leading song (`nowPlayingLead`) and may be a recent. Harmless in
+                // release (unread).
                 OnTourShowsDebugState.shared.firstPlaycutID =
                     playlist.timelineEntries.lazy.compactMap { ($0 as? Playcut)?.id }.first
                 let playcuts = playlist.entries.compactMap { $0 as? Playcut }

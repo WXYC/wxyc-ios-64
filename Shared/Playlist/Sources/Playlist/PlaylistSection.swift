@@ -16,6 +16,16 @@ public enum PlaylistSection: Sendable, Equatable {
     case recentlyPlayed
 }
 
+/// What the large widget shows. See ``Playlist/widgetContent(hasLead:hasRecents:)``.
+public enum WidgetContent: Sendable, Equatable {
+    /// A leading song, with the recents under it.
+    case lead
+    /// No song leads but recents exist: the station line, with the recents under it.
+    case stationLine
+    /// Nothing to show: the empty state.
+    case empty
+}
+
 public extension Playlist {
     /// The rows that open a section, keyed by playcut id.
     ///
@@ -48,5 +58,14 @@ public extension Playlist {
             leaderID = leader.id
         }
         return Array(playcuts.sorted(by: >).filter { $0.id != leaderID }.prefix(3))
+    }
+
+    /// Which of the widget's three layouts to show. A leading song wins; otherwise recents
+    /// under the station line; the empty state only when there is nothing at all.
+    static func widgetContent(hasLead: Bool, hasRecents: Bool) -> WidgetContent {
+        if hasLead {
+            return .lead
+        }
+        return hasRecents ? .stationLine : .empty
     }
 }
