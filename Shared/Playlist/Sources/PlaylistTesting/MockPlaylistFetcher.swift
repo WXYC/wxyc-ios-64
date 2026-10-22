@@ -24,7 +24,12 @@ public final class MockPlaylistFetcher: PlaylistFetcherProtocol, @unchecked Send
     /// The playlist to return from ``fetchPlaylist()``.
     public var playlistToReturn: Playlist = .empty
 
-    /// The number of times ``fetchPlaylist()`` has been called.
+    /// An error to fail ``fetchPlaylistResult()`` with, if set. ``fetchPlaylist()`` still returns
+    /// ``playlistToReturn``: the real fetcher folds a failure into an empty playlist, and a test
+    /// that needs that sets ``playlistToReturn`` to `.empty`.
+    public var errorToThrow: Error?
+
+    /// The number of times ``fetchPlaylist()`` or ``fetchPlaylistResult()`` has been called.
     public var callCount = 0
 
     public init() {}
@@ -32,6 +37,14 @@ public final class MockPlaylistFetcher: PlaylistFetcherProtocol, @unchecked Send
     public func fetchPlaylist() async -> Playlist {
         callCount += 1
         return playlistToReturn
+    }
+
+    public func fetchPlaylistResult() async -> Result<Playlist, any Error> {
+        callCount += 1
+        if let errorToThrow {
+            return .failure(errorToThrow)
+        }
+        return .success(playlistToReturn)
     }
 }
 

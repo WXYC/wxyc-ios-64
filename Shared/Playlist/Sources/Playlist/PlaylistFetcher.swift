@@ -16,9 +16,14 @@ import Synchronization
 
 // MARK: - Protocols
 
-/// Protocol for fetching playlists (non-throwing, returns empty on error).
+/// Protocol for fetching playlists (``fetchPlaylist()`` returns empty on error; ``fetchPlaylistResult()`` keeps the error).
 public protocol PlaylistFetcherProtocol: Sendable {
     func fetchPlaylist() async -> Playlist
+
+    /// The same fetch as ``fetchPlaylist()``, keeping the failure that call folds into an empty
+    /// playlist, for the caller that must tell "the station has nothing" from "the fetch failed".
+    /// A fetch cancelled mid-flight is a `.failure` here, though it is neither reported nor counted.
+    func fetchPlaylistResult() async -> Result<Playlist, any Error>
 
     /// Cumulative count of `fetchPlaylist()` calls that failed (network error,
     /// HTTP error, or decode failure) and fell back to an empty playlist,
@@ -36,6 +41,11 @@ public protocol PlaylistFetcherProtocol: Sendable {
 
 extension PlaylistFetcherProtocol {
     public var fetchErrorCount: Int { 0 }
+
+    /// Conformers that never fail, such as test doubles, answer with their playlist.
+    public func fetchPlaylistResult() async -> Result<Playlist, any Error> {
+        .success(await fetchPlaylist())
+    }
 }
 
 /// Protocol for raw playlist data fetching (throws on error).
@@ -96,14 +106,22 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
     }
 
     /// Fetches a playlist from the remote source.
-    /// Returns an empty playlist if the fetch fails.
+    /// Returns an empty playlist if the fetch fails; ``fetchPlaylistResult()`` keeps the failure.
+    public func fetchPlaylist() async -> Playlist {
+        if case .success(let playlist) = await fetchPlaylistResult() {
+            return playlist
+        }
+        return .empty
+    }
+
+    /// See ``PlaylistFetcherProtocol/fetchPlaylistResult()``.
     ///
     /// Handled inline (rather than via `timedOperation`) so the success, failure,
     /// and cancellation outcomes are all distinguishable in one place: only a
     /// genuine failure reports to the error reporter and counts against the
     /// success/failure denominator, and the API version is threaded onto the
     /// report as a structured `api_version` property.
-    public func fetchPlaylist() async -> Playlist {
+    public func fetchPlaylistResult() async -> Result<Playlist, any Error> {
         let timer = Core.Timer.start()
         let context: StaticString = "PlaylistFetcher fetchPlaylist"
 
@@ -116,7 +134,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             if !Task.isCancelled {
                 captureFetchEvent(playlist: playlist, succeeded: true, duration: duration)
             }
-            return playlist
+            return .success(playlist)
         } catch {
             // `URLSession.data(for:)` throws `URLError(.cancelled)` (NOT Swift's
             // `CancellationError`) when a fetch is torn down — e.g. a service
@@ -125,7 +143,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             // don't report it to the error reporter (Sentry) and don't count it as
             // a failure in the rollout metric.
             if isCancellation(error) || Task.isCancelled {
-                return .empty
+                return .failure(error)
             }
 
             failureCount.withLock { $0 += 1 }
@@ -141,7 +159,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
                 ]
             )
             captureFetchEvent(playlist: .empty, succeeded: false, duration: duration)
-            return .empty
+            return .failure(error)
         }
     }
 

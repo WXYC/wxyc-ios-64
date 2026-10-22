@@ -338,6 +338,14 @@ public final actor PlaylistService: Sendable {
         return playlist
     }
 
+    /// One fresh fetch that keeps its failure, for the "what's playing" intent, which must not
+    /// speak a failed fetch as "nothing is playing". Reads and writes no cache and broadcasts to
+    /// no observer, so the playlist stream, including its no-broadcast-of-empty guard
+    /// (``ingest(_:)``), is untouched.
+    public func fetchPlaylistResult() async -> Result<Playlist, any Error> {
+        await fetcher.fetchPlaylistResult()
+    }
+
     /// Direct fetch method for widgets and extensions that need immediate data.
     /// First checks the cache, and if cache is empty or expired, fetches from network.
     /// This method is designed for widget timeline providers that have strict time constraints.
