@@ -28,10 +28,20 @@ import Testing
 import Foundation
 @testable import Caching
 
+/// Whether the App Group container exists in this process. It doesn't under a host `swift test` run
+/// (no entitlement), where the shared `DiskCache` silently stores nothing; the simulator run has it.
+private let sharedContainerAvailable: Bool = {
+    let probe = DiskCache(useSharedContainer: true)
+    let key = "container-probe-\(UUID().uuidString)"
+    probe.set(Data([1]), metadata: CacheMetadata(lifespan: 60), for: key)
+    defer { probe.remove(for: key) }
+    return probe.data(for: key) != nil
+}()
+
 @Suite("MigratingDiskCache Tests")
 struct MigratingDiskCacheTests {
 
-    @Test("Migrates data from legacy to shared container")
+    @Test("Migrates data from legacy to shared container", .enabled(if: sharedContainerAvailable, "App Group container unavailable on host"))
     func migratesDataFromLegacyToShared() async throws {
         // Given - Write directly to legacy location
         let legacyCache = DiskCache(useSharedContainer: false)
@@ -56,7 +66,7 @@ struct MigratingDiskCacheTests {
         migratingCache.remove(for: key)
     }
 
-    @Test("Prefers shared over legacy data")
+    @Test("Prefers shared over legacy data", .enabled(if: sharedContainerAvailable, "App Group container unavailable on host"))
     func prefersSharedOverLegacy() async throws {
         // Given - Write different data to both locations
         let legacyCache = DiskCache(useSharedContainer: false)
@@ -80,7 +90,7 @@ struct MigratingDiskCacheTests {
         migratingCache.remove(for: key)
     }
         
-    @Test("Writes only to shared container")
+    @Test("Writes only to shared container", .enabled(if: sharedContainerAvailable, "App Group container unavailable on host"))
     func writesOnlyToShared() async throws {
         // Given
         let migratingCache = MigratingDiskCache()
@@ -102,7 +112,7 @@ struct MigratingDiskCacheTests {
         migratingCache.remove(for: key)
     }
 
-    @Test("Remove cleans up both locations")
+    @Test("Remove cleans up both locations", .enabled(if: sharedContainerAvailable, "App Group container unavailable on host"))
     func removeCleansUpBothLocations() async throws {
         // Given - Write to both locations
         let legacyCache = DiskCache(useSharedContainer: false)
@@ -127,7 +137,7 @@ struct MigratingDiskCacheTests {
         #expect(sharedCache.data(for: key) == nil)
     }
 
-    @Test("allMetadata combines both locations")
+    @Test("allMetadata combines both locations", .enabled(if: sharedContainerAvailable, "App Group container unavailable on host"))
     func allMetadataCombinesBothLocations() async throws {
         // Given - Write unique keys to each location
         let legacyCache = DiskCache(useSharedContainer: false)
