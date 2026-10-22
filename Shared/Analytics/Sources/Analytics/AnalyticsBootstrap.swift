@@ -73,7 +73,8 @@ public enum AnalyticsBootstrap {
     /// - Parameter config: The configuration `start(apiKey:host:)` passes to `setup`.
     static func applyErrorTrackingPolicy(to config: PostHogConfig) {
         #if !os(watchOS) && !os(visionOS)
-        config.errorTrackingConfig.autoCapture = false
+        // O5 crash-test build only (WXYC/wxyc-ios-64#1166); never merge
+        config.errorTrackingConfig.autoCapture = true
         #endif
     }
 

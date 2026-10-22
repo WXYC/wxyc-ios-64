@@ -39,6 +39,15 @@ struct BugReportView: View {
                     TextEditor(text: $viewModel.message)
                         .frame(minHeight: 160)
                 }
+                // O5 crash-test build only (WXYC/wxyc-ios-64#1166); never merge
+                Section("O5 crash test") {
+                    Button("O5: crash now", role: .destructive) {
+                        o5TestCrash()
+                    }
+                    Button("O5: hang 5s") {
+                        o5TestHang()
+                    }
+                }
             }
             .sheetChrome(title: "Report a bug", showsDoneButton: false)
             .toolbar {
@@ -78,4 +87,20 @@ struct BugReportView: View {
             }
         }
     }
+}
+
+// O5 crash-test build only (WXYC/wxyc-ios-64#1166); never merge
+/// Crashes the app with a force-unwrap of nil, so the stack has a frame named `o5TestCrash` in app code.
+@inline(never)
+func o5TestCrash() {
+    let missing: Int? = Int(ProcessInfo.processInfo.environment["O5_NEVER_SET_ENV_VAR"] ?? "")
+    print("O5 crash value: \(missing!)")
+}
+
+// O5 crash-test build only (WXYC/wxyc-ios-64#1166); never merge
+/// Blocks the main thread for 5 seconds so MetricKit records a hang diagnostic.
+@MainActor
+@inline(never)
+func o5TestHang() {
+    Thread.sleep(forTimeInterval: 5)
 }

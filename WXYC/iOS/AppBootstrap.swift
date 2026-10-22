@@ -39,6 +39,8 @@ enum AppBootstrap {
 
         SentrySDK.start { options in
             options.dsn = AppConfiguration.sentryDsn
+            // O5 crash-test build only (WXYC/wxyc-ios-64#1166); never merge
+            options.enableCrashHandler = false
 
             // Unset, the SDK defaults this to "production" — so every simulator
             // run and every Xcode launch was filing under real user traffic, and
