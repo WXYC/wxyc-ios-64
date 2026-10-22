@@ -60,4 +60,11 @@ struct NowPlayingTimelineEntrySongDisplayableTests {
         #expect(entry.artistName == "No Data Available")
         #expect(entry.songTitle == "Tune in to WXYC 89.3 FM")
     }
+
+    @Test("The station-line entry leads with the station line, not the empty-state text")
+    func stationLineLeads() {
+        let entry = NowPlayingTimelineEntry.stationLine(recentItems: [], family: .systemLarge)
+        #expect(entry.artistName == "Tune in to WXYC 89.3 FM")
+        #expect(entry.songTitle.isEmpty)
+    }
 }
