@@ -164,7 +164,7 @@ struct PlaylistView: View {
                     // Specialty program card: the now-playing item for a show that logs no
                     // songs, otherwise the head of the song list for the whole show.
                     if let specialtyCard {
-                        if specialtyCard.placement == .nowPlaying {
+                        if specialtyCard.showsNowPlayingHeader {
                             PlaylistSectionHeader(text: "now playing")
                         }
                         SpecialtyCardView(card: specialtyCard)

@@ -27,13 +27,18 @@ public struct SpecialtyCard: Sendable, Equatable {
     public let placement: Placement
     /// Whether the tagline shows: until the first song (or who's-on entry) of the open show.
     public let showsTagline: Bool
+    /// Whether the card draws its own "now playing" header. Only when it is the now-playing item
+    /// and no song leads: a show that logs no songs but logs one anyway has a leading song, which
+    /// takes the one "now playing" header (``Playlist/sections(of:lead:)``).
+    public let showsNowPlayingHeader: Bool
 
-    public init(program: SpecialtyShowRef, showName: String?, djHandle: String, placement: Placement, showsTagline: Bool) {
+    public init(program: SpecialtyShowRef, showName: String?, djHandle: String, placement: Placement, showsTagline: Bool, showsNowPlayingHeader: Bool) {
         self.program = program
         self.showName = showName
         self.djHandle = djHandle
         self.placement = placement
         self.showsTagline = showsTagline
+        self.showsNowPlayingHeader = showsNowPlayingHeader
     }
 }
 
@@ -43,12 +48,15 @@ public extension Playlist {
     var specialtyCard: SpecialtyCard? {
         guard case .dj(let handle, let show?) = onAir, let program = show.specialty else { return nil }
         let showsTagline = if case .specialtyCard = nowPlayingLead { true } else { false }
+        let songLeads = if case .song = nowPlayingLead { true } else { false }
+        let placement: SpecialtyCard.Placement = program.logsPlaycuts == false ? .nowPlaying : .aboveSongList
         return SpecialtyCard(
             program: program,
             showName: show.title,
             djHandle: handle,
-            placement: program.logsPlaycuts == false ? .nowPlaying : .aboveSongList,
-            showsTagline: showsTagline
+            placement: placement,
+            showsTagline: showsTagline,
+            showsNowPlayingHeader: placement == .nowPlaying && !songLeads
         )
     }
 }
