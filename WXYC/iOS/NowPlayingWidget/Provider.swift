@@ -46,25 +46,41 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         playlistService = PlaylistService()
     }
 
-    /// The four most recent playcuts as artwork-resolved items, head first.
+    /// The leading song, if one leads, and up to three recents, as artwork-resolved items.
     ///
-    /// The head comes from `Playlist.currentPlaycut` — the same accessor every
-    /// other now-playing surface reads (see its doc for the cases where it
-    /// disagrees with a plain sort) — and the remaining three follow display
-    /// order. One derivation for both `snapshot` and `timeline`, so the
-    /// widget can't drift from the app's head-selection rule again.
-    private func nowPlayingItems(from playlist: Playlist) async -> [NowPlayingItem] {
-        guard let head = playlist.currentPlaycut else { return [] }
-        let recent = playlist.playcuts
-            .sorted(by: >)
-            .filter { $0.id != head.id }
-            .prefix(3)
-        return await ([head] + recent).asyncMap { playcut in
+    /// The lead comes from `Playlist.nowPlayingLead` — the rule every other now-playing
+    /// surface reads — so a previous show's last song is never named as playing now. The
+    /// recents skip the leader, or are the newest three when no song leads. One derivation
+    /// for both `snapshot` and `timeline`.
+    private func nowPlayingItems(from playlist: Playlist) async -> (lead: NowPlayingItem?, recents: [NowPlayingItem]) {
+        let lead = playlist.nowPlayingLead
+        var leadPlaycut: Playcut?
+        if case .song(let playcut) = lead {
+            leadPlaycut = playcut
+        }
+        let recents = Playlist.widgetRecents(of: playlist.playcuts, lead: lead)
+        let items = await ([leadPlaycut].compactMap { $0 } + recents).asyncMap { playcut in
             NowPlayingItem(
                 playcut: playcut,
                 artwork: try? await self.artworkService.fetchArtwork(for: playcut).toUIImage()
             )
         }
+        return leadPlaycut == nil ? (nil, items) : (items.first, Array(items.dropFirst()))
+    }
+
+    /// The entry for a derived lead and recents, or nil when there is nothing to show.
+    private func entry(
+        lead: NowPlayingItem?,
+        recents: [NowPlayingItem],
+        family: WidgetFamily
+    ) -> NowPlayingTimelineEntry? {
+        if let lead {
+            return NowPlayingTimelineEntry(nowPlayingItem: lead, recentItems: recents, family: family)
+        }
+        if !recents.isEmpty {
+            return .stationLine(recentItems: recents, family: family)
+        }
+        return nil
     }
 
     func placeholder(in context: Context) -> NowPlayingTimelineEntry {
@@ -92,23 +108,16 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             family: String(describing: family)
         ))
 
-        var nowPlayingItems = await nowPlayingItems(from: playlistService.fetchPlaylist())
+        let (lead, recents) = await nowPlayingItems(from: playlistService.fetchPlaylist())
 
         // Handle empty playlist gracefully with empty state
-        guard let (nowPlayingItem, recentItems) = nowPlayingItems.safePopFirst() else {
-            return .emptyState(family: family)
-        }
-
-        return NowPlayingTimelineEntry(
-            nowPlayingItem: nowPlayingItem,
-            recentItems: Array(recentItems),
-            family: family
-        )
+        return entry(lead: lead, recents: recents, family: family) ?? .emptyState(family: family)
     }
 
     func timeline(for configuration: NowPlayingWidgetIntent, in context: Context) async -> Timeline<NowPlayingTimelineEntry> {
         let family = context.family
-        var nowPlayingItemsWithArtwork: [NowPlayingItem] = []
+        var lead: NowPlayingItem?
+        var recents: [NowPlayingItem] = []
         // A failing fetch is swallowed into an empty playlist by
         // `PlaylistFetcher`, so an empty timeline and a broken one are
         // indistinguishable from the return value alone. The delta on the
@@ -122,13 +131,11 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             // evaluates once and yields four rows sharing one `playcut.id` —
             // the key `LargeNowPlayingWidgetEntryView`'s `ForEach` requires to
             // be unique. Same form `placeholder(in:)` uses.
-            nowPlayingItemsWithArtwork = [.placeholder, .placeholder, .placeholder, .placeholder]
+            lead = .placeholder
+            recents = [.placeholder, .placeholder, .placeholder]
         } else {
-            // Already head-first — no re-sort here: sorting by the ordering
-            // key would displace the `currentPlaycut` head exactly in the
-            // cases where the two disagree.
             let errorsBefore = await playlistService.fetchErrorCount()
-            nowPlayingItemsWithArtwork = await nowPlayingItems(from: playlistService.fetchPlaylist())
+            (lead, recents) = await nowPlayingItems(from: playlistService.fetchPlaylist())
             fetchFailed = (await playlistService.fetchErrorCount()) > errorsBefore
         }
 
@@ -136,16 +143,8 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         let entries: [NowPlayingTimelineEntry]
         let outcome: WidgetTimelineOutcome
 
-        if let (nowPlayingItem, recentItems) = nowPlayingItemsWithArtwork.safePopFirst() {
-            let recents = Array(recentItems)
-
-            entries = [
-                NowPlayingTimelineEntry(
-                    nowPlayingItem: nowPlayingItem,
-                    recentItems: recents,
-                    family: family
-                )
-            ]
+        if let entry = entry(lead: lead, recents: recents, family: family) {
+            entries = [entry]
             outcome = .ok
         } else {
             entries = [.emptyState(family: family)]

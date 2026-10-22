@@ -67,6 +67,8 @@ struct PlaylistView: View {
     let zoomNamespace: Namespace.ID
 
     @State private var timelineItems: [TimelineItem] = []
+    /// Which rows open a section, computed once per playlist next to ``timelineItems``.
+    @State private var sections: [UInt64: PlaylistSection] = [:]
     @State private var onAir: OnAir = .unknown
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
@@ -160,13 +162,14 @@ struct PlaylistView: View {
 
                     // Playlist entries
                     LazyVStack(spacing: 0) {
-                        ForEach(Array(timelineItems.enumerated()), id: \.element.id) { index, item in
-                            let playcutIndex = playcutIndex(for: index)
-
-                            if playcutIndex == 0 {
+                        ForEach(timelineItems) { item in
+                            switch sections[item.id] {
+                            case .nowPlaying:
                                 PlaylistSectionHeader(text: "now playing")
-                            } else if playcutIndex == 1 {
+                            case .recentlyPlayed:
                                 PlaylistSectionHeader(text: "recently played")
+                            case nil:
+                                EmptyView()
                             }
 
                             playlistRow(for: item)
@@ -256,7 +259,9 @@ struct PlaylistView: View {
             for await playlist in appState.playlistService.updates() {
                 withAnimation {
                     self.onAir = playlist.onAir
-                    self.timelineItems = playlist.timelineItems
+                    let items = playlist.timelineItems
+                    self.timelineItems = items
+                    self.sections = Playlist.sections(of: items, lead: playlist.nowPlayingLead)
                 }
                 // Publish the now-playing (first) playcut id for the debug
                 // touring-shows mock to target. Harmless in release (unread).
@@ -348,14 +353,6 @@ struct PlaylistView: View {
         case .showMarker(let marker):
             TextRowView(text: marker.timelineLabel)
         }
-    }
-
-    /// Returns the playcut index (0-based) if the item at the given index is a
-    /// playcut, or nil otherwise. Seams and show markers don't get a section
-    /// header, so they're skipped in the count.
-    private func playcutIndex(for index: Int) -> Int? {
-        guard case .playcut = timelineItems[index] else { return nil }
-        return timelineItems[..<index].filter { if case .playcut = $0 { true } else { false } }.count
     }
 
     /// The playcut entries currently on screen, for the deep-link router (#434),

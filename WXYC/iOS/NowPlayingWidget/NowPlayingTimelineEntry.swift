@@ -48,6 +48,18 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         )
     }
     
+    /// Creates an entry for when no song leads (automation, or a show with no song yet) but
+    /// recents exist: the station line leads and the recents follow it.
+    static func stationLine(recentItems: [NowPlayingItem], family: WidgetFamily) -> Self {
+        NowPlayingTimelineEntry(
+            artist: "No Data Available",
+            songTitle: "Tune in to WXYC 89.3 FM",
+            artwork: nil,
+            recentItems: recentItems,
+            family: family
+        )
+    }
+
     /// Creates an entry representing an empty playlist state.
     /// Used when the playlist service returns no playcuts.
     static func emptyState(family: WidgetFamily) -> Self {
