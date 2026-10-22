@@ -750,7 +750,8 @@ public final actor PlaylistService: Sendable {
             breakpoints: currentPlaylist.breakpoints,
             talksets: currentPlaylist.talksets,
             showMarkers: currentPlaylist.showMarkers,
-            onAir: currentPlaylist.onAir
+            onAir: currentPlaylist.onAir,
+            spotlights: currentPlaylist.spotlights
         )
 
         currentPlaylist = updated

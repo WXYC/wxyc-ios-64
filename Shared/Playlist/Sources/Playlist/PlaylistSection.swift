@@ -16,10 +16,12 @@ public enum PlaylistSection: Sendable, Equatable {
     case recentlyPlayed
 }
 
-/// What the large widget shows. See ``Playlist/widgetContent(hasLead:hasRecents:)``.
+/// What the large widget shows. See ``Playlist/widgetContent(lead:hasRecents:)``.
 public enum WidgetContent: Sendable, Equatable {
     /// A leading song, with the recents under it.
     case lead
+    /// A who's-on entry leads: its line takes the lead line, with the recents under it.
+    case whosOn
     /// No song leads but recents exist: the station line, with the recents under it.
     case stationLine
     /// Nothing to show: the empty state.
@@ -29,16 +31,21 @@ public enum WidgetContent: Sendable, Equatable {
 public extension Playlist {
     /// The rows that open a section, keyed by playcut id.
     ///
-    /// Only a leading song opens "now playing". "Recently played" opens on the first
+    /// Only a leading song or who's-on entry opens "now playing". "Recently played" opens on the first
     /// non-leading playcut in `items` order, which is not necessarily the second playcut:
     /// the leader comes from ``currentPlaycut`` and can sort anywhere in the timeline.
     /// Computed once per playlist so a render compares ids instead of rescanning per row.
     static func sections(of items: [TimelineItem], lead: NowPlayingLead) -> [UInt64: PlaylistSection] {
         var sections: [UInt64: PlaylistSection] = [:]
         var leaderID: UInt64?
-        if case .song(let leader) = lead {
+        switch lead {
+        case .song(let leader):
             leaderID = leader.id
             sections[leader.id] = .nowPlaying
+        case .spotlight(let entry):
+            sections[entry.id] = .nowPlaying
+        case .specialtyCard, .djHandle, .nothing:
+            break
         }
         let firstRecent = items.lazy
             .compactMap { item -> Playcut? in
@@ -53,19 +60,20 @@ public extension Playlist {
 
     /// The widget's recent songs, newest first: up to three, skipping the leading song.
     static func widgetRecents(of playcuts: [Playcut], lead: NowPlayingLead) -> [Playcut] {
-        var leaderID: UInt64?
-        if case .song(let leader) = lead {
-            leaderID = leader.id
+        let leaderID: UInt64? = switch lead {
+        case .song(let leader): leader.id
+        case .spotlight, .specialtyCard, .djHandle, .nothing: nil
         }
         return Array(playcuts.sorted(by: >).filter { $0.id != leaderID }.prefix(3))
     }
 
-    /// Which of the widget's three layouts to show. A leading song wins; otherwise recents
-    /// under the station line; the empty state only when there is nothing at all.
-    static func widgetContent(hasLead: Bool, hasRecents: Bool) -> WidgetContent {
-        if hasLead {
-            return .lead
+    /// Which of the widget's layouts to show. A leading song or who's-on entry wins; otherwise
+    /// recents under the station line; the empty state only when there is nothing at all.
+    static func widgetContent(lead: NowPlayingLead, hasRecents: Bool) -> WidgetContent {
+        switch lead {
+        case .song: .lead
+        case .spotlight: .whosOn
+        case .specialtyCard, .djHandle, .nothing: hasRecents ? .stationLine : .empty
         }
-        return hasRecents ? .stationLine : .empty
     }
 }

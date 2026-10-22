@@ -14,18 +14,20 @@ import Foundation
 
 /// A render-ready item in the playlist timeline, produced by
 /// ``Playlist/timelineItems``. Each maximal run of adjacent talksets and
-/// breakpoints is collapsed into a single ``Seam``; playcuts and show markers
-/// pass through unchanged.
+/// breakpoints is collapsed into a single ``Seam``; playcuts, show markers and
+/// who's-on entries pass through unchanged.
 public enum TimelineItem: Identifiable, Sendable {
     case playcut(Playcut)
     case seam(Seam)
     case showMarker(ShowMarker)
+    case spotlight(SpotlightEntry)
 
     public var id: UInt64 {
         switch self {
         case .playcut(let playcut): playcut.id
         case .seam(let seam): seam.id
         case .showMarker(let marker): marker.id
+        case .spotlight(let spotlight): spotlight.id
         }
     }
 }
@@ -108,6 +110,12 @@ public extension Playlist {
             case let marker as ShowMarker:
                 flushRun()
                 items.append(.showMarker(marker))
+            case let spotlight as SpotlightEntry:
+                flushRun()
+                // A `host` row only hands the focus back; it names no one, so it has no card.
+                if !spotlight.isHost {
+                    items.append(.spotlight(spotlight))
+                }
             default:
                 flushRun()
             }

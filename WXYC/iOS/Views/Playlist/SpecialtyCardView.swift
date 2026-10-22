@@ -35,6 +35,10 @@ struct SpecialtyCardView: View {
                     .font(.caption)
                     .textCase(.uppercase)
                     .foregroundStyle(.secondary)
+                if let nowLine = card.nowLine {
+                    Text(nowLine)
+                        .font(.subheadline.weight(.semibold))
+                }
                 if card.showsTagline, let tagline = card.program.tagline {
                     Text(tagline)
                         .font(.subheadline)

@@ -71,6 +71,9 @@ struct PlaylistView: View {
     @State private var sections: [UInt64: PlaylistSection] = [:]
     @State private var onAir: OnAir = .unknown
     @State private var specialtyCard: SpecialtyCard?
+    /// The open show's who's-on line, shown under the DJ on a freeform show (a specialty show's
+    /// card carries its own).
+    @State private var nowLine: String?
     @Environment(\.isThemePickerActive) private var isThemePickerActive
     @Environment(\.themeAppearance) private var appearance
     /// The banner's visual theme. Reads ``OnAirBannerTheme/default`` in Release;
@@ -116,6 +119,12 @@ struct PlaylistView: View {
                             onRequestLine: requestLine.invitesConversation ? { showingRequestLine = true } : nil
                         )
                         .padding(.vertical, 8)
+                        if specialtyCard == nil, let nowLine {
+                            Text(nowLine)
+                                .font(.subheadline)
+                                .foregroundStyle(.white)
+                                .accessibilityIdentifier("playlist.nowLine")
+                        }
                     }
 
                     PlayerHeaderView(
@@ -274,6 +283,7 @@ struct PlaylistView: View {
                     self.timelineItems = items
                     self.sections = Playlist.sections(of: items, lead: playlist.nowPlayingLead)
                     self.specialtyCard = playlist.specialtyCard
+                    self.nowLine = playlist.nowLine
                 }
                 // Publish the first playcut's id for the debug touring-shows mock
                 // to target. It is the first playcut in timeline order, which is not
@@ -366,6 +376,9 @@ struct PlaylistView: View {
 
         case .showMarker(let marker):
             TextRowView(text: marker.timelineLabel)
+
+        case .spotlight(let entry):
+            SpotlightRowView(entry: entry)
         }
     }
 

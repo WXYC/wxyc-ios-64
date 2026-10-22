@@ -83,6 +83,18 @@ final class NowPlayingInfoCenterManager {
         }
     }
 
+    /// Write a leading who's-on entry in place of the song: the strings from the Now Playing table
+    /// and the station artwork, never the previous song's album art. A specialty program's own
+    /// artwork waits on the phase 1 artwork chain (#1172); until then the station artwork stands in.
+    func handleSpotlight(_ spotlight: NowPlayingSpotlight) {
+        mutate { info in
+            info[MPMediaItemPropertyTitle] = spotlight.title
+            info[MPMediaItemPropertyArtist] = spotlight.artist
+            info[MPMediaItemPropertyAlbumTitle] = spotlight.album
+            info[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: nil, boundsSize: self.boundsSize)
+        }
+    }
+
     /// Reflect the current playback state in MPNowPlayingInfoCenter.
     ///
     /// On macOS / Mac Catalyst this is required for the app to be selected as the

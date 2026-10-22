@@ -67,4 +67,13 @@ struct NowPlayingTimelineEntrySongDisplayableTests {
         #expect(entry.artistName == "Tune in to WXYC 89.3 FM")
         #expect(entry.songTitle.isEmpty)
     }
+
+    @Test("The who's-on entry leads with the table's title and artist, and the station artwork")
+    func whosOnLeads() {
+        let spotlight = NowPlayingSpotlight(title: "Backyard BBQ", artist: "Weirs", album: "WXYC 89.3 FM", artwork: .station)
+        let entry = NowPlayingTimelineEntry.whosOn(spotlight, recentItems: [], family: .systemLarge)
+        #expect(entry.songTitle == "Backyard BBQ")
+        #expect(entry.artistName == "Weirs")
+        #expect(entry.artwork == nil)
+    }
 }

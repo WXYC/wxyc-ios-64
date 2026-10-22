@@ -683,18 +683,23 @@ public struct Playlist: Codable, Sendable {
     /// backends, cached playlists that predate the field).
     public let onAir: OnAir
 
+    /// The who's-on rows in the window, from `entry_type: "spotlight"` entries.
+    public let spotlights: [SpotlightEntry]
+
     public init(
         playcuts: [Playcut],
         breakpoints: [Breakpoint],
         talksets: [Talkset],
         showMarkers: [ShowMarker] = [],
-        onAir: OnAir = .unknown
+        onAir: OnAir = .unknown,
+        spotlights: [SpotlightEntry] = []
     ) {
         self.playcuts = playcuts
         self.breakpoints = breakpoints
         self.talksets = talksets
         self.showMarkers = showMarkers
         self.onAir = onAir
+        self.spotlights = spotlights
     }
 
     public init(from decoder: Decoder) throws {
@@ -707,10 +712,11 @@ public struct Playlist: Codable, Sendable {
         // onAir is optional for backwards compatibility with the v1 API and with
         // cached playlists written before the field existed.
         self.onAir = try container.decodeIfPresent(OnAir.self, forKey: .onAir) ?? .unknown
+        self.spotlights = try container.decodeIfPresent([SpotlightEntry].self, forKey: .spotlights) ?? []
     }
 
     private enum CodingKeys: String, CodingKey {
-        case playcuts, breakpoints, talksets, showMarkers, onAir
+        case playcuts, breakpoints, talksets, showMarkers, onAir, spotlights
     }
 
     public static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [], showMarkers: [])
@@ -725,6 +731,7 @@ public struct Playlist: Codable, Sendable {
             && lhs.talksets == rhs.talksets
             && lhs.showMarkers == rhs.showMarkers
             && lhs.onAir == rhs.onAir
+            && lhs.spotlights == rhs.spotlights
     }
 
     public static func !=(lhs: Playlist, rhs: Playlist) -> Bool {
@@ -748,7 +755,7 @@ private func isOrderedNewestFirst(_ lhs: any PlaylistEntry, _ rhs: any PlaylistE
 
 public extension Playlist {
     var entries: [any PlaylistEntry] {
-        let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets + showMarkers)
+        let playlist: [any PlaylistEntry] = (playcuts + breakpoints + talksets + showMarkers + spotlights)
         return playlist.sorted(by: isOrderedNewestFirst)
     }
 
@@ -801,7 +808,7 @@ public extension Playlist {
     /// `!= .empty`. Otherwise a transient empty response could clear the visible
     /// feed down to a bare banner.
     var isContentEmpty: Bool {
-        playcuts.isEmpty && breakpoints.isEmpty && talksets.isEmpty && showMarkers.isEmpty
+        playcuts.isEmpty && breakpoints.isEmpty && talksets.isEmpty && showMarkers.isEmpty && spotlights.isEmpty
     }
 
     /// The show marker for the DJ currently on the air, if any.

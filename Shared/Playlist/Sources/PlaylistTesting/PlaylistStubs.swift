@@ -149,6 +149,31 @@ extension ShowMarker {
     }
 }
 
+extension SpotlightEntry {
+    /// Creates a SpotlightEntry with sensible defaults for testing: a performer in show 42.
+    ///
+    /// `chronOrderID` defaults to the packed `(show_id, play_order)` key the converter builds, so a
+    /// stub sorts against playcuts stubbed with `Playcut.stub(showID:playOrder:)`-style keys.
+    public static func stub(
+        id: UInt64 = 1,
+        hour: UInt64 = 1000,
+        chronOrderID: UInt64? = nil,
+        showID: UInt64? = 42,
+        role: String = "performer",
+        name: String = "Weirs"
+    ) -> SpotlightEntry {
+        SpotlightEntry(
+            id: id,
+            hour: hour,
+            chronOrderID: chronOrderID ?? id,
+            timeCreated: hour,
+            showID: showID,
+            role: role,
+            name: name
+        )
+    }
+}
+
 // Note: the `UpcomingShow`/`Concert` stub graduated to `ConcertsTesting`
 // (`Concert.stub()`) when the touring-show domain types moved to the
 // `Shared/Concerts` package. See WXYC/wxyc-ios-64#472.
@@ -160,14 +185,16 @@ extension Playlist {
         breakpoints: [Breakpoint] = [],
         talksets: [Talkset] = [],
         showMarkers: [ShowMarker] = [],
-        onAir: OnAir = .unknown
+        onAir: OnAir = .unknown,
+        spotlights: [SpotlightEntry] = []
     ) -> Playlist {
         Playlist(
             playcuts: playcuts,
             breakpoints: breakpoints,
             talksets: talksets,
             showMarkers: showMarkers,
-            onAir: onAir
+            onAir: onAir,
+            spotlights: spotlights
         )
     }
 }

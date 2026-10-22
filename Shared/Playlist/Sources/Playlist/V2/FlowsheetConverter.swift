@@ -27,6 +27,7 @@ enum FlowsheetConverter {
         var breakpoints: [Breakpoint] = []
         var talksets: [Talkset] = []
         var showMarkers: [ShowMarker] = []
+        var spotlights: [SpotlightEntry] = []
 
         for entry in entries {
             // A negative id is neither identity nor order, and `UInt64(_:)`
@@ -108,6 +109,13 @@ enum FlowsheetConverter {
                     id: id, hour: hour, chronOrderID: chronOrderID,
                     isStart: false, djName: djName, message: entry.message
                 ))
+
+            case .spotlight(let role, let name):
+                spotlights.append(SpotlightEntry(
+                    id: id, hour: hour, chronOrderID: chronOrderID, timeCreated: hour,
+                    showID: entry.show_id.flatMap { UInt64(exactly: $0) },
+                    role: role, name: name
+                ))
             }
         }
 
@@ -116,7 +124,8 @@ enum FlowsheetConverter {
             breakpoints: breakpoints,
             talksets: talksets,
             showMarkers: showMarkers,
-            onAir: onAir
+            onAir: onAir,
+            spotlights: spotlights
         )
     }
 
