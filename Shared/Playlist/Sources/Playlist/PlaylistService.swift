@@ -32,6 +32,13 @@ public final actor PlaylistService: Sendable {
     /// The in-flight `on_air` catch-up fetch, if any. See ``refreshOnAirIfBehind(row:knownShowID:)``.
     private var onAirRefreshTask: Task<Void, Never>?
 
+    /// The show id and start time of the latest `on_air` catch-up fetch, which is what lets
+    /// a later row of the same show retry a fetch that did not move `on_air` there.
+    private var lastOnAirRefresh: (showID: UInt64, at: ContinuousClock.Instant)?
+
+    /// The minimum time between catch-up fetches for the same show id.
+    private let onAirRetrySpacing: Duration
+
     /// Poll cadence used only as a reconciliation backstop when SSE live
     /// updates are actually wired in (the caller opted in). Defensible only
     /// because inserts/updates already arrive over the push channel while
@@ -129,8 +136,10 @@ public final actor PlaylistService: Sendable {
         fetcher: PlaylistFetcherProtocol? = nil,
         interval: TimeInterval? = nil,
         cacheCoordinator: CacheCoordinator = CacheCoordinator.Playlist,
-        liveEventSource: (any LiveFsEventSource)?
+        liveEventSource: (any LiveFsEventSource)?,
+        onAirRetrySpacing: Duration = .seconds(30)
     ) {
+        self.onAirRetrySpacing = onAirRetrySpacing
         self.fetcher = fetcher ?? PlaylistFetcher()
         self.cacheCoordinator = cacheCoordinator
 
@@ -738,33 +747,48 @@ public final actor PlaylistService: Sendable {
 
     /// The largest show id the service has seen: the open show's, or any stored row's.
     private var newestKnownShowID: UInt64? {
-        var openShowID: UInt64?
+        (currentPlaylist.playcuts.compactMap(\.showID) + [openShowID].compactMap { $0 }).max()
+    }
+
+    /// The open show's id as the last accepted fetch reported it. Live rows never touch `onAir`,
+    /// so this is what a successful catch-up has confirmed, unlike the ids of stored rows.
+    private var openShowID: UInt64? {
         if case .dj(_, let show?) = currentPlaylist.onAir {
-            openShowID = show.id
+            return show.id
         }
-        return (currentPlaylist.playcuts.compactMap(\.showID) + [openShowID].compactMap { $0 }).max()
+        return nil
     }
 
     /// Fetches a fresh playlist now, instead of waiting for the reconciliation poll, when a
-    /// pushed row belongs to a show newer than any the service knows of.
+    /// pushed row proves `onAir` is behind.
     ///
     /// The live stream delivers rows and `refetch` hints but no `on_air`, so after a sign-on
     /// `onAir` stays on the old show until the next poll, up to
     /// ``liveUpdatesReconciliationInterval`` later. The stale-song rule
     /// (``Playlist/nowPlayingLead``) hides every song whose `showID` differs from
     /// `on_air.show_id`, so the new show's first songs would be hidden for that whole stretch.
-    /// Show ids are serial, so only a newer id proves `onAir` is behind: rows from the open
-    /// show, an older show, or with no show id trigger nothing. That includes the enrichment
-    /// updates for the previous show's rows during automation, which would otherwise refetch
-    /// once per update. A refresh already in flight absorbs further rows.
+    /// Show ids are serial, so a row proves `onAir` is behind when:
+    /// - its show is newer than any the service knows of, or no show id is known at all and
+    ///   the row names one; or
+    /// - an earlier catch-up fetch for that show did not move `onAir` to it (it failed, or the
+    ///   server had not caught up) and ``onAirRetrySpacing`` has passed since that fetch.
+    ///   This compares against the open show a successful fetch confirmed, not against the
+    ///   stored rows, which the triggering row has already raised.
+    ///
+    /// Rows from the open show, an older show, or with no show id trigger nothing. That includes
+    /// the enrichment updates for the previous show's rows during automation, which would
+    /// otherwise refetch once per update. A refresh already in flight absorbs further rows, so
+    /// only one is ever outstanding.
     private func refreshOnAirIfBehind(row: Playcut, knownShowID: UInt64?) {
-        guard onAirRefreshTask == nil,
-              let rowShowID = row.showID,
-              let knownShowID,
-              rowShowID > knownShowID
-        else {
-            return
+        guard onAirRefreshTask == nil, let rowShowID = row.showID else { return }
+        let now = ContinuousClock.now
+        let isNewer = knownShowID.map { rowShowID > $0 } ?? true
+        var isRetry = false
+        if let last = lastOnAirRefresh, last.showID == rowShowID, rowShowID > (openShowID ?? 0) {
+            isRetry = now - last.at >= onAirRetrySpacing
         }
+        guard isNewer || isRetry else { return }
+        lastOnAirRefresh = (rowShowID, now)
         onAirRefreshTask = Task {
             _ = await self.fetchAndCachePlaylist()
             self.onAirRefreshTask = nil
