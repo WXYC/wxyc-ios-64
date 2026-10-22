@@ -18,6 +18,7 @@
 
 import Testing
 import Foundation
+import Synchronization
 import CoreTesting
 import PlaylistTesting
 @testable import Playlist
@@ -384,7 +385,61 @@ private let onAirRefreshCases: [OnAirRefreshCase] = [
     OnAirRefreshCase(name: "row with no show id", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.insert(.stub(id: 2))], expectedRefreshes: 0),
     OnAirRefreshCase(name: "update with no show id", stored: [.stub(id: 1, showID: 42)], onAir: show(42), events: [.update(.stub(id: 1, songTitle: "Back, Baby"))], expectedRefreshes: 0),
     OnAirRefreshCase(name: "automation enrichment updates for the previous show", stored: [.stub(id: 1, showID: 42), .stub(id: 2, showID: 42)], onAir: .automation, events: [.update(.stub(id: 1, showID: 42, songTitle: "Back, Baby")), .update(.stub(id: 2, showID: 42, songTitle: "Call Your Name")), .update(.stub(id: 1, showID: 41, songTitle: "In a Sentimental Mood"))], expectedRefreshes: 0),
-    OnAirRefreshCase(name: "no show id known anywhere", stored: [.stub(id: 1)], onAir: .unknown, events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 0),
+    OnAirRefreshCase(name: "no show id known anywhere", stored: [.stub(id: 1)], onAir: .unknown, events: [.insert(.stub(id: 2, showID: 43))], expectedRefreshes: 1),
+]
+
+/// A source whose events the test pushes one at a time, so a row can arrive after an
+/// earlier refresh has settled. Yields nothing until ``push(_:)``.
+private final class PushableLiveFsEventSource: LiveFsEventSource, @unchecked Sendable {
+    private let stream: AsyncStream<LiveFsEvent>
+    private let continuation: AsyncStream<LiveFsEvent>.Continuation
+
+    init() { (stream, continuation) = AsyncStream.makeStream() }
+
+    func push(_ event: LiveFsEvent) { continuation.yield(event) }
+    func connect() -> AsyncStream<LiveFsEvent> { stream }
+}
+
+/// Serves `baseline` for the first poll, then fails (`.empty`, as the real fetcher folds
+/// every error) for `failures` refreshes, then serves `recovered`.
+private final class FailThenRecoverFetcher: PlaylistFetcherProtocol, @unchecked Sendable {
+    private let baseline: Playlist
+    private let recovered: Playlist
+    private let failures: Int
+    private let calls = Mutex(0)
+
+    init(baseline: Playlist, recovered: Playlist, failures: Int) {
+        self.baseline = baseline
+        self.recovered = recovered
+        self.failures = failures
+    }
+
+    var callCount: Int { calls.withLock { $0 } }
+
+    func fetchPlaylist() async -> Playlist {
+        let call = calls.withLock { value -> Int in value += 1; return value }
+        if call == 1 { return baseline }
+        return call - 1 <= failures ? .empty : recovered
+    }
+}
+
+struct OnAirRetryCase: Sendable, CustomTestStringConvertible {
+    let name: String
+    let spacing: Duration
+    /// Refreshes that fail before one succeeds.
+    let failures: Int
+    /// Show-43 rows pushed, one at a time, after the first row's refresh has settled.
+    let laterRows: Int
+    /// Fetches beyond the initial baseline poll.
+    let expectedRefreshes: Int
+    var testDescription: String { name }
+}
+
+private let onAirRetryCases: [OnAirRetryCase] = [
+    OnAirRetryCase(name: "failed refresh is retried by the next row of the same show", spacing: .zero, failures: 1, laterRows: 1, expectedRefreshes: 2),
+    OnAirRetryCase(name: "successful retry absorbs the rows after it", spacing: .zero, failures: 1, laterRows: 4, expectedRefreshes: 2),
+    OnAirRetryCase(name: "rows within the spacing after a failure do not retry", spacing: .seconds(3600), failures: 1, laterRows: 4, expectedRefreshes: 1),
+    OnAirRetryCase(name: "no later row means no retry", spacing: .zero, failures: 1, laterRows: 0, expectedRefreshes: 1),
 ]
 
 /// Returns the baseline poll at once and holds every later fetch until ``open()``,
@@ -434,6 +489,58 @@ extension PlaylistServiceLiveUpdatesTests {
             for _ in 0..<50 { await Task.yield() }
         }
         #expect(fetcher.callCount == baseline + testCase.expectedRefreshes)
+    }
+
+    @Test("A failed on_air refresh is retried by a later row of the same show, bounded by the spacing", arguments: onAirRetryCases)
+    func onAirRefreshRetry(_ testCase: OnAirRetryCase) async throws {
+        let baseline = Playlist.stub(playcuts: [.stub(id: 1, showID: 42)], onAir: show(42))
+        let fetcher = FailThenRecoverFetcher(
+            baseline: baseline,
+            recovered: .stub(playcuts: [.stub(id: 1, showID: 42), .stub(id: 2, showID: 43)], onAir: show(43)),
+            failures: testCase.failures
+        )
+        let source = PushableLiveFsEventSource()
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source,
+            onAirRetrySpacing: testCase.spacing
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        _ = await iterator.next()
+        await service.setForegrounded(true)
+
+        // Each row is let settle before the next, so no row lands while a refresh is in flight.
+        for id in 2...UInt64(2 + testCase.laterRows) {
+            source.push(.insert(.stub(id: id, showID: 43)))
+            if id == 2 {
+                #expect(await waitUntil(timeout: .seconds(2)) { fetcher.callCount == 2 })
+            }
+            for _ in 0..<100 { await Task.yield() }
+        }
+        #expect(await waitUntil(timeout: .seconds(2)) { fetcher.callCount == 1 + testCase.expectedRefreshes })
+        for _ in 0..<100 { await Task.yield() }
+        #expect(fetcher.callCount == 1 + testCase.expectedRefreshes)
+    }
+
+    @Test("A burst of rows naming a show while none is known starts one refresh", .timeLimit(.minutes(1)))
+    func unknownBaselineBurstCoalesces() async throws {
+        let sentinel = Playcut.stub(id: sentinelID)
+        let fetcher = GatedPlaylistFetcher(playlistToReturn: .stub(playcuts: [.stub(id: 1)], onAir: .unknown))
+        let source = MockLiveFsEventSource(events: [
+            .insert(.stub(id: 2, showID: 43)), .insert(.stub(id: 3, showID: 43)), .insert(sentinel),
+        ])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        _ = await iterator.next()
+        await service.setForegrounded(true)
+        while await iterator.next()?.playcuts.contains(where: { $0.id == sentinelID }) != true {}
+        for _ in 0..<50 { await Task.yield() }
+        #expect(await fetcher.callCount == 2) // the baseline plus the one held refresh
     }
 
     @Test("Rows that arrive while an on_air refresh is in flight are absorbed by it", .timeLimit(.minutes(1)))
