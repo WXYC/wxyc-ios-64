@@ -10,6 +10,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Artwork
 import Playlist
 import SwiftUI
 
@@ -20,8 +21,7 @@ struct SpecialtyCardView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            artwork
-                .frame(width: Self.artworkSize, height: Self.artworkSize)
+            SpecialtyArtworkView(program: card.program, size: Self.artworkSize)
                 .clipShape(.rect(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 2) {
@@ -52,37 +52,6 @@ struct SpecialtyCardView: View {
         .background(.white.opacity(0.08), in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("playlist.specialtyCard")
-    }
-
-    /// The logo when it loads; the text tile while it loads, when it fails, and when there is none,
-    /// so the card never shows a broken image.
-    @ViewBuilder
-    private var artwork: some View {
-        if let url = card.program.artwork?.squareURL {
-            AsyncImage(url: url) { phase in
-                if let image = phase.image {
-                    image.resizable().scaledToFill()
-                } else {
-                    tile
-                }
-            }
-        } else {
-            tile
-        }
-    }
-
-    private var tile: some View {
-        let rgb = card.program.accentRGB
-        return ZStack {
-            Rectangle().fill(rgb.map { Color(red: $0.red, green: $0.green, blue: $0.blue) } ?? .gray)
-            Text(card.program.tileText)
-                .font(.title2.bold())
-                .foregroundStyle(.white)
-                .minimumScaleFactor(0.5)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .padding(4)
-        }
     }
 }
 
