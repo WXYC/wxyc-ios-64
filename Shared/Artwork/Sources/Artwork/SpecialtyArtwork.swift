@@ -33,33 +33,34 @@ public enum SpecialtyArtwork {
     }
 
     /// How long a downloaded logo stays cached.
-    static let lifespan: TimeInterval = 30 * 24 * 60 * 60
+    static let lifespan: TimeInterval = .thirtyDays
 }
 
 extension CacheCoordinator {
     /// Returns the image at `url`, from this cache when present, otherwise downloaded with `session` and stored.
     ///
-    /// The URL string is the cache key, so the same logo is never fetched twice while it is cached. Failures
-    /// throw and are never cached, so a transient error does not pin the tile.
+    /// The URL string is the cache key, so the same logo is never fetched twice while it is cached. The
+    /// downloaded bytes are stored as-is, with none of the album-art processing (white-border trimming,
+    /// rescaling, re-encoding) that `set(artwork:for:lifespan:)` applies, so a logo looks the same on its first
+    /// appearance and on every cache hit. Failures throw and are never cached, so a transient error does not pin
+    /// the tile. Cancellation is rethrown without being logged as a failure.
     func image(from url: URL, session: any WebSession = URLSession.shared) async throws -> CGImage {
         let key = url.absoluteString
         if let cached = try? data(for: key), let image = createCGImage(from: cached) {
             return image
         }
         do {
-            let image = try await createCGImage(from: session.data(from: url)).orThrow(ServiceError.noResults)
-            await set(artwork: image, for: key, lifespan: SpecialtyArtwork.lifespan)
+            let downloaded = try await session.data(from: url)
+            guard let image = createCGImage(from: downloaded) else {
+                throw ServiceError.noResults
+            }
+            await setData(downloaded, for: key, lifespan: SpecialtyArtwork.lifespan)
             return image
         } catch {
-            Log(.warning, category: .artwork, "Specialty logo fetch failed for \(key): \(error)")
+            if !isCancellation(error) {
+                Log(.warning, category: .artwork, "Specialty logo fetch failed for \(key): \(error)")
+            }
             throw error
         }
-    }
-}
-
-private extension Optional {
-    func orThrow(_ error: any Error) throws -> Wrapped {
-        guard let self else { throw error }
-        return self
     }
 }
