@@ -109,6 +109,36 @@ struct AnswerCase: Sendable, CustomTestStringConvertible {
     var testDescription: String { name }
 }
 
+/// One row of the approved spotlight copy: a role, and what Siri says on a freeform and a specialty show.
+private let spotlightWording: [(role: String, freeform: String, specialty: String)] = [
+    ("guest", "Weirs is in the studio on WXYC.", "Hogwash on WXYC, with Weirs in the studio."),
+    ("performer", "Weirs is playing live in the studio on WXYC.", "Hogwash on WXYC, with Weirs playing live in the studio."),
+    ("reader", "Weirs is reading on WXYC.", "Hogwash on WXYC, with Weirs reading."),
+    ("dj", "Weirs is mixing on WXYC.", "Hogwash on WXYC, with Weirs mixing."),
+    ("ventriloquist", "Weirs is on WXYC.", "Hogwash on WXYC, with Weirs."),
+]
+
+private let spotlightCases: [AnswerCase] = spotlightWording.flatMap { row in
+    [
+        AnswerCase(
+            name: "\(row.role) on a freeform show",
+            playlist: .stub(
+                playcuts: [],
+                onAir: .dj("Cat Power Hour", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: .stub(id: 11, role: row.role, name: "Weirs")))
+            ),
+            expectedDialog: row.freeform
+        ),
+        AnswerCase(
+            name: "\(row.role) on a specialty show",
+            playlist: .stub(
+                playcuts: [],
+                onAir: .dj("DJ MONSTER", show: OnAirShow(id: 42, title: "Hogwash Hour", specialty: hogwash, spotlight: .stub(id: 11, role: row.role, name: "Weirs")))
+            ),
+            expectedDialog: row.specialty
+        ),
+    ]
+}
+
 private let answerCases: [AnswerCase] = [
     AnswerCase(
         name: "a leading song",
@@ -131,7 +161,7 @@ private let answerCases: [AnswerCase] = [
             playcuts: [leadingSong],
             onAir: .dj("Cat Power Hour", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: .stub(id: 11, role: "performer", name: "Weirs")))
         ),
-        expectedDialog: "Live in the studio: Weirs on WXYC."
+        expectedDialog: "Weirs is playing live in the studio on WXYC."
     ),
     AnswerCase(
         name: "a who's-on entry on a show with no song yet",
@@ -139,7 +169,7 @@ private let answerCases: [AnswerCase] = [
             playcuts: [],
             onAir: .dj("DJ MONSTER", show: OnAirShow(id: 42, title: "Hogwash Hour", specialty: hogwash, spotlight: .stub(id: 11, role: "guest", name: "Ana Lucía Ríos")))
         ),
-        expectedDialog: "In the studio: Ana Lucía Ríos on WXYC."
+        expectedDialog: "Hogwash on WXYC, with Ana Lucía Ríos in the studio."
     ),
     AnswerCase(
         name: "a who's-on entry older than the song",
@@ -154,7 +184,7 @@ private let answerCases: [AnswerCase] = [
         playlist: .stub(playcuts: [leadingSong], onAir: .automation),
         expectedDialog: "Nothing is playing on WXYC right now."
     ),
-]
+] + spotlightCases
 
 @Suite("NowPlayingAnswer Tests")
 struct NowPlayingAnswerTests {
@@ -218,7 +248,7 @@ struct NowPlayingAnswerTests {
             answer = await service.currentAnswer(timeout: .seconds(30))
         }
 
-        #expect(answer == .spotlight(line: "Live in the studio: Weirs"))
+        #expect(answer == .spotlight(weirs, program: nil))
         #expect(elapsed < .seconds(5))
         #expect(errorReporter.allReportedErrors.isEmpty)
     }

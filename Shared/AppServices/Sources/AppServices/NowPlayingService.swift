@@ -64,8 +64,8 @@ public struct NowPlayingItem: Sendable, Equatable, Comparable {
 public enum NowPlayingAnswer: Sendable, Equatable {
     /// A song leads.
     case song(NowPlayingItem)
-    /// A who's-on entry leads; carries its role line, such as "Live in the studio: Weirs".
-    case spotlight(line: String)
+    /// A who's-on entry leads; `program` is the specialty show's name, or `nil` on a freeform show.
+    case spotlight(SpotlightEntry, program: String?)
     /// A specialty show with no song yet leads.
     case specialty(SpecialtyShowRef)
     /// A freeform show with no song yet leads; carries the DJ's handle.
@@ -80,8 +80,8 @@ public enum NowPlayingAnswer: Sendable, Equatable {
         switch self {
         case .song(let item):
             "\(item.playcut.songTitle) by \(item.playcut.artistName) is now playing on WXYC."
-        case .spotlight(let line):
-            "\(line) on WXYC."
+        case .spotlight(let entry, let program):
+            Self.spokenSpotlight(entry, program: program)
         case .specialty(let show):
             ["\(show.name) is on the air on WXYC.", show.tagline].compactMap { $0 }.joined(separator: " ")
         case .dj(let handle):
@@ -91,6 +91,24 @@ public enum NowPlayingAnswer: Sendable, Equatable {
         case .unavailable:
             "Can't reach WXYC right now. Try again in a moment."
         }
+    }
+}
+
+extension NowPlayingAnswer {
+    /// The approved sentence for a who's-on lead: the person first on a freeform show, the program first on a
+    /// specialty show. An unknown role gets the neutral wording.
+    fileprivate static func spokenSpotlight(_ entry: SpotlightEntry, program: String?) -> String {
+        let activity: String? = switch entry.role {
+        case "guest": "in the studio"
+        case "performer": "playing live in the studio"
+        case "reader": "reading"
+        case "dj": "mixing"
+        default: nil
+        }
+        if let program {
+            return "\(program) on WXYC, with \(entry.name)" + (activity.map { " \($0)" } ?? "") + "."
+        }
+        return "\(entry.name) " + (activity.map { "is \($0) on WXYC." } ?? "is on WXYC.")
     }
 }
 
@@ -209,7 +227,9 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
             return .song(item ?? NowPlayingItem(playcut: playcut))
         case .spotlight(let entry):
             // `nowPlayingLead` only leads with an entry that has a role line (never a host row).
-            return .spotlight(line: entry.roleLine ?? "On air: \(entry.name)")
+            var program: String?
+            if case .dj(_, let show?) = playlist.onAir { program = show.specialty?.name }
+            return .spotlight(entry, program: program)
         case .specialtyCard(let show):
             return .specialty(show)
         case .djHandle(let handle):
