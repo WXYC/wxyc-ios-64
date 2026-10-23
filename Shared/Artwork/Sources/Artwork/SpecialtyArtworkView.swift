@@ -9,6 +9,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import Core
 import CoreGraphics
 import Caching
 import Playlist
@@ -70,6 +71,8 @@ public struct SpecialtyArtworkView: View {
                 logo = try await CacheCoordinator.AlbumArt.image(from: url)
                 state = .loaded
             } catch {
+                // A torn-down task is not a failed load; the view is going away or the task will rerun.
+                if isCancellation(error) { return }
                 state = .failed
             }
         }
