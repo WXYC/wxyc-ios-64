@@ -84,8 +84,9 @@ struct WhatsPlayingOnWXYC: AppIntent, InstanceDisplayRepresentable {
         let nowPlayingService = await AppIntentServices.nowPlayingService()
 
         // One bounded answer: iterating the service would wait for a song to lead, which
-        // never happens during automation or before a new show's first song. A timeout or
-        // failed fetch is reported by `currentAnswer` and answers `.unavailable`.
+        // never happens during automation or before a new show's first song. A timeout answers
+        // `.unavailable` and `currentAnswer` reports it; a failed fetch answers `.unavailable` too, and
+        // `PlaylistFetcher` reports it, so don't report it again here.
         let answer = await nowPlayingService.currentAnswer()
 
         if answer != .unavailable {
