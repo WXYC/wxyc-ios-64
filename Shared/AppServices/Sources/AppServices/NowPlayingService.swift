@@ -165,8 +165,8 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
     /// from ``Playlist/nowPlayingLead``. The whole call, playlist and artwork, is bounded by
     /// `timeout`, even when a fetch ignores cancellation. If the playlist is not read in time, or
     /// the fetch fails, the answer is ``NowPlayingAnswer/unavailable``; it is never
-    /// ``NowPlayingAnswer/nothing``. A timeout is reported here; a failed fetch is already reported
-    /// by the fetcher. If a song leads but its artwork is not ready in time, the answer is that
+    /// ``NowPlayingAnswer/nothing``. A timeout is reported here, but a cancelled caller is not; a failed fetch
+    /// is already reported by the fetcher. If a song leads but its artwork is not ready in time, the answer is that
     /// song with no artwork.
     public func currentAnswer(timeout: Duration = .seconds(8)) async -> NowPlayingAnswer {
         let clock = ContinuousClock()
@@ -174,7 +174,10 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
 
         let result = await Self.race(timeout: timeout) { await self.playlistService.fetchPlaylistResult() }
         guard let result else {
-            errorReporter.report(NowPlayingAnswerTimeout(), context: "NowPlayingService currentAnswer")
+            // A cancelled caller (Siri dismissed) also ends the race early; that is not a timeout.
+            if !Task.isCancelled {
+                errorReporter.report(NowPlayingAnswerTimeout(), context: "NowPlayingService currentAnswer")
+            }
             return .unavailable
         }
         guard case .success(let playlist) = result else {

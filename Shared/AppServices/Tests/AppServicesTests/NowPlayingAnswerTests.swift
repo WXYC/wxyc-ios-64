@@ -250,4 +250,23 @@ struct NowPlayingAnswerTests {
         #expect(elapsed < .seconds(2))
         #expect(errorReporter.allReportedErrors.count == 1)
     }
+
+    @Test("cancelling the caller answers unavailable promptly and does not report a timeout")
+    func cancelledCallerIsNotReportedAsTimeout() async {
+        let errorReporter = MockErrorReporter()
+        let service = makeService(fetcher: HangingPlaylistFetcher(), errorReporter: errorReporter)
+        let clock = ContinuousClock()
+
+        let caller = Task { await service.currentAnswer(timeout: .seconds(30)) }
+        try? await Task.sleep(for: .milliseconds(50))
+        var answer: NowPlayingAnswer?
+        let elapsed = await clock.measure {
+            caller.cancel()
+            answer = await caller.value
+        }
+
+        #expect(answer == .unavailable)
+        #expect(elapsed < .seconds(2))
+        #expect(errorReporter.allReportedErrors.isEmpty)
+    }
 }
