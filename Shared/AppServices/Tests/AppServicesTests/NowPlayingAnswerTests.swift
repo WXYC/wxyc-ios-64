@@ -126,6 +126,30 @@ private let answerCases: [AnswerCase] = [
         expectedDialog: "Cat Power Hour is on the air on WXYC."
     ),
     AnswerCase(
+        name: "a who's-on entry newer than the song",
+        playlist: .stub(
+            playcuts: [leadingSong],
+            onAir: .dj("Cat Power Hour", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: .stub(id: 11, role: "performer", name: "Weirs")))
+        ),
+        expectedDialog: "Live in the studio: Weirs on WXYC."
+    ),
+    AnswerCase(
+        name: "a who's-on entry on a show with no song yet",
+        playlist: .stub(
+            playcuts: [],
+            onAir: .dj("DJ MONSTER", show: OnAirShow(id: 42, title: "Hogwash Hour", specialty: hogwash, spotlight: .stub(id: 11, role: "guest", name: "Ana Lucía Ríos")))
+        ),
+        expectedDialog: "In the studio: Ana Lucía Ríos on WXYC."
+    ),
+    AnswerCase(
+        name: "a who's-on entry older than the song",
+        playlist: .stub(
+            playcuts: [leadingSong],
+            onAir: .dj("Cat Power Hour", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: .stub(id: 3, role: "performer", name: "Weirs")))
+        ),
+        expectedDialog: "la paradoja by Juana Molina is now playing on WXYC."
+    ),
+    AnswerCase(
         name: "nothing leading",
         playlist: .stub(playcuts: [leadingSong], onAir: .automation),
         expectedDialog: "Nothing is playing on WXYC right now."
@@ -173,6 +197,30 @@ struct NowPlayingAnswerTests {
         }
         #expect(item.playcut == leadingSong)
         #expect(item.artwork != nil)
+    }
+
+    /// The Siri intent used to await the service's iterator, which skips every playlist a who's-on entry
+    /// leads, so it hung through a live set. `currentAnswer` fetches once, so it must answer at once.
+    @Test("a who's-on entry leading answers promptly with that entry, not a timeout")
+    func spotlightLeadAnswersPromptly() async {
+        let weirs = SpotlightEntry.stub(id: 11, role: "performer", name: "Weirs")
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(
+            playcuts: [leadingSong],
+            onAir: .dj("Cat Power Hour", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: weirs))
+        )
+        let errorReporter = MockErrorReporter()
+        let service = makeService(fetcher: fetcher, errorReporter: errorReporter)
+        let clock = ContinuousClock()
+
+        var answer: NowPlayingAnswer?
+        let elapsed = await clock.measure {
+            answer = await service.currentAnswer(timeout: .seconds(30))
+        }
+
+        #expect(answer == .spotlight(line: "Live in the studio: Weirs"))
+        #expect(elapsed < .seconds(5))
+        #expect(errorReporter.allReportedErrors.isEmpty)
     }
 
     @Test("a failed fetch answers unavailable well within the timeout and does not report again")
