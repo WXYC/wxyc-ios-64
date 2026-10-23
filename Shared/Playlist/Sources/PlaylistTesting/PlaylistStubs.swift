@@ -152,8 +152,9 @@ extension ShowMarker {
 extension SpotlightEntry {
     /// Creates a SpotlightEntry with sensible defaults for testing: a performer in show 42.
     ///
-    /// `chronOrderID` defaults to the packed `(show_id, play_order)` key the converter builds, so a
-    /// stub sorts against playcuts stubbed with `Playcut.stub(showID:playOrder:)`-style keys.
+    /// `chronOrderID` defaults to `id`, the bare fallback key, like `Playcut.stub`. A test that sets
+    /// up a spotlight next to playcuts with packed `(show_id, play_order)` keys, such as
+    /// `(42 << 32) | n`, must pass `chronOrderID` explicitly, or the spotlight sorts below them.
     public static func stub(
         id: UInt64 = 1,
         hour: UInt64 = 1000,

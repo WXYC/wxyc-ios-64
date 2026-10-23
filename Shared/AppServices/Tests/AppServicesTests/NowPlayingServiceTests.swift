@@ -55,6 +55,42 @@ final class MockArtworkService: ArtworkService, @unchecked Sendable {
     }
 }
 
+/// An artwork service whose fetch for one playcut suspends until released, standing in for a cold-cache lookup.
+/// Every other playcut gets the default image at once.
+final class GatedArtworkService: ArtworkService, @unchecked Sendable {
+    private let gatedPlaycutID: UInt64
+    private let started: AsyncStream<Void>
+    private let startedContinuation: AsyncStream<Void>.Continuation
+    private let released: AsyncStream<Void>
+    private let releasedContinuation: AsyncStream<Void>.Continuation
+
+    init(gatedPlaycutID: UInt64) {
+        self.gatedPlaycutID = gatedPlaycutID
+        (started, startedContinuation) = AsyncStream.makeStream()
+        (released, releasedContinuation) = AsyncStream.makeStream()
+    }
+
+    func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
+        if playcut.id == gatedPlaycutID {
+            startedContinuation.yield()
+            for await _ in released {
+                break
+            }
+        }
+        return CGImage.gradientImage()
+    }
+
+    func waitUntilGatedFetchStarts() async {
+        for await _ in started {
+            return
+        }
+    }
+
+    func releaseGatedFetch() {
+        releasedContinuation.yield()
+    }
+}
+
 enum ArtworkServiceError: Error {
     case noResults
 }
@@ -232,6 +268,46 @@ struct NowPlayingServiceTests {
             try await Task.sleep(for: .milliseconds(300))
             mockFetcher.playlistToReturn = Playlist.stub(
                 playcuts: [.stub(id: 10, showID: 42), .stub(id: 12, showID: 42, songTitle: "la paradoja", artistName: "Juana Molina")],
+                onAir: openShow(weirs)
+            )
+        }
+        let item = try await iterator.next()
+
+        #expect(item?.playcut.id == 12)
+    }
+
+    @Test("AsyncSequence drops a song whose artwork fetch outlasts a who's-on entry that took the lead")
+    func asyncSequenceDropsSongOvertakenBySpotlight() async throws {
+        let openShow = { (spotlight: SpotlightEntry?) in
+            OnAir.dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: spotlight))
+        }
+        let weirs = SpotlightEntry.stub(id: 11, role: "performer", name: "Weirs")
+        let songB = Playcut.stub(id: 10, showID: 42, songTitle: "Back, Baby", artistName: "Jessica Pratt")
+        let mockFetcher = MockPlaylistFetcher()
+        mockFetcher.playlistToReturn = Playlist.stub(playcuts: [songB], onAir: openShow(nil))
+        let playlistService = PlaylistService(
+            fetcher: mockFetcher,
+            interval: 0.05,
+            cacheCoordinator: makeNowPlayingTestCacheCoordinator()
+        )
+        let artworkService = GatedArtworkService(gatedPlaycutID: songB.id)
+        let nowPlayingService = NowPlayingService(playlistService: playlistService, artworkService: artworkService)
+
+        var iterator = nowPlayingService.makeAsyncIterator()
+        Task {
+            // Song B's artwork fetch is in flight; a who's-on entry takes the lead meanwhile.
+            await artworkService.waitUntilGatedFetchStarts()
+            mockFetcher.playlistToReturn = Playlist.stub(playcuts: [songB], onAir: openShow(weirs))
+            while true {
+                let leads = await playlistService.currentPlaylistSnapshot().nowPlayingSpotlight != nil
+                if leads { break }
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            artworkService.releaseGatedFetch()
+            // The next song takes the lead back.
+            try await Task.sleep(for: .milliseconds(300))
+            mockFetcher.playlistToReturn = Playlist.stub(
+                playcuts: [songB, .stub(id: 12, showID: 42, songTitle: "la paradoja", artistName: "Juana Molina")],
                 onAir: openShow(weirs)
             )
         }

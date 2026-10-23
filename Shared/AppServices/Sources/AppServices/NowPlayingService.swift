@@ -64,6 +64,8 @@ public struct NowPlayingItem: Sendable, Equatable, Comparable {
 public enum NowPlayingAnswer: Sendable, Equatable {
     /// A song leads.
     case song(NowPlayingItem)
+    /// A who's-on entry leads; carries its role line, such as "Live in the studio: Weirs".
+    case spotlight(line: String)
     /// A specialty show with no song yet leads.
     case specialty(SpecialtyShowRef)
     /// A freeform show with no song yet leads; carries the DJ's handle.
@@ -78,6 +80,8 @@ public enum NowPlayingAnswer: Sendable, Equatable {
         switch self {
         case .song(let item):
             "\(item.playcut.songTitle) by \(item.playcut.artistName) is now playing on WXYC."
+        case .spotlight(let line):
+            "\(line) on WXYC."
         case .specialty(let show):
             ["\(show.name) is on the air on WXYC.", show.tagline].compactMap { $0 }.joined(separator: " ")
         case .dj(let handle):
@@ -141,7 +145,16 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
                     continue
                 }
 
-                return await service.item(for: playcut)
+                let item = await service.item(for: playcut)
+
+                // The artwork fetch can outlast a who's-on entry that took the lead meanwhile, and
+                // that playlist is still queued behind this song. Check again so the song does not
+                // overwrite the entry after the fact.
+                if case .spotlight = await service.playlistService.currentPlaylistSnapshot().nowPlayingLead {
+                    continue
+                }
+
+                return item
             }
         }
     }
@@ -194,6 +207,9 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
         case .song(let playcut):
             let item = await Self.race(timeout: clock.now.duration(to: deadline)) { await self.item(for: playcut) }
             return .song(item ?? NowPlayingItem(playcut: playcut))
+        case .spotlight(let entry):
+            // `nowPlayingLead` only leads with an entry that has a role line (never a host row).
+            return .spotlight(line: entry.roleLine ?? "On air: \(entry.name)")
         case .specialtyCard(let show):
             return .specialty(show)
         case .djHandle(let handle):
