@@ -13,6 +13,7 @@ import Foundation
 import Caching
 import CoreGraphics
 import Core
+import ImageIO
 import Logger
 import Playlist
 
@@ -34,6 +35,22 @@ public enum SpecialtyArtwork {
 
     /// How long a downloaded logo stays cached.
     static let lifespan: TimeInterval = .thirtyDays
+
+    /// Decodes `data` no larger than the artwork cache's target width on its longest side, keeping the aspect
+    /// ratio and applying the image's orientation. Smaller images keep their size. The decode itself is
+    /// downsampled, so a 1024-pixel logo is never held at full size. `data` is not modified, trimmed or re-encoded.
+    static func decodeLogo(from data: Data) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary) else {
+            return nil
+        }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: Int(ArtworkCacheConfiguration.targetWidth),
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
 }
 
 extension CacheCoordinator {
@@ -41,17 +58,18 @@ extension CacheCoordinator {
     ///
     /// The URL string is the cache key, so the same logo is never fetched twice while it is cached. The
     /// downloaded bytes are stored as-is, with none of the album-art processing (white-border trimming,
-    /// rescaling, re-encoding) that `set(artwork:for:lifespan:)` applies, so a logo looks the same on its first
+    /// re-encoding) that `set(artwork:for:lifespan:)` applies, and both paths decode them with the same downsample
+    /// to the artwork target width (`SpecialtyArtwork.decodeLogo(from:)`), so a logo looks the same on its first
     /// appearance and on every cache hit. Failures throw and are never cached, so a transient error does not pin
     /// the tile. Cancellation is rethrown without being logged as a failure.
     func image(from url: URL, session: any WebSession = URLSession.shared) async throws -> CGImage {
         let key = url.absoluteString
-        if let cached = try? data(for: key), let image = createCGImage(from: cached) {
+        if let cached = try? data(for: key), let image = SpecialtyArtwork.decodeLogo(from: cached) {
             return image
         }
         do {
             let downloaded = try await session.data(from: url)
-            guard let image = createCGImage(from: downloaded) else {
+            guard let image = SpecialtyArtwork.decodeLogo(from: downloaded) else {
                 throw ServiceError.noResults
             }
             await setData(downloaded, for: key, lifespan: SpecialtyArtwork.lifespan)
