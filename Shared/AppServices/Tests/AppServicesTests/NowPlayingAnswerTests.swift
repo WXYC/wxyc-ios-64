@@ -56,6 +56,52 @@ private struct HangingArtworkService: ArtworkService {
     }
 }
 
+/// An artwork service shaped like `MultisourceArtworkService`: the fetch runs in an unstructured task and
+/// the caller awaits its value, so cancelling the caller does not stop the fetch. It takes 3 seconds.
+private struct UncancellableArtworkService: ArtworkService {
+    func fetchArtwork(for playcut: Playcut) async throws -> CGImage {
+        let task = Task<CGImage?, Never> {
+            try? await Task.sleep(for: .seconds(3))
+            return nil
+        }
+        _ = await task.value
+        throw CancellationError()
+    }
+}
+
+/// A fetcher that ignores cancellation, as an unstructured fetch does. It takes 3 seconds.
+private struct UncancellablePlaylistFetcher: PlaylistFetcherProtocol {
+    func fetchPlaylist() async -> Playlist {
+        .empty
+    }
+
+    func fetchPlaylistResult() async -> Result<Playlist, any Error> {
+        let task = Task<Void, Never> { try? await Task.sleep(for: .seconds(3)) }
+        await task.value
+        return .success(.empty)
+    }
+}
+
+/// The artwork services that outlast the timeout: one that honors cancellation, one that does not.
+enum SlowArtwork: CaseIterable, Sendable, CustomTestStringConvertible {
+    case honorsCancellation
+    case ignoresCancellation
+
+    var service: any ArtworkService {
+        switch self {
+        case .honorsCancellation: HangingArtworkService()
+        case .ignoresCancellation: UncancellableArtworkService()
+        }
+    }
+
+    var testDescription: String {
+        switch self {
+        case .honorsCancellation: "honors cancellation"
+        case .ignoresCancellation: "ignores cancellation"
+        }
+    }
+}
+
 struct AnswerCase: Sendable, CustomTestStringConvertible {
     let name: String
     let playlist: Playlist
@@ -129,7 +175,7 @@ struct NowPlayingAnswerTests {
         #expect(item.artwork != nil)
     }
 
-    @Test("a failed fetch answers unavailable well within the timeout and reports")
+    @Test("a failed fetch answers unavailable well within the timeout and does not report again")
     func failedFetchAnswersUnavailablePromptly() async {
         let fetcher = MockPlaylistFetcher()
         fetcher.errorToThrow = URLError(.notConnectedToInternet)
@@ -144,8 +190,8 @@ struct NowPlayingAnswerTests {
 
         #expect(answer == .unavailable)
         #expect(elapsed < .seconds(5))
-        #expect(errorReporter.allReportedErrors.count == 1)
-        #expect((errorReporter.allReportedErrors.first?.error as? URLError)?.code == .notConnectedToInternet)
+        // PlaylistFetcher reports a failed fetch itself; the mock does not, so any report here is a duplicate.
+        #expect(errorReporter.allReportedErrors.isEmpty)
     }
 
     @Test("a failed fetch is never spoken as nothing playing")
@@ -171,12 +217,28 @@ struct NowPlayingAnswerTests {
         #expect(errorReporter.allReportedErrors.count == 1)
     }
 
-    @Test("an artwork fetch that outlasts the timeout answers unavailable and reports")
-    func artworkTimeoutAnswersUnavailable() async {
+    @Test("a slow artwork fetch answers the known song without artwork, within the timeout, and does not report", arguments: SlowArtwork.allCases)
+    func slowArtworkAnswersSongWithoutArtwork(_ slowArtwork: SlowArtwork) async {
         let fetcher = MockPlaylistFetcher()
         fetcher.playlistToReturn = answerCases[0].playlist
         let errorReporter = MockErrorReporter()
-        let service = makeService(fetcher: fetcher, artworkService: HangingArtworkService(), errorReporter: errorReporter)
+        let service = makeService(fetcher: fetcher, artworkService: slowArtwork.service, errorReporter: errorReporter)
+        let clock = ContinuousClock()
+
+        var answer: NowPlayingAnswer?
+        let elapsed = await clock.measure {
+            answer = await service.currentAnswer(timeout: .milliseconds(100))
+        }
+
+        #expect(answer == .song(NowPlayingItem(playcut: leadingSong, artwork: nil)))
+        #expect(elapsed < .seconds(2))
+        #expect(errorReporter.allReportedErrors.isEmpty)
+    }
+
+    @Test("a playlist fetch that ignores cancellation still answers unavailable within the timeout and reports once")
+    func uncancellablePlaylistFetchIsBounded() async {
+        let errorReporter = MockErrorReporter()
+        let service = makeService(fetcher: UncancellablePlaylistFetcher(), errorReporter: errorReporter)
         let clock = ContinuousClock()
 
         var answer: NowPlayingAnswer?
@@ -185,7 +247,7 @@ struct NowPlayingAnswerTests {
         }
 
         #expect(answer == .unavailable)
-        #expect(elapsed < .seconds(5))
+        #expect(elapsed < .seconds(2))
         #expect(errorReporter.allReportedErrors.count == 1)
     }
 }

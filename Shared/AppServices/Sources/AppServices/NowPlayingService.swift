@@ -163,45 +163,65 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
     ///
     /// Fetches the playlist once, keeping a failure distinct from an empty playlist, and answers
     /// from ``Playlist/nowPlayingLead``. The whole call, playlist and artwork, is bounded by
-    /// `timeout`. A timeout or a failed fetch answers ``NowPlayingAnswer/unavailable`` and
-    /// reports the error; it is never answered as ``NowPlayingAnswer/nothing``.
+    /// `timeout`, even when a fetch ignores cancellation. If the playlist is not read in time, or
+    /// the fetch fails, the answer is ``NowPlayingAnswer/unavailable``; it is never
+    /// ``NowPlayingAnswer/nothing``. A timeout is reported here; a failed fetch is already reported
+    /// by the fetcher. If a song leads but its artwork is not ready in time, the answer is that
+    /// song with no artwork.
     public func currentAnswer(timeout: Duration = .seconds(8)) async -> NowPlayingAnswer {
-        let answer = await withTaskGroup(of: NowPlayingAnswer?.self) { group in
-            group.addTask { await self.fetchAnswer() }
-            group.addTask {
-                try? await Task.sleep(for: timeout)
-                return nil
-            }
-            let first = await group.next() ?? nil
-            group.cancelAll()
-            return first
-        }
-        guard let answer else {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+
+        let result = await Self.race(timeout: timeout) { await self.playlistService.fetchPlaylistResult() }
+        guard let result else {
             errorReporter.report(NowPlayingAnswerTimeout(), context: "NowPlayingService currentAnswer")
             return .unavailable
         }
-        return answer
+        guard case .success(let playlist) = result else {
+            return .unavailable
+        }
+
+        switch playlist.nowPlayingLead {
+        case .song(let playcut):
+            let item = await Self.race(timeout: clock.now.duration(to: deadline)) { await self.item(for: playcut) }
+            return .song(item ?? NowPlayingItem(playcut: playcut))
+        case .specialtyCard(let show):
+            return .specialty(show)
+        case .djHandle(let handle):
+            return .dj(handle)
+        case .nothing:
+            return .nothing
+        }
     }
 
-    private func fetchAnswer() async -> NowPlayingAnswer {
-        switch await playlistService.fetchPlaylistResult() {
-        case .failure(let error):
-            // Cancelled because the timeout won: that path reports the timeout itself.
-            if !Task.isCancelled {
-                errorReporter.report(error, context: "NowPlayingService currentAnswer")
-            }
-            return .unavailable
-        case .success(let playlist):
-            switch playlist.nowPlayingLead {
-            case .song(let playcut):
-                return .song(await item(for: playcut))
-            case .specialtyCard(let show):
-                return .specialty(show)
-            case .djHandle(let handle):
-                return .dj(handle)
-            case .nothing:
-                return .nothing
-            }
+    /// Runs `operation` and returns its value, or `nil` once `timeout` passes. Unlike a task group,
+    /// it returns at the deadline even when `operation` ignores cancellation, which the artwork
+    /// service's unstructured fetch does; that fetch is cancelled and left to finish on its own.
+    private static func race<T: Sendable>(
+        timeout: Duration,
+        operation: @escaping @Sendable () async -> T
+    ) async -> T? {
+        let (outcomes, continuation) = AsyncStream.makeStream(of: T?.self)
+        let work = Task {
+            continuation.yield(await operation())
+            continuation.finish()
         }
+        let timer = Task {
+            do {
+                try await Task.sleep(for: timeout)
+            } catch {
+                return
+            }
+            continuation.yield(nil)
+            continuation.finish()
+        }
+        defer {
+            work.cancel()
+            timer.cancel()
+        }
+        for await outcome in outcomes {
+            return outcome
+        }
+        return nil
     }
 }
