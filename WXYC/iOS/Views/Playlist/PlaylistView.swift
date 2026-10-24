@@ -69,6 +69,8 @@ struct PlaylistView: View {
     @State private var timelineItems: [TimelineItem] = []
     /// Which rows open a section, computed once per playlist next to ``timelineItems``.
     @State private var sections: [UInt64: PlaylistSection] = [:]
+    /// Which rows open a specialty show's run, computed with ``sections``.
+    @State private var showHeaders: [UInt64: ShowHeader] = [:]
     @State private var onAir: OnAir = .unknown
     @State private var specialtyCard: SpecialtyCard?
     /// The open show's who's-on line, shown under the DJ on a freeform show (a specialty show's
@@ -192,6 +194,10 @@ struct PlaylistView: View {
                                 EmptyView()
                             }
 
+                            if let header = showHeaders[item.id] {
+                                ShowHeaderView(header: header)
+                            }
+
                             playlistRow(for: item)
                                 .padding(.vertical, 8)
                                 .transition(.asymmetric(
@@ -282,6 +288,7 @@ struct PlaylistView: View {
                     let items = playlist.timelineItems
                     self.timelineItems = items
                     self.sections = Playlist.sections(of: items, lead: playlist.nowPlayingLead)
+                    self.showHeaders = playlist.showHeaders(of: items)
                     self.specialtyCard = playlist.specialtyCard
                     self.nowLine = playlist.nowLine
                 }

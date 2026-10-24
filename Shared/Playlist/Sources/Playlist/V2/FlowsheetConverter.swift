@@ -21,8 +21,9 @@ enum FlowsheetConverter {
     ///   - onAir: The backend's tri-state on-air signal, carried through to the
     ///     resulting ``Playlist``. Defaults to ``OnAir/unknown`` for callers that
     ///     have no on-air information (e.g. entry-only test fixtures).
+    ///   - shows: The response's `shows[]`, carried through keyed by id.
     /// - Returns: A Playlist with entries sorted into appropriate arrays.
-    static func convert(_ entries: [FlowsheetEntry], onAir: OnAir = .unknown) -> Playlist {
+    static func convert(_ entries: [FlowsheetEntry], onAir: OnAir = .unknown, shows: [PlaylistShow] = []) -> Playlist {
         var playcuts: [Playcut] = []
         var breakpoints: [Breakpoint] = []
         var talksets: [Talkset] = []
@@ -125,7 +126,8 @@ enum FlowsheetConverter {
             talksets: talksets,
             showMarkers: showMarkers,
             onAir: onAir,
-            spotlights: spotlights
+            spotlights: spotlights,
+            shows: Dictionary(shows.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         )
     }
 

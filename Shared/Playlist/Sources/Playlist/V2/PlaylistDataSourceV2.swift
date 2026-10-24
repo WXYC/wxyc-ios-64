@@ -41,7 +41,7 @@ public final class PlaylistDataSourceV2: PlaylistDataSource, @unchecked Sendable
         self.transport = RevalidatingJSONDataSource(
             url: .WXYCFlowsheet,
             session: session,
-            map: { FlowsheetConverter.convert($0.entries, onAir: $0.onAir) }
+            map: { FlowsheetConverter.convert($0.entries, onAir: $0.onAir, shows: $0.shows) }
         )
     }
 

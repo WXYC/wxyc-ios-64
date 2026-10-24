@@ -686,13 +686,18 @@ public struct Playlist: Codable, Sendable {
     /// The who's-on rows in the window, from `entry_type: "spotlight"` entries.
     public let spotlights: [SpotlightEntry]
 
+    /// The shows overlapping the window, by id, from the response's `shows[]`. Empty when the
+    /// backend sends none, in which case the scrollback draws no per-show headers.
+    public let shows: [UInt64: PlaylistShow]
+
     public init(
         playcuts: [Playcut],
         breakpoints: [Breakpoint],
         talksets: [Talkset],
         showMarkers: [ShowMarker] = [],
         onAir: OnAir = .unknown,
-        spotlights: [SpotlightEntry] = []
+        spotlights: [SpotlightEntry] = [],
+        shows: [UInt64: PlaylistShow] = [:]
     ) {
         self.playcuts = playcuts
         self.breakpoints = breakpoints
@@ -700,6 +705,7 @@ public struct Playlist: Codable, Sendable {
         self.showMarkers = showMarkers
         self.onAir = onAir
         self.spotlights = spotlights
+        self.shows = shows
     }
 
     public init(from decoder: Decoder) throws {
@@ -713,10 +719,11 @@ public struct Playlist: Codable, Sendable {
         // cached playlists written before the field existed.
         self.onAir = try container.decodeIfPresent(OnAir.self, forKey: .onAir) ?? .unknown
         self.spotlights = try container.decodeIfPresent([SpotlightEntry].self, forKey: .spotlights) ?? []
+        self.shows = try container.decodeIfPresent([UInt64: PlaylistShow].self, forKey: .shows) ?? [:]
     }
 
     private enum CodingKeys: String, CodingKey {
-        case playcuts, breakpoints, talksets, showMarkers, onAir, spotlights
+        case playcuts, breakpoints, talksets, showMarkers, onAir, spotlights, shows
     }
 
     public static let empty = Playlist(playcuts: [], breakpoints: [], talksets: [], showMarkers: [])
@@ -732,6 +739,7 @@ public struct Playlist: Codable, Sendable {
             && lhs.showMarkers == rhs.showMarkers
             && lhs.onAir == rhs.onAir
             && lhs.spotlights == rhs.spotlights
+            && lhs.shows == rhs.shows
     }
 
     public static func !=(lhs: Playlist, rhs: Playlist) -> Bool {

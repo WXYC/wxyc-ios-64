@@ -20,10 +20,21 @@ import Foundation
 struct FlowsheetResponse: Codable, Sendable {
     let entries: [FlowsheetEntry]
     let onAir: OnAir
+    /// The top-level `shows` array. Empty when absent or unusable; a malformed show is skipped.
+    let shows: [PlaylistShow]
 
     private enum CodingKeys: String, CodingKey {
-        case entries
+        case entries, shows
         case onAir = "on_air"
+    }
+
+    /// Decodes one `shows` element to `nil` instead of throwing, so one bad show costs only itself.
+    private struct TolerantShow: Decodable {
+        let show: PlaylistShow?
+
+        init(from decoder: Decoder) throws {
+            show = try? PlaylistShow(from: decoder)
+        }
     }
 
     /// Minimal decode shape for the `on_air` object. Only `dj_name` is required; the show fields
@@ -53,6 +64,7 @@ struct FlowsheetResponse: Codable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         entries = try container.decode([FlowsheetEntry].self, forKey: .entries)
+        shows = ((try? container.decodeIfPresent([TolerantShow].self, forKey: .shows)) ?? nil)?.compactMap(\.show) ?? []
 
         if !container.contains(.onAir) {
             // Field absent: older backend, v1, or a non-default query branch.
