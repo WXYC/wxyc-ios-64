@@ -25,6 +25,17 @@ struct SongRowMetricsTests {
         #expect(abs(SongRowMetrics.artworkSlotWidth(rowWidth: rowWidth) - expected) < 0.001)
     }
 
+    @Test("The artwork side is the slot width less padding on both sides, never negative", arguments: [
+        (250 as CGFloat, 76 as CGFloat),
+        (400, 136),
+        (600, 216),
+        (50, 0),
+        (0, 0),
+    ])
+    func artworkSide(rowWidth: CGFloat, expected: CGFloat) {
+        #expect(abs(SongRowMetrics.artworkSide(rowWidth: rowWidth) - expected) < 0.001)
+    }
+
     @Test("The row aspect ratio and artwork padding are the playcut row's")
     func constants() {
         #expect(SongRowMetrics.aspectRatio == 2.5)

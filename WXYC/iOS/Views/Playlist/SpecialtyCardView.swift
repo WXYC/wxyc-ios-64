@@ -13,43 +13,60 @@
 import Artwork
 import Playlist
 import SwiftUI
+import Wallpaper
+import WXUI
 
 struct SpecialtyCardView: View {
     let card: SpecialtyCard
 
-    private static let artworkSize: CGFloat = 72
+    private static let cornerRadius: CGFloat = 12
+
+    @State private var cardWidth: CGFloat = 0
+    @State private var shadowYOffset: CGFloat = 0
 
     var body: some View {
-        HStack(spacing: 12) {
-            SpecialtyArtworkView(program: card.program, size: Self.artworkSize)
-                .clipShape(.rect(cornerRadius: 10))
+        WallpaperCard(cornerRadius: Self.cornerRadius) {
+            BackgroundLayer(cornerRadius: Self.cornerRadius)
+        } content: {
+            HStack(alignment: .top, spacing: 0) {
+                RowArtworkSlot(rowWidth: cardWidth) {
+                    RowArtworkFrame(shadowYOffset: shadowYOffset) {
+                        SpecialtyArtworkView(
+                            program: card.program,
+                            size: SongRowMetrics.artworkSide(rowWidth: cardWidth)
+                        )
+                    }
+                }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(card.program.name)
-                    .font(.headline)
-                if let subtitle = card.showName {
-                    Text(subtitle)
-                        .font(.subheadline)
-                }
-                Text(card.djHandle)
-                    .font(.caption)
-                    .textCase(.uppercase)
-                    .foregroundStyle(.secondary)
-                if let nowLine = card.nowLine {
-                    Text(nowLine)
-                        .font(.subheadline.weight(.semibold))
-                }
-                if card.showsTagline, let tagline = card.program.tagline {
-                    Text(tagline)
-                        .font(.subheadline)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(card.program.name)
+                        .font(.headline)
+                    if let subtitle = card.showName {
+                        Text(subtitle)
+                            .font(.subheadline)
+                    }
+                    Text(card.djHandle)
+                        .font(.caption)
+                        .textCase(.uppercase)
                         .foregroundStyle(.secondary)
+                    if let nowLine = card.nowLine {
+                        Text(nowLine)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    if card.showsTagline, let tagline = card.program.tagline {
+                        Text(tagline)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+                .foregroundStyle(.white)
+                .padding(.vertical, SongRowMetrics.artworkPadding)
+                .padding(.trailing, SongRowMetrics.artworkPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(12)
-        .background(.white.opacity(0.08), in: .rect(cornerRadius: 16))
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { cardWidth = $0 }
+        .modifier(ScrollShadowModifier(shadowYOffset: $shadowYOffset, top: -3, bottom: 3))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("playlist.specialtyCard")
     }
