@@ -14,7 +14,8 @@ let package = Package(
     targets: [
         .target(
             name: "Artwork",
-            dependencies: ["Core", "Caching", "Playlist", "Logger"]
+            dependencies: ["Core", "Caching", "Playlist", "Logger"],
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "ArtworkTests",
