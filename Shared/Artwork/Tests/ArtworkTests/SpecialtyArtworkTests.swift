@@ -35,21 +35,6 @@ struct SpecialtyArtworkTests {
         #expect(SpecialtyArtwork.logoURL(for: program(squareURL: logoURL)) == logoURL)
         #expect(SpecialtyArtwork.logoURL(for: program(squareURL: nil)) == nil)
     }
-
-    @Test(
-        "Shows the tile unless a logo URL exists and has loaded",
-        arguments: [
-            (hasURL: false, state: SpecialtyArtwork.LogoState.loading, showsLogo: false),
-            (hasURL: false, state: .loaded, showsLogo: false),
-            (hasURL: true, state: .loading, showsLogo: false),
-            (hasURL: true, state: .failed, showsLogo: false),
-            (hasURL: true, state: .loaded, showsLogo: true),
-        ]
-    )
-    func fallbackDecision(hasURL: Bool, state: SpecialtyArtwork.LogoState, showsLogo: Bool) {
-        let url = hasURL ? logoURL : nil
-        #expect(SpecialtyArtwork.showsLogo(url: url, state: state) == showsLogo)
-    }
 }
 
 @Suite("SpecialtyArtwork.logo(for:)")
@@ -300,6 +285,104 @@ struct SizedLogoTests {
     }
 }
 
+@Suite("SpecialtyArtworkView")
+@MainActor
+struct SpecialtyArtworkViewTests {
+
+    /// Two programs with no server logo URL and no bundled logo, so only the program tells them apart.
+    private let first = SpecialtyShowRef.stub()
+    private let second = SpecialtyShowRef.untaggedStub
+
+    /// Re-evaluates `SpecialtyArtworkView.body` on every render by changing an input the parent passes down.
+    private struct Host: View {
+        let program: SpecialtyShowRef
+        let pass: Int
+        let resolve: @Sendable (SpecialtyShowRef) async -> CGImage?
+
+        var body: some View {
+            SpecialtyArtworkView(program: program, size: 20, resolve: resolve)
+                .overlay(alignment: .topLeading) { Color.clear.frame(width: CGFloat(pass + 1), height: 1) }
+        }
+    }
+
+    private func solid(red: Double, green: Double, blue: Double) -> CGImage {
+        let context = CGContext(
+            data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        context.setFillColor(red: red, green: green, blue: blue, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        return context.makeImage()!
+    }
+
+    /// The center pixel of the rendered view.
+    private func centerPixel(_ renderer: ImageRenderer<Host>) -> [UInt8]? {
+        guard let image = renderer.cgImage else { return nil }
+        return image.rgba(atX: image.width / 2, y: image.height / 2)
+    }
+
+    /// Renders `host` repeatedly, letting the view's task run in between, until `condition` holds.
+    private func render(_ renderer: ImageRenderer<Host>, program: SpecialtyShowRef, pass: inout Int,
+                        resolve: @escaping @Sendable (SpecialtyShowRef) async -> CGImage?,
+                        until condition: () -> Bool) async {
+        for _ in 0..<20 {
+            pass += 1
+            renderer.content = Host(program: program, pass: pass, resolve: resolve)
+            _ = renderer.cgImage
+            try? await Task.sleep(for: .milliseconds(20))
+            if condition() { break }
+        }
+        // One more pass after the task finished, so the resolved state is drawn.
+        pass += 1
+        renderer.content = Host(program: program, pass: pass, resolve: resolve)
+        _ = renderer.cgImage
+    }
+
+    @Test("Many body evaluations for one program resolve once, and the resolved image is drawn")
+    func resolvesOncePerProgram() async {
+        let calls = Mutex(0)
+        let red = solid(red: 1, green: 0, blue: 0)
+        let resolve: @Sendable (SpecialtyShowRef) async -> CGImage? = { _ in
+            calls.withLock { $0 += 1 }
+            return red
+        }
+        var pass = 0
+        let renderer = ImageRenderer(content: Host(program: first, pass: pass, resolve: resolve))
+
+        await render(renderer, program: first, pass: &pass, resolve: resolve, until: { calls.withLock { $0 } >= 1 })
+        for _ in 0..<5 {
+            pass += 1
+            renderer.content = Host(program: first, pass: pass, resolve: resolve)
+            _ = renderer.cgImage
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+
+        #expect(calls.withLock { $0 } == 1)
+        #expect(centerPixel(renderer) == [255, 0, 0, 255])
+    }
+
+    @Test("Changing the program resolves again, and each program shows its own result, even with no server URL")
+    func changingProgramResolvesAgain() async {
+        let requested = Mutex<[String]>([])
+        let red = solid(red: 1, green: 0, blue: 0)
+        let blue = solid(red: 0, green: 0, blue: 1)
+        let resolve: @Sendable (SpecialtyShowRef) async -> CGImage? = { program in
+            requested.withLock { $0.append(program.slug) }
+            return program.slug == "hogwash" ? red : blue
+        }
+        var pass = 0
+        let renderer = ImageRenderer(content: Host(program: first, pass: pass, resolve: resolve))
+
+        await render(renderer, program: first, pass: &pass, resolve: resolve, until: { requested.withLock { $0.count } >= 1 })
+        let firstPixel = centerPixel(renderer)
+        await render(renderer, program: second, pass: &pass, resolve: resolve, until: { requested.withLock { $0.count } >= 2 })
+        let secondPixel = centerPixel(renderer)
+
+        #expect(requested.withLock { $0 } == [first.slug, second.slug])
+        #expect(firstPixel == [255, 0, 0, 255])
+        #expect(secondPixel == [0, 0, 255, 255])
+    }
+}
 @Suite("CacheCoordinator.image(from:) failure logging")
 struct URLKeyedArtworkFailureLoggingTests {
 

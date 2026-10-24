@@ -19,10 +19,6 @@ import Playlist
 
 /// The pure decisions behind `SpecialtyArtworkView`, kept free of SwiftUI and the network so a table can test them.
 public enum SpecialtyArtwork {
-    public enum LogoState: Sendable {
-        case loading, loaded, failed
-    }
-
     /// The logo to load for `program`, or `nil` when it has none and the tile is all there is.
     public static func logoURL(for program: SpecialtyShowRef) -> URL? {
         program.artwork?.squareURL
@@ -33,11 +29,6 @@ public enum SpecialtyArtwork {
     /// gets its ``bundledLogo(for:)``, if it has one (DEBUG builds only).
     public static func logo(for program: SpecialtyShowRef) async -> CGImage? {
         await logo(for: program, cache: .AlbumArt, session: URLSession.shared)
-    }
-
-    /// Whether to draw the logo rather than the tile: only once a logo URL exists and its image has loaded.
-    public static func showsLogo(url: URL?, state: LogoState) -> Bool {
-        url != nil && state == .loaded
     }
 
     /// How long a downloaded logo stays cached.
