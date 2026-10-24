@@ -40,5 +40,8 @@ struct SongRowMetricsTests {
     func constants() {
         #expect(SongRowMetrics.aspectRatio == 2.5)
         #expect(SongRowMetrics.artworkPadding == 12)
+        #expect(SongRowMetrics.cornerRadius == 12)
+        #expect(SongRowMetrics.shadowOffsetAtTop == -3)
+        #expect(SongRowMetrics.shadowOffsetAtBottom == 3)
     }
 }

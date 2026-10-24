@@ -20,6 +20,16 @@ enum SongRowMetrics {
     /// Padding on every side of the artwork inside its slot.
     static let artworkPadding: CGFloat = 12
 
+    /// Corner radius of the song row's card. `SongRowPanel` defaults to it and
+    /// `SpecialtyCardView` reads it, so the specialty card matches the rows below.
+    static let cornerRadius: CGFloat = 12
+
+    /// The scroll-leaning shadow's vertical offset when the row is at the top of
+    /// the screen, and when it is at the bottom. Read by `PlaycutRowView` and
+    /// `SpecialtyCardView`.
+    static let shadowOffsetAtTop: CGFloat = -3
+    static let shadowOffsetAtBottom: CGFloat = 3
+
     /// The width of the leading artwork slot in a row `rowWidth` points wide.
     static func artworkSlotWidth(rowWidth: CGFloat) -> CGFloat {
         rowWidth / aspectRatio
