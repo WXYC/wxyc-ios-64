@@ -28,7 +28,7 @@ import WXUI
 /// this view owns the background, the 2.5 aspect ratio, the rounded hit area,
 /// and the optional hairline border.
 struct SongRowPanel<Content: View>: View {
-    var cornerRadius: CGFloat = 12
+    var cornerRadius: CGFloat = SongRowMetrics.cornerRadius
     /// Whether to draw the hairline border. The Liked row does; the flowsheet's
     /// plain row does not — the difference is preserved rather than unified.
     var stroked: Bool = false

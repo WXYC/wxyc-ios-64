@@ -68,9 +68,9 @@ struct PlaycutRowView: View {
     /// Stable time offset for animated mesh gradient (randomized once at init).
     private let stableTimeOffset = TimeInterval((-10..<10).randomElement()!)
 
-    // Shadow offset configuration
-    private let shadowOffsetAtTop: CGFloat = -3
-    private let shadowOffsetAtBottom: CGFloat = 3
+    // Shadow offset configuration (shared with the specialty card)
+    private let shadowOffsetAtTop = SongRowMetrics.shadowOffsetAtTop
+    private let shadowOffsetAtBottom = SongRowMetrics.shadowOffsetAtBottom
 
     @Environment(Singletonia.self) private var appState
     @Environment(\.wallpaperMeshGradientPalette) private var wallpaperPalette

@@ -13,15 +13,18 @@
 import Artwork
 import Playlist
 import SwiftUI
+import UIKit
 import Wallpaper
 import WXUI
 
 struct SpecialtyCardView: View {
     let card: SpecialtyCard
 
-    private static let cornerRadius: CGFloat = 12
+    private static let cornerRadius = SongRowMetrics.cornerRadius
 
-    @State private var cardWidth: CGFloat = 0
+    /// Seeded with the screen's width so the first layout already has a
+    /// logo-sized slot; `onGeometryChange` replaces it with the measured width.
+    @State private var cardWidth: CGFloat = UIScreen.main.bounds.width
     @State private var shadowYOffset: CGFloat = 0
 
     var body: some View {
@@ -66,7 +69,7 @@ struct SpecialtyCardView: View {
             }
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { cardWidth = $0 }
-        .modifier(ScrollShadowModifier(shadowYOffset: $shadowYOffset, top: -3, bottom: 3))
+        .modifier(ScrollShadowModifier(shadowYOffset: $shadowYOffset, top: SongRowMetrics.shadowOffsetAtTop, bottom: SongRowMetrics.shadowOffsetAtBottom))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("playlist.specialtyCard")
     }
