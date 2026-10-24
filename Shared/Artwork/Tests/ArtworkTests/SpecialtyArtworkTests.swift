@@ -242,6 +242,82 @@ struct URLKeyedArtworkCacheTests {
     }
 }
 
+@Suite("SpecialtyArtwork.logo(for:maxPixelSize:)")
+struct SizedLogoTests {
+
+    private func makeCache() -> CacheCoordinator {
+        CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
+    }
+
+    private func source(side: Int) -> Data {
+        createBorderedImage(
+            size: CGSize(width: side, height: side),
+            borderColor: .white, contentColor: .blue, top: 0, bottom: 0, left: 0, right: 0
+        ).pngDataCompatibility!
+    }
+
+    @Test(
+        "The logo is decoded no larger than the requested pixel size, never at full size; a smaller one keeps its size",
+        arguments: [
+            (source: 1024, maxPixelSize: 180, expected: 180),
+            (source: 1024, maxPixelSize: 300, expected: 300),
+            (source: 200, maxPixelSize: 300, expected: 200),
+        ]
+    )
+    func downsamplesToTheRequestedSize(source side: Int, maxPixelSize: Int, expected: Int) async throws {
+        let session = MockWebSession()
+        session.dataToReturn = source(side: side)
+
+        let image = try #require(await SpecialtyArtwork.logo(
+            for: program(squareURL: logoURL), maxPixelSize: maxPixelSize, cache: makeCache(), session: session
+        ))
+
+        #expect(max(image.width, image.height) == expected)
+    }
+
+    @Test("A second size is served from the cached bytes without another download")
+    func reusesTheCachedBytes() async throws {
+        let session = MockWebSession()
+        session.dataToReturn = source(side: 1024)
+        let cache = makeCache()
+
+        let small = try #require(await SpecialtyArtwork.logo(for: program(squareURL: logoURL), maxPixelSize: 120, cache: cache, session: session))
+        let large = try #require(await SpecialtyArtwork.logo(for: program(squareURL: logoURL), maxPixelSize: 300, cache: cache, session: session))
+
+        #expect(session.requestedURLs == [logoURL])
+        #expect(small.width == 120)
+        #expect(large.width == 300)
+    }
+
+    @Test("A program with no logo, or a failed download, has no logo to draw")
+    func absentLogo() async {
+        let session = MockWebSession()
+        session.errorToThrow = ServiceError.noResults
+
+        #expect(await SpecialtyArtwork.logo(for: program(squareURL: nil), maxPixelSize: 300, cache: makeCache(), session: session) == nil)
+        #expect(await SpecialtyArtwork.logo(for: program(squareURL: logoURL), maxPixelSize: 300, cache: makeCache(), session: session) == nil)
+        #expect(session.requestedURLs == [logoURL])
+    }
+}
+
+#if DEBUG
+@Suite("SpecialtyArtwork.logo bundled fallback")
+struct BundledLogoFallbackTests {
+
+    private let nse = SpecialtyShowRef(id: 9, slug: "new-science-experience", name: "New Science Experience")
+
+    @Test("A program with no logo URL falls back to its bundled logo, through both entry points, without a download")
+    func fallsBack() async {
+        let session = MockWebSession()
+        let cache = CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
+
+        #expect(await SpecialtyArtwork.logo(for: nse, cache: cache, session: session) != nil)
+        #expect(await SpecialtyArtwork.logo(for: nse, maxPixelSize: 120, cache: cache, session: session) != nil)
+        #expect(session.requestedURLs.isEmpty)
+    }
+}
+#endif
+
 @Suite("CacheCoordinator.image(from:) failure logging")
 struct URLKeyedArtworkFailureLoggingTests {
 

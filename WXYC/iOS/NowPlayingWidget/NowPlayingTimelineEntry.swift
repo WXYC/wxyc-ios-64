@@ -20,11 +20,20 @@ struct NowPlayingTimelineEntry: TimelineEntry {
     let artwork: SwiftUI.Image?
     let recentItems: [NowPlayingItem]
     let family: WidgetFamily
+    /// The specialty program on the air, when the layout names one: over the person, or as context for a song.
+    let headline: NowPlayingHeadline?
+    /// The program's logo, already downsampled to the family's pixel size. `nil` draws the tile.
+    let programLogo: SwiftUI.Image?
+    /// Whether the program headline leads (no song of this show yet), rather than a song with the program as context.
+    let programLeads: Bool
 
+    /// A leading song, with `headline` as context when a specialty show is on the air.
     init(
         nowPlayingItem: NowPlayingItem,
         recentItems: [NowPlayingItem],
-        family: WidgetFamily
+        family: WidgetFamily,
+        headline: NowPlayingHeadline? = nil,
+        logo: CGImage? = nil
     ) {
         self.date = .now
         self.artist = nowPlayingItem.playcut.artistName
@@ -36,8 +45,25 @@ struct NowPlayingTimelineEntry: TimelineEntry {
             self.artwork = nil
         }
 
-        self.recentItems = recentItems
+        self.recentItems = headline == nil ? recentItems : Array(recentItems.prefix(WidgetContent.leadInProgram.recentLimit))
         self.family = family
+        self.headline = headline
+        self.programLogo = logo.map { Image(decorative: $0, scale: 1) }
+        self.programLeads = false
+    }
+
+    /// A specialty show with no song of its own yet: the program takes the bold line over the person,
+    /// the recents follow, and the logo (or the tile when `logo` is `nil`) is the artwork.
+    init(headline: NowPlayingHeadline, logo: CGImage?, recentItems: [NowPlayingItem], family: WidgetFamily) {
+        self.date = .now
+        self.artist = headline.program.name
+        self.songTitle = headline.person
+        self.artwork = nil
+        self.recentItems = Array(recentItems.prefix(WidgetContent.program.recentLimit))
+        self.family = family
+        self.headline = headline
+        self.programLogo = logo.map { Image(decorative: $0, scale: 1) }
+        self.programLeads = true
     }
 
     static func placeholder(family: WidgetFamily) -> Self {
@@ -95,6 +121,9 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.artwork = artwork
         self.recentItems = recentItems
         self.family = family
+        self.headline = nil
+        self.programLogo = nil
+        self.programLeads = false
     }
 }
 

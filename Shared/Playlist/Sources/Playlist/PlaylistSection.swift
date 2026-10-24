@@ -20,12 +20,27 @@ public enum PlaylistSection: Sendable, Equatable {
 public enum WidgetContent: Sendable, Equatable {
     /// A leading song, with the recents under it.
     case lead
+    /// A leading song during a specialty show: the same, with the program as context.
+    case leadInProgram
+    /// A specialty show with no song of its own yet: the program over the person, with the recents under it.
+    case program
     /// A who's-on entry leads: its line takes the lead line, with the recents under it.
     case whosOn
     /// No song leads but recents exist: the station line, with the recents under it.
     case stationLine
     /// Nothing to show: the empty state.
     case empty
+}
+
+public extension WidgetContent {
+    /// How many recents the widget shows under this layout. A specialty show's layouts show two ("Recently
+    /// Played drops to two rows"); every other layout shows up to three, which `Playlist.widgetRecents` supplies.
+    var recentLimit: Int {
+        switch self {
+        case .leadInProgram, .program: 2
+        case .lead, .whosOn, .stationLine, .empty: 3
+        }
+    }
 }
 
 public extension Playlist {
@@ -67,13 +82,15 @@ public extension Playlist {
         return Array(playcuts.sorted(by: >).filter { $0.id != leaderID }.prefix(3))
     }
 
-    /// Which of the widget's layouts to show. A leading song or who's-on entry wins; otherwise
-    /// recents under the station line; the empty state only when there is nothing at all.
-    static func widgetContent(lead: NowPlayingLead, hasRecents: Bool) -> WidgetContent {
+    /// Which of the widget's layouts to show. A leading song or who's-on entry wins, a specialty show
+    /// with no song yet shows its program; otherwise recents under the station line; the empty state
+    /// only when there is nothing at all. `program` is the specialty show on the air, if any.
+    static func widgetContent(lead: NowPlayingLead, hasRecents: Bool, program: SpecialtyShowRef?) -> WidgetContent {
         switch lead {
-        case .song: .lead
+        case .song: program == nil ? .lead : .leadInProgram
         case .spotlight: .whosOn
-        case .specialtyCard, .djHandle, .nothing: hasRecents ? .stationLine : .empty
+        case .specialtyCard: .program
+        case .djHandle, .nothing: hasRecents ? .stationLine : .empty
         }
     }
 }
