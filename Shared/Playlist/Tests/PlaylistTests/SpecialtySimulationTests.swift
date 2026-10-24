@@ -20,7 +20,7 @@ import PlaylistTesting
 @testable import Playlist
 @testable import Caching
 
-private let nse = SpecialtyShowRef(id: 7, slug: "new-science-experience", name: "New Science Experience", shortName: "NSE", tagline: "Beats and bleeps", logsPlaycuts: false)
+private let beatsAndBleeps = SpecialtyShowRef(id: 7, slug: "beats-and-bleeps", name: "Beats and Bleeps", shortName: "BB", tagline: "Beats and bleeps", logsPlaycuts: false)
 private let ocs = SpecialtyShowRef(id: 1, slug: "orange-county-special", name: "Orange County Special", shortName: "OCS", tagline: "Folk and bluegrass", logsPlaycuts: true)
 
 private let freeformShow = OnAirShow(id: 50, title: nil, specialty: nil)
@@ -45,7 +45,7 @@ struct SimulationCase: Sendable, CustomTestStringConvertible {
 
 private let simulationCases: [SimulationCase] = [
     SimulationCase(name: "just opened: the tagline card leads, over the real songs", simulation: simulation(ocs, .justOpened, title: "Fiddle Night"), lead: "specialtyCard", placement: .aboveSongList, showsTagline: true, nowLine: nil),
-    SimulationCase(name: "logging: the real newest song leads under the card", simulation: simulation(nse, .logging), lead: "song", placement: .aboveSongList, showsTagline: false, nowLine: nil),
+    SimulationCase(name: "logging: the real newest song leads under the card", simulation: simulation(beatsAndBleeps, .logging), lead: "song", placement: .aboveSongList, showsTagline: false, nowLine: nil),
     SimulationCase(name: "logs no songs: the card is the now-playing item", simulation: simulation(ocs, .logsNoSongs), lead: "specialtyCard", placement: .nowPlaying, showsTagline: true, nowLine: nil),
     SimulationCase(name: "spotlight: the who's-on entry leads", simulation: simulation(ocs, .spotlight), lead: "spotlight", placement: .aboveSongList, showsTagline: false, nowLine: "Live in the studio: Weirs"),
 ]

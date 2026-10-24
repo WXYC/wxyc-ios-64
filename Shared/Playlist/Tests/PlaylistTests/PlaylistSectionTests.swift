@@ -19,7 +19,7 @@ private let middle = Playcut.stub(id: 11, showID: 42)
 private let oldest = Playcut.stub(id: 10, showID: 42)
 private let previousShow = Playcut.stub(id: 9, showID: 41)
 private let entry = SpotlightEntry.stub(id: 13)
-private let hogwash = SpecialtyShowRef(id: 3, slug: "hogwash", name: "Hogwash", shortName: "HW", tagline: "Weird and wonderful")
+private let hogwash = SpecialtyShowRef.taggedStub
 
 struct PlaylistSectionCase: Sendable, CustomTestStringConvertible {
     let name: String
@@ -82,7 +82,7 @@ struct PlaylistSectionTests {
         ([newest], 42 as UInt64?, hogwash as SpecialtyShowRef?, "Recently Played"),
         ([previousShow], 42, hogwash, "Before HW"),
         ([previousShow, oldest], 42, hogwash, "Before HW"),
-        ([previousShow], 42, SpecialtyShowRef(id: 4, slug: "nse", name: "New Science Experience"), "Before New Science Experience"),
+        ([previousShow], 42, .untaggedStub, "Before Nothing Special Eventually"),
         ([previousShow], nil, hogwash, "Recently Played"),
         ([Playcut.stub(id: 8)], 42, hogwash, "Recently Played"),
         ([], 42, hogwash, "Recently Played"),

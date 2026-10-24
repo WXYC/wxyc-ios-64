@@ -13,13 +13,12 @@ import Testing
 import Foundation
 import CoreGraphics
 import Playlist
+import PlaylistTesting
 @testable import Artwork
+@testable import Caching
 
 private func program(slug: String, squareURL: URL? = nil) -> SpecialtyShowRef {
-    SpecialtyShowRef(
-        id: 7, slug: slug, name: "Show", shortName: "SH",
-        artwork: squareURL.map { .init(squareURL: $0) }
-    )
+    .stub(id: 7, slug: slug, name: "Show", shortName: "SH", squareURL: squareURL)
 }
 
 @Suite("BundledSpecialtyLogo")
@@ -58,3 +57,21 @@ struct BundledSpecialtyLogoTests {
     }
 #endif
 }
+
+#if DEBUG
+@Suite("SpecialtyArtwork.logo bundled fallback")
+struct BundledLogoFallbackTests {
+
+    private let nse = SpecialtyShowRef.stub(id: 9, slug: "new-science-experience", name: "New Science Experience")
+
+    @Test("A program with no logo URL falls back to its bundled logo, through both entry points, without a download")
+    func fallsBack() async {
+        let session = MockWebSession()
+        let cache = CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
+
+        #expect(await SpecialtyArtwork.logo(for: nse, cache: cache, session: session) != nil)
+        #expect(await SpecialtyArtwork.logo(for: nse, maxPixelSize: 120, cache: cache, session: session) != nil)
+        #expect(session.requestedURLs.isEmpty)
+    }
+}
+#endif

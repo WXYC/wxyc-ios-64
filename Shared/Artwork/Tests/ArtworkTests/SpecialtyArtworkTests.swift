@@ -16,17 +16,15 @@ import CoreGraphics
 import Core
 import Logger
 import Playlist
+import PlaylistTesting
 import SwiftUI
 @testable import Artwork
 @testable import Caching
 
 private let logoURL = URL(string: "https://example.com/hogwash.png")!
 
-private func program(squareURL: URL?, hasArtwork: Bool = true) -> SpecialtyShowRef {
-    SpecialtyShowRef(
-        id: 3, slug: "hogwash", name: "Hogwash", shortName: "HW",
-        artwork: hasArtwork ? .init(squareURL: squareURL) : nil
-    )
+private func program(squareURL: URL?) -> SpecialtyShowRef {
+    .stub(squareURL: squareURL)
 }
 
 @Suite("SpecialtyArtwork")
@@ -36,7 +34,6 @@ struct SpecialtyArtworkTests {
     func logoURLSelection() {
         #expect(SpecialtyArtwork.logoURL(for: program(squareURL: logoURL)) == logoURL)
         #expect(SpecialtyArtwork.logoURL(for: program(squareURL: nil)) == nil)
-        #expect(SpecialtyArtwork.logoURL(for: program(squareURL: nil, hasArtwork: false)) == nil)
     }
 
     @Test(
@@ -302,24 +299,6 @@ struct SizedLogoTests {
         #expect(session.requestedURLs == [logoURL])
     }
 }
-
-#if DEBUG
-@Suite("SpecialtyArtwork.logo bundled fallback")
-struct BundledLogoFallbackTests {
-
-    private let nse = SpecialtyShowRef(id: 9, slug: "new-science-experience", name: "New Science Experience")
-
-    @Test("A program with no logo URL falls back to its bundled logo, through both entry points, without a download")
-    func fallsBack() async {
-        let session = MockWebSession()
-        let cache = CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
-
-        #expect(await SpecialtyArtwork.logo(for: nse, cache: cache, session: session) != nil)
-        #expect(await SpecialtyArtwork.logo(for: nse, maxPixelSize: 120, cache: cache, session: session) != nil)
-        #expect(session.requestedURLs.isEmpty)
-    }
-}
-#endif
 
 @Suite("CacheCoordinator.image(from:) failure logging")
 struct URLKeyedArtworkFailureLoggingTests {

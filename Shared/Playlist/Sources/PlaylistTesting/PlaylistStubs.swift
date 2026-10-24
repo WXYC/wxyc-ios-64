@@ -201,3 +201,51 @@ extension Playlist {
         )
     }
 }
+
+extension SpecialtyShowRef {
+    /// Creates a specialty program with WXYC-representative defaults for testing.
+    ///
+    /// Defaults name a plain program ("Hogwash") with no tagline, accent color or logo. The default
+    /// slug never matches a `BundledSpecialtyLogo` slug; a test that wants the bundled logo must say so
+    /// by passing that slug explicitly.
+    ///
+    /// - Parameters:
+    ///   - id: Program id. Defaults to 3.
+    ///   - slug: URL slug. Defaults to "hogwash".
+    ///   - name: Display name. Defaults to "Hogwash".
+    ///   - shortName: Compact name. Defaults to "HW".
+    ///   - tagline: Optional one-line tagline. Defaults to nil.
+    ///   - accentColor: Optional hex accent color (for example `#FF8800`). Defaults to nil.
+    ///   - squareURL: Optional logo URL, wrapped as the program's artwork. Defaults to nil (no artwork).
+    public static func stub(
+        id: Int = 3,
+        slug: String = "hogwash",
+        name: String = "Hogwash",
+        shortName: String? = "HW",
+        tagline: String? = nil,
+        accentColor: String? = nil,
+        squareURL: URL? = nil
+    ) -> SpecialtyShowRef {
+        SpecialtyShowRef(
+            id: id,
+            slug: slug,
+            name: name,
+            shortName: shortName,
+            tagline: tagline,
+            artwork: squareURL.map { .init(squareURL: $0) },
+            accentColor: accentColor
+        )
+    }
+
+    /// A program with a tagline and accent color and no logo.
+    public static let taggedStub = stub(tagline: "Weird and wonderful", accentColor: "#B3261E")
+
+    /// A program with a logo URL.
+    public static let logoStub = stub(
+        id: 5, slug: "backyard-bbq", name: "Backyard BBQ", shortName: "BBQ",
+        squareURL: URL(string: "https://example.com/backyard-bbq.png")
+    )
+
+    /// A program with only an id, slug and name: no short name, tagline, accent color or logo.
+    public static let untaggedStub = stub(id: 4, slug: "nothing-special", name: "Nothing Special Eventually", shortName: nil)
+}
