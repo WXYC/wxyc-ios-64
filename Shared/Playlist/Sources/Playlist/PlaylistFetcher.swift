@@ -126,7 +126,11 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
         let context: StaticString = "PlaylistFetcher fetchPlaylist"
 
         do {
-            let playlist = try await dataSource.getPlaylist()
+            var playlist = try await dataSource.getPlaylist()
+            #if DEBUG
+            // The one seam for the debug "Simulate a specialty show" control (see `SpecialtySimulation`).
+            playlist = SpecialtySimulationStore.shared.apply(to: playlist)
+            #endif
             let duration = timer.duration()
             Log(.info, category: .network, "\(context) (API \(Self.apiVersionTag)): succeeded in \(duration)s")
             // A task cancelled after the data already arrived is not a real
