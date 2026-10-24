@@ -26,36 +26,17 @@ struct ArtworkStyle {
     static let roundedRectangle = RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
 }
 
-/// View modifier for common artwork styling
-private struct ArtworkShadowModifier: ViewModifier {
-    let shadowRadius: CGFloat
-    let shadowYOffset: CGFloat
-    
-    func body(content: Content) -> some View {
-        content
-            .glassEffectClearIfAvailable(in: ArtworkStyle.roundedRectangle)
-            .shadow(radius: shadowRadius, x: 0, y: shadowYOffset)
-    }
-}
-
-extension View {
-    fileprivate func artworkShadow(radius: CGFloat, yOffset: CGFloat) -> some View {
-        modifier(ArtworkShadowModifier(shadowRadius: radius, shadowYOffset: yOffset))
-    }
-}
-
 /// Displays loaded artwork image
 struct LoadedArtworkView: View {
     let artwork: PlatformImage
     let shadowYOffset: CGFloat
 
     var body: some View {
-        Image(platform: artwork)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .clipShape(ArtworkStyle.roundedRectangle)
-            .artworkShadow(radius: 3, yOffset: shadowYOffset)
-            .frame(maxWidth: .infinity, alignment: .center)
+        RowArtworkFrame(shadowYOffset: shadowYOffset) {
+            Image(platform: artwork)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+        }
     }
 }
 
@@ -74,14 +55,6 @@ struct LoadingArtworkView: View {
     }
 }
 
-
-// Preference key to track scroll position
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
 
 struct PlaycutRowView: View {
     let playcut: Playcut
@@ -271,37 +244,6 @@ private struct TicketRowShape: Shape {
             width: diameter, height: diameter
         ))
         return shape.subtracting(left).subtracting(right)
-    }
-}
-
-/// Tracks the row's position in the scroll view and drives the artwork's shadow
-/// offset from it, so the shadow leans with the row as it scrolls. Shared by the
-/// plain row and the ticket.
-private struct ScrollShadowModifier: ViewModifier {
-    @Binding var shadowYOffset: CGFloat
-    let top: CGFloat
-    let bottom: CGFloat
-
-    func body(content: Content) -> some View {
-        content
-            .overlay(
-                GeometryReader { scrollProxy in
-                    let scrollFrame = scrollProxy.frame(in: .named("scroll"))
-
-                    return Color.clear
-                        .preference(
-                            key: ScrollOffsetPreferenceKey.self,
-                            value: scrollFrame.midY
-                        )
-                }
-            )
-            .onPreferenceChange(ScrollOffsetPreferenceKey.self) { scrollPosition in
-                // Normalize the row's midY within the screen (0 at top, 1 at
-                // bottom), then interpolate the shadow offset across that range.
-                let screenHeight = ArtworkDisplayMetrics.viewportHeight
-                let normalizedPosition = min(max(scrollPosition / screenHeight, 0), 1)
-                shadowYOffset = top + (normalizedPosition * (bottom - top))
-            }
     }
 }
 
