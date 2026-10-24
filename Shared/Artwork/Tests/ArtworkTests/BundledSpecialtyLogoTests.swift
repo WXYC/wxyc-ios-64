@@ -138,18 +138,44 @@ struct SpecialtyArtworkViewBundledTests {
 
     @Test("The view's body never draws the bundled logo itself; until its task resolves one, it draws the tile")
     func bodyDrawsTheTileUntilResolved() async throws {
-        let nse = SpecialtyShowRef.stub(id: 9, slug: "new-science-experience", name: "New Science Experience")
+        let accent = (red: 179, green: 38, blue: 30)
+        let nse = SpecialtyShowRef.stub(id: 9, slug: "new-science-experience", name: "New Science Experience", accentColor: "#B3261E")
         // The resolver never finishes, so only what body draws is on screen.
         let view = SpecialtyArtworkView(program: nse, size: 60) { _ in
             try? await Task.sleep(for: .seconds(60))
             return nil
         }
-        let tile = SpecialtyTileView(program: nse).frame(width: 60, height: 60)
+        let drawn = try #require(ImageRenderer(content: view).cgImage)
+        let logo = try #require(SpecialtyArtwork.bundledLogo(for: nse))
 
-        let drawn = try #require(ImageRenderer(content: view).cgImage?.pngDataCompatibility)
-        let expected = try #require(ImageRenderer(content: tile).cgImage?.pngDataCompatibility)
+        // The tile's text sits in the middle; the corners are bare accent color. Compare pixels, not encoded
+        // bytes: repeated renders of text are not byte-identical.
+        let corners = [(0.1, 0.1), (0.9, 0.1), (0.1, 0.9), (0.9, 0.9)]
+        func isAccent(_ pixel: [UInt8]) -> Bool {
+            abs(Int(pixel[0]) - accent.red) <= 8 && abs(Int(pixel[1]) - accent.green) <= 8 && abs(Int(pixel[2]) - accent.blue) <= 8
+        }
+        // Precondition: the bundled logo is distinguishable from the tile at the sampled points.
+        let logoPixels = corners.map { logo.rgba(atX: Int(Double(logo.width) * $0.0), y: Int(Double(logo.height) * $0.1)) }
+        try #require(logoPixels.contains { !isAccent($0) })
 
-        #expect(drawn == expected)
+        for corner in corners {
+            let pixel = drawn.rgba(atX: Int(Double(drawn.width) * corner.0), y: Int(Double(drawn.height) * corner.1))
+            #expect(isAccent(pixel), "corner \(corner) drew \(pixel), not the tile's accent color")
+        }
+    }
+}
+
+private extension CGImage {
+    /// The RGBA bytes of the pixel at (`x`, `y`), measured from the top-left, after drawing into an sRGB bitmap.
+    func rgba(atX x: Int, y: Int) -> [UInt8] {
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let context = CGContext(
+            data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        context.draw(self, in: CGRect(x: -x, y: -(height - 1 - y), width: width, height: height))
+        return pixel
     }
 }
 #endif

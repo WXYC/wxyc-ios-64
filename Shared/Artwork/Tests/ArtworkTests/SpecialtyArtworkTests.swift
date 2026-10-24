@@ -321,21 +321,18 @@ struct SpecialtyArtworkViewTests {
         return image.rgba(atX: image.width / 2, y: image.height / 2)
     }
 
-    /// Renders `host` repeatedly, letting the view's task run in between, until `condition` holds.
+    /// Renders the host repeatedly, letting the view's task run in between, until the center pixel is `expected`
+    /// (or a bounded timeout passes, leaving the caller's assertion to report the mismatch).
     private func render(_ renderer: ImageRenderer<Host>, program: SpecialtyShowRef, pass: inout Int,
                         resolve: @escaping @Sendable (SpecialtyShowRef) async -> CGImage?,
-                        until condition: () -> Bool) async {
-        for _ in 0..<20 {
+                        until expected: [UInt8]) async {
+        let deadline = ContinuousClock.now + .seconds(10)
+        repeat {
             pass += 1
             renderer.content = Host(program: program, pass: pass, resolve: resolve)
             _ = renderer.cgImage
             try? await Task.sleep(for: .milliseconds(20))
-            if condition() { break }
-        }
-        // One more pass after the task finished, so the resolved state is drawn.
-        pass += 1
-        renderer.content = Host(program: program, pass: pass, resolve: resolve)
-        _ = renderer.cgImage
+        } while centerPixel(renderer) != expected && ContinuousClock.now < deadline
     }
 
     @Test("Many body evaluations for one program resolve once, and the resolved image is drawn")
@@ -349,7 +346,7 @@ struct SpecialtyArtworkViewTests {
         var pass = 0
         let renderer = ImageRenderer(content: Host(program: first, pass: pass, resolve: resolve))
 
-        await render(renderer, program: first, pass: &pass, resolve: resolve, until: { calls.withLock { $0 } >= 1 })
+        await render(renderer, program: first, pass: &pass, resolve: resolve, until: [255, 0, 0, 255])
         for _ in 0..<5 {
             pass += 1
             renderer.content = Host(program: first, pass: pass, resolve: resolve)
@@ -373,9 +370,9 @@ struct SpecialtyArtworkViewTests {
         var pass = 0
         let renderer = ImageRenderer(content: Host(program: first, pass: pass, resolve: resolve))
 
-        await render(renderer, program: first, pass: &pass, resolve: resolve, until: { requested.withLock { $0.count } >= 1 })
+        await render(renderer, program: first, pass: &pass, resolve: resolve, until: [255, 0, 0, 255])
         let firstPixel = centerPixel(renderer)
-        await render(renderer, program: second, pass: &pass, resolve: resolve, until: { requested.withLock { $0.count } >= 2 })
+        await render(renderer, program: second, pass: &pass, resolve: resolve, until: [0, 0, 255, 255])
         let secondPixel = centerPixel(renderer)
 
         #expect(requested.withLock { $0 } == [first.slug, second.slug])
