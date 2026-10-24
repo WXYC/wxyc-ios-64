@@ -187,7 +187,8 @@ extension Playlist {
         talksets: [Talkset] = [],
         showMarkers: [ShowMarker] = [],
         onAir: OnAir = .unknown,
-        spotlights: [SpotlightEntry] = []
+        spotlights: [SpotlightEntry] = [],
+        shows: [UInt64: PlaylistShow] = [:]
     ) -> Playlist {
         Playlist(
             playcuts: playcuts,
@@ -195,7 +196,8 @@ extension Playlist {
             talksets: talksets,
             showMarkers: showMarkers,
             onAir: onAir,
-            spotlights: spotlights
+            spotlights: spotlights,
+            shows: shows
         )
     }
 }
