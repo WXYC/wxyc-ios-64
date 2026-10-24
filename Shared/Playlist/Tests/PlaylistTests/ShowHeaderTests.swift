@@ -110,4 +110,20 @@ struct ShowHeaderTests {
     func noShows() {
         #expect(headers(.stub(playcuts: [.stub(id: 9, chronOrderID: 9, showID: 42)])).isEmpty)
     }
+
+    @Test("the open specialty show gets no header while the specialty card represents it; past shows keep theirs")
+    func openShowHeaderSuppressedByCard() {
+        let open = PlaylistShow(id: 42, showName: "Hogwash Hour", djName: "DJ Monster", specialty: hogwash)
+        let past = PlaylistShow(id: 41, showName: nil, djName: "DJ Moth", specialty: hogwash)
+        let playcuts: [Playcut] = [.stub(id: 9, chronOrderID: 9, showID: 42), .stub(id: 5, chronOrderID: 5, showID: 41)]
+        let shows: [UInt64: PlaylistShow] = [42: open, 41: past]
+
+        let withCard = Playlist.stub(playcuts: playcuts, onAir: .dj("DJ Monster", show: OnAirShow(id: 42, title: "Hogwash Hour", specialty: hogwash)), shows: shows)
+        #expect(withCard.specialtyCard != nil)
+        #expect(headers(withCard).keys.sorted() == [5])
+
+        let withoutCard = Playlist.stub(playcuts: playcuts, onAir: .unknown, shows: shows)
+        #expect(withoutCard.specialtyCard == nil)
+        #expect(headers(withoutCard).keys.sorted() == [5, 9])
+    }
 }

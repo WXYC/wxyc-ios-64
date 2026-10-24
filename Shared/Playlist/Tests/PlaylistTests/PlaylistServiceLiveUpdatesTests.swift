@@ -50,6 +50,26 @@ struct PlaylistServiceLiveUpdatesTests {
         #expect(inserted?.artistName == "Jessica Pratt")
     }
 
+    @Test("A live insert keeps the fetched shows", .timeLimit(.minutes(1)))
+    func insertKeepsShows() async throws {
+        let shows: [UInt64: PlaylistShow] = [42: PlaylistShow(id: 42, showName: "Hogwash Hour", djName: "DJ Monster", specialty: nil)]
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = .stub(playcuts: [.stub(id: 1, chronOrderID: 1)], shows: shows)
+        let source = MockLiveFsEventSource(events: [.insert(.stub(id: 2, chronOrderID: 2))])
+        let service = PlaylistService(
+            fetcher: fetcher, interval: 3600,
+            cacheCoordinator: makeTestCacheCoordinator(), liveEventSource: source
+        )
+
+        var iterator = service.updates().makeAsyncIterator()
+        #expect(await iterator.next()?.shows == shows)
+        await service.setForegrounded(true)
+
+        let afterInsert = await iterator.next()
+        #expect(afterInsert?.playcuts.map(\.id).sorted() == [1, 2])
+        #expect(afterInsert?.shows == shows)
+    }
+
     @Test("An update event replaces the matching row by id, merging enrichment", .timeLimit(.minutes(1)))
     func updateReplacesById() async throws {
         let fetcher = MockPlaylistFetcher()

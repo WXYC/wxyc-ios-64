@@ -67,10 +67,12 @@ public extension Playlist {
     /// The specialty headers for `items`, keyed by the id of the newest row of each show's run
     /// (items are newest first, so the header sits above the run). A row with no `show_id` joins
     /// whatever run it sits in; a row whose show is missing from ``shows`` or has no specialty
-    /// opens no header.
+    /// opens no header. The open show's run gets none while the ``specialtyCard`` already represents
+    /// that show, so each show is introduced once; past shows keep theirs.
     func showHeaders(of items: [TimelineItem]) -> [UInt64: ShowHeader] {
         var headers: [UInt64: ShowHeader] = [:]
         var currentShowID: UInt64?
+        let cardShowID: UInt64? = if specialtyCard != nil, case .dj(_, let show?) = onAir { show.id } else { nil }
         for item in items {
             let showID = switch item {
             case .playcut(let playcut): playcut.showID
@@ -79,6 +81,7 @@ public extension Playlist {
             }
             guard let showID, showID != currentShowID else { continue }
             currentShowID = showID
+            if showID == cardShowID { continue }
             if let show = shows[showID], let program = show.specialty {
                 headers[item.id] = ShowHeader(program: program, showName: show.showName, djHandle: show.djName)
             }
