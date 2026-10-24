@@ -9,6 +9,7 @@
 //
 
 import ColorPalette
+import Playlist
 import SwiftUI
 import WXUI
 
@@ -29,6 +30,9 @@ public struct OnAirBannerDebugView: View {
     @AppStorage("OnAirDebug.disclosure.requestLine") private var requestLineExpanded = true
     @AppStorage("OnAirDebug.disclosure.spacing") private var spacingExpanded = true
 
+    @State private var catalog: [SpecialtyShowRef] = []
+    @State private var catalogFailed = false
+
     public init() {}
 
     public var body: some View {
@@ -42,6 +46,8 @@ public struct OnAirBannerDebugView: View {
                 } footer: {
                     Text("Substitutes a sample named DJ so the named-handle layout can be previewed when nobody is signed on (otherwise the banner reads \"Auto DJ\"). Edit the handle to try the adaptive width fit against short and long names.")
                 }
+
+                simulateSpecialtySection
 
                 DisclosureGroup("Indicator", isExpanded: $indicatorExpanded) {
                     HStack {
@@ -103,6 +109,58 @@ public struct OnAirBannerDebugView: View {
             }
             .sheetChrome(title: "On Air Banner")
         }
+    }
+
+    /// Simulates a specialty show on every surface, client-side only (see ``SpecialtySimulation``).
+    @ViewBuilder private var simulateSpecialtySection: some View {
+        Section {
+            Picker("Program", selection: $state.specialtySimulation.program) {
+                Text("Choose a program").tag(SpecialtyShowRef?.none)
+                ForEach(catalog, id: \.slug) { Text($0.name).tag(Optional($0)) }
+            }
+            Picker("Scenario", selection: $state.specialtySimulation.scenario) {
+                Text("Just opened, no song yet").tag(SpecialtySimulation.Scenario.justOpened)
+                Text("Logging songs").tag(SpecialtySimulation.Scenario.logging)
+                Text("Logs no songs").tag(SpecialtySimulation.Scenario.logsNoSongs)
+                Text("Who's on leads").tag(SpecialtySimulation.Scenario.spotlight)
+            }
+            if state.specialtySimulation.scenario == .spotlight {
+                Picker("Role", selection: $state.specialtySimulation.spotlightRole) {
+                    ForEach(["performer", "reader", "dj", "guest"], id: \.self) { Text($0).tag($0) }
+                }
+                TextField("Name", text: $state.specialtySimulation.spotlightName)
+                    .autocorrectionDisabled()
+            }
+            TextField("Title for this week", text: titleBinding)
+            TextField("DJ handle", text: $state.specialtySimulation.djHandle)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Toggle("Simulate", isOn: $state.specialtySimulation.isEnabled)
+                .disabled(state.specialtySimulation.program == nil)
+            Button("Stop simulating", role: .destructive) { state.specialtySimulation.isEnabled = false }
+                .disabled(!state.specialtySimulation.isEnabled)
+        } header: {
+            Text("Simulate a specialty show")
+        } footer: {
+            Text(catalogFailed
+                 ? "The specialty-show catalog could not be loaded."
+                 : "Rewrites the fetched playlist on this device so the specialty card, banner, Now Playing, widgets and the what's-playing answer all show the program. The real songs stay underneath; nothing is sent anywhere. Takes effect on the next playlist refresh.")
+        }
+        .task {
+            do {
+                catalog = try await SpecialtyShowClient().programs()
+            } catch {
+                catalogFailed = true
+            }
+        }
+    }
+
+    /// The optional title as a plain string field: empty means no title.
+    private var titleBinding: Binding<String> {
+        Binding(
+            get: { state.specialtySimulation.title ?? "" },
+            set: { state.specialtySimulation.title = $0.isEmpty ? nil : $0 }
+        )
     }
 
     /// Live swatch of the current HSL indicator color.
