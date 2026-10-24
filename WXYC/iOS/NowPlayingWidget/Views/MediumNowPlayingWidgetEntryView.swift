@@ -46,7 +46,7 @@ struct MediumNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                             // The program line: an 18-point tile above the artist while one of its songs is current.
                             HStack(spacing: 4) {
                                 ProgramArtwork(entry: entry, size: 18)
-                                Text(headline.program.name).font(.caption).lineLimit(1)
+                                Text(headline.program.name).font(.caption).lineLimit(2)
                             }
                         }
                         SongInfoColumn(

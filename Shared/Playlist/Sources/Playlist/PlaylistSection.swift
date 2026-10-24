@@ -84,12 +84,14 @@ public extension Playlist {
 
     /// Which of the widget's layouts to show. A leading song or who's-on entry wins, a specialty show
     /// with no song yet shows its program; otherwise recents under the station line; the empty state
-    /// only when there is nothing at all. `program` is the specialty show on the air, if any.
+    /// only when there is nothing at all. `program` is the specialty show on the air whose layouts to use; `nil`
+    /// keeps the freeform layouts, which is what a surface without specialty layouts passes (the large widget, until
+    /// WXYC/wxyc-ios-64#1217).
     static func widgetContent(lead: NowPlayingLead, hasRecents: Bool, program: SpecialtyShowRef?) -> WidgetContent {
         switch lead {
         case .song: program == nil ? .lead : .leadInProgram
         case .spotlight: .whosOn
-        case .specialtyCard: .program
+        case .specialtyCard: program == nil ? (hasRecents ? .stationLine : .empty) : .program
         case .djHandle, .nothing: hasRecents ? .stationLine : .empty
         }
     }

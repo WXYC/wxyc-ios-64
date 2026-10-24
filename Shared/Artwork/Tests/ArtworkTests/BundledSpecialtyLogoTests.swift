@@ -33,6 +33,12 @@ struct BundledSpecialtyLogoTests {
         #expect(image.width > 0)
     }
 
+    @Test("The bundled image is downsampled to maxPixelSize", arguments: [64, 240])
+    func downsamples(maxPixelSize: Int) throws {
+        let image = try #require(SpecialtyArtwork.bundledLogo(for: program(slug: "new-science-experience"), maxPixelSize: maxPixelSize))
+        #expect(max(image.width, image.height) == maxPixelSize)
+    }
+
     @Test("An unknown slug has no bundled image", arguments: ["hogwash", "", "New-Science-Experience"])
     func unknownSlugDoesNotResolve(slug: String) {
         #expect(SpecialtyArtwork.bundledLogo(for: program(slug: slug)) == nil)
