@@ -25,9 +25,11 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     Text(headline.program.name)
                         .font(.caption.bold())
                         .lineLimit(2)
+                        .foregroundStyle(.white)
                     Text(headline.person)
                         .font(.caption)
                         .lineLimit(1)
+                        .foregroundStyle(.white)
                 } else {
                     // A song from a specialty show carries the program's tile or logo as a corner badge.
                     self.artwork
@@ -44,11 +46,11 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                         trailingLineLimit: 1,
                         spacing: nil
                     ) { EmptyView() }
+                    .foregroundStyle(.white)
                 }
 
                 PlayButton()
             }
-            .foregroundStyle(.white)
         }
         .containerBackground(Color.clear, for: .widget)
         .safeAreaPadding()
