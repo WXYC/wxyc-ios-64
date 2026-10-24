@@ -88,8 +88,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             )
         }
         let leadItem = leadPlaycut == nil ? nil : items.first
-        let card = playlist.specialtyCard
-        let headline = card.map { NowPlayingHeadline(program: $0.program, person: $0.djHandle) }
+        let headline = playlist.programHeadline
         let onAirShowID: UInt64? = if case .dj(_, let show?) = playlist.onAir { show.id } else { nil }
         let logo = if let headline {
             await SpecialtyArtwork.logo(for: headline.program, maxPixelSize: Self.logoPixelSize(for: family))
@@ -117,8 +116,10 @@ final class Provider: AppIntentTimelineProvider, Sendable {
                 NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family, headline: items.headline, logo: items.logo, recentsLabel: items.recentsLabel)
             }
         case .program:
-            items.lead.headline(person: items.headline?.person ?? "").map {
-                NowPlayingTimelineEntry(headline: $0, logo: items.logo, recentItems: items.recents, family: family, recentsLabel: items.recentsLabel)
+            if case .specialtyCard = items.lead, let headline = items.headline {
+                NowPlayingTimelineEntry(headline: headline, logo: items.logo, recentItems: items.recents, family: family, recentsLabel: items.recentsLabel)
+            } else {
+                nil
             }
         case .whosOn:
             items.whosOn.map { NowPlayingTimelineEntry.whosOn($0, recentItems: items.recents, family: family) }

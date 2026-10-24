@@ -26,14 +26,12 @@ public struct NowPlayingHeadline: Sendable, Equatable {
     public var tagline: String? { program.tagline }
 }
 
-public extension NowPlayingLead {
-    /// The headline this lead calls for, naming `person` under the program, or `nil` when the lead
-    /// names something else: a song, a who's-on entry, a freeform DJ, or nothing. Exhaustive, so a new
-    /// lead has to decide whether it headlines.
-    func headline(person: String) -> NowPlayingHeadline? {
-        switch self {
-        case .specialtyCard(let program): NowPlayingHeadline(program: program, person: person)
-        case .song, .spotlight, .djHandle, .nothing: nil
-        }
+public extension Playlist {
+    /// The specialty program on the air over the DJ handle, or `nil` for a freeform show, automation,
+    /// or unknown on-air. Non-nil whatever leads: the one derivation of the program and its person
+    /// line, read by ``nowPlayingSpotlight`` and the widget.
+    var programHeadline: NowPlayingHeadline? {
+        guard case .dj(let handle, let show?) = onAir, let program = show.specialty else { return nil }
+        return NowPlayingHeadline(program: program, person: handle)
     }
 }
