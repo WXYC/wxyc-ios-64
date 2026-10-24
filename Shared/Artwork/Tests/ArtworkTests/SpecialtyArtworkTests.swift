@@ -262,6 +262,8 @@ struct SizedLogoTests {
         arguments: [
             (source: 1024, maxPixelSize: 180, expected: 180),
             (source: 1024, maxPixelSize: 300, expected: 300),
+            // The large widget's art slot (120 points at 3x).
+            (source: 1024, maxPixelSize: 360, expected: 360),
             (source: 200, maxPixelSize: 300, expected: 200),
         ]
     )

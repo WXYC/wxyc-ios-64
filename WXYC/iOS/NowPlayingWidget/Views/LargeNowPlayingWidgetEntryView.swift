@@ -14,6 +14,9 @@ import AppServices
 import Playlist
 
 struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
+    /// The side, in points, of the art slot a specialty program's logo or tile fills (and the poster, #1180).
+    static let artSlot: CGFloat = 120
+
     let entry: NowPlayingTimelineEntry
     
     init(entry: NowPlayingTimelineEntry) {
@@ -27,9 +30,16 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             VStack(alignment: .leading, spacing: 10) {
                 Spacer()
 
-                Header(entry: entry)
+                if entry.programLeads, let headline = entry.headline {
+                    programHero(headline)
+                } else {
+                    if let headline = entry.headline {
+                        programCard(headline)
+                    }
+                    Header(entry: entry)
+                }
 
-                Text("Recently Played")
+                Text(entry.recentsLabel)
                     .font(.body.smallCaps().bold())
                     .foregroundStyle(.white)
                     .frame(maxHeight: .infinity, alignment: .top)
@@ -46,5 +56,34 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             .safeAreaPadding()
         }
         .containerBackground(Color.clear, for: .widget)
+    }
+
+    /// No song from the open show yet: the program over the person, with its tagline.
+    private func programHero(_ headline: NowPlayingHeadline) -> some View {
+        HStack(alignment: .center) {
+            ProgramArtwork(entry: entry, size: Self.artSlot)
+            VStack(alignment: .leading) {
+                Text(headline.program.name).font(.headline).lineLimit(2)
+                Text(headline.person).font(.subheadline).lineLimit(1)
+                if let tagline = headline.tagline {
+                    Text(tagline).font(.caption).lineLimit(2)
+                }
+                PlayButton()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// A song from the open show is current: the program's tile or logo, name and tagline above it.
+    private func programCard(_ headline: NowPlayingHeadline) -> some View {
+        HStack {
+            ProgramArtwork(entry: entry, size: 40)
+            VStack(alignment: .leading) {
+                Text(headline.program.name).font(.subheadline.bold()).lineLimit(2)
+                if let tagline = headline.tagline {
+                    Text(tagline).font(.caption).lineLimit(1)
+                }
+            }
+        }
     }
 }

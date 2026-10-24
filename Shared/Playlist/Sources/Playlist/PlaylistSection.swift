@@ -85,8 +85,7 @@ public extension Playlist {
     /// Which of the widget's layouts to show. A leading song or who's-on entry wins, a specialty show
     /// with no song yet shows its program; otherwise recents under the station line; the empty state
     /// only when there is nothing at all. `program` is the specialty show on the air whose layouts to use; `nil`
-    /// keeps the freeform layouts, which is what a surface without specialty layouts passes (the large widget, until
-    /// WXYC/wxyc-ios-64#1217).
+    /// keeps the freeform layouts.
     static func widgetContent(lead: NowPlayingLead, hasRecents: Bool, program: SpecialtyShowRef?) -> WidgetContent {
         switch lead {
         case .song: program == nil ? .lead : .leadInProgram
@@ -94,5 +93,16 @@ public extension Playlist {
         case .specialtyCard: program == nil ? (hasRecents ? .stationLine : .empty) : .program
         case .djHandle, .nothing: hasRecents ? .stationLine : .empty
         }
+    }
+
+    /// The label over the widget's recents: "Before <short name>" while the newest row belongs to an earlier show
+    /// than the open one (`on_air.show_id`), so a previous show's songs are never read as this show's; "Recently
+    /// Played" otherwise, including for a freeform show (`program` is `nil`) and rows or an open show with no id.
+    /// A program with no short name falls back to its full name, as its tile does.
+    static func recentsLabel(of recents: [Playcut], onAirShowID: UInt64?, program: SpecialtyShowRef?) -> String {
+        guard let program, let onAirShowID, let showID = recents.first?.showID, showID < onAirShowID else {
+            return "Recently Played"
+        }
+        return "Before \(program.tileText)"
     }
 }

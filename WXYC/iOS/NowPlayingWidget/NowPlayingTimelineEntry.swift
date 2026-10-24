@@ -26,6 +26,8 @@ struct NowPlayingTimelineEntry: TimelineEntry {
     let programLogo: SwiftUI.Image?
     /// Whether the program headline leads (no song of this show yet), rather than a song with the program as context.
     let programLeads: Bool
+    /// The label over `recentItems`: "Before <short name>" while they belong to an earlier show.
+    let recentsLabel: String
 
     /// A leading song, with `headline` as context when a specialty show is on the air.
     init(
@@ -33,7 +35,8 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         recentItems: [NowPlayingItem],
         family: WidgetFamily,
         headline: NowPlayingHeadline? = nil,
-        logo: CGImage? = nil
+        logo: CGImage? = nil,
+        recentsLabel: String = NowPlayingTimelineEntry.defaultRecentsLabel
     ) {
         self.date = .now
         self.artist = nowPlayingItem.playcut.artistName
@@ -50,11 +53,12 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.headline = headline
         self.programLogo = logo.map { Image(decorative: $0, scale: 1) }
         self.programLeads = false
+        self.recentsLabel = recentsLabel
     }
 
     /// A specialty show with no song of its own yet: the program takes the bold line over the person,
     /// the recents follow, and the logo (or the tile when `logo` is `nil`) is the artwork.
-    init(headline: NowPlayingHeadline, logo: CGImage?, recentItems: [NowPlayingItem], family: WidgetFamily) {
+    init(headline: NowPlayingHeadline, logo: CGImage?, recentItems: [NowPlayingItem], family: WidgetFamily, recentsLabel: String = NowPlayingTimelineEntry.defaultRecentsLabel) {
         self.date = .now
         self.artist = headline.program.name
         self.songTitle = headline.person
@@ -64,6 +68,7 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.headline = headline
         self.programLogo = logo.map { Image(decorative: $0, scale: 1) }
         self.programLeads = true
+        self.recentsLabel = recentsLabel
     }
 
     static func placeholder(family: WidgetFamily) -> Self {
@@ -74,6 +79,8 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         )
     }
     
+    static let defaultRecentsLabel = "Recently Played"
+
     /// The station line the widget shows when it has no song to name.
     private static let stationLineText = "Tune in to WXYC 89.3 FM"
 
@@ -124,6 +131,7 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.headline = nil
         self.programLogo = nil
         self.programLeads = false
+        self.recentsLabel = Self.defaultRecentsLabel
     }
 }
 

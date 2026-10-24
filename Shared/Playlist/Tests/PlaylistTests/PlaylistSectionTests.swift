@@ -64,8 +64,7 @@ struct PlaylistSectionTests {
         (.song(newest), false, hogwash, .leadInProgram),
         (.specialtyCard(hogwash), true, hogwash, .program),
         (.specialtyCard(hogwash), false, hogwash, .program),
-        // No program layouts (the large widget): a specialty show lays out as it did before, with no program
-        // headline and no trimming.
+        // No program on the air (a freeform show): the freeform layouts, with no program headline and no trimming.
         (.specialtyCard(hogwash), true, nil, .stationLine),
         (.specialtyCard(hogwash), false, nil, .empty),
         (.spotlight(entry), true, nil, .whosOn),
@@ -77,6 +76,20 @@ struct PlaylistSectionTests {
     ])
     func widgetContent(lead: NowPlayingLead, hasRecents: Bool, program: SpecialtyShowRef?, expected: WidgetContent) {
         #expect(Playlist.widgetContent(lead: lead, hasRecents: hasRecents, program: program) == expected)
+    }
+
+    @Test("The recents label reads Before <short name> while the rows belong to an earlier show than the open one", arguments: [
+        ([newest], 42 as UInt64?, hogwash as SpecialtyShowRef?, "Recently Played"),
+        ([previousShow], 42, hogwash, "Before HW"),
+        ([previousShow, oldest], 42, hogwash, "Before HW"),
+        ([previousShow], 42, SpecialtyShowRef(id: 4, slug: "nse", name: "New Science Experience"), "Before New Science Experience"),
+        ([previousShow], nil, hogwash, "Recently Played"),
+        ([Playcut.stub(id: 8)], 42, hogwash, "Recently Played"),
+        ([], 42, hogwash, "Recently Played"),
+        ([previousShow], 42, nil, "Recently Played"),
+    ])
+    func recentsLabel(recents: [Playcut], onAirShowID: UInt64?, program: SpecialtyShowRef?, expected: String) {
+        #expect(Playlist.recentsLabel(of: recents, onAirShowID: onAirShowID, program: program) == expected)
     }
 
     @Test("A specialty show's layouts show two recents; every other layout allows three", arguments: [

@@ -102,7 +102,7 @@ struct NowPlayingTimelineEntryProgramTests {
         #expect(entry.artwork == nil)
     }
 
-    @Test("A specialty show's entries drop to two recents; a song outside a program keeps all it is given", arguments: [WidgetFamily.systemSmall, .systemMedium])
+    @Test("A specialty show's entries drop to two recents; a song outside a program keeps all it is given", arguments: [WidgetFamily.systemSmall, .systemMedium, .systemLarge])
     func rowCounts(family: WidgetFamily) {
         let item = NowPlayingItem(playcut: recents(1)[0].playcut)
         let program = NowPlayingTimelineEntry(headline: headline, logo: nil, recentItems: recents(3), family: family)
@@ -113,5 +113,13 @@ struct NowPlayingTimelineEntryProgramTests {
         #expect(!song.programLeads)
         #expect(freeform.recentItems.count == 3)
         #expect(freeform.headline == nil)
+    }
+
+    @Test("The recents label defaults to Recently Played and carries a specialty entry's Before label")
+    func recentsLabel() {
+        let item = NowPlayingItem(playcut: recents(1)[0].playcut)
+        #expect(NowPlayingTimelineEntry(nowPlayingItem: item, recentItems: [], family: .systemLarge).recentsLabel == "Recently Played")
+        #expect(NowPlayingTimelineEntry(headline: headline, logo: nil, recentItems: [], family: .systemLarge, recentsLabel: "Before HW").recentsLabel == "Before HW")
+        #expect(NowPlayingTimelineEntry(nowPlayingItem: item, recentItems: [], family: .systemLarge, headline: headline, recentsLabel: "Before HW").recentsLabel == "Before HW")
     }
 }
