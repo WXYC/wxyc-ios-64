@@ -44,7 +44,7 @@ struct SongRowPanel<Content: View>: View {
             }
             .onTapGesture(perform: onTap)
         }
-        .aspectRatio(2.5, contentMode: .fill)
+        .aspectRatio(SongRowMetrics.aspectRatio, contentMode: .fill)
         .frame(maxWidth: .infinity)
     }
 }

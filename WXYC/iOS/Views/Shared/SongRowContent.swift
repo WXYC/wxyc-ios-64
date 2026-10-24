@@ -42,7 +42,7 @@ struct SongRowContent<Song: SongDisplayable, Detail: View, Trailing: View>: View
         HStack(alignment: .center, spacing: 0) {
             // Artwork — sized to the row via the caller's proxy, so the flowsheet
             // and the Liked row render the identical dimensions.
-            Group {
+            RowArtworkSlot(rowWidth: proxy.size.width) {
                 switch artworkState {
                 case .loaded(let image):
                     LoadedArtworkView(artwork: image, shadowYOffset: shadowYOffset)
@@ -65,9 +65,6 @@ struct SongRowContent<Song: SongDisplayable, Detail: View, Trailing: View>: View
                     )
                 }
             }
-            .padding(12.0)
-            .clipRounded()
-            .frame(maxWidth: proxy.size.width / 2.5, alignment: .leading)
 
             // Song info — title/artist shared; the detail line is per-row.
             SongInfoColumn(song: song, detailLine: detailLine)
