@@ -297,6 +297,30 @@ struct NowPlayingLeadWriterTests {
         #expect(infoCenter.nowPlayingInfo?[MPMediaItemPropertyArtwork] == nil)
     }
 
+    @Test("the program tile is rendered square at the in-app tile size and a high scale, so its text is legible and sharp")
+    func tileImageGeometry() throws {
+        let image = try #require(NowPlayingInfoCenterManager.tileImage(for: program))
+
+        #expect(image.size == CGSize(width: 72, height: 72))
+        #expect(image.scale == 6)
+        #expect(image.cgImage?.width == 432)
+        #expect(image.cgImage?.height == 432)
+    }
+
+    @Test("the tile has the same geometry whatever bounds the artwork is requested at")
+    func tileImageIgnoresBounds() async throws {
+        let onAir = OnAir.dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: program))
+        let infoCenter = MockNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(infoCenter: infoCenter, boundsSize: CGSize(width: 440, height: 440), programLogo: { _ in nil })
+
+        await manager.handleLead(of: leadPlaylist(onAir: onAir)) { NowPlayingItem(playcut: $0, artwork: nil) }
+
+        let artwork = try #require(infoCenter.nowPlayingInfo?[MPMediaItemPropertyArtwork] as? MPMediaItemArtwork)
+        let image = try #require(artwork.image(at: CGSize(width: 440, height: 440)))
+        #expect(image.cgImage?.width == 432)
+        #expect(image.cgImage?.height == 432)
+    }
+
     @Test("a program with no logo writes the rendered text tile at once; one with a logo swaps it in")
     func programArtwork() async throws {
         let onAir = OnAir.dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: program))
