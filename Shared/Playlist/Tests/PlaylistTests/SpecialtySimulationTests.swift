@@ -14,9 +14,11 @@
 import Testing
 import Foundation
 import LoggerTesting
+import Analytics
 import AnalyticsTesting
 import PlaylistTesting
 @testable import Playlist
+@testable import Caching
 
 private let nse = SpecialtyShowRef(id: 7, slug: "new-science-experience", name: "New Science Experience", shortName: "NSE", tagline: "Beats and bleeps", logsPlaycuts: false)
 private let ocs = SpecialtyShowRef(id: 1, slug: "orange-county-special", name: "Orange County Special", shortName: "OCS", tagline: "Folk and bluegrass", logsPlaycuts: true)
@@ -114,39 +116,127 @@ struct SpecialtySimulationTests {
     }
 }
 
-@Suite("Specialty Simulation Fetcher Tests", .serialized)
+/// A store over its own throwaway defaults suite, so no test touches the app group or the process's saved settings.
+private func isolatedStore(_ simulation: SpecialtySimulation? = nil) throws -> (SpecialtySimulationStore, cleanup: @Sendable () -> Void) {
+    let suite = "SpecialtySimulationTests.\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    let store = SpecialtySimulationStore(defaults: defaults)
+    store.simulation = simulation
+    return (store, { defaults.removePersistentDomain(forName: suite) })
+}
+
+@Suite("Specialty Simulation Fetcher Tests")
 struct SpecialtySimulationFetcherTests {
-    private func fetcher(returning playlist: Playlist, error: Error? = nil) -> PlaylistFetcher {
+    private func fetcher(returning playlist: Playlist, error: Error? = nil, store: SpecialtySimulationStore, analytics: MockStructuredAnalytics = MockStructuredAnalytics()) -> PlaylistFetcher {
         let dataSource = MockPlaylistDataSource()
         dataSource.playlistToReturn = playlist
         dataSource.errorToThrow = error
-        return PlaylistFetcher(dataSource: dataSource, errorReporter: MockErrorReporter(), analytics: MockStructuredAnalytics())
+        return PlaylistFetcher(dataSource: dataSource, errorReporter: MockErrorReporter(), analytics: analytics, simulationStore: store)
     }
 
-    @Test("A successful fetch is simulated while the shared store is on, and untouched once it is off")
-    func appliesToSuccess() async {
-        let previous = SpecialtySimulationStore.shared.simulation
-        defer { SpecialtySimulationStore.shared.simulation = previous }
-
-        SpecialtySimulationStore.shared.simulation = simulation(ocs, .justOpened)
-        let simulated = await fetcher(returning: realPlaylist).fetchPlaylist()
+    @Test("A successful fetch is simulated while the injected store is on, and untouched once it is off")
+    func appliesToSuccess() async throws {
+        let (store, cleanup) = try isolatedStore(simulation(ocs, .justOpened))
+        defer { cleanup() }
+        let simulated = await fetcher(returning: realPlaylist, store: store).fetchPlaylist()
         #expect(simulated.specialtyCard?.program.slug == "orange-county-special")
 
-        SpecialtySimulationStore.shared.simulation = nil
-        #expect(await fetcher(returning: realPlaylist).fetchPlaylist() == realPlaylist)
+        store.simulation = nil
+        #expect(await fetcher(returning: realPlaylist, store: store).fetchPlaylist() == realPlaylist)
     }
 
     @Test("A failed fetch stays a failure")
-    func failurePassesThrough() async {
-        let previous = SpecialtySimulationStore.shared.simulation
-        defer { SpecialtySimulationStore.shared.simulation = previous }
-        SpecialtySimulationStore.shared.simulation = simulation(ocs, .justOpened)
-
-        let result = await fetcher(returning: .empty, error: URLError(.notConnectedToInternet)).fetchPlaylistResult()
+    func failurePassesThrough() async throws {
+        let (store, cleanup) = try isolatedStore(simulation(ocs, .justOpened))
+        defer { cleanup() }
+        let result = await fetcher(returning: .empty, error: URLError(.notConnectedToInternet), store: store).fetchPlaylistResult()
         guard case .failure = result else {
             Issue.record("expected a failure")
             return
         }
+    }
+
+    @Test("Analytics sees the real playlist, never the simulated rows")
+    func analyticsSeesRealRows() async throws {
+        let (store, cleanup) = try isolatedStore(simulation(ocs, .spotlight))
+        defer { cleanup() }
+        let analytics = MockStructuredAnalytics()
+        _ = await fetcher(returning: .empty, store: store, analytics: analytics).fetchPlaylist()
+        let events = analytics.events(named: FetchPlaylistEvent.name)
+        #expect(events.count == 1)
+        #expect(events.first?.properties?["result_count"] as? Int == 0)
+    }
+}
+
+@Suite("Specialty Simulation Identity Tests")
+struct SpecialtySimulationIdentityTests {
+    @Test("Synthetic ids never collide with the real rows, whatever the scenario", arguments: SpecialtySimulation.Scenario.allCases)
+    func syntheticIDs(_ scenario: SpecialtySimulation.Scenario) {
+        let simulated = simulation(ocs, scenario).apply(to: realPlaylist)
+        let realIDs = Set(realPlaylist.entries.map(\.id))
+        let added = simulated.entries.filter { !realIDs.contains($0.id) }
+        #expect(!added.isEmpty)
+        #expect(added.allSatisfy { SpecialtySimulation.isSynthetic($0.id) })
+        if scenario != .logging, case .dj(_, let show?) = simulated.onAir {
+            #expect(SpecialtySimulation.isSynthetic(show.id ?? 0))
+        }
+    }
+
+    @Test("The simulated show is recorded in shows[] so the scrollback header matches")
+    func showsEntry() throws {
+        let simulated = simulation(ocs, .justOpened, title: "Fiddle Night").apply(to: realPlaylist)
+        guard case .dj(_, let show?) = simulated.onAir, let id = show.id else {
+            Issue.record("expected an open show")
+            return
+        }
+        let entry = try #require(simulated.shows[id])
+        #expect(entry.showName == "Fiddle Night")
+        #expect(entry.specialty?.slug == "orange-county-special")
+    }
+
+    @Test("Logging with no songs falls back to the card and says why")
+    func loggingWithoutSongs() throws {
+        let empty = Playlist.stub(playcuts: [], onAir: .dj("DJ Moo", show: freeformShow))
+        let (store, cleanup) = try isolatedStore(simulation(ocs, .logging))
+        defer { cleanup() }
+        let simulated = store.apply(to: empty)
+        #expect(leadName(simulated.nowPlayingLead) == "specialtyCard")
+        #expect(store.statusNote != nil)
+    }
+
+    @Test("Logging whose newest song has no show id falls back and says why")
+    func loggingWithoutShowID() throws {
+        let noShow = Playlist.stub(playcuts: [Playcut.stub(id: 9, showID: nil)], onAir: .dj("DJ Moo", show: freeformShow))
+        let (store, cleanup) = try isolatedStore(simulation(ocs, .logging))
+        defer { cleanup() }
+        _ = store.apply(to: noShow)
+        #expect(store.statusNote != nil)
+        _ = store.apply(to: realPlaylist)
+        #expect(store.statusNote == nil)
+    }
+
+    @Test("Invalidating drops the cached playlist so readers refetch")
+    func invalidatesCache() async throws {
+        let (store, cleanup) = try isolatedStore()
+        defer { cleanup() }
+        let coordinator = CacheCoordinator(cache: InMemoryCache())
+        await coordinator.set(value: realPlaylist, for: PlaylistCacheKey.playlist, lifespan: 900)
+        await store.invalidatePlaylistCache(in: coordinator)
+        let cached: Playlist? = try? await coordinator.value(for: PlaylistCacheKey.playlist)
+        #expect(cached == nil)
+    }
+
+    @Test("Stopping the simulation leaves the service's show watermark as if it never ran")
+    func watermarkUntouched() async throws {
+        let cache = CacheCoordinator(cache: InMemoryCache())
+        let simulated = simulation(ocs, .justOpened).apply(to: realPlaylist)
+        let fetcher = MockPlaylistFetcher()
+        fetcher.playlistToReturn = simulated
+        let service = PlaylistService(fetcher: fetcher, interval: 3600, cacheCoordinator: cache)
+        _ = await service.fetchAndCachePlaylist()
+        fetcher.playlistToReturn = realPlaylist
+        _ = await service.fetchAndCachePlaylist()
+        #expect(await service.confirmedShowIDForTesting == 50)
     }
 }
 #endif

@@ -401,6 +401,9 @@ public final actor PlaylistService: Sendable {
         let cacheLoadStarted: Bool
     }
 
+    /// The newest show id a successful fetch confirmed, for tests of the only-goes-up watermark.
+    var confirmedShowIDForTesting: UInt64? { confirmedShowID }
+
     /// Returns the service's currently-resolved wiring — the poll interval,
     /// whether an SSE subscription is wired in (the caller opted in), and
     /// whether a consume loop is currently held.
@@ -770,9 +773,19 @@ public final actor PlaylistService: Sendable {
     /// so this is what a successful catch-up has confirmed, unlike the ids of stored rows.
     private var openShowID: UInt64? {
         if case .dj(_, let show?) = currentPlaylist.onAir {
-            return show.id
+            return show.id.flatMap { Self.isRealShowID($0) ? $0 : nil }
         }
         return nil
+    }
+
+    /// False for the id of a show the DEBUG specialty simulation made up, which must never
+    /// raise a watermark that only goes up.
+    private static func isRealShowID(_ id: UInt64) -> Bool {
+        #if DEBUG
+        !SpecialtySimulation.isSynthetic(id)
+        #else
+        true
+        #endif
     }
 
     /// Fetches a fresh playlist now, instead of waiting for the reconciliation poll, when a
@@ -874,7 +887,7 @@ public final actor PlaylistService: Sendable {
         // visible feed. See `Playlist.isContentEmpty`.
         guard !playlist.isContentEmpty || currentPlaylist.isContentEmpty else { return false }
 
-        if case .dj(_, let show?) = playlist.onAir, let showID = show.id {
+        if case .dj(_, let show?) = playlist.onAir, let showID = show.id, Self.isRealShowID(showID) {
             confirmedShowID = max(confirmedShowID ?? 0, showID)
         }
 

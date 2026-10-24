@@ -93,6 +93,7 @@ struct SpecialtyShowClientTests {
         #expect(request.value(forHTTPHeaderField: "If-None-Match") == nil)
     }
 
+    #if DEBUG
     @Test("programs() returns the catalog as full refs from the one cached request")
     func programsShareTheCache() async throws {
         StubSpecialtyProtocol.reset([.init(status: 200, etag: "\"v1\"", body: catalogBody)])
@@ -106,6 +107,7 @@ struct SpecialtyShowClientTests {
         #expect(programs[1].logsPlaycuts == false)
         #expect(StubSpecialtyProtocol.requests.count == 1)
     }
+    #endif
 
     @Test("Serves from memory inside the 5-minute window without a request")
     func servesWithinWindow() async throws {

@@ -114,9 +114,9 @@ public struct OnAirBannerDebugView: View {
     /// Simulates a specialty show on every surface, client-side only (see ``SpecialtySimulation``).
     @ViewBuilder private var simulateSpecialtySection: some View {
         Section {
-            Picker("Program", selection: $state.specialtySimulation.program) {
-                Text("Choose a program").tag(SpecialtyShowRef?.none)
-                ForEach(catalog, id: \.slug) { Text($0.name).tag(Optional($0)) }
+            Picker("Program", selection: programSlug) {
+                Text("Choose a program").tag(String?.none)
+                ForEach(catalog, id: \.slug) { Text($0.name).tag(Optional($0.slug)) }
             }
             Picker("Scenario", selection: $state.specialtySimulation.scenario) {
                 Text("Just opened, no song yet").tag(SpecialtySimulation.Scenario.justOpened)
@@ -142,17 +142,33 @@ public struct OnAirBannerDebugView: View {
         } header: {
             Text("Simulate a specialty show")
         } footer: {
-            Text(catalogFailed
-                 ? "The specialty-show catalog could not be loaded."
-                 : "Rewrites the fetched playlist on this device so the specialty card, banner, Now Playing, widgets and the what's-playing answer all show the program. The real songs stay underneath; nothing is sent anywhere. Takes effect on the next playlist refresh.")
+            Text((catalogFailed
+                 ? "The specialty-show catalog could not be loaded. "
+                 : "") + (SpecialtySimulationStore.shared.statusNote.map { $0 + " " } ?? "") + "Rewrites the fetched playlist on this device so the specialty card, banner, Now Playing, widgets and the what's-playing answer all show the program. The real songs stay underneath; nothing is sent anywhere. Takes effect on the next playlist refresh; stopping clears the shared cache and reloads widgets.")
         }
         .task {
             do {
                 catalog = try await SpecialtyShowClient().programs()
+                // Refresh the saved program from the catalog, matched by id, so edits show up.
+                if let saved = state.specialtySimulation.program, let fresh = catalog.first(where: { $0.id == saved.id }), fresh != saved {
+                    state.specialtySimulation.program = fresh
+                }
             } catch {
                 catalogFailed = true
             }
         }
+    }
+
+    /// The program picked by slug, resolved against the freshly fetched catalog so an edited tagline
+    /// or color takes effect rather than leaving the stale saved copy selected. A saved program the
+    /// catalog no longer lists stays selected until another is chosen.
+    private var programSlug: Binding<String?> {
+        Binding(
+            get: { state.specialtySimulation.program?.slug },
+            set: { slug in
+                state.specialtySimulation.program = slug.flatMap { slug in catalog.first { $0.slug == slug } }
+            }
+        )
     }
 
     /// The optional title as a plain string field: empty means no title.
