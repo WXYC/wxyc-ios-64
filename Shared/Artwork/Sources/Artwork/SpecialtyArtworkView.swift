@@ -58,6 +58,8 @@ public struct SpecialtyArtworkView: View {
         ZStack {
             if SpecialtyArtwork.showsLogo(url: url, state: state), let logo {
                 Image(decorative: logo, scale: 1).resizable().scaledToFill()
+            } else if let bundled = SpecialtyArtwork.bundledLogo(for: program) {
+                Image(decorative: bundled, scale: 1).resizable().scaledToFill()
             } else {
                 SpecialtyTileView(program: program)
             }
