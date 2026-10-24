@@ -13,8 +13,8 @@ import Foundation
 @testable import Playlist
 import PlaylistTesting
 
-private let hogwash = SpecialtyShowRef(id: 3, slug: "hogwash", name: "Hogwash", shortName: "HW", tagline: "Weird and wonderful")
-private let untagged = SpecialtyShowRef(id: 4, slug: "nse", name: "Nothing Special Eventually")
+private let hogwash = SpecialtyShowRef.taggedStub
+private let untagged = SpecialtyShowRef.untaggedStub
 
 struct NowPlayingHeadlineCase: Sendable, CustomTestStringConvertible {
     let name: String
