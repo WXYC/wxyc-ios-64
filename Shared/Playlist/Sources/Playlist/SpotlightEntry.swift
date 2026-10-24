@@ -38,21 +38,33 @@ public struct SpotlightEntry: PlaylistEntry {
     /// Whether the row hands the focus back to the host instead of naming someone.
     public var isHost: Bool { role == "host" }
 
-    /// The line every surface shows for this entry, or `nil` for a `host` row. The one table
-    /// of role copy; an unknown role gets the neutral "On air".
-    public var roleLine: String? {
+    /// The role's label without the name, or `nil` for a `host` row; medium and large widgets show
+    /// it on its own line. The one table of role copy; an unknown role gets the neutral "On air".
+    public var roleLabel: String? {
         switch role {
-        case "guest": "In the studio: \(name)"
-        case "performer": "Live in the studio: \(name)"
-        case "reader": "Reading now: \(name)"
-        case "dj": "Now mixing: \(name)"
+        case "guest": "In the studio"
+        case "performer": "Live in the studio"
+        case "reader": "Reading now"
+        case "dj": "Now mixing"
         case "host": nil
-        default: "On air: \(name)"
+        default: "On air"
         }
     }
+
+    /// The line every surface shows for this entry, or `nil` for a `host` row: the label, then the name.
+    public var roleLine: String? { roleLabel.map { "\($0): \(name)" } }
 }
 
 public extension Playlist {
+    /// The open show's current who's-on entry, led or not: the show's `spotlight` when it belongs to
+    /// the open show (which must have an id) and is not a `host` row. The one same-show check, shared
+    /// with ``nowPlayingLead``; the widget's guest line under a leading song reads it.
+    var openShowSpotlight: SpotlightEntry? {
+        guard case .dj(_, let show?) = onAir, let showID = show.id,
+              let spotlight = show.spotlight, spotlight.showID == showID, !spotlight.isHost else { return nil }
+        return spotlight
+    }
+
     /// The "now" line for the open show: the current who's-on entry's role line, or `nil` when
     /// there is no entry, it is a `host` row, or it belongs to another show. Shown on every show,
     /// under the DJ on a freeform one and in the program card on a specialty one.

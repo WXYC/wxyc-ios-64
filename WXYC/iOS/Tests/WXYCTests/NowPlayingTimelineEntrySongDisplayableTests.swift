@@ -68,13 +68,15 @@ struct NowPlayingTimelineEntrySongDisplayableTests {
         #expect(entry.songTitle.isEmpty)
     }
 
-    @Test("The who's-on entry leads with the table's title and artist, and the station artwork")
-    func whosOnLeads() {
-        let spotlight = NowPlayingSpotlight(title: "Backyard BBQ", artist: "Weirs", album: "WXYC 89.3 FM", artwork: .station)
-        let entry = NowPlayingTimelineEntry.whosOn(spotlight, recentItems: [], family: .systemLarge)
-        #expect(entry.songTitle == "Backyard BBQ")
-        #expect(entry.artistName == "Weirs")
+    @Test("A freeform who's-on entry puts the role line on the bold line over the DJ handle, with no artwork", arguments: [WidgetFamily.systemSmall, .systemMedium, .systemLarge])
+    func whosOnLeads(family: WidgetFamily) {
+        let spotlight = NowPlayingSpotlight(title: "In the studio: Ana Lucía Ríos", artist: "DJ Sidechain", album: "WXYC 89.3 FM", artwork: .station)
+        let entry = NowPlayingTimelineEntry.whosOn(spotlight, recentItems: [], family: family)
+        #expect(entry.artistName == "In the studio: Ana Lucía Ríos")
+        #expect(entry.songTitle == "DJ Sidechain")
         #expect(entry.artwork == nil)
+        #expect(entry.roleLabel == nil)
+        #expect(!entry.programLeads)
     }
 }
 
@@ -121,5 +123,51 @@ struct NowPlayingTimelineEntryProgramTests {
         #expect(NowPlayingTimelineEntry(nowPlayingItem: item, recentItems: [], family: .systemLarge).recentsLabel == "Recently Played")
         #expect(NowPlayingTimelineEntry(headline: headline, logo: nil, recentItems: [], family: .systemLarge, recentsLabel: "Before HW").recentsLabel == "Before HW")
         #expect(NowPlayingTimelineEntry(nowPlayingItem: item, recentItems: [], family: .systemLarge, headline: headline, recentsLabel: "Before HW").recentsLabel == "Before HW")
+    }
+}
+
+@Suite("NowPlayingTimelineEntry who's-on and guest lines")
+struct NowPlayingTimelineEntryWhosOnTests {
+    private let program = SpecialtyShowRef(id: 3, slug: "hogwash", name: "Hogwash", shortName: "HW", tagline: "Weird and wonderful")
+    private let song = NowPlayingItem(playcut: Playcut(
+        id: 1, hour: 0, chronOrderID: 1, timeCreated: 0,
+        songTitle: "la paradoja", labelName: nil, artistName: "Juana Molina", releaseTitle: nil
+    ))
+
+    private func program(person: String, roleLabel: String?, family: WidgetFamily) -> NowPlayingTimelineEntry {
+        NowPlayingTimelineEntry(
+            headline: NowPlayingHeadline(program: program, person: person), logo: nil, recentItems: [], family: family, roleLabel: roleLabel
+        )
+    }
+
+    @Test("A specialty who's-on entry uses the program layout: program bold, the entry's name second, the role label beside them", arguments: [WidgetFamily.systemSmall, .systemMedium, .systemLarge])
+    func specialtyWhosOn(family: WidgetFamily) {
+        let entry = program(person: "Weirs", roleLabel: "Live in the studio", family: family)
+        #expect(entry.artistName == "Hogwash")
+        #expect(entry.songTitle == "Weirs")
+        #expect(entry.programLeads)
+        #expect(entry.roleLabel == "Live in the studio")
+    }
+
+    @Test("Without a who's-on entry the role label is absent and the tagline fills its place")
+    func specialtyWithoutEntry() {
+        let entry = program(person: "DJ Hog", roleLabel: nil, family: .systemMedium)
+        #expect(entry.roleLabel == nil)
+        #expect(entry.headline?.tagline == "Weird and wonderful")
+        #expect(entry.supportingLine == "Weird and wonderful")
+        #expect(program(person: "Weirs", roleLabel: "Reading now", family: .systemMedium).supportingLine == "Reading now")
+    }
+
+    @Test("A song leading under a guest carries the guest line without touching the song's lines", arguments: [WidgetFamily.systemSmall, .systemMedium, .systemLarge])
+    func guestLine(family: WidgetFamily) {
+        let entry = NowPlayingTimelineEntry(nowPlayingItem: song, recentItems: [], family: family, guestLine: "In the studio: Ana Lucía Ríos")
+        #expect(entry.guestLine == "In the studio: Ana Lucía Ríos")
+        #expect(entry.artistName == "Juana Molina")
+        #expect(entry.songTitle == "la paradoja")
+    }
+
+    @Test("A song with no guest carries no guest line")
+    func noGuestLine() {
+        #expect(NowPlayingTimelineEntry(nowPlayingItem: song, recentItems: [], family: .systemMedium).guestLine == nil)
     }
 }

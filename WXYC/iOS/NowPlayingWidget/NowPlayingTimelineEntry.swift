@@ -26,16 +26,22 @@ struct NowPlayingTimelineEntry: TimelineEntry {
     let programLogo: SwiftUI.Image?
     /// Whether the program headline leads (no song of this show yet), rather than a song with the program as context.
     let programLeads: Bool
+    /// The who's-on entry's role label ("Live in the studio"), set only on a specialty who's-on entry. Medium and large draw it.
+    let roleLabel: String?
+    /// The freeform guest line ("In the studio: <name>") under a leading song, drawn by medium and large.
+    let guestLine: String?
     /// The label over `recentItems`: "Before <short name>" while they belong to an earlier show.
     let recentsLabel: String
 
-    /// A leading song, with `headline` as context when a specialty show is on the air.
+    /// A leading song, with `headline` as context when a specialty show is on the air and `guestLine`
+    /// for a freeform show's guest.
     init(
         nowPlayingItem: NowPlayingItem,
         recentItems: [NowPlayingItem],
         family: WidgetFamily,
         headline: NowPlayingHeadline? = nil,
         logo: CGImage? = nil,
+        guestLine: String? = nil,
         recentsLabel: String = NowPlayingTimelineEntry.defaultRecentsLabel
     ) {
         self.date = .now
@@ -53,12 +59,15 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.headline = headline
         self.programLogo = logo.map { Image(decorative: $0, scale: 1) }
         self.programLeads = false
+        self.roleLabel = nil
+        self.guestLine = guestLine
         self.recentsLabel = recentsLabel
     }
 
     /// A specialty show with no song of its own yet: the program takes the bold line over the person,
-    /// the recents follow, and the logo (or the tile when `logo` is `nil`) is the artwork.
-    init(headline: NowPlayingHeadline, logo: CGImage?, recentItems: [NowPlayingItem], family: WidgetFamily, recentsLabel: String = NowPlayingTimelineEntry.defaultRecentsLabel) {
+    /// the recents follow, and the logo (or the tile when `logo` is `nil`) is the artwork. `roleLabel` is set
+    /// while a who's-on entry names the person.
+    init(headline: NowPlayingHeadline, logo: CGImage?, recentItems: [NowPlayingItem], family: WidgetFamily, roleLabel: String? = nil, recentsLabel: String = NowPlayingTimelineEntry.defaultRecentsLabel) {
         self.date = .now
         self.artist = headline.program.name
         self.songTitle = headline.person
@@ -68,8 +77,13 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.headline = headline
         self.programLogo = logo.map { Image(decorative: $0, scale: 1) }
         self.programLeads = true
+        self.roleLabel = roleLabel
+        self.guestLine = nil
         self.recentsLabel = recentsLabel
     }
+
+    /// The line under the program and person: the role label with a who's-on entry, otherwise the program's tagline.
+    var supportingLine: String? { roleLabel ?? headline?.tagline }
 
     static func placeholder(family: WidgetFamily) -> Self {
         NowPlayingTimelineEntry(
@@ -96,12 +110,13 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         )
     }
 
-    /// Creates an entry for a leading who's-on entry: the same title and artist as the system Now
-    /// Playing info, with the recents under it and no artwork, never the previous song's.
+    /// Creates an entry for a leading freeform who's-on entry: the role line on the bold line over the DJ
+    /// handle (the system Now Playing strings, bold line first), with the recents under it and no artwork,
+    /// never the previous song's. A specialty show's entry uses the program initializer instead.
     static func whosOn(_ spotlight: NowPlayingSpotlight, recentItems: [NowPlayingItem], family: WidgetFamily) -> Self {
         NowPlayingTimelineEntry(
-            artist: spotlight.artist,
-            songTitle: spotlight.title,
+            artist: spotlight.title,
+            songTitle: spotlight.artist,
             artwork: nil,
             recentItems: recentItems,
             family: family
@@ -131,6 +146,8 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         self.headline = nil
         self.programLogo = nil
         self.programLeads = false
+        self.roleLabel = nil
+        self.guestLine = nil
         self.recentsLabel = Self.defaultRecentsLabel
     }
 }

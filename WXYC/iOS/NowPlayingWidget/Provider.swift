@@ -52,6 +52,10 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         var lead: NowPlayingLead
         var leadItem: NowPlayingItem?
         var whosOn: NowPlayingSpotlight?
+        /// The leading who's-on entry's role label, for a specialty show's program layout.
+        var roleLabel: String?
+        /// The freeform guest line under a leading song.
+        var guestLine: String?
         var recents: [NowPlayingItem]
         /// The specialty show on the air, with the DJ handle as its person line.
         var headline: NowPlayingHeadline?
@@ -95,10 +99,13 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         } else {
             nil as CGImage?
         }
+        let roleLabel: String? = if case .spotlight(let entry) = lead { entry.roleLabel } else { nil }
         return WidgetItems(
             lead: lead,
             leadItem: leadItem,
             whosOn: playlist.nowPlayingSpotlight,
+            roleLabel: roleLabel,
+            guestLine: headline == nil ? playlist.openShowSpotlight?.roleLine : nil,
             recents: leadItem == nil ? items : Array(items.dropFirst()),
             headline: headline,
             logo: logo,
@@ -110,7 +117,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
     private func entry(_ items: WidgetItems, family: WidgetFamily) -> NowPlayingTimelineEntry? {
         switch Playlist.widgetContent(lead: items.lead, hasRecents: !items.recents.isEmpty, program: items.headline?.program) {
         case .lead:
-            items.leadItem.map { NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family) }
+            items.leadItem.map { NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family, guestLine: items.guestLine) }
         case .leadInProgram:
             items.leadItem.map {
                 NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family, headline: items.headline, logo: items.logo, recentsLabel: items.recentsLabel)
@@ -122,7 +129,11 @@ final class Provider: AppIntentTimelineProvider, Sendable {
                 nil
             }
         case .whosOn:
-            items.whosOn.map { NowPlayingTimelineEntry.whosOn($0, recentItems: items.recents, family: family) }
+            if let headline = items.headline {
+                NowPlayingTimelineEntry(headline: headline, logo: items.logo, recentItems: items.recents, family: family, roleLabel: items.roleLabel, recentsLabel: items.recentsLabel)
+            } else {
+                items.whosOn.map { NowPlayingTimelineEntry.whosOn($0, recentItems: items.recents, family: family) }
+            }
         case .stationLine:
             .stationLine(recentItems: items.recents, family: family)
         case .empty:

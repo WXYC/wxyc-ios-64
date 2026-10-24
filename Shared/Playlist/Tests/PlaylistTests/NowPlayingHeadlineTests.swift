@@ -20,8 +20,8 @@ struct NowPlayingHeadlineCase: Sendable, CustomTestStringConvertible {
     let name: String
     let playlist: Playlist
     let expected: NowPlayingHeadline?
-    /// Whether `nowPlayingSpotlight` names the headline's person too. A who's-on entry leading puts its own
-    /// name on the person line, which is a later change's to make.
+    /// Whether `nowPlayingSpotlight` names the headline's person too: false while a song leads (no strings),
+    /// or when the lead is not the entry the person line came from.
     let spotlightSharesPerson: Bool
     var testDescription: String { name }
 }
@@ -46,8 +46,20 @@ private let headlineCases: [NowPlayingHeadlineCase] = [
     NowPlayingHeadlineCase(
         name: "a who's-on entry leads, and the program is still on the air",
         playlist: onAir(OnAirShow(id: 42, title: nil, specialty: hogwash, spotlight: .stub(id: 13, role: "performer", name: "Weirs"))),
+        expected: NowPlayingHeadline(program: hogwash, person: "Weirs"),
+        spotlightSharesPerson: true
+    ),
+    NowPlayingHeadlineCase(
+        name: "a host entry hands the person line back to the DJ handle",
+        playlist: onAir(OnAirShow(id: 42, title: nil, specialty: hogwash, spotlight: .stub(id: 13, role: "host", name: "DJ Monster"))),
         expected: NowPlayingHeadline(program: hogwash, person: "DJ Monster"),
-        spotlightSharesPerson: false
+        spotlightSharesPerson: true
+    ),
+    NowPlayingHeadlineCase(
+        name: "an entry from another show leaves the DJ handle as the person",
+        playlist: onAir(OnAirShow(id: 42, title: nil, specialty: hogwash, spotlight: .stub(id: 13, showID: 41, role: "performer", name: "Weirs"))),
+        expected: NowPlayingHeadline(program: hogwash, person: "DJ Monster"),
+        spotlightSharesPerson: true
     ),
     NowPlayingHeadlineCase(
         name: "a specialty show whose id is unknown still names its program",

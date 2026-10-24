@@ -36,8 +36,8 @@ struct MediumNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                         Text(headline.person)
                             .font(.subheadline)
                             .lineLimit(1)
-                        if let tagline = headline.tagline {
-                            Text(tagline)
+                        if let supporting = entry.supportingLine {
+                            Text(supporting)
                                 .font(.caption)
                                 .lineLimit(2)
                         }
@@ -48,6 +48,9 @@ struct MediumNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                                 ProgramArtwork(entry: entry, size: 18)
                                 Text(headline.program.name).font(.caption).lineLimit(2)
                             }
+                        }
+                        if let guestLine = entry.guestLine {
+                            Text(guestLine).font(.caption).lineLimit(1)
                         }
                         SongInfoColumn(
                             song: entry,
