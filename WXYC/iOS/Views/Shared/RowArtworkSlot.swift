@@ -15,14 +15,20 @@
 import SwiftUI
 
 struct RowArtworkSlot<Artwork: View>: View {
-    /// The width of the enclosing row (the `GeometryProxy`'s width).
-    let rowWidth: CGFloat
+    /// The width of the enclosing row (the `GeometryProxy`'s width), or `nil`
+    /// when a custom `Layout` has already proposed the slot its width.
+    let rowWidth: CGFloat?
     @ViewBuilder var artwork: () -> Artwork
+
+    init(rowWidth: CGFloat? = nil, @ViewBuilder artwork: @escaping () -> Artwork) {
+        self.rowWidth = rowWidth
+        self.artwork = artwork
+    }
 
     var body: some View {
         artwork()
             .padding(SongRowMetrics.artworkPadding)
             .clipRounded()
-            .frame(maxWidth: SongRowMetrics.artworkSlotWidth(rowWidth: rowWidth), alignment: .leading)
+            .frame(maxWidth: rowWidth.map { SongRowMetrics.artworkSlotWidth(rowWidth: $0) } ?? .infinity, alignment: .leading)
     }
 }

@@ -45,3 +45,20 @@ struct SongRowMetricsTests {
         #expect(SongRowMetrics.shadowOffsetAtBottom == 3)
     }
 }
+
+@Suite("SpecialtyCardLayout")
+struct SpecialtyCardLayoutTests {
+    @Test("The slot is the playcut row's slot and the text takes the rest, at any card width", arguments: [
+        (250 as CGFloat, 100 as CGFloat, 150 as CGFloat),
+        (378, 151.2, 226.8),
+        (576, 230.4, 345.6),
+        (0, 0, 0),
+    ])
+    func columnWidths(width: CGFloat, slot: CGFloat, text: CGFloat) {
+        let columns = SpecialtyCardLayout.columnWidths(forCardWidth: width)
+        #expect(abs(columns.slot - slot) < 0.001)
+        #expect(abs(columns.text - text) < 0.001)
+        #expect(abs(columns.slot - 2 * SongRowMetrics.artworkPadding - SongRowMetrics.artworkSide(rowWidth: width)) < 0.001
+            || SongRowMetrics.artworkSide(rowWidth: width) == 0)
+    }
+}
