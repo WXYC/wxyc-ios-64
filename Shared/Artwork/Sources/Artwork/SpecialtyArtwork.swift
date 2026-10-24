@@ -31,8 +31,13 @@ public enum SpecialtyArtwork {
     /// The program's logo through the shared artwork cache, or `nil` when it has none or the load fails,
     /// so a caller that cannot show a broken image draws the text tile instead.
     public static func logo(for program: SpecialtyShowRef) async -> CGImage? {
+        await logo(for: program, cache: .AlbumArt, session: URLSession.shared)
+    }
+
+    /// ``logo(for:)`` with the cache and the network session injected, so a test can count downloads.
+    static func logo(for program: SpecialtyShowRef, cache: CacheCoordinator, session: any WebSession) async -> CGImage? {
         guard let url = logoURL(for: program) else { return nil }
-        return try? await CacheCoordinator.AlbumArt.image(from: url)
+        return try? await cache.image(from: url, session: session)
     }
 
     /// Whether to draw the logo rather than the tile: only once a logo URL exists and its image has loaded.

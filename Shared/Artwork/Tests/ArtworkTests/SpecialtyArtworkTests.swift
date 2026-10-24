@@ -54,6 +54,50 @@ struct SpecialtyArtworkTests {
     }
 }
 
+@Suite("SpecialtyArtwork.logo(for:)")
+struct SpecialtyLogoEntryPointTests {
+
+    private func makeCache() -> CacheCoordinator {
+        CacheCoordinator(cache: DiskCache(subdirectory: "test-\(UUID().uuidString)"))
+    }
+
+    @Test("A second call for the same program is served from the cache")
+    func secondCallDoesNotRefetch() async {
+        let session = MockWebSession()
+        session.dataToReturn = CGImage.testImage.pngDataCompatibility!
+        let cache = makeCache()
+        let hogwash = program(squareURL: logoURL)
+
+        let first = await SpecialtyArtwork.logo(for: hogwash, cache: cache, session: session)
+        let second = await SpecialtyArtwork.logo(for: hogwash, cache: cache, session: session)
+
+        #expect(first != nil)
+        #expect(second != nil)
+        #expect(session.requestedURLs == [logoURL])
+    }
+
+    @Test("A program with no logo URL loads nothing and returns nil")
+    func noLogoURL() async {
+        let session = MockWebSession()
+        session.dataToReturn = CGImage.testImage.pngDataCompatibility!
+
+        let image = await SpecialtyArtwork.logo(for: program(squareURL: nil), cache: makeCache(), session: session)
+
+        #expect(image == nil)
+        #expect(session.requestedURLs.isEmpty)
+    }
+
+    @Test("A failed load returns nil instead of throwing, so the caller draws the tile")
+    func failedLoadReturnsNil() async {
+        let session = MockWebSession()
+        session.errorToThrow = ServiceError.noResults
+
+        let image = await SpecialtyArtwork.logo(for: program(squareURL: logoURL), cache: makeCache(), session: session)
+
+        #expect(image == nil)
+    }
+}
+
 @Suite("CacheCoordinator.image(from:)")
 struct URLKeyedArtworkCacheTests {
 

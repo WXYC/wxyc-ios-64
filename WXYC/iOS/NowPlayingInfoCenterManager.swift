@@ -153,7 +153,7 @@ final class NowPlayingInfoCenterManager {
     private func write(_ lead: NowPlayingSpotlight) async {
         var program: SpecialtyShowRef?
         if case .program(let show) = lead.artwork { program = show }
-        let tile = program.flatMap { tileImage(for: $0) }
+        let tile = program.flatMap { Self.tileImage(for: $0) }
         mutate { info in
             info[MPMediaItemPropertyTitle] = lead.title
             info[MPMediaItemPropertyArtist] = lead.artist
@@ -162,20 +162,28 @@ final class NowPlayingInfoCenterManager {
         }
         guard let program, let logo = await programLogo(program),
               cachedInfo?[MPMediaItemPropertyTitle] as? String == lead.title else { return }
-        mutate { $0[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: platformImage(logo), boundsSize: self.boundsSize) }
+        mutate { $0[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: Self.platformImage(logo, scale: 1), boundsSize: self.boundsSize) }
     }
+
+    /// The tile is drawn at the in-app tile size (`SpecialtyCardView`'s 72 points), where the shared tile's
+    /// fixed `.title2` text is a legible share of the square, and rendered at 6x so the bitmap is 432 pixels,
+    /// the logo's own width (`ArtworkCacheConfiguration.targetWidth`). `MPMediaItemArtwork` scales it to
+    /// whatever the Lock Screen or CarPlay asks for.
+    static let tilePointSize: CGFloat = 72
+    static let tileScale: CGFloat = 6
 
     /// The shared Artwork tile, rendered on the device so it needs no server asset.
-    private func tileImage(for program: SpecialtyShowRef) -> PlatformImage? {
-        let renderer = ImageRenderer(content: SpecialtyTileView(program: program).frame(width: boundsSize.width, height: boundsSize.height))
-        return renderer.cgImage.map(platformImage)
+    static func tileImage(for program: SpecialtyShowRef) -> PlatformImage? {
+        let renderer = ImageRenderer(content: SpecialtyTileView(program: program).frame(width: tilePointSize, height: tilePointSize))
+        renderer.scale = tileScale
+        return renderer.cgImage.map { platformImage($0, scale: tileScale) }
     }
 
-    private func platformImage(_ image: CGImage) -> PlatformImage {
+    private static func platformImage(_ image: CGImage, scale: CGFloat) -> PlatformImage {
         #if canImport(UIKit)
-        PlatformImage(cgImage: image)
+        PlatformImage(cgImage: image, scale: scale, orientation: .up)
         #else
-        PlatformImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+        PlatformImage(cgImage: image, size: NSSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale))
         #endif
     }
 
