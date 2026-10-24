@@ -44,13 +44,20 @@ public struct SpecialtyTileView: View {
 /// so nothing shifts when the logo arrives.
 public struct SpecialtyArtworkView: View {
     private let program: SpecialtyShowRef
-    private let size: CGFloat
+    private let size: CGFloat?
     @State private var logo: CGImage?
     @State private var state = SpecialtyArtwork.LogoState.loading
 
     public init(program: SpecialtyShowRef, size: CGFloat) {
         self.program = program
         self.size = size
+    }
+
+    /// The artwork fills the frame its parent proposes, so a custom `Layout`
+    /// can size it without the view knowing the number.
+    public init(program: SpecialtyShowRef) {
+        self.program = program
+        self.size = nil
     }
 
     public var body: some View {

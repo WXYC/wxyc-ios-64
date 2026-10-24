@@ -13,7 +13,7 @@
 
 import SwiftUI
 
-enum SongRowMetrics {
+nonisolated enum SongRowMetrics {
     /// Width over height of a song row.
     static let aspectRatio: CGFloat = 2.5
 
