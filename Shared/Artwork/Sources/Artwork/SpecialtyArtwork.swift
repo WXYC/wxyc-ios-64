@@ -58,7 +58,7 @@ public enum SpecialtyArtwork {
         cache: CacheCoordinator,
         session: any WebSession
     ) async -> CGImage? {
-        guard let url = logoURL(for: program) else { return bundledLogo(for: program) }
+        guard let url = logoURL(for: program) else { return bundledLogo(for: program, maxPixelSize: maxPixelSize) }
         return try? await cache.image(from: url, maxPixelSize: maxPixelSize, session: session)
     }
 

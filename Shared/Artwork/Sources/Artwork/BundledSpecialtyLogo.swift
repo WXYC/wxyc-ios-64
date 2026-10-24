@@ -17,11 +17,12 @@ import Playlist
 
 extension SpecialtyArtwork {
     /// The bundled logo for `program`, or `nil` when the program has a server logo URL (a server logo always
-    /// wins), its slug has no bundled logo, or this is not a DEBUG build.
-    public static func bundledLogo(for program: SpecialtyShowRef) -> CGImage? {
+    /// wins), its slug has no bundled logo, or this is not a DEBUG build. Decoded no larger than `maxPixelSize`
+    /// (by default the artwork cache's target width) on its longest side, like a downloaded logo.
+    public static func bundledLogo(for program: SpecialtyShowRef, maxPixelSize: Int = Int(ArtworkCacheConfiguration.targetWidth)) -> CGImage? {
         #if DEBUG
-        guard logoURL(for: program) == nil else { return nil }
-        return BundledSpecialtyLogo.images[program.slug]
+        guard logoURL(for: program) == nil, let data = BundledSpecialtyLogo.data[program.slug] else { return nil }
+        return decodeLogo(from: data, maxPixelSize: maxPixelSize)
         #else
         return nil
         #endif
@@ -37,12 +38,9 @@ enum BundledSpecialtyLogo {
         "new-science-experience": "nse-logo",
     ]
 
-    static let images: [String: CGImage] = resourceNames.compactMapValues { name in
-        guard let url = Bundle.module.url(forResource: name, withExtension: "png"),
-              let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-            return nil
-        }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+    /// The encoded bytes, so each caller decodes at the size it needs.
+    static let data: [String: Data] = resourceNames.compactMapValues { name in
+        Bundle.module.url(forResource: name, withExtension: "png").flatMap { try? Data(contentsOf: $0) }
     }
 }
 #endif

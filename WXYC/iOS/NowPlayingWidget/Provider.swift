@@ -83,10 +83,12 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         }
         let leadItem = leadPlaycut == nil ? nil : items.first
         let card = playlist.specialtyCard
-        let headline = card.map { NowPlayingHeadline(program: $0.program, person: $0.djHandle) }
-        // Large keeps its layout today, so only small and medium carry a logo.
-        let logo = if let card, family != .systemLarge, family != .systemExtraLarge {
-            await SpecialtyArtwork.logo(for: card.program, maxPixelSize: Self.logoPixelSize(for: family))
+        // Large keeps its layout until #1217, so only the other families get a headline (which selects the
+        // program layouts and trims the recents) and a logo.
+        let usesProgramLayouts = family != .systemLarge && family != .systemExtraLarge
+        let headline = usesProgramLayouts ? card.map { NowPlayingHeadline(program: $0.program, person: $0.djHandle) } : nil
+        let logo = if let headline {
+            await SpecialtyArtwork.logo(for: headline.program, maxPixelSize: Self.logoPixelSize(for: family))
         } else {
             nil as CGImage?
         }

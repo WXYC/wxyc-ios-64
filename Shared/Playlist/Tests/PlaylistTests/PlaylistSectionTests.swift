@@ -64,6 +64,10 @@ struct PlaylistSectionTests {
         (.song(newest), false, hogwash, .leadInProgram),
         (.specialtyCard(hogwash), true, hogwash, .program),
         (.specialtyCard(hogwash), false, hogwash, .program),
+        // No program layouts (the large widget): a specialty show lays out as it did before, with no program
+        // headline and no trimming.
+        (.specialtyCard(hogwash), true, nil, .stationLine),
+        (.specialtyCard(hogwash), false, nil, .empty),
         (.spotlight(entry), true, nil, .whosOn),
         (.spotlight(entry), false, hogwash, .whosOn),
         (.djHandle("Cat Power Hour"), true, nil, .stationLine),
