@@ -104,8 +104,9 @@ public extension Playlist {
                 return NowPlayingSpotlight(title: program.name, artist: entry.name, album: station, artwork: .program(program))
             }
             return NowPlayingSpotlight(title: roleLine, artist: handle, album: station, artwork: .station)
-        case .specialtyCard(let program):
-            return NowPlayingSpotlight(title: program.name, artist: handle, album: station, artwork: .program(program))
+        case .specialtyCard:
+            guard let headline = programHeadline else { return nil }
+            return NowPlayingSpotlight(title: headline.program.name, artist: headline.person, album: station, artwork: .program(headline.program))
         case .djHandle(let name):
             return NowPlayingSpotlight(title: name, artist: station, album: station, artwork: .station)
         case .song, .nothing:
