@@ -48,6 +48,7 @@ struct SmallNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
 
                 PlayButton()
             }
+            .foregroundStyle(.white)
         }
         .containerBackground(Color.clear, for: .widget)
         .safeAreaPadding()
