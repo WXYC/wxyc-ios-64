@@ -105,6 +105,23 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
         self.healthySuccessSampler = healthySuccessSampler
     }
 
+    #if DEBUG
+    /// The store the debug "Simulate a specialty show" control writes. `.shared` unless a test
+    /// passes its own, so tests never touch the shared defaults.
+    private var simulationStore: SpecialtySimulationStore = .shared
+
+    public convenience init(
+        dataSource: PlaylistDataSource? = nil,
+        errorReporter: any ErrorReporter = ErrorReporting.shared,
+        analytics: any AnalyticsService = StructuredPostHogAnalytics.shared,
+        healthySuccessSampler: @escaping @Sendable () -> Bool = { Int.random(in: 1...10) == 1 },
+        simulationStore: SpecialtySimulationStore
+    ) {
+        self.init(dataSource: dataSource, errorReporter: errorReporter, analytics: analytics, healthySuccessSampler: healthySuccessSampler)
+        self.simulationStore = simulationStore
+    }
+    #endif
+
     /// Fetches a playlist from the remote source.
     /// Returns an empty playlist if the fetch fails; ``fetchPlaylistResult()`` keeps the failure.
     public func fetchPlaylist() async -> Playlist {
@@ -126,11 +143,7 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
         let context: StaticString = "PlaylistFetcher fetchPlaylist"
 
         do {
-            var playlist = try await dataSource.getPlaylist()
-            #if DEBUG
-            // The one seam for the debug "Simulate a specialty show" control (see `SpecialtySimulation`).
-            playlist = SpecialtySimulationStore.shared.apply(to: playlist)
-            #endif
+            let playlist = try await dataSource.getPlaylist()
             let duration = timer.duration()
             Log(.info, category: .network, "\(context) (API \(Self.apiVersionTag)): succeeded in \(duration)s")
             // A task cancelled after the data already arrived is not a real
@@ -138,7 +151,13 @@ public final class PlaylistFetcher: PlaylistFetcherProtocol, @unchecked Sendable
             if !Task.isCancelled {
                 captureFetchEvent(playlist: playlist, succeeded: true, duration: duration)
             }
+            #if DEBUG
+            // The one seam for the debug "Simulate a specialty show" control (see `SpecialtySimulation`).
+            // After the event, so analytics never counts simulated rows.
+            return .success(simulationStore.apply(to: playlist))
+            #else
             return .success(playlist)
+            #endif
         } catch {
             // `URLSession.data(for:)` throws `URLError(.cancelled)` (NOT Swift's
             // `CancellationError`) when a fetch is torn down — e.g. a service

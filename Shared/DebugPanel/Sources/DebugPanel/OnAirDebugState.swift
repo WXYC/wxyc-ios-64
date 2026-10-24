@@ -8,6 +8,7 @@
 //  Copyright © 2026 WXYC. All rights reserved.
 //
 
+import AppServices
 import Foundation
 import Playlist
 import WXUI
@@ -50,7 +51,18 @@ public final class OnAirDebugState {
     /// The specialty show to simulate, applied to every fetched playlist by
     /// ``SpecialtySimulationStore`` (persisted there). Off by default.
     public var specialtySimulation: SpecialtySimulation {
-        didSet { SpecialtySimulationStore.shared.simulation = specialtySimulation }
+        didSet {
+            guard specialtySimulation != oldValue else { return }
+            SpecialtySimulationStore.shared.simulation = specialtySimulation
+            // The widget and a cold launch read the shared cache, which holds the old simulation for
+            // up to 15 minutes; drop it, then have the widget reload against a fresh fetch.
+            Task {
+                await SpecialtySimulationStore.shared.invalidatePlaylistCache()
+                #if canImport(WidgetKit)
+                SystemWidgetReloader().reloadAllTimelines()
+                #endif
+            }
+        }
     }
 
     // MARK: - Adaptive handle width

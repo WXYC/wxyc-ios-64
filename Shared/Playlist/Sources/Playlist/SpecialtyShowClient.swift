@@ -25,7 +25,9 @@ public actor SpecialtyShowClient {
     private let session: URLSession
     private let now: @Sendable () -> Date
     private var cached: (shows: [SpecialtyShow], etag: String?, fetchedAt: Date)?
+    #if DEBUG
     private var cachedBody: Data?
+    #endif
 
     /// - Parameters:
     ///   - baseURL: Backend-Service base URL. Defaults to `https://api.wxyc.org`.
@@ -62,10 +64,13 @@ public actor SpecialtyShowClient {
         try http?.validateSuccessStatus()
         let shows = try JSONDecoder.shared.decode([SpecialtyShow].self, from: data)
         cached = (shows, http?.value(forHTTPHeaderField: "ETag"), now())
+        #if DEBUG
         cachedBody = data
+        #endif
         return shows
     }
 
+    #if DEBUG
     /// The same catalog as full ``SpecialtyShowRef`` values (tagline, accent color, logging flag),
     /// which the catalog's JSON carries beyond what ``SpecialtyShow`` models.
     public func programs() async throws -> [SpecialtyShowRef] {
@@ -73,4 +78,5 @@ public actor SpecialtyShowClient {
         guard let cachedBody else { return [] }
         return try JSONDecoder.shared.decode([SpecialtyShowRef].self, from: cachedBody)
     }
+    #endif
 }
