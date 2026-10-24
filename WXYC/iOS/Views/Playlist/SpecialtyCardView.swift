@@ -24,7 +24,7 @@ import WXUI
 /// is fixed. Both children are top-aligned.
 struct SpecialtyCardLayout: Layout {
     /// The width a card lays out at when its parent proposes none.
-    static let fallbackWidth: CGFloat = 600
+    nonisolated static let fallbackWidth: CGFloat = ContentColumn.maxWidth
 
     /// The slot's width, which is also its height, and the text column's width
     /// in a card `width` points wide.
@@ -33,12 +33,23 @@ struct SpecialtyCardLayout: Layout {
         return (slot, max(width - slot, 0))
     }
 
+    /// `proposed`, or the fallback when it is nil or infinite, so the text width is never NaN.
+    nonisolated static func resolvedWidth(_ proposed: CGFloat?) -> CGFloat {
+        guard let proposed, proposed.isFinite else { return fallbackWidth }
+        return proposed
+    }
+
+    /// The card's height in a card `width` points wide whose text is `textHeight` tall.
+    nonisolated static func cardHeight(forCardWidth width: CGFloat, textHeight: CGFloat) -> CGFloat {
+        max(columnWidths(forCardWidth: width).slot, textHeight)
+    }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         guard subviews.count == 2 else { return .zero }
-        let width = proposal.width ?? Self.fallbackWidth
+        let width = Self.resolvedWidth(proposal.width)
         let columns = Self.columnWidths(forCardWidth: width)
         let textHeight = subviews[1].sizeThatFits(ProposedViewSize(width: columns.text, height: nil)).height
-        return CGSize(width: width, height: max(columns.slot, textHeight))
+        return CGSize(width: width, height: Self.cardHeight(forCardWidth: width, textHeight: textHeight))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {

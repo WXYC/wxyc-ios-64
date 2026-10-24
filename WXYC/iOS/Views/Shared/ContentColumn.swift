@@ -17,7 +17,7 @@ import SwiftUI
 enum ContentColumn {
     /// The widest the content column grows. Experiment default; must exceed
     /// `referenceWidth` so the LCD split can engage.
-    static let maxWidth: CGFloat = 600
+    nonisolated static let maxWidth: CGFloat = 600
 
     /// The iPhone 17 Pro Max logical width the layouts are designed against.
     static let referenceWidth: CGFloat = 440

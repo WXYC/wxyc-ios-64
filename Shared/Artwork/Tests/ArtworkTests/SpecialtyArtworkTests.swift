@@ -16,6 +16,7 @@ import CoreGraphics
 import Core
 import Logger
 import Playlist
+import SwiftUI
 @testable import Artwork
 @testable import Caching
 
@@ -372,5 +373,53 @@ private extension CGImage {
         // Draw the image offset so the requested pixel lands on the single-pixel context.
         context.draw(self, in: CGRect(x: -x, y: -(height - 1 - y), width: width, height: height))
         return pixel
+    }
+}
+
+/// Records the size its single child reports for the proposal it was given.
+private struct SizeRecorder: Layout {
+    let box: SizeBox
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        box.size = subviews[0].sizeThatFits(proposal)
+        return box.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews[0].place(at: bounds.origin, proposal: proposal)
+    }
+}
+
+private final class SizeBox: @unchecked Sendable {
+    var size = CGSize.zero
+}
+
+@MainActor
+private func reportedSize(imageWidth: Int, imageHeight: Int, slot: CGFloat) -> CGSize {
+    let context = CGContext(
+        data: nil, width: imageWidth, height: imageHeight, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    )!
+    let image = context.makeImage()!
+    let box = SizeBox()
+    let view = SizeRecorder(box: box) {
+        SquareFill { Image(decorative: image, scale: 1).resizable().scaledToFill() }
+    }
+    .frame(width: slot, height: slot)
+    let renderer = ImageRenderer(content: view)
+    _ = renderer.cgImage
+    return box.size
+}
+
+@Suite("SquareFill")
+@MainActor
+struct SquareFillTests {
+    @Test("A logo of any aspect ratio stays inside a square proposal", arguments: [
+        (300, 100), (100, 300), (100, 100), (1200, 800),
+    ])
+    func staysInsideSlot(width: Int, height: Int) {
+        let size = reportedSize(imageWidth: width, imageHeight: height, slot: 120)
+        #expect(abs(size.width - 120) < 0.5)
+        #expect(abs(size.height - 120) < 0.5)
     }
 }
