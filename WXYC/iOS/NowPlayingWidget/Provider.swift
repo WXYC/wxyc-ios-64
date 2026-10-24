@@ -57,11 +57,17 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         var headline: NowPlayingHeadline?
         /// The program's logo decoded no larger than the family needs; `nil` draws the tile.
         var logo: CGImage?
+        /// "Before <short name>" while the recents belong to an earlier show; see `Playlist.recentsLabel`.
+        var recentsLabel = NowPlayingTimelineEntry.defaultRecentsLabel
     }
 
     /// The longest side, in pixels, of the logo the family draws: its tile or badge, never the full-size file.
     private static func logoPixelSize(for family: WidgetFamily) -> Int {
-        family == .systemSmall ? 240 : 300
+        switch family {
+        case .systemSmall: 240
+        case .systemLarge: Int(LargeNowPlayingWidgetEntryView.artSlot * 3)
+        default: 300
+        }
     }
 
     /// The lead comes from `Playlist.nowPlayingLead` — the rule every other now-playing
@@ -83,10 +89,8 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         }
         let leadItem = leadPlaycut == nil ? nil : items.first
         let card = playlist.specialtyCard
-        // Large keeps its layout until #1217, so only the other families get a headline (which selects the
-        // program layouts and trims the recents) and a logo.
-        let usesProgramLayouts = family != .systemLarge && family != .systemExtraLarge
-        let headline = usesProgramLayouts ? card.map { NowPlayingHeadline(program: $0.program, person: $0.djHandle) } : nil
+        let headline = card.map { NowPlayingHeadline(program: $0.program, person: $0.djHandle) }
+        let onAirShowID: UInt64? = if case .dj(_, let show?) = playlist.onAir { show.id } else { nil }
         let logo = if let headline {
             await SpecialtyArtwork.logo(for: headline.program, maxPixelSize: Self.logoPixelSize(for: family))
         } else {
@@ -98,7 +102,8 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             whosOn: playlist.nowPlayingSpotlight,
             recents: leadItem == nil ? items : Array(items.dropFirst()),
             headline: headline,
-            logo: logo
+            logo: logo,
+            recentsLabel: Playlist.recentsLabel(of: recents, onAirShowID: onAirShowID, program: headline?.program)
         )
     }
 
@@ -109,11 +114,11 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             items.leadItem.map { NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family) }
         case .leadInProgram:
             items.leadItem.map {
-                NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family, headline: items.headline, logo: items.logo)
+                NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family, headline: items.headline, logo: items.logo, recentsLabel: items.recentsLabel)
             }
         case .program:
             items.lead.headline(person: items.headline?.person ?? "").map {
-                NowPlayingTimelineEntry(headline: $0, logo: items.logo, recentItems: items.recents, family: family)
+                NowPlayingTimelineEntry(headline: $0, logo: items.logo, recentItems: items.recents, family: family, recentsLabel: items.recentsLabel)
             }
         case .whosOn:
             items.whosOn.map { NowPlayingTimelineEntry.whosOn($0, recentItems: items.recents, family: family) }
