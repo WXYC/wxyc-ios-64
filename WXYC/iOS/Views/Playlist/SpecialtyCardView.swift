@@ -21,7 +21,9 @@ import WXUI
 /// width the card is proposed, so the logo is the playcut artwork's size from the
 /// first layout pass, on any device and in any window. The height is the taller
 /// of the square slot and the text, so the text is never cut off and no height
-/// is fixed. Both children are top-aligned.
+/// is fixed. Both children are centered vertically, as in a playcut row's `HStack(alignment: .center)`:
+/// the text column centers against the square slot, and when the text is taller the card grows
+/// and the slot centers against it.
 struct SpecialtyCardLayout: Layout {
     /// The width a card lays out at when its parent proposes none.
     nonisolated static let fallbackWidth: CGFloat = ContentColumn.maxWidth
@@ -44,6 +46,12 @@ struct SpecialtyCardLayout: Layout {
         max(columnWidths(forCardWidth: width).slot, textHeight)
     }
 
+    /// The y offset, from the card's top, that centers a child `childHeight` tall in a card
+    /// `cardHeight` tall; zero when the child fills or overflows it.
+    nonisolated static func centeredOffset(cardHeight: CGFloat, childHeight: CGFloat) -> CGFloat {
+        max((cardHeight - childHeight) / 2, 0)
+    }
+
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         guard subviews.count == 2 else { return .zero }
         let width = Self.resolvedWidth(proposal.width)
@@ -55,15 +63,16 @@ struct SpecialtyCardLayout: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         guard subviews.count == 2 else { return }
         let columns = Self.columnWidths(forCardWidth: bounds.width)
+        let textHeight = subviews[1].sizeThatFits(ProposedViewSize(width: columns.text, height: nil)).height
         subviews[0].place(
-            at: bounds.origin,
+            at: CGPoint(x: bounds.minX, y: bounds.minY + Self.centeredOffset(cardHeight: bounds.height, childHeight: columns.slot)),
             anchor: .topLeading,
             proposal: ProposedViewSize(width: columns.slot, height: columns.slot)
         )
         subviews[1].place(
-            at: CGPoint(x: bounds.minX + columns.slot, y: bounds.minY),
+            at: CGPoint(x: bounds.minX + columns.slot, y: bounds.minY + Self.centeredOffset(cardHeight: bounds.height, childHeight: textHeight)),
             anchor: .topLeading,
-            proposal: ProposedViewSize(width: columns.text, height: bounds.height)
+            proposal: ProposedViewSize(width: columns.text, height: textHeight)
         )
     }
 }
@@ -93,10 +102,6 @@ struct SpecialtyCardView: View {
                         Text(subtitle)
                             .font(.subheadline)
                     }
-                    Text(card.djHandle)
-                        .font(.caption)
-                        .textCase(.uppercase)
-                        .foregroundStyle(.secondary)
                     if let nowLine = card.nowLine {
                         Text(nowLine)
                             .font(.subheadline.weight(.semibold))
