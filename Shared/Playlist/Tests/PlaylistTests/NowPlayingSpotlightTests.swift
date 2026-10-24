@@ -2,7 +2,7 @@
 //  NowPlayingSpotlightTests.swift
 //  Playlist
 //
-//  Verifies the title, artist, album and artwork source the system Now Playing info and the
+//  Verifies the title, artist, album and artwork source for every lead but a song the system Now Playing info and the
 //  widget use while a who's-on entry leads, for specialty and freeform shows.
 //
 //  Created by Jake Bromberg on 10/22/26.
@@ -46,15 +46,30 @@ private let cases: [NowPlayingSpotlightCase] = [
         expected: nil
     ),
     NowPlayingSpotlightCase(
-        name: "no spotlight at all",
+        name: "specialty show with no song yet: program over the DJ handle, with the program artwork",
+        playlist: .stub(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: backyardBBQ))),
+        expected: NowPlayingSpotlight(title: "Backyard BBQ", artist: "DJ Sidechain", album: "WXYC 89.3 FM", artwork: .program(backyardBBQ))
+    ),
+    NowPlayingSpotlightCase(
+        name: "freeform show with no song yet: the DJ handle over the station line, with the station artwork",
         playlist: .stub(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil))),
+        expected: NowPlayingSpotlight(title: "DJ Sidechain", artist: "WXYC 89.3 FM", album: "WXYC 89.3 FM", artwork: .station)
+    ),
+    NowPlayingSpotlightCase(
+        name: "a song from the open show leads, so there are no spotlight strings",
+        playlist: .stub(playcuts: [.stub(id: 10, showID: 42)], onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil))),
+        expected: nil
+    ),
+    NowPlayingSpotlightCase(
+        name: "automation leads with nothing",
+        playlist: .stub(onAir: .automation),
         expected: nil
     ),
 ]
 
 @Suite("Now Playing info while a who's-on entry leads")
 struct NowPlayingSpotlightTests {
-    @Test("title, artist, album and artwork source", arguments: cases)
+    @Test("title, artist, album and artwork source for every lead but a song", arguments: cases)
     func text(_ testCase: NowPlayingSpotlightCase) {
         #expect(testCase.playlist.nowPlayingSpotlight == testCase.expected)
     }

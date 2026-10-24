@@ -88,16 +88,28 @@ public struct NowPlayingSpotlight: Sendable, Equatable {
 }
 
 public extension Playlist {
-    /// The Now Playing info strings while a who's-on entry leads, or `nil` when none does.
+    /// The Now Playing info strings for every lead but a song, or `nil` when a song or nothing leads.
+    /// The one table of this copy, read by the system Now Playing info and the widget.
     ///
-    /// A specialty show keeps the program as the title and puts the person as the artist; a
-    /// freeform show puts the role line over the DJ handle.
+    /// A specialty show keeps the program as the title, over the person on a who's-on entry or the
+    /// DJ handle; a freeform show puts the role line over the DJ handle, or the DJ handle over the
+    /// station line when it has no entry. The album line outside a song is always the station.
     var nowPlayingSpotlight: NowPlayingSpotlight? {
-        guard case .spotlight(let entry) = nowPlayingLead, case .dj(let handle, let show) = onAir,
-              let roleLine = entry.roleLine else { return nil }
-        if let program = show?.specialty {
-            return NowPlayingSpotlight(title: program.name, artist: entry.name, album: "WXYC 89.3 FM", artwork: .program(program))
+        guard case .dj(let handle, let show) = onAir else { return nil }
+        let station = "WXYC 89.3 FM"
+        switch nowPlayingLead {
+        case .spotlight(let entry):
+            guard let roleLine = entry.roleLine else { return nil }
+            if let program = show?.specialty {
+                return NowPlayingSpotlight(title: program.name, artist: entry.name, album: station, artwork: .program(program))
+            }
+            return NowPlayingSpotlight(title: roleLine, artist: handle, album: station, artwork: .station)
+        case .specialtyCard(let program):
+            return NowPlayingSpotlight(title: program.name, artist: handle, album: station, artwork: .program(program))
+        case .djHandle(let name):
+            return NowPlayingSpotlight(title: name, artist: station, album: station, artwork: .station)
+        case .song, .nothing:
+            return nil
         }
-        return NowPlayingSpotlight(title: roleLine, artist: handle, album: "WXYC 89.3 FM", artwork: .station)
     }
 }
