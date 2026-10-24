@@ -70,6 +70,16 @@ struct SpecialtyCardLayoutTests {
         #expect(abs(SpecialtyCardLayout.cardHeight(forCardWidth: width, textHeight: text) - max(slot, text)) < 0.001)
     }
 
+    @Test("A child is centered vertically in the card, and sits at the top when it fills or overflows it", arguments: [
+        (160 as CGFloat, 100 as CGFloat, 30 as CGFloat),
+        (160, 160, 0),
+        (160, 200, 0),
+        (0, 0, 0),
+    ])
+    func centeredOffset(cardHeight: CGFloat, childHeight: CGFloat, expected: CGFloat) {
+        #expect(abs(SpecialtyCardLayout.centeredOffset(cardHeight: cardHeight, childHeight: childHeight) - expected) < 0.001)
+    }
+
     @Test("Resolved width falls back for nil and infinite proposals", arguments: [
         (nil, 600), (CGFloat.infinity, 600), (320, 320),
     ] as [(CGFloat?, CGFloat)])

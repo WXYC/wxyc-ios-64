@@ -174,12 +174,18 @@ struct PlaylistView: View {
 
                     // Specialty program card: the now-playing item for a show that logs no
                     // songs, otherwise the head of the song list for the whole show.
+                    // The header and card share a zero-spacing stack, like the header and row
+                    // inside the `LazyVStack` below, so the gap under "now playing" is the one
+                    // under "recently played" (the row's 8pt padding) and not the scroll
+                    // content's own inter-item spacing as well.
                     if let specialtyCard {
-                        if specialtyCard.showsNowPlayingHeader {
-                            PlaylistSectionHeader(text: "now playing")
+                        VStack(spacing: 0) {
+                            if specialtyCard.showsNowPlayingHeader {
+                                PlaylistSectionHeader(text: "now playing")
+                            }
+                            SpecialtyCardView(card: specialtyCard)
+                                .padding(.vertical, 8)
                         }
-                        SpecialtyCardView(card: specialtyCard)
-                            .padding(.vertical, 8)
                     }
 
                     // Playlist entries
