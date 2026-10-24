@@ -53,13 +53,22 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         var leadItem: NowPlayingItem?
         var whosOn: NowPlayingSpotlight?
         var recents: [NowPlayingItem]
+        /// The specialty show on the air, with the DJ handle as its person line.
+        var headline: NowPlayingHeadline?
+        /// The program's logo decoded no larger than the family needs; `nil` draws the tile.
+        var logo: CGImage?
+    }
+
+    /// The longest side, in pixels, of the logo the family draws: its tile or badge, never the full-size file.
+    private static func logoPixelSize(for family: WidgetFamily) -> Int {
+        family == .systemSmall ? 240 : 300
     }
 
     /// The lead comes from `Playlist.nowPlayingLead` — the rule every other now-playing
     /// surface reads — so a previous show's last song is never named as playing now. The
     /// recents skip the leader, or are the newest three when no song leads. One derivation
     /// for both `snapshot` and `timeline`.
-    private func nowPlayingItems(from playlist: Playlist) async -> WidgetItems {
+    private func nowPlayingItems(from playlist: Playlist, family: WidgetFamily) async -> WidgetItems {
         let lead = playlist.nowPlayingLead
         let leadPlaycut: Playcut? = switch lead {
         case .song(let playcut): playcut
@@ -73,19 +82,37 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             )
         }
         let leadItem = leadPlaycut == nil ? nil : items.first
+        let card = playlist.specialtyCard
+        let headline = card.map { NowPlayingHeadline(program: $0.program, person: $0.djHandle) }
+        // Large keeps its layout today, so only small and medium carry a logo.
+        let logo = if let card, family != .systemLarge, family != .systemExtraLarge {
+            await SpecialtyArtwork.logo(for: card.program, maxPixelSize: Self.logoPixelSize(for: family))
+        } else {
+            nil as CGImage?
+        }
         return WidgetItems(
             lead: lead,
             leadItem: leadItem,
             whosOn: playlist.nowPlayingSpotlight,
-            recents: leadItem == nil ? items : Array(items.dropFirst())
+            recents: leadItem == nil ? items : Array(items.dropFirst()),
+            headline: headline,
+            logo: logo
         )
     }
 
     /// The entry for a derived lead and recents, or nil when there is nothing to show.
     private func entry(_ items: WidgetItems, family: WidgetFamily) -> NowPlayingTimelineEntry? {
-        switch Playlist.widgetContent(lead: items.lead, hasRecents: !items.recents.isEmpty) {
+        switch Playlist.widgetContent(lead: items.lead, hasRecents: !items.recents.isEmpty, program: items.headline?.program) {
         case .lead:
             items.leadItem.map { NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family) }
+        case .leadInProgram:
+            items.leadItem.map {
+                NowPlayingTimelineEntry(nowPlayingItem: $0, recentItems: items.recents, family: family, headline: items.headline, logo: items.logo)
+            }
+        case .program:
+            items.lead.headline(person: items.headline?.person ?? "").map {
+                NowPlayingTimelineEntry(headline: $0, logo: items.logo, recentItems: items.recents, family: family)
+            }
         case .whosOn:
             items.whosOn.map { NowPlayingTimelineEntry.whosOn($0, recentItems: items.recents, family: family) }
         case .stationLine:
@@ -120,7 +147,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             family: String(describing: family)
         ))
 
-        let items = await nowPlayingItems(from: playlistService.fetchPlaylist())
+        let items = await nowPlayingItems(from: playlistService.fetchPlaylist(), family: family)
 
         // Handle empty playlist gracefully with empty state
         return entry(items, family: family) ?? .emptyState(family: family)
@@ -128,7 +155,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
 
     func timeline(for configuration: NowPlayingWidgetIntent, in context: Context) async -> Timeline<NowPlayingTimelineEntry> {
         let family = context.family
-        var items = WidgetItems(lead: .nothing, leadItem: nil, whosOn: nil, recents: [])
+        var items = WidgetItems(lead: .nothing, leadItem: nil, whosOn: nil, recents: [], headline: nil, logo: nil)
         // A failing fetch is swallowed into an empty playlist by
         // `PlaylistFetcher`, so an empty timeline and a broken one are
         // indistinguishable from the return value alone. The delta on the
@@ -147,11 +174,13 @@ final class Provider: AppIntentTimelineProvider, Sendable {
                 lead: .song(placeholder.playcut),
                 leadItem: placeholder,
                 whosOn: nil,
-                recents: [.placeholder, .placeholder, .placeholder]
+                recents: [.placeholder, .placeholder, .placeholder],
+                headline: nil,
+                logo: nil
             )
         } else {
             let errorsBefore = await playlistService.fetchErrorCount()
-            items = await nowPlayingItems(from: playlistService.fetchPlaylist())
+            items = await nowPlayingItems(from: playlistService.fetchPlaylist(), family: family)
             fetchFailed = (await playlistService.fetchErrorCount()) > errorsBefore
         }
 

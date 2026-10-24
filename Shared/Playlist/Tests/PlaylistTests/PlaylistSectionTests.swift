@@ -19,6 +19,7 @@ private let middle = Playcut.stub(id: 11, showID: 42)
 private let oldest = Playcut.stub(id: 10, showID: 42)
 private let previousShow = Playcut.stub(id: 9, showID: 41)
 private let entry = SpotlightEntry.stub(id: 13)
+private let hogwash = SpecialtyShowRef(id: 3, slug: "hogwash", name: "Hogwash", shortName: "HW", tagline: "Weird and wonderful")
 
 struct PlaylistSectionCase: Sendable, CustomTestStringConvertible {
     let name: String
@@ -56,17 +57,28 @@ struct PlaylistSectionTests {
         #expect(Playlist.widgetRecents(of: [], lead: .nothing).isEmpty)
     }
 
-    @Test("widget content: song, who's-on line, recents under the station line, or the empty state", arguments: [
-        (NowPlayingLead.song(newest), true, WidgetContent.lead),
-        (.song(newest), false, .lead),
-        (.spotlight(entry), true, .whosOn),
-        (.spotlight(entry), false, .whosOn),
-        (.djHandle("Cat Power Hour"), true, .stationLine),
-        (.djHandle("Cat Power Hour"), false, .empty),
-        (.nothing, true, .stationLine),
-        (.nothing, false, .empty),
+    @Test("widget content: song, song in a specialty program, program headline, who's-on line, recents under the station line, or the empty state", arguments: [
+        (NowPlayingLead.song(newest), true, nil, WidgetContent.lead),
+        (.song(newest), false, nil, .lead),
+        (.song(newest), true, hogwash, .leadInProgram),
+        (.song(newest), false, hogwash, .leadInProgram),
+        (.specialtyCard(hogwash), true, hogwash, .program),
+        (.specialtyCard(hogwash), false, hogwash, .program),
+        (.spotlight(entry), true, nil, .whosOn),
+        (.spotlight(entry), false, hogwash, .whosOn),
+        (.djHandle("Cat Power Hour"), true, nil, .stationLine),
+        (.djHandle("Cat Power Hour"), false, nil, .empty),
+        (.nothing, true, nil, .stationLine),
+        (.nothing, false, nil, .empty),
     ])
-    func widgetContent(lead: NowPlayingLead, hasRecents: Bool, expected: WidgetContent) {
-        #expect(Playlist.widgetContent(lead: lead, hasRecents: hasRecents) == expected)
+    func widgetContent(lead: NowPlayingLead, hasRecents: Bool, program: SpecialtyShowRef?, expected: WidgetContent) {
+        #expect(Playlist.widgetContent(lead: lead, hasRecents: hasRecents, program: program) == expected)
+    }
+
+    @Test("A specialty show's layouts show two recents; every other layout allows three", arguments: [
+        (WidgetContent.leadInProgram, 2), (.program, 2), (.lead, 3), (.whosOn, 3), (.stationLine, 3), (.empty, 3),
+    ])
+    func recentLimit(content: WidgetContent, expected: Int) {
+        #expect(content.recentLimit == expected)
     }
 }
