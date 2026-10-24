@@ -64,19 +64,24 @@ struct SquareFill<Content: View>: View {
 public struct SpecialtyArtworkView: View {
     private let program: SpecialtyShowRef
     private let size: CGFloat?
+    private let resolve: @Sendable (SpecialtyShowRef) async -> CGImage?
     @State private var logo: CGImage?
-    @State private var state = SpecialtyArtwork.LogoState.loading
 
     public init(program: SpecialtyShowRef, size: CGFloat) {
-        self.program = program
-        self.size = size
+        self.init(program: program, size: size, resolve: { await SpecialtyArtwork.logo(for: $0) })
     }
 
     /// The artwork fills the frame its parent proposes, so a custom `Layout`
     /// can size it without the view knowing the number.
     public init(program: SpecialtyShowRef) {
+        self.init(program: program, size: nil, resolve: { await SpecialtyArtwork.logo(for: $0) })
+    }
+
+    /// `resolve` is injected so a test can count resolutions.
+    init(program: SpecialtyShowRef, size: CGFloat?, resolve: @escaping @Sendable (SpecialtyShowRef) async -> CGImage?) {
         self.program = program
-        self.size = nil
+        self.size = size
+        self.resolve = resolve
     }
 
     /// The sized init pins the frame; the size-less init fills the proposed square.
@@ -91,28 +96,21 @@ public struct SpecialtyArtworkView: View {
         }
     }
 
+    /// Renders only state: the tile until the task resolves a logo.
     public var body: some View {
-        let url = SpecialtyArtwork.logoURL(for: program)
         sized {
-            if SpecialtyArtwork.showsLogo(url: url, state: state), let logo {
+            if let logo {
                 Image(decorative: logo, scale: 1).resizable().scaledToFill()
-            } else if let bundled = SpecialtyArtwork.bundledLogo(for: program) {
-                Image(decorative: bundled, scale: 1).resizable().scaledToFill()
             } else {
                 SpecialtyTileView(program: program)
             }
         }
-        .task(id: url) {
-            guard let url else { return }
-            state = .loading
-            do {
-                logo = try await CacheCoordinator.AlbumArt.image(from: url)
-                state = .loaded
-            } catch {
-                // A torn-down task is not a failed load; the view is going away or the task will rerun.
-                if isCancellation(error) { return }
-                state = .failed
-            }
+        .task(id: program) {
+            logo = nil
+            let resolved = await resolve(program)
+            // A cancelled task is not a failure: leave the state for the rerun.
+            if Task.isCancelled { return }
+            logo = resolved
         }
     }
 }
