@@ -24,4 +24,10 @@ enum SongRowMetrics {
     static func artworkSlotWidth(rowWidth: CGFloat) -> CGFloat {
         rowWidth / aspectRatio
     }
+
+    /// The side of the square artwork inside the slot: the slot's width less the
+    /// padding on both sides, never negative.
+    static func artworkSide(rowWidth: CGFloat) -> CGFloat {
+        max(artworkSlotWidth(rowWidth: rowWidth) - 2 * artworkPadding, 0)
+    }
 }
