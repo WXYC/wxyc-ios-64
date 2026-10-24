@@ -39,7 +39,26 @@ public struct SpecialtyTileView: View {
     }
 }
 
-/// The program's logo at `size` x `size`, loaded through the shared artwork cache.
+/// Draws `content` filling a square slot: the square is as large as the proposal
+/// allows (its shorter side), and `content` is cropped to it, so an image of any
+/// aspect ratio can never report a size larger than its slot.
+struct SquareFill<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay { content }
+            .clipped()
+    }
+}
+
+/// The program's logo at `size` x `size` (or, with no size, filling the square
+/// its parent proposes), loaded through the shared artwork cache.
 /// The tile occupies the same frame while loading, on failure, and when there is no logo,
 /// so nothing shifts when the logo arrives.
 public struct SpecialtyArtworkView: View {
@@ -60,9 +79,21 @@ public struct SpecialtyArtworkView: View {
         self.size = nil
     }
 
+    /// The sized init pins the frame; the size-less init fills the proposed square.
+    @ViewBuilder
+    private func sized<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        if let size {
+            ZStack { content() }
+                .frame(width: size, height: size)
+                .clipped()
+        } else {
+            SquareFill { ZStack { content() } }
+        }
+    }
+
     public var body: some View {
         let url = SpecialtyArtwork.logoURL(for: program)
-        ZStack {
+        sized {
             if SpecialtyArtwork.showsLogo(url: url, state: state), let logo {
                 Image(decorative: logo, scale: 1).resizable().scaledToFill()
             } else if let bundled = SpecialtyArtwork.bundledLogo(for: program) {
@@ -71,8 +102,6 @@ public struct SpecialtyArtworkView: View {
                 SpecialtyTileView(program: program)
             }
         }
-        .frame(width: size, height: size)
-        .clipped()
         .task(id: url) {
             guard let url else { return }
             state = .loading

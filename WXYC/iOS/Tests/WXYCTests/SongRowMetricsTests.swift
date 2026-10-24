@@ -61,4 +61,20 @@ struct SpecialtyCardLayoutTests {
         #expect(abs(columns.slot - 2 * SongRowMetrics.artworkPadding - SongRowMetrics.artworkSide(rowWidth: width)) < 0.001
             || SongRowMetrics.artworkSide(rowWidth: width) == 0)
     }
+
+    @Test("Card height is the taller of the slot and the text", arguments: [
+        (400 as CGFloat, 50 as CGFloat), (400, 300), (400, 160),
+    ])
+    func cardHeight(width: CGFloat, text: CGFloat) {
+        let slot = SpecialtyCardLayout.columnWidths(forCardWidth: width).slot
+        #expect(abs(SpecialtyCardLayout.cardHeight(forCardWidth: width, textHeight: text) - max(slot, text)) < 0.001)
+    }
+
+    @Test("Resolved width falls back for nil and infinite proposals", arguments: [
+        (nil, 600), (CGFloat.infinity, 600), (320, 320),
+    ] as [(CGFloat?, CGFloat)])
+    func resolvedWidth(proposed: CGFloat?, expected: CGFloat) {
+        #expect(SpecialtyCardLayout.resolvedWidth(proposed) == expected)
+        #expect(SpecialtyCardLayout.columnWidths(forCardWidth: SpecialtyCardLayout.resolvedWidth(proposed)).text.isFinite)
+    }
 }
