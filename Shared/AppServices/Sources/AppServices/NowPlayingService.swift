@@ -152,7 +152,7 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
                     return nil
                 }
 
-                // A who's-on entry newer than the song leads: `NowPlayingInfoCenterManager.handleSpotlight`
+                // A who's-on entry newer than the song leads: `NowPlayingInfoCenterManager.handleLead`
                 // writes it, and the song must not overwrite it until the next one lands.
                 if case .spotlight = playlist.nowPlayingLead {
                     continue
@@ -178,7 +178,7 @@ public final actor NowPlayingService: Sendable, AsyncSequence {
     }
 
     /// Fetches the artwork for `playcut`; a failed fetch yields an item with no artwork.
-    func item(for playcut: Playcut) async -> NowPlayingItem {
+    public func item(for playcut: Playcut) async -> NowPlayingItem {
         let artwork: Image?
         do {
             let cgImage = try await artworkService.fetchArtwork(for: playcut)

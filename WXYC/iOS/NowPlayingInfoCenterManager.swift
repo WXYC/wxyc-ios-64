@@ -9,10 +9,12 @@
 //
 
 import AppServices
+import Artwork
 import Foundation
 import Logger
 import MediaPlayer
 import Playlist
+import SwiftUI
 import WXUI
 
 // MARK: - NowPlayingInfoCenter Protocol
@@ -35,6 +37,7 @@ extension MPNowPlayingInfoCenter: NowPlayingInfoCenterProtocol {}
 final class NowPlayingInfoCenterManager {
     private var infoCenter: NowPlayingInfoCenterProtocol
     private let boundsSize: CGSize
+    private let programLogo: @Sendable (SpecialtyShowRef) async -> CGImage?
 
     /// Local mirror of the dictionary this manager last wrote to `infoCenter`.
     ///
@@ -48,10 +51,12 @@ final class NowPlayingInfoCenterManager {
 
     init(
         infoCenter: NowPlayingInfoCenterProtocol = MPNowPlayingInfoCenter.default(),
-        boundsSize: CGSize
+        boundsSize: CGSize,
+        programLogo: @escaping @Sendable (SpecialtyShowRef) async -> CGImage? = { await SpecialtyArtwork.logo(for: $0) }
     ) {
         self.infoCenter = infoCenter
         self.boundsSize = boundsSize
+        self.programLogo = programLogo
     }
 
     /// Write `info` to both the local cache and the system info center in one place,
@@ -83,15 +88,19 @@ final class NowPlayingInfoCenterManager {
         }
     }
 
-    /// Write a leading who's-on entry in place of the song: the strings from the Now Playing table
-    /// and the station artwork, never the previous song's album art. A specialty program's own
-    /// artwork waits on the phase 1 artwork chain (#1172); until then the station artwork stands in.
-    func handleSpotlight(_ spotlight: NowPlayingSpotlight) {
-        mutate { info in
-            info[MPMediaItemPropertyTitle] = spotlight.title
-            info[MPMediaItemPropertyArtist] = spotlight.artist
-            info[MPMediaItemPropertyAlbumTitle] = spotlight.album
-            info[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: nil, boundsSize: self.boundsSize)
+    /// The one writer of what leads: switches over ``Playlist/nowPlayingLead`` and writes title, artist,
+    /// album and artwork from it. A song resolves its artwork through `songItem`; every other lead takes
+    /// its strings from ``Playlist/nowPlayingSpotlight``. Leaving a lead clears it, so the previous
+    /// song or who's-on entry is never left standing.
+    func handleLead(of playlist: Playlist, songItem: (Playcut) async -> NowPlayingItem) async {
+        switch playlist.nowPlayingLead {
+        case .song(let playcut):
+            handleNowPlayingItem(await songItem(playcut))
+        case .spotlight, .specialtyCard, .djHandle:
+            guard let lead = playlist.nowPlayingSpotlight else { return clearTrack() }
+            await write(lead)
+        case .nothing:
+            clearTrack()
         }
     }
 
@@ -130,6 +139,45 @@ final class NowPlayingInfoCenterManager {
     }
 
     // MARK: - Private
+
+    private func clearTrack() {
+        mutate { info in
+            for key in [MPMediaItemPropertyTitle, MPMediaItemPropertyArtist, MPMediaItemPropertyAlbumTitle, MPMediaItemPropertyArtwork] {
+                info.removeValue(forKey: key)
+            }
+        }
+    }
+
+    /// Writes `lead` with the station artwork or the program's text tile at once, then swaps in the
+    /// program's logo if it loads and `lead` is still what is showing. A missing logo is never a broken image.
+    private func write(_ lead: NowPlayingSpotlight) async {
+        var program: SpecialtyShowRef?
+        if case .program(let show) = lead.artwork { program = show }
+        let tile = program.flatMap { tileImage(for: $0) }
+        mutate { info in
+            info[MPMediaItemPropertyTitle] = lead.title
+            info[MPMediaItemPropertyArtist] = lead.artist
+            info[MPMediaItemPropertyAlbumTitle] = lead.album
+            info[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: tile, boundsSize: self.boundsSize)
+        }
+        guard let program, let logo = await programLogo(program),
+              cachedInfo?[MPMediaItemPropertyTitle] as? String == lead.title else { return }
+        mutate { $0[MPMediaItemPropertyArtwork] = self.mediaItemArtwork(from: platformImage(logo), boundsSize: self.boundsSize) }
+    }
+
+    /// The shared Artwork tile, rendered on the device so it needs no server asset.
+    private func tileImage(for program: SpecialtyShowRef) -> PlatformImage? {
+        let renderer = ImageRenderer(content: SpecialtyTileView(program: program).frame(width: boundsSize.width, height: boundsSize.height))
+        return renderer.cgImage.map(platformImage)
+    }
+
+    private func platformImage(_ image: CGImage) -> PlatformImage {
+        #if canImport(UIKit)
+        PlatformImage(cgImage: image)
+        #else
+        PlatformImage(cgImage: image, size: NSSize(width: image.width, height: image.height))
+        #endif
+    }
 
     private func mediaItemArtwork(from image: PlatformImage?, boundsSize: CGSize) -> MPMediaItemArtwork {
         // Capture the resolved image on MainActor before creating the artwork.

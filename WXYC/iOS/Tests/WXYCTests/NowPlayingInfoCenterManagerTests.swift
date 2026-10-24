@@ -17,6 +17,7 @@ import UIKit
 @testable import WXYC
 @testable import Playlist
 @testable import AppServices
+import Artwork
 
 // MARK: - Mock NowPlayingInfoCenter
 
@@ -122,26 +123,6 @@ struct NowPlayingInfoTests {
         #expect(info?[MPMediaItemPropertyAlbumTitle] as? String == "My Album")
     }
 
-    @Test("A leading who's-on entry writes the table's strings over the previous song, with the station artwork")
-    func spotlightInfoOverwritesSong() {
-        let mockInfoCenter = MockNowPlayingInfoCenter()
-        let manager = NowPlayingInfoCenterManager(
-            infoCenter: mockInfoCenter,
-            boundsSize: CGSize(width: 100, height: 100)
-        )
-        manager.handleNowPlayingItem(makeNowPlayingItem(songTitle: "Back, Baby", artistName: "Jessica Pratt", releaseTitle: "On Your Own Love Again"))
-
-        manager.handleSpotlight(NowPlayingSpotlight(
-            title: "In the studio: Ana Lucía Ríos", artist: "DJ Sidechain", album: "WXYC 89.3 FM", artwork: .station
-        ))
-
-        let info = mockInfoCenter.nowPlayingInfo
-        #expect(info?[MPMediaItemPropertyTitle] as? String == "In the studio: Ana Lucía Ríos")
-        #expect(info?[MPMediaItemPropertyArtist] as? String == "DJ Sidechain")
-        #expect(info?[MPMediaItemPropertyAlbumTitle] as? String == "WXYC 89.3 FM")
-        #expect(info?[MPMediaItemPropertyArtwork] is MPMediaItemArtwork)
-    }
-
     @Test("Artwork is set when provided")
     func artworkIsSetWhenProvided() {
         let mockInfoCenter = MockNowPlayingInfoCenter()
@@ -199,6 +180,150 @@ struct NowPlayingInfoTests {
         manager.handleNowPlayingItem(item2)
         #expect(mockInfoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String == "Song 2")
         #expect(mockInfoCenter.nowPlayingInfo?[MPMediaItemPropertyArtist] as? String == "Artist 2")
+    }
+}
+
+// MARK: - Lead-driven writer
+
+nonisolated private let hogwash = SpecialtyShowRef(id: 5, slug: "hogwash", name: "Hogwash", shortName: "HOG", accentColor: "#FF8800")
+nonisolated private let program = SpecialtyShowRef(
+    id: 6, slug: "nse", name: "New Science Experience", shortName: "NSE",
+    artwork: .init(squareURL: URL(string: "https://example.com/nse.png")), accentColor: "#2255AA"
+)
+
+nonisolated private func leadPlaylist(onAir: OnAir, songs: [Playcut] = []) -> Playlist {
+    Playlist(playcuts: songs, breakpoints: [], talksets: [], onAir: onAir)
+}
+
+nonisolated private func song(showID: UInt64?) -> Playcut {
+    Playcut(
+        id: 10, hour: 0, chronOrderID: 10, timeCreated: 0, showID: showID,
+        songTitle: "la paradoja", labelName: nil, artistName: "Juana Molina", releaseTitle: "DOGA"
+    )
+}
+
+struct LeadCase: Sendable, CustomTestStringConvertible {
+    let name: String
+    let playlist: Playlist
+    let title: String?
+    let artist: String?
+    let album: String?
+    var testDescription: String { name }
+}
+
+nonisolated private let weirs = SpotlightEntry(
+    id: 11, hour: 0, chronOrderID: 20, timeCreated: 0, showID: 42, role: "performer", name: "Weirs"
+)
+
+nonisolated private let leadCases: [LeadCase] = [
+    LeadCase(
+        name: "a song from the open show",
+        playlist: leadPlaylist(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil)), songs: [song(showID: 42)]),
+        title: "la paradoja", artist: "Juana Molina", album: "DOGA"
+    ),
+    LeadCase(
+        name: "a who's-on entry on a specialty show: program over the person",
+        playlist: leadPlaylist(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: hogwash, spotlight: weirs))),
+        title: "Hogwash", artist: "Weirs", album: "WXYC 89.3 FM"
+    ),
+    LeadCase(
+        name: "a who's-on entry on a freeform show: role line over the handle",
+        playlist: leadPlaylist(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil, spotlight: weirs))),
+        title: "Live in the studio: Weirs", artist: "DJ Sidechain", album: "WXYC 89.3 FM"
+    ),
+    LeadCase(
+        name: "no song yet, specialty show: program over the DJ handle",
+        playlist: leadPlaylist(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: hogwash))),
+        title: "Hogwash", artist: "DJ Sidechain", album: "WXYC 89.3 FM"
+    ),
+    LeadCase(
+        name: "no song yet, freeform show: the handle over the station",
+        playlist: leadPlaylist(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil))),
+        title: "DJ Sidechain", artist: "WXYC 89.3 FM", album: "WXYC 89.3 FM"
+    ),
+    LeadCase(
+        name: "the previous show's song never names a new show",
+        playlist: leadPlaylist(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil)), songs: [song(showID: 41)]),
+        title: "DJ Sidechain", artist: "WXYC 89.3 FM", album: "WXYC 89.3 FM"
+    ),
+    LeadCase(
+        name: "automation leads with nothing",
+        playlist: leadPlaylist(onAir: .automation, songs: [song(showID: 41)]),
+        title: nil, artist: nil, album: nil
+    ),
+]
+
+@Suite("Now Playing info follows the lead")
+@MainActor
+struct NowPlayingLeadWriterTests {
+    private func makeManager(
+        logo: @escaping @Sendable (SpecialtyShowRef) async -> CGImage? = { _ in nil }
+    ) -> (NowPlayingInfoCenterManager, MockNowPlayingInfoCenter) {
+        let infoCenter = MockNowPlayingInfoCenter()
+        let manager = NowPlayingInfoCenterManager(infoCenter: infoCenter, boundsSize: CGSize(width: 100, height: 100), programLogo: logo)
+        return (manager, infoCenter)
+    }
+
+    @Test("title, artist and album for every lead", arguments: leadCases)
+    func strings(_ testCase: LeadCase) async {
+        let (manager, infoCenter) = makeManager()
+        // A song from the previous show is on the lock screen first, as after a show change.
+        manager.handleNowPlayingItem(makeNowPlayingItem(songTitle: "Back, Baby", artistName: "Jessica Pratt"))
+
+        await manager.handleLead(of: testCase.playlist) { NowPlayingItem(playcut: $0, artwork: nil) }
+
+        let info = infoCenter.nowPlayingInfo
+        #expect(info?[MPMediaItemPropertyTitle] as? String == testCase.title)
+        #expect(info?[MPMediaItemPropertyArtist] as? String == testCase.artist)
+        #expect(info?[MPMediaItemPropertyAlbumTitle] as? String == testCase.album)
+        #expect((info?[MPMediaItemPropertyArtwork] is MPMediaItemArtwork) == (testCase.title != nil))
+    }
+
+    @Test("a who's-on entry is cleared by the next song, and a song by automation")
+    func leavingALeadClearsIt() async {
+        let (manager, infoCenter) = makeManager()
+        let open = OnAirShow(id: 42, title: nil, specialty: nil, spotlight: weirs)
+        let fetch: @MainActor (Playcut) async -> NowPlayingItem = { NowPlayingItem(playcut: $0, artwork: nil) }
+
+        await manager.handleLead(of: leadPlaylist(onAir: .dj("DJ Sidechain", show: open)), songItem: fetch)
+        #expect(infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String == "Live in the studio: Weirs")
+
+        let later = Playcut(id: 30, hour: 0, chronOrderID: 30, timeCreated: 0, showID: 42, songTitle: "Back, Baby", labelName: nil, artistName: "Jessica Pratt", releaseTitle: nil)
+        await manager.handleLead(of: leadPlaylist(onAir: .dj("DJ Sidechain", show: open), songs: [later]), songItem: fetch)
+        #expect(infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String == "Back, Baby")
+
+        await manager.handleLead(of: leadPlaylist(onAir: .automation), songItem: fetch)
+        #expect(infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] == nil)
+        #expect(infoCenter.nowPlayingInfo?[MPMediaItemPropertyArtwork] == nil)
+    }
+
+    @Test("a program with no logo writes the rendered text tile at once; one with a logo swaps it in")
+    func programArtwork() async throws {
+        let onAir = OnAir.dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: program))
+        let playlist = leadPlaylist(onAir: onAir)
+        let fetch: @MainActor (Playcut) async -> NowPlayingItem = { NowPlayingItem(playcut: $0, artwork: nil) }
+
+        let tileOnly = makeManager { _ in nil }
+        await tileOnly.0.handleLead(of: playlist, songItem: fetch)
+        let tile = try #require(tileOnly.1.nowPlayingInfo?[MPMediaItemPropertyArtwork] as? MPMediaItemArtwork)
+
+        let context = CGContext(data: nil, width: 4, height: 4, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.setFillColor(UIColor.white.cgColor)
+        context.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        let logo = try #require(context.makeImage())
+        let withLogo = makeManager { _ in logo }
+        await withLogo.0.handleLead(of: playlist, songItem: fetch)
+        let logoArtwork = try #require(withLogo.1.nowPlayingInfo?[MPMediaItemPropertyArtwork] as? MPMediaItemArtwork)
+
+        let tileImage = try #require(tile.image(at: CGSize(width: 100, height: 100)))
+        let logoImage = try #require(logoArtwork.image(at: CGSize(width: 100, height: 100)))
+        #expect(tileImage.pngData() != logoImage.pngData())
+
+        let station = makeManager()
+        await station.0.handleLead(of: leadPlaylist(onAir: .dj("DJ Sidechain", show: OnAirShow(id: 42, title: nil, specialty: nil))), songItem: fetch)
+        let stationArtwork = try #require(station.1.nowPlayingInfo?[MPMediaItemPropertyArtwork] as? MPMediaItemArtwork)
+        let stationImage = try #require(stationArtwork.image(at: CGSize(width: 100, height: 100)))
+        #expect(tileImage.pngData() != stationImage.pngData(), "the program's tile, not the station artwork")
     }
 }
 

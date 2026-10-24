@@ -210,7 +210,6 @@ final class Singletonia {
     }
 
     private var nowPlayingObservationTask: Task<Void, Never>?
-    private var nowPlayingSpotlightTask: Task<Void, Never>?
     private var playbackStateTask: Task<Void, Never>?
     private var spotlightDonationTask: Task<Void, Never>?
     private var spotlightMetadataEnrichmentTask: Task<Void, Never>?
@@ -399,23 +398,11 @@ final class Singletonia {
     }
 
     private func startNowPlayingObservation(nowPlayingService: NowPlayingService) {
-        nowPlayingObservationTask = Task { [weak self] in
-            do {
-                for try await item in nowPlayingService {
-                    guard !Task.isCancelled else { break }
-                    self?.nowPlayingInfoCenterManager.handleNowPlayingItem(item)
-                }
-            } catch {
-                Log(.error, "NowPlaying observation error: \(error)")
-            }
-        }
-        // `NowPlayingService` yields no song while a who's-on entry leads; this writes the entry.
-        nowPlayingSpotlightTask = Task { [weak self, playlistService] in
+        // One writer of the lock screen, Control Center and CarPlay: the lead decides what it says.
+        nowPlayingObservationTask = Task { [weak self, playlistService] in
             for await playlist in playlistService.updates() {
                 guard !Task.isCancelled else { break }
-                if let spotlight = playlist.nowPlayingSpotlight {
-                    self?.nowPlayingInfoCenterManager.handleSpotlight(spotlight)
-                }
+                await self?.nowPlayingInfoCenterManager.handleLead(of: playlist) { await nowPlayingService.item(for: $0) }
             }
         }
     }
