@@ -62,6 +62,7 @@ struct MediumNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
 
                     PlayButton()
                 }
+                .foregroundStyle(.white)
             }
         }
         .safeAreaPadding()

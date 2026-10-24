@@ -64,7 +64,7 @@ struct PlaylistSectionTests {
         (.song(newest), false, hogwash, .leadInProgram),
         (.specialtyCard(hogwash), true, hogwash, .program),
         (.specialtyCard(hogwash), false, hogwash, .program),
-        // No program on the air (a freeform show): the freeform layouts, with no program headline and no trimming.
+        // A specialty-card lead with no program is unreachable from Provider (the lead and the program both come from the same on-air show); these rows pin the freeform fallback layouts regardless.
         (.specialtyCard(hogwash), true, nil, .stationLine),
         (.specialtyCard(hogwash), false, nil, .empty),
         (.spotlight(entry), true, nil, .whosOn),

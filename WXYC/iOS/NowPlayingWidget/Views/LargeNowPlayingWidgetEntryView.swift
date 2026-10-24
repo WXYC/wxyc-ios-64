@@ -70,6 +70,7 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                 }
                 PlayButton()
             }
+            .foregroundStyle(.white)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -84,6 +85,7 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     Text(tagline).font(.caption).lineLimit(1)
                 }
             }
+            .foregroundStyle(.white)
         }
     }
 }
