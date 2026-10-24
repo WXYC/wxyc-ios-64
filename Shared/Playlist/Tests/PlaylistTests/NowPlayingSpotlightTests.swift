@@ -86,6 +86,18 @@ struct NowPlayingSpotlightTests {
         #expect(playlist.nowLine == expected)
     }
 
+    @Test("the open show's spotlight is available whether or not it leads, and only for a named entry of this show", arguments: [
+        (playlist("DJ Sidechain", specialty: nil, spotlight: ana), "In the studio: Ana Lucía Ríos" as String?),
+        (playlist("DJ Sidechain", specialty: nil, spotlight: ana, songs: [.stub(id: 10, chronOrderID: 5, showID: 42)]), "In the studio: Ana Lucía Ríos"),
+        (playlist("DJ Sidechain", specialty: nil, spotlight: .stub(role: "host", name: "DJ Sidechain")), nil),
+        (playlist("DJ Sidechain", specialty: nil, spotlight: .stub(showID: 41, role: "guest", name: "Ana")), nil),
+        (Playlist.stub(onAir: .dj("DJ Sidechain", show: OnAirShow(id: nil, title: nil, specialty: nil, spotlight: ana))), nil),
+        (Playlist.stub(onAir: .automation), nil),
+    ] as [(Playlist, String?)])
+    func openShowSpotlight(playlist: Playlist, expected: String?) {
+        #expect(playlist.openShowSpotlight?.roleLine == expected)
+    }
+
     @Test("a specialty card carries the now line")
     func cardNowLine() {
         #expect(playlist("DJ Sidechain", specialty: backyardBBQ, spotlight: weirs).specialtyCard?.nowLine == "Live in the studio: Weirs")

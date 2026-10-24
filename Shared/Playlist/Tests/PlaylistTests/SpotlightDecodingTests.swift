@@ -21,17 +21,18 @@ private func spotlightRow(role: String, name: String = "Weirs", id: Int = 7, pla
 
 struct SpotlightRoleCase: Sendable, CustomTestStringConvertible {
     let role: String
+    let roleLabel: String?
     let roleLine: String?
     var testDescription: String { role }
 }
 
 private let roleCases: [SpotlightRoleCase] = [
-    SpotlightRoleCase(role: "guest", roleLine: "In the studio: Weirs"),
-    SpotlightRoleCase(role: "performer", roleLine: "Live in the studio: Weirs"),
-    SpotlightRoleCase(role: "reader", roleLine: "Reading now: Weirs"),
-    SpotlightRoleCase(role: "dj", roleLine: "Now mixing: Weirs"),
-    SpotlightRoleCase(role: "host", roleLine: nil),
-    SpotlightRoleCase(role: "ventriloquist", roleLine: "On air: Weirs"),
+    SpotlightRoleCase(role: "guest", roleLabel: "In the studio", roleLine: "In the studio: Weirs"),
+    SpotlightRoleCase(role: "performer", roleLabel: "Live in the studio", roleLine: "Live in the studio: Weirs"),
+    SpotlightRoleCase(role: "reader", roleLabel: "Reading now", roleLine: "Reading now: Weirs"),
+    SpotlightRoleCase(role: "dj", roleLabel: "Now mixing", roleLine: "Now mixing: Weirs"),
+    SpotlightRoleCase(role: "host", roleLabel: nil, roleLine: nil),
+    SpotlightRoleCase(role: "ventriloquist", roleLabel: "On air", roleLine: "On air: Weirs"),
 ]
 
 struct SpotlightOnAirCase: Sendable, CustomTestStringConvertible {
@@ -106,6 +107,7 @@ struct SpotlightDecodingTests {
         #expect(entry.chronOrderID == (42 << 32) | 5)
         #expect(entry.role == testCase.role)
         #expect(entry.name == "Weirs")
+        #expect(entry.roleLabel == testCase.roleLabel)
         #expect(entry.roleLine == testCase.roleLine)
     }
 

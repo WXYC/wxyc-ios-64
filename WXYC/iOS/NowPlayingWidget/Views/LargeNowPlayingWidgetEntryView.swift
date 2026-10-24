@@ -36,6 +36,9 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
                     if let headline = entry.headline {
                         programCard(headline)
                     }
+                    if let guestLine = entry.guestLine {
+                        Text(guestLine).font(.subheadline).lineLimit(1).foregroundStyle(.white)
+                    }
                     Header(entry: entry)
                 }
 
@@ -65,8 +68,8 @@ struct LargeNowPlayingWidgetEntryView: NowPlayingWidgetEntryView {
             VStack(alignment: .leading) {
                 Text(headline.program.name).font(.headline).lineLimit(2)
                 Text(headline.person).font(.subheadline).lineLimit(1)
-                if let tagline = headline.tagline {
-                    Text(tagline).font(.caption).lineLimit(2)
+                if let supporting = entry.supportingLine {
+                    Text(supporting).font(.caption).lineLimit(2)
                 }
                 PlayButton()
             }

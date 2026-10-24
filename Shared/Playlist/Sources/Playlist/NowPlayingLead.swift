@@ -51,7 +51,7 @@ public extension Playlist {
             guard let showID = show?.id else {
                 return newest.map { .song($0) } ?? fallback
             }
-            let spotlight = show?.spotlight.flatMap { $0.showID == showID && !$0.isHost ? $0 : nil }
+            let spotlight = openShowSpotlight
             if let newest, newest.showID == showID {
                 if let spotlight, spotlight.chronOrderID > newest.chronOrderID {
                     return .spotlight(spotlight)
