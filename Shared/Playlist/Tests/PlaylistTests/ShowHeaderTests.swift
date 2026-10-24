@@ -23,9 +23,8 @@ struct ShowsDecodingCase: Sendable, CustomTestStringConvertible {
     var testDescription: String { name }
 }
 
-private let hogwash = SpecialtyShowRef(
-    id: 3, slug: "hogwash", name: "Hogwash", shortName: "HW",
-    artwork: .init(squareURL: URL(string: "https://example.com/hogwash.png")), accentColor: "#B3261E"
+private let hogwash = SpecialtyShowRef.stub(
+    accentColor: "#B3261E", squareURL: URL(string: "https://example.com/hogwash.png")
 )
 
 let showsDecodingCases: [ShowsDecodingCase] = [
