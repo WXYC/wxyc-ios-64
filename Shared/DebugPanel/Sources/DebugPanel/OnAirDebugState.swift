@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import Playlist
 import WXUI
 
 #if DEBUG
@@ -42,6 +43,14 @@ public final class OnAirDebugState {
     /// width-condensing can be tried against handles of any length.
     public var forcedDJName: String {
         didSet { persist(forcedDJName, forKey: Keys.forcedDJName) }
+    }
+
+    // MARK: - Simulated specialty show
+
+    /// The specialty show to simulate, applied to every fetched playlist by
+    /// ``SpecialtySimulationStore`` (persisted there). Off by default.
+    public var specialtySimulation: SpecialtySimulation {
+        didSet { SpecialtySimulationStore.shared.simulation = specialtySimulation }
     }
 
     // MARK: - Adaptive handle width
@@ -208,6 +217,7 @@ public final class OnAirDebugState {
 
     private init() {
         let defaults = UserDefaults.standard
+        self.specialtySimulation = SpecialtySimulationStore.shared.simulation ?? SpecialtySimulation()
         self.forceOnAir = defaults.bool(forKey: Keys.forceOnAir)
         self.forcedDJName = defaults.string(forKey: Keys.forcedDJName) ?? "DJ HOUNDSTOOTH"
         self.adaptiveWidth = defaults.object(forKey: Keys.adaptiveWidth) as? Bool ?? true
