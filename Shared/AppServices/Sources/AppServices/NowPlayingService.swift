@@ -98,13 +98,7 @@ extension NowPlayingAnswer {
     /// The approved sentence for a who's-on lead: the person first on a freeform show, the program first on a
     /// specialty show. An unknown role gets the neutral wording.
     fileprivate static func spokenSpotlight(_ entry: SpotlightEntry, program: String?) -> String {
-        let activity: String? = switch entry.role {
-        case "guest": "in the studio"
-        case "performer": "playing live in the studio"
-        case "reader": "reading"
-        case "dj": "mixing"
-        default: nil
-        }
+        let activity = entry.spokenActivity
         if let program {
             return "\(program) on WXYC, with \(entry.name)" + (activity.map { " \($0)" } ?? "") + "."
         }

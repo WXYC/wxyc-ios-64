@@ -39,15 +39,22 @@ public struct SpotlightEntry: PlaylistEntry {
     public var isHost: Bool { role == "host" }
 
     /// The role's label without the name, or `nil` for a `host` row; medium and large widgets show
-    /// it on its own line. The one table of role copy; an unknown role gets the neutral "On air".
-    public var roleLabel: String? {
+    /// it on its own line. An unknown role gets the neutral "On air".
+    public var roleLabel: String? { roleCopy.label }
+
+    /// What Siri says the person is doing ("in the studio"), or `nil` for a `host` row and for an
+    /// unknown role, which is spoken with neutral wording.
+    public var spokenActivity: String? { roleCopy.activity }
+
+    /// The one table of role copy: the on-screen label and the spoken activity for each raw role.
+    private var roleCopy: (label: String?, activity: String?) {
         switch role {
-        case "guest": "In the studio"
-        case "performer": "Live in the studio"
-        case "reader": "Reading now"
-        case "dj": "Now mixing"
-        case "host": nil
-        default: "On air"
+        case "guest": ("In the studio", "in the studio")
+        case "performer": ("Live in the studio", "playing live in the studio")
+        case "reader": ("Reading now", "reading")
+        case "dj": ("Now mixing", "mixing")
+        case "host": (nil, nil)
+        default: ("On air", nil)
         }
     }
 
