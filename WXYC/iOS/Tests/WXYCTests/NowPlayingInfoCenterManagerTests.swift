@@ -17,6 +17,7 @@ import UIKit
 @testable import WXYC
 @testable import Playlist
 @testable import AppServices
+import PlaylistTesting
 import Artwork
 
 // MARK: - Mock NowPlayingInfoCenter
@@ -185,11 +186,8 @@ struct NowPlayingInfoTests {
 
 // MARK: - Lead-driven writer
 
-nonisolated private let hogwash = SpecialtyShowRef(id: 5, slug: "hogwash", name: "Hogwash", shortName: "HOG", accentColor: "#FF8800")
-nonisolated private let program = SpecialtyShowRef(
-    id: 6, slug: "nse", name: "New Science Experience", shortName: "NSE",
-    artwork: .init(squareURL: URL(string: "https://example.com/nse.png")), accentColor: "#2255AA"
-)
+nonisolated private let hogwash = SpecialtyShowRef.stub(id: 5, shortName: "HOG", accentColor: "#FF8800")
+nonisolated private let program = SpecialtyShowRef.logoStub
 
 nonisolated private func leadPlaylist(onAir: OnAir, songs: [Playcut] = []) -> Playlist {
     Playlist(playcuts: songs, breakpoints: [], talksets: [], onAir: onAir)

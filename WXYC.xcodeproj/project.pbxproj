@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5A17E57000000000000000A1 /* PlaylistTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 5A17E57000000000000000A2 /* PlaylistTesting */; };
 		062417DC96252E36AE65C585 /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = E150313F784CF272A32EA642 /* Playback */; };
 		0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 79AE74A2A92779E80E688376 /* Core */; };
 		0FD4D9EC4F5A4F3AACF0396B /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 8A3693E141EF47CABE91D00F /* Sentry */; };
@@ -414,6 +415,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		5A17E57000000000000000A3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A17E57000000000000000A1 /* PlaylistTesting in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		236B51CB2EFC651A0058AD01 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
@@ -679,6 +688,7 @@
 			buildConfigurationList = 0AA7F0BCE12350AF917F286F /* Build configuration list for PBXNativeTarget "WXYCTests" */;
 			buildPhases = (
 				DC2337F574A1DD668183BDF4 /* Sources */,
+				5A17E57000000000000000A3 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -686,6 +696,9 @@
 				9383869B8EF0A8142BC43062 /* PBXTargetDependency */,
 			);
 			name = WXYCTests;
+			packageProductDependencies = (
+				5A17E57000000000000000A2 /* PlaylistTesting */,
+			);
 			productName = WXYCTests;
 			productReference = 09FC6D530E7D389518140201 /* WXYCTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -2604,6 +2617,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		5A17E57000000000000000A2 /* PlaylistTesting */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D49D75D0292248DFCB5BE430 /* XCLocalSwiftPackageReference "Shared/Playlist" */;
+			productName = PlaylistTesting;
+		};
 		01163D6D065337EB60F79C5B /* WXUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = WXUI;

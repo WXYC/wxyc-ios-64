@@ -13,6 +13,7 @@
 
 import AppServices
 import Playlist
+import PlaylistTesting
 import Testing
 import WidgetKit
 @testable import WXYC
@@ -80,9 +81,10 @@ struct NowPlayingTimelineEntrySongDisplayableTests {
     }
 }
 
+nonisolated private let program = SpecialtyShowRef.taggedStub
+
 @Suite("NowPlayingTimelineEntry specialty program entries")
 struct NowPlayingTimelineEntryProgramTests {
-    private let program = SpecialtyShowRef(id: 3, slug: "hogwash", name: "Hogwash", shortName: "HW", tagline: "Weird and wonderful")
     private var headline: NowPlayingHeadline { NowPlayingHeadline(program: program, person: "DJ Hog") }
 
     private func recents(_ count: Int) -> [NowPlayingItem] {
@@ -128,7 +130,6 @@ struct NowPlayingTimelineEntryProgramTests {
 
 @Suite("NowPlayingTimelineEntry who's-on and guest lines")
 struct NowPlayingTimelineEntryWhosOnTests {
-    private let program = SpecialtyShowRef(id: 3, slug: "hogwash", name: "Hogwash", shortName: "HW", tagline: "Weird and wonderful")
     private let song = NowPlayingItem(playcut: Playcut(
         id: 1, hour: 0, chronOrderID: 1, timeCreated: 0,
         songTitle: "la paradoja", labelName: nil, artistName: "Juana Molina", releaseTitle: nil
