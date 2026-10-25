@@ -379,6 +379,31 @@ struct SpecialtyArtworkViewTests {
         #expect(firstPixel == [255, 0, 0, 255])
         #expect(secondPixel == [0, 0, 255, 255])
     }
+
+    @Test("Re-running the task for a program that already resolved keeps drawing its image, not the tile")
+    func rerunForSameProgramKeepsResolvedImage() async {
+        let red = solid(red: 1, green: 0, blue: 0)
+        let resolveOnce: @Sendable (SpecialtyShowRef) async -> CGImage? = { _ in red }
+        // Never finishes (until cancelled), so only state the view already holds can be drawn.
+        let hang: @Sendable (SpecialtyShowRef) async -> CGImage? = { _ in
+            try? await Task.sleep(for: .seconds(60))
+            return nil
+        }
+        var pass = 0
+        let renderer = ImageRenderer(content: Host(program: first, pass: pass, resolve: resolveOnce))
+
+        await render(renderer, program: first, pass: &pass, resolve: resolveOnce, until: [255, 0, 0, 255])
+        // Away to another program and back: the task for `first` starts again with a resolver that never answers.
+        for _ in 0..<3 {
+            pass += 1
+            renderer.content = Host(program: second, pass: pass, resolve: hang)
+            _ = renderer.cgImage
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        await render(renderer, program: first, pass: &pass, resolve: hang, until: [255, 0, 0, 255])
+
+        #expect(centerPixel(renderer) == [255, 0, 0, 255])
+    }
 }
 @Suite("CacheCoordinator.image(from:) failure logging")
 struct URLKeyedArtworkFailureLoggingTests {

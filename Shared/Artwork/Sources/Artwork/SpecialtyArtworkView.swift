@@ -65,7 +65,15 @@ public struct SpecialtyArtworkView: View {
     private let program: SpecialtyShowRef
     private let size: CGFloat?
     private let resolve: @Sendable (SpecialtyShowRef) async -> CGImage?
-    @State private var logo: CGImage?
+    /// The resolved logo with the program it belongs to. It is not cleared when a task starts,
+    /// so a view that re-appears with the same program keeps drawing it; `body` draws it only
+    /// for the program it was resolved for, so a switch never shows another program's image.
+    @State private var resolved: ResolvedLogo?
+
+    private struct ResolvedLogo {
+        let program: SpecialtyShowRef
+        let image: CGImage
+    }
 
     public init(program: SpecialtyShowRef, size: CGFloat) {
         self.init(program: program, size: size, resolve: { await SpecialtyArtwork.logo(for: $0) })
@@ -99,18 +107,17 @@ public struct SpecialtyArtworkView: View {
     /// Renders only state: the tile until the task resolves a logo.
     public var body: some View {
         sized {
-            if let logo {
-                Image(decorative: logo, scale: 1).resizable().scaledToFill()
+            if let resolved, resolved.program == program {
+                Image(decorative: resolved.image, scale: 1).resizable().scaledToFill()
             } else {
                 SpecialtyTileView(program: program)
             }
         }
         .task(id: program) {
-            logo = nil
-            let resolved = await resolve(program)
+            let image = await resolve(program)
             // A cancelled task is not a failure: leave the state for the rerun.
             if Task.isCancelled { return }
-            logo = resolved
+            resolved = image.map { ResolvedLogo(program: program, image: $0) }
         }
     }
 }
