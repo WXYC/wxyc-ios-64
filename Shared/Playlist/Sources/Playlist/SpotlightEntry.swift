@@ -65,12 +65,8 @@ public extension Playlist {
         return spotlight
     }
 
-    /// The "now" line for the open show: the current who's-on entry's role line, or `nil` when
-    /// there is no entry, it is a `host` row, or it belongs to another show. Shown on every show,
-    /// under the DJ on a freeform one and in the program card on a specialty one.
-    var nowLine: String? {
-        guard case .dj(_, let show?) = onAir, let spotlight = show.spotlight,
-              show.id == nil || spotlight.showID == show.id else { return nil }
-        return spotlight.roleLine
-    }
+    /// The "now" line for the open show: ``openShowSpotlight``'s role line, so it is `nil` when there
+    /// is no entry, it is a `host` row, it belongs to another show, or the open show has no id.
+    /// Shown on every show, under the DJ on a freeform one and in the program card on a specialty one.
+    var nowLine: String? { openShowSpotlight?.roleLine }
 }
