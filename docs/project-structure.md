@@ -21,4 +21,3 @@
 When one package product is linked into more than one target (for example `PlaylistTesting` into both the app and `WXYCTests`), SwiftPM builds that package's dependency closure (`Playlist`, `Analytics`, `PostHog`) as dynamic frameworks. A target that does `import PostHog` but only reached it transitively then fails to link, with an undefined-symbol or missing-module error on the transitively imported module. The fix is to declare that product explicitly on the target that imports it, as PR #1246 did for the app and the Now Playing widget.
 
 `posthog-ios` is required in two places that cannot read each other: `Shared/Analytics/Package.swift` and the `XCRemoteSwiftPackageReference "posthog-ios"` in `WXYC.xcodeproj/project.pbxproj` (`minimumVersion`). Bump both together; `scripts/verify-posthog-floor.sh` fails when they differ and runs in the Shell Script Tests workflow.
-

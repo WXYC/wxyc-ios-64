@@ -77,6 +77,40 @@ expect_exit "project ahead of the package fails" "$code" 1 "$out"
 run_check
 expect_exit "a missing posthog-ios reference fails" "$code" 1 "$out"
 
+# An exact-version pin has no minimumVersion; the scan must not run on into the
+# next entry and read its value.
+write_fixtures 3.58.0 3.58.0
+cat > "$TMP_ROOT/project.pbxproj" <<PBX
+		BBBB /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = exactVersion;
+				version = 3.58.0;
+			};
+		};
+		AAAA /* XCRemoteSwiftPackageReference "other-package" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.58.0;
+			};
+		};
+PBX
+run_check
+expect_exit "a posthog-ios entry without minimumVersion fails" "$code" 1 "$out"
+expect_contains "the missing project floor is named" "$out" "project.pbxproj"
+
+write_fixtures 3.58.0 3.58.0
+cat > "$TMP_ROOT/Package.swift" <<PKG
+    dependencies: [
+        .package(url: "https://github.com/PostHog/posthog-ios.git", branch: "main"),
+    ],
+PKG
+run_check
+expect_exit "an unreadable Package.swift floor fails" "$code" 1 "$out"
+expect_contains "the unreadable Package.swift floor is named" "$out" "Package.swift"
+
 expect_exit "the real repo files agree" "$(zsh "$UNDER_TEST" >/dev/null 2>&1; echo $?)" 0 ""
 
 summarize

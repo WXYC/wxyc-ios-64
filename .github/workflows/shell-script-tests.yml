@@ -31,6 +31,8 @@ on:
       - ".github/scripts/**"
       - "scripts/**"
       - "ci_scripts/**"
+      - "Shared/Analytics/Package.swift"
+      - "WXYC.xcodeproj/project.pbxproj"
       - ".github/workflows/shell-script-tests.yml"
   push:
     branches:
@@ -39,6 +41,8 @@ on:
       - ".github/scripts/**"
       - "scripts/**"
       - "ci_scripts/**"
+      - "Shared/Analytics/Package.swift"
+      - "WXYC.xcodeproj/project.pbxproj"
       - ".github/workflows/shell-script-tests.yml"
   workflow_dispatch:
 
