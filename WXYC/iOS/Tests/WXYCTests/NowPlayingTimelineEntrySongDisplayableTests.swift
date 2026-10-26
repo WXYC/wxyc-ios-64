@@ -81,11 +81,11 @@ struct NowPlayingTimelineEntrySongDisplayableTests {
     }
 }
 
-nonisolated private let program = SpecialtyShowRef.taggedStub
+nonisolated private let taggedProgram = SpecialtyShowRef.taggedStub
 
 @Suite("NowPlayingTimelineEntry specialty program entries")
 struct NowPlayingTimelineEntryProgramTests {
-    private var headline: NowPlayingHeadline { NowPlayingHeadline(program: program, person: "DJ Hog") }
+    private var headline: NowPlayingHeadline { NowPlayingHeadline(program: taggedProgram, person: "DJ Hog") }
 
     private func recents(_ count: Int) -> [NowPlayingItem] {
         (0..<count).map { id in
@@ -137,7 +137,7 @@ struct NowPlayingTimelineEntryWhosOnTests {
 
     private func program(person: String, roleLabel: String?, family: WidgetFamily) -> NowPlayingTimelineEntry {
         NowPlayingTimelineEntry(
-            headline: NowPlayingHeadline(program: program, person: person), logo: nil, recentItems: [], family: family, roleLabel: roleLabel
+            headline: NowPlayingHeadline(program: taggedProgram, person: person), logo: nil, recentItems: [], family: family, roleLabel: roleLabel
         )
     }
 
