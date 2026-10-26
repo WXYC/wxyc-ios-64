@@ -51,7 +51,6 @@ public extension Playlist {
     /// An unspecified `logs_playcuts` keeps the song list, so a song that lands is never hidden.
     var specialtyCard: SpecialtyCard? {
         guard case .dj(let handle, let show?) = onAir, let program = show.specialty else { return nil }
-        let showsTagline = if case .specialtyCard = nowPlayingLead { true } else { false }
         let rowLeads = switch nowPlayingLead {
         case .song, .spotlight: true
         case .specialtyCard, .djHandle, .nothing: false
@@ -62,7 +61,7 @@ public extension Playlist {
             showName: show.title,
             djHandle: handle,
             placement: placement,
-            showsTagline: showsTagline,
+            showsTagline: showsProgramTagline,
             showsNowPlayingHeader: placement == .nowPlaying && !rowLeads,
             nowLine: nowLine
         )

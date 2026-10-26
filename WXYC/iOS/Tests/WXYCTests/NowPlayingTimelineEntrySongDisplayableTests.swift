@@ -119,6 +119,19 @@ struct NowPlayingTimelineEntryProgramTests {
         #expect(freeform.headline == nil)
     }
 
+    @Test("The tagline shows while the program leads and is dropped once a song leads, in every family", arguments: [WidgetFamily.systemMedium, .systemLarge])
+    func taglineByLead(family: WidgetFamily) {
+        let onAir = OnAir.dj("DJ Hog", show: OnAirShow(id: 42, title: nil, specialty: program))
+        let playlist = Playlist(playcuts: [], breakpoints: [], talksets: [], onAir: onAir)
+        let withSong = Playlist(playcuts: [Playcut(id: 12, hour: 0, chronOrderID: 12, timeCreated: 0, showID: 42, songTitle: "la paradoja", labelName: nil, artistName: "Juana Molina", releaseTitle: nil)], breakpoints: [], talksets: [], onAir: onAir)
+        let item = NowPlayingItem(playcut: recents(1)[0].playcut)
+        let programLeads = NowPlayingTimelineEntry(headline: playlist.programHeadline!, logo: nil, recentItems: [], family: family)
+        let songLeads = NowPlayingTimelineEntry(nowPlayingItem: item, recentItems: [], family: family, headline: withSong.programHeadline)
+        #expect(programLeads.supportingLine == "Weird and wonderful")
+        #expect(songLeads.headline?.tagline == nil)
+        #expect(songLeads.headline?.program.name == "Hogwash")
+    }
+
     @Test("The recents label defaults to Recently Played and carries a specialty entry's Before label")
     func recentsLabel() {
         let item = NowPlayingItem(playcut: recents(1)[0].playcut)
