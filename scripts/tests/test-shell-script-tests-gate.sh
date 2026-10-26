@@ -28,7 +28,7 @@ trap 'rm -rf "$TMP_ROOT"' EXIT
 
 PBX=WXYC.xcodeproj/project.pbxproj
 
-# write_pbxproj <posthog floor> <extra line>
+# write_pbxproj <posthog floor> <extra line> [<line after the posthog block>]
 write_pbxproj() {
     mkdir -p WXYC.xcodeproj
     cat > $PBX <<PBXEOF
@@ -42,6 +42,8 @@ write_pbxproj() {
 			};
 		};
 PBXEOF
+    [[ -n "${3:-}" ]] && printf '\t\tCCCC /* PBXBuildFile */ = {isa = PBXBuildFile; %s };\n' "$3" >> $PBX
+    return 0
 }
 
 # gate <description> <expected> <setup function run between base and head>
@@ -68,5 +70,36 @@ gate "a change under scripts/ runs macOS" true 'echo head > scripts/a.sh'
 gate "a change to Package.swift runs macOS" true 'echo head > Shared/Analytics/Package.swift'
 gate "a script change alongside an unrelated pbxproj edit runs macOS" true 'echo head > scripts/a.sh; write_pbxproj 3.58.0 "fileRef = 2;"'
 gate "a change outside the filter does not run macOS" false 'echo head > docs/a.md'
+gate "an unrelated pbxproj edit after the posthog-ios block does not run macOS" false 'write_pbxproj 3.58.0 "fileRef = 1;" "fileRef = 9;"'
+
+# An unresolvable base (e.g. the all-zero "before" of a new-branch push) must
+# fail closed: run macOS rather than skip it silently.
+repo="$TMP_ROOT/repo"; rm -rf "$repo"; mkdir "$repo"; cd "$repo"
+git init -q . && git config user.email t@t && git config user.name t
+echo x > a && git add -A && git commit -qm x
+out=$(sh "$UNDER_TEST" 0000000000000000000000000000000000000000 HEAD 2>&1)
+expect_eq "an unresolvable base runs macOS (fails closed)" "$out" true
+cd "$REPO_ROOT"
+
+# The trigger paths live in three places: the workflow's pull_request.paths and
+# push.paths, and the regex in the gate script. Every non-pbxproj path in the
+# workflow filters must be matched by the gate, or an edit there would start the
+# workflow and then be gated off.
+WORKFLOW="${REPO_ROOT}/.github/workflows/shell-script-tests.yml"
+filter_paths=("${(@f)$(sed -n '/^on:/,/^jobs:/p' "$WORKFLOW" | sed -n 's/^ *- "\(.*\)"$/\1/p' | sort -u)}")
+expect_eq "workflow filters were parsed" "$(( ${#filter_paths} > 0 ))" 1
+for fp in $filter_paths; do
+    [[ "$fp" == "WXYC.xcodeproj/project.pbxproj" ]] && continue
+    sample="${fp//\*\*/x/probe.txt}"
+    repo="$TMP_ROOT/repo"; rm -rf "$repo"; mkdir "$repo"; cd "$repo"
+    git init -q . && git config user.email t@t && git config user.name t
+    echo base > unrelated && git add -A && git commit -qm base
+    base=$(git rev-parse HEAD)
+    mkdir -p "${sample:h}"; echo head > "$sample"
+    git add -A && git commit -qm head
+    out=$(sh "$UNDER_TEST" "$base" HEAD 2>&1)
+    expect_eq "gate regex matches workflow filter path $fp" "$out" true
+    cd "$REPO_ROOT"
+done
 
 summarize
