@@ -7,7 +7,7 @@ name: Shell Script Tests
 # hand-rolled zsh regression tests for the CI scripts themselves
 # (.github/scripts/affected-tests.sh, scripts/test-affected.sh,
 # scripts/hooks/pre-push, scripts/upload-debug-symbols.sh,
-# scripts/upload-dsyms-posthog.sh). They need no
+# scripts/upload-dsyms-posthog.sh, scripts/verify-posthog-floor.sh). They need no
 # simulator, no submodule, and no secrets — the dSYM suite stubs the
 # sentry-cli binary, so nothing here touches the network or needs a real auth
 # token; the whole set runs in under two seconds. That asymmetry — cheap
@@ -96,3 +96,11 @@ jobs:
       # local stand-in repo with npm/java stubbed, in about a second.
       - name: contract-version.json assertion regression suite
         run: zsh scripts/tests/test-api-types-contract-version.sh
+
+      # posthog-ios is required in Package.swift and in the Xcode project
+      # (#1248); the second step fails when the two floors differ.
+      - name: posthog-ios floor check regression suite
+        run: zsh scripts/tests/test-verify-posthog-floor.sh
+
+      - name: posthog-ios floor agrees between Package.swift and the project
+        run: zsh scripts/verify-posthog-floor.sh
