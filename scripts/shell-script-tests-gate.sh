@@ -17,9 +17,19 @@ base="$1"
 head="$2"
 pbxproj=WXYC.xcodeproj/project.pbxproj
 
+# Fail closed: if either commit cannot be resolved (a new-branch push has an
+# all-zero "before", a force-push can orphan it), run the macOS job rather than
+# skip it silently.
+if ! git rev-parse --verify -q "$base^{commit}" >/dev/null || ! git rev-parse --verify -q "$head^{commit}" >/dev/null; then
+    echo true
+    exit 0
+fi
+
 files=$(git diff --name-only "$base" "$head")
 
-# Everything in the workflow's filter except the pbxproj.
+# Everything in the workflow's filter except the pbxproj. Keep in sync with
+# pull_request.paths and push.paths in .github/workflows/shell-script-tests.yml;
+# scripts/tests/test-shell-script-tests-gate.sh fails when they drift.
 if printf '%s\n' "$files" | grep -Eq '^(\.github/scripts/|scripts/|ci_scripts/|Shared/Analytics/Package\.swift$|\.github/workflows/shell-script-tests\.yml$)'; then
     echo true
     exit 0

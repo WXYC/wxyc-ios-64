@@ -34,6 +34,9 @@ name: Shell Script Tests
 # workflow can be broken by an edit that never triggers it, which is the
 # exact failure class this file exists to prevent.
 
+# Keep the non-pbxproj paths below in sync with the regex in
+# scripts/shell-script-tests-gate.sh; scripts/tests/test-shell-script-tests-gate.sh
+# fails when a path here is not matched there.
 on:
   pull_request:
     paths:
@@ -76,7 +79,10 @@ jobs:
             push) base="${{ github.event.before }}" ;;
             *) echo "run=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
           esac
-          echo "run=$(scripts/shell-script-tests-gate.sh "$base" HEAD)" >> "$GITHUB_OUTPUT"
+          # Separate statement so `set -e` sees a gate-script failure; inside
+          # echo "$(...)" it would be swallowed and the macOS job skipped.
+          run=$(scripts/shell-script-tests-gate.sh "$base" HEAD)
+          echo "run=$run" >> "$GITHUB_OUTPUT"
 
   shell-script-tests:
     needs: gate
