@@ -63,6 +63,14 @@ public extension Playlist {
     }
 }
 
+public extension Playlist {
+    /// Whether a specialty program's tagline shows: only while the program leads, in the label's
+    /// place (#1175). The one rule, read by ``specialtyCard`` and ``programHeadline``.
+    var showsProgramTagline: Bool {
+        if case .specialtyCard = nowPlayingLead { true } else { false }
+    }
+}
+
 /// What the system Now Playing info and the widget say while a who's-on entry leads.
 public struct NowPlayingSpotlight: Sendable, Equatable {
     /// Where the artwork comes from: never the previous song's album art.

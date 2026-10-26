@@ -40,17 +40,17 @@ private let headlineCases: [NowPlayingHeadlineCase] = [
     NowPlayingHeadlineCase(
         name: "a song of the open show leads, and the program is still on the air",
         playlist: onAir(OnAirShow(id: 42, title: nil, specialty: hogwash), songs: [.stub(id: 12, showID: 42)]),
-        expected: NowPlayingHeadline(program: hogwash, person: "DJ Monster"),
+        expected: NowPlayingHeadline(program: hogwash, person: "DJ Monster", showsTagline: false),
         spotlightSharesPerson: false
     ),
     NowPlayingHeadlineCase(
         name: "a who's-on entry leads, and the program is still on the air",
         playlist: onAir(OnAirShow(id: 42, title: nil, specialty: hogwash, spotlight: .stub(id: 13, role: "performer", name: "Weirs"))),
-        expected: NowPlayingHeadline(program: hogwash, person: "Weirs"),
+        expected: NowPlayingHeadline(program: hogwash, person: "Weirs", showsTagline: false),
         spotlightSharesPerson: true
     ),
     NowPlayingHeadlineCase(
-        name: "a host entry hands the person line back to the DJ handle",
+        name: "a host entry never leads: the tagline stays and the person line is the DJ handle",
         playlist: onAir(OnAirShow(id: 42, title: nil, specialty: hogwash, spotlight: .stub(id: 13, role: "host", name: "DJ Monster"))),
         expected: NowPlayingHeadline(program: hogwash, person: "DJ Monster"),
         spotlightSharesPerson: true
@@ -103,9 +103,17 @@ struct NowPlayingHeadlineTests {
         #expect(testCase.spotlightSharesPerson == (spotlight.artist == headline.person))
     }
 
+    @Test("the headline's tagline agrees with SpecialtyCard.showsTagline across the on-air states", arguments: headlineCases)
+    func taglineAgreesWithCard(_ testCase: NowPlayingHeadlineCase) {
+        let playlist = testCase.playlist
+        #expect(playlist.programHeadline?.showsTagline == playlist.specialtyCard?.showsTagline)
+        #expect((playlist.programHeadline?.tagline != nil) == (playlist.specialtyCard?.showsTagline == true))
+    }
+
     @Test("the tagline is the program's, and absent when it has none")
     func tagline() {
         #expect(NowPlayingHeadline(program: hogwash, person: "DJ Monster").tagline == "Weird and wonderful")
         #expect(NowPlayingHeadline(program: untagged, person: "DJ Monster").tagline == nil)
+        #expect(NowPlayingHeadline(program: hogwash, person: "DJ Monster", showsTagline: false).tagline == nil)
     }
 }

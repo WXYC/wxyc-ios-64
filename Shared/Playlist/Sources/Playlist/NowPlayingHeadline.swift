@@ -17,13 +17,17 @@ public struct NowPlayingHeadline: Sendable, Equatable {
     /// The open show's current who's-on entry's name when it has one, otherwise the DJ handle.
     public let person: String
 
-    public init(program: SpecialtyShowRef, person: String) {
+    /// Whether the tagline shows; see ``Playlist/showsProgramTagline``.
+    public let showsTagline: Bool
+
+    public init(program: SpecialtyShowRef, person: String, showsTagline: Bool = true) {
         self.program = program
         self.person = person
+        self.showsTagline = showsTagline
     }
 
-    /// The program's tagline, shown in the label's place until the first song or who's-on entry.
-    public var tagline: String? { program.tagline }
+    /// The program's tagline, shown in the label's place until the first song or who's-on entry, and `nil` after.
+    public var tagline: String? { showsTagline ? program.tagline : nil }
 }
 
 public extension Playlist {
@@ -32,6 +36,6 @@ public extension Playlist {
     /// line (the who's-on name, else the DJ handle), read by ``nowPlayingSpotlight`` and the widget.
     var programHeadline: NowPlayingHeadline? {
         guard case .dj(let handle, let show?) = onAir, let program = show.specialty else { return nil }
-        return NowPlayingHeadline(program: program, person: openShowSpotlight?.name ?? handle)
+        return NowPlayingHeadline(program: program, person: openShowSpotlight?.name ?? handle, showsTagline: showsProgramTagline)
     }
 }

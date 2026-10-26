@@ -57,7 +57,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         /// The freeform guest line under a leading song.
         var guestLine: String?
         var recents: [NowPlayingItem]
-        /// The specialty show on the air, with the DJ handle as its person line.
+        /// The specialty show on the air, with the who's-on name as its person line, else the DJ handle.
         var headline: NowPlayingHeadline?
         /// The program's logo decoded no larger than the family needs; `nil` draws the tile.
         var logo: CGImage?
