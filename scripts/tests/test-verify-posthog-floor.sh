@@ -111,6 +111,4 @@ run_check
 expect_exit "an unreadable Package.swift floor fails" "$code" 1 "$out"
 expect_contains "the unreadable Package.swift floor is named" "$out" "Package.swift"
 
-expect_exit "the real repo files agree" "$(zsh "$UNDER_TEST" >/dev/null 2>&1; echo $?)" 0 ""
-
 summarize

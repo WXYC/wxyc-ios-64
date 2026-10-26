@@ -16,10 +16,19 @@ name: Shell Script Tests
 #
 # Path-filtered to the directories these scripts (and their tests) actually
 # live in, so an unrelated PR (docs, Swift-only) doesn't spend a macOS
-# runner-minute on a check that could not have caught anything. Note that a
-# macOS job is billed at a 10x multiplier and rounded up to a whole minute,
-# so "runs in two seconds" still costs ~10 billable minutes per run on this
-# private repo — the path filter is what keeps that off most PRs.
+# runner-minute on a check that could not have caught anything. The triggers are
+# .github/scripts/**, scripts/**, ci_scripts/**, Shared/Analytics/Package.swift,
+# this file, and WXYC.xcodeproj/project.pbxproj. A macOS job is billed at a 10x
+# multiplier and rounded up to a whole minute, so "runs in two seconds" still
+# costs ~10 billable minutes per run on this private repo.
+#
+# project.pbxproj is in the filter only so a change to its posthog-ios
+# requirement is seen (#1248), and it is edited by ~12% of master commits. A path
+# filter cannot look inside a file, so the cheap ubuntu `gate` job runs
+# scripts/shell-script-tests-gate.sh and the macOS job runs only when a gated
+# path other than the pbxproj changed or the posthog-ios entry in it differs
+# (#1250). A pbxproj edit that leaves the requirement alone costs one ubuntu
+# job, not ten billed macOS minutes.
 #
 # This workflow's own path is in the filter on purpose: a self-excluding
 # workflow can be broken by an edit that never triggers it, which is the
@@ -51,7 +60,27 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: gate
+        run: |
+          case "${{ github.event_name }}" in
+            pull_request) base="${{ github.event.pull_request.base.sha }}" ;;
+            push) base="${{ github.event.before }}" ;;
+            *) echo "run=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
+          echo "run=$(scripts/shell-script-tests-gate.sh "$base" HEAD)" >> "$GITHUB_OUTPUT"
+
   shell-script-tests:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     # macOS, not ubuntu. Three reasons, in increasing order of how much work
     # it would take to lift them:
     #   1. test-affected-tests.sh edits its pbxproj fixtures with BSD sed
@@ -100,6 +129,9 @@ jobs:
       # local stand-in repo with npm/java stubbed, in about a second.
       - name: contract-version.json assertion regression suite
         run: zsh scripts/tests/test-api-types-contract-version.sh
+
+      - name: macOS-job gate regression suite
+        run: zsh scripts/tests/test-shell-script-tests-gate.sh
 
       # posthog-ios is required in Package.swift and in the Xcode project
       # (#1248); the second step fails when the two floors differ.
