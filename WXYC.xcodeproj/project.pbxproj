@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5A17E57000000000000000B5 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 5A17E57000000000000000B4 /* PostHog */; };
+		5A17E57000000000000000B3 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 5A17E57000000000000000B2 /* PostHog */; };
 		5A17E57000000000000000A1 /* PlaylistTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 5A17E57000000000000000A2 /* PlaylistTesting */; };
 		062417DC96252E36AE65C585 /* Playback in Frameworks */ = {isa = PBXBuildFile; productRef = E150313F784CF272A32EA642 /* Playback */; };
 		0EEAC96AF698AC55DD08EB7C /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 79AE74A2A92779E80E688376 /* Core */; };
@@ -427,6 +429,7 @@
 			isa = PBXFrameworksBuildPhase;
 			files = (
 				236B52062EFC67750058AD01 /* AppServices in Frameworks */,
+				5A17E57000000000000000B3 /* PostHog in Frameworks */,
 				236B51FA2EFC674F0058AD01 /* Caching in Frameworks */,
 				236B52072EFC67800058AD01 /* Playback in Frameworks */,
 				236B51D22EFC651A0058AD01 /* SwiftUI.framework in Frameworks */,
@@ -457,6 +460,7 @@
 				524AA009A7901EA1DDC81851 /* PlayerHeaderView in Frameworks */,
 				23B42F972F0209CB007351F1 /* ColorPalette in Frameworks */,
 				7127691612A44A229E553EDE /* Sentry in Frameworks */,
+				5A17E57000000000000000B5 /* PostHog in Frameworks */,
 				WXYCINTENTS00000001 /* WXYCIntents in Frameworks */,
 				CONCERTS0BUILDFILE0001 /* Concerts in Frameworks */,
 				LISTENERAUTH0BUILDFILE01 /* ListenerAuth in Frameworks */,
@@ -584,6 +588,7 @@
 				236B52052EFC67750058AD01 /* AppServices */,
 				236B52082EFC67800058AD01 /* Playback */,
 				WXYCINTENTS00000006 /* WXYCIntents */,
+				5A17E57000000000000000B2 /* PostHog */,
 			);
 			productName = NowPlayingWidget;
 			productReference = 236B51CE2EFC651A0058AD01 /* NowPlayingWidget.appex */;
@@ -743,6 +748,7 @@
 				3DF76684E122C2FAD4F26E27 /* PartyHorn */,
 				35DC07836DEEE44F7B819265 /* PlayerHeaderView */,
 				16E246AEBDDC40D3B97316A6 /* Sentry */,
+				5A17E57000000000000000B4 /* PostHog */,
 				23D418172EF2C80000WALLPA /* Wallpaper */,
 				23D4181A2EF2C8000DBGPNL /* DebugPanel */,
 				23B42F962F0209CB007351F1 /* ColorPalette */,
@@ -797,6 +803,7 @@
 			packageReferences = (
 				E5A5E08DB4AD4795BBF7F459 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 				17F14B03423533C80A6A4E69 /* XCRemoteSwiftPackageReference "Vortex" */,
+				5A17E57000000000000000B1 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				6414443EB40D8B806FA6BAAA /* XCLocalSwiftPackageReference "Shared/Analytics" */,
 				1A4C4581DF37FFB7A421BDE7 /* XCLocalSwiftPackageReference "Shared/AppServices" */,
 				07287EE5CF49EAC7250A8938 /* XCLocalSwiftPackageReference "Shared/Artwork" */,
@@ -2614,9 +2621,27 @@
 				minimumVersion = 8.49.0;
 			};
 		};
+		5A17E57000000000000000B1 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.58.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		5A17E57000000000000000B4 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5A17E57000000000000000B1 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+		5A17E57000000000000000B2 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5A17E57000000000000000B1 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
 		5A17E57000000000000000A2 /* PlaylistTesting */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D49D75D0292248DFCB5BE430 /* XCLocalSwiftPackageReference "Shared/Playlist" */;
