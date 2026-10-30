@@ -187,6 +187,15 @@ struct PlaylistView: View {
                                 .padding(.vertical, 8)
                         }
                     }
+                    // Accent offset controls, mounted from the theme debug panel so
+                    // the accent can be tuned with the panel closed and the accented
+                    // surfaces — tab item, request line, ticket ink — on screen.
+                    #if DEBUG
+                    if appState.themeConfiguration.showsPlaylistAccentControl {
+                        PlaylistAccentControl(configuration: appState.themeConfiguration)
+                            .padding(.vertical, 8)
+                    }
+                    #endif
 
                     // Playlist entries
                     LazyVStack(spacing: 0) {
