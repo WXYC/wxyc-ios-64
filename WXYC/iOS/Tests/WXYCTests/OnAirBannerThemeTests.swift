@@ -35,7 +35,6 @@ struct OnAirBannerThemeTests {
         let theme = OnAirBannerTheme.default
 
         #expect(theme.indicatorColor == Color(HSL(hue: 0.33, saturation: 1.0, lightness: 0.5)))
-        #expect(theme.indicatorBlurRadius == 4.5)
         #expect(theme.handleVariation == SFProVariation(weight: 648, width: 150, opticalSize: 17, grade: 936))
         #expect(theme.adaptiveWidth == true)
         #expect(theme.handleWidthFloor == 50)

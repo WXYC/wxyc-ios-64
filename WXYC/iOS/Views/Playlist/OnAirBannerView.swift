@@ -15,15 +15,15 @@ import WXUI
 
 /// A banner surfacing the DJ currently on the air (or "Auto DJ") at the top of the playlist.
 ///
-/// A white "ON AIR" eyebrow with a themed live indicator sits above the DJ's handle, rendered
-/// directly over the wallpaper with no card chrome. The indicator color/glow, the handle's SF
+/// A white "ON AIR" eyebrow with a themed live dot sits above the DJ's handle, rendered
+/// directly over the wallpaper with no card chrome. The dot color, the handle's SF
 /// Pro variable-font axes, and the vertical spacing all come from ``OnAirBannerTheme`` so the
 /// debug controls can tune them live; ``OnAirBannerTheme/default`` is the shipping look.
 struct OnAirBannerView: View {
     /// The DJ's name, e.g. "DJ HOUNDSTOOTH", or "Auto DJ" when nobody is signed on.
     let headline: String
 
-    /// Tunable design parameters: indicator color/glow, handle font variation, and spacing.
+    /// Tunable design parameters: indicator color, handle font variation, and spacing.
     var theme: OnAirBannerTheme = .default
 
     /// When set, tapping the handle invokes this — used to present the debug
@@ -117,14 +117,17 @@ struct OnAirBannerView: View {
         .accessibilityLabel("On air. \(headline)")
     }
 
-    /// The white "ON AIR" eyebrow with its themed live indicator, on its own row
+    /// The white "ON AIR" eyebrow with its themed live dot, on its own row
     /// above the handle so it doesn't skew the chip's vertical alignment.
     private var eyebrow: some View {
         HStack(spacing: 8) {
-            OnAirIndicator(size: 8, color: theme.indicatorColor, blurRadius: theme.indicatorBlurRadius)
+            Circle()
+                .fill(theme.indicatorColor)
+                .frame(width: 8, height: 8)
+                .accessibilityHidden(true)
 
             Text("ON AIR")
-                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .font(.system(size: 11, weight: .bold))
                 .tracking(2.2)
                 .foregroundStyle(.white)
         }

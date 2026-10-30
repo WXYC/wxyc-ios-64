@@ -31,16 +31,13 @@ extension Color {
 /// so a Release build renders exactly what shipped before this type became the source
 /// of truth.
 struct OnAirBannerTheme: Equatable {
-    /// Color of the "ON AIR" indicator dot and its glow. Ships as a fully-saturated,
+    /// Color of the "ON AIR" indicator dot. Ships as a fully-saturated,
     /// medium-lightness green — HSL(0.33, 1.0, 0.5), a hair warmer than true green
     /// (1/3) — matching the value `OnAirDebugState` persisted as its default. This is
     /// deliberately *not* SwiftUI's `.green`: that system color resolves to a visibly
     /// duller, darker swatch, so hard-coding it here would have silently changed the
     /// release banner's look.
     var indicatorColor: Color = Color(HSL(hue: 0.33, saturation: 1.0, lightness: 0.5))
-
-    /// Blur radius of the indicator's glow, in points.
-    var indicatorBlurRadius: CGFloat = 4.5
 
     /// The SF Pro variable-font axes applied to the DJ handle. Its `width` is the
     /// base (expanded) axis; when ``adaptiveWidth`` is on, the banner narrows it

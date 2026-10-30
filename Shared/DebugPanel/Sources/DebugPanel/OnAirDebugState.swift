@@ -105,11 +105,6 @@ public final class OnAirDebugState {
         didSet { persist(indicatorLightness, forKey: Keys.indicatorLightness) }
     }
 
-    /// Blur radius of the indicator's glow, in points.
-    public var indicatorBlurRadius: Double {
-        didSet { persist(indicatorBlurRadius, forKey: Keys.indicatorBlurRadius) }
-    }
-
     // MARK: - DJ handle typography (SF Pro variable-font axes)
 
     /// SF Pro `wght` (Weight) axis for the DJ handle, `1...1000`.
@@ -201,7 +196,6 @@ public final class OnAirDebugState {
         static let indicatorHue = "OnAirDebug.indicatorHue"
         static let indicatorSaturation = "OnAirDebug.indicatorSaturation"
         static let indicatorLightness = "OnAirDebug.indicatorLightness"
-        static let indicatorBlurRadius = "OnAirDebug.indicatorBlurRadius"
         static let handleWeight = "OnAirDebug.handleWght"
         static let handleWidth = "OnAirDebug.handleWdth"
         static let handleOpticalSize = "OnAirDebug.handleOpsz"
@@ -238,7 +232,6 @@ public final class OnAirDebugState {
         self.indicatorHue = defaults.object(forKey: Keys.indicatorHue) as? Double ?? 0.33
         self.indicatorSaturation = defaults.object(forKey: Keys.indicatorSaturation) as? Double ?? 1.0
         self.indicatorLightness = defaults.object(forKey: Keys.indicatorLightness) as? Double ?? 0.5
-        self.indicatorBlurRadius = defaults.object(forKey: Keys.indicatorBlurRadius) as? Double ?? 4.5
         self.handleWeight = defaults.object(forKey: Keys.handleWeight) as? Double ?? SFProFontAxis.weight.defaultValue
         self.handleWidth = defaults.object(forKey: Keys.handleWidth) as? Double ?? SFProFontAxis.width.defaultValue
         self.handleOpticalSize = defaults.object(forKey: Keys.handleOpticalSize) as? Double ?? SFProFontAxis.opticalSize.defaultValue

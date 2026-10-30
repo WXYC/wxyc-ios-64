@@ -62,7 +62,6 @@ public struct OnAirBannerDebugView: View {
                     Slider(value: $state.indicatorHue, in: 0...1)
                     LabeledSlider("Saturation", value: $state.indicatorSaturation, in: 0...1)
                     LabeledSlider("Lightness", value: $state.indicatorLightness, in: 0...1)
-                    LabeledSlider("Blur Radius", value: $state.indicatorBlurRadius, in: 0...30, format: Format.oneDecimal)
                 }
 
                 DisclosureGroup("DJ Handle", isExpanded: $handleExpanded) {

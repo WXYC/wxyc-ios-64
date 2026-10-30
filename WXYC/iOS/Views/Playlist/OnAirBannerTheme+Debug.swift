@@ -31,7 +31,6 @@ extension OnAirBannerTheme {
                 saturation: debug.indicatorSaturation,
                 lightness: debug.indicatorLightness
             )),
-            indicatorBlurRadius: CGFloat(debug.indicatorBlurRadius),
             handleVariation: SFProVariation(
                 weight: debug.handleWeight,
                 width: debug.handleWidth,
