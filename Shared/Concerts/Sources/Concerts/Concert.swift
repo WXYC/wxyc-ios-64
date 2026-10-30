@@ -65,6 +65,17 @@ public struct Venue: Codable, Sendable, Equatable, Hashable, Identifiable {
         self.state = state
         self.address = address
     }
+
+    /// ``city`` for display, or `nil` when it carries no real place: empty,
+    /// blank, or the backend's `"Unknown"` placeholder for a venue whose city it
+    /// couldn't resolve. Render this, never ``city`` directly.
+    public var displayCity: String? {
+        let trimmed = city.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.caseInsensitiveCompare("unknown") != .orderedSame else {
+            return nil
+        }
+        return trimmed
+    }
 }
 
 /// One affinity neighbor of a resolved concert headliner, drawn from the

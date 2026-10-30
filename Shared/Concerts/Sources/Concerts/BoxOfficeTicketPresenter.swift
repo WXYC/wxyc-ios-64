@@ -201,10 +201,18 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
     // MARK: - Poster detail
 
     /// The compact credit line printed over the poster hero: compact date and
-    /// city only (e.g. `"SAT AUG 1 · Carrboro"`). State and address are
-    /// deliberately excluded — the tucked ticket carries the full "where".
+    /// city only (e.g. `"SAT AUG 1 · Carrboro"`), or the date alone when the
+    /// venue has no real city. State and address are deliberately excluded —
+    /// the tucked ticket carries the full "where".
     public var heroCreditLine: String {
-        "\(compactDateLabel) · \(show.venue.city)"
+        guard let cityLabel else { return compactDateLabel }
+        return "\(compactDateLabel) · \(cityLabel)"
+    }
+
+    /// The venue's city as printed under its name on the ticket, or `nil` when
+    /// the venue has no real city (see ``Venue/displayCity``).
+    public var cityLabel: String? {
+        show.venue.displayCity
     }
 
     /// The share-sheet preview title: `"<headliner> at <venue>"` (e.g. `"Jessica
@@ -238,7 +246,7 @@ public struct BoxOfficeTicketPresenter: Sendable, Equatable {
     public var venueSearchQuery: String {
         var parts = [show.venue.name]
         if let address = show.venue.address, !address.isEmpty { parts.append(address) }
-        if !show.venue.city.isEmpty { parts.append(show.venue.city) }
+        if let cityLabel { parts.append(cityLabel) }
         if !show.venue.state.isEmpty { parts.append(show.venue.state) }
         return parts.joined(separator: ", ")
     }

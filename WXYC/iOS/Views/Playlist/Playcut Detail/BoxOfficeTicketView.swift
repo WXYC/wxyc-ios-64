@@ -121,10 +121,12 @@ struct BoxOfficeTicketView: View {
                 .font(.title2).fontWeight(.heavy)
                 .foregroundStyle(.white)
                 .padding(.top, 16)
-            Text(show.venue.city)
-                .font(.footnote)
-                .foregroundStyle(colors.accentInkColor)
-                .padding(.top, 2)
+            if let city = presenter.cityLabel {
+                Text(city)
+                    .font(.footnote)
+                    .foregroundStyle(colors.accentInkColor)
+                    .padding(.top, 2)
+            }
             statsRow
             if let subline {
                 subline
@@ -156,17 +158,11 @@ struct BoxOfficeTicketView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            HStack(spacing: 7) {
-                Circle()
-                    .fill(colors.accentInkColor)
-                    .frame(width: 6, height: 6)
-                    .shadow(color: colors.accentInkColor, radius: 3.5)
-                Text("PLAYING NEAR YOU")
-                    .font(.system(.caption2, design: .monospaced))
-                    .fontWeight(.bold)
-                    .kerning(1.6)
-                    .foregroundStyle(colors.accentInkColor)
-            }
+            Text("PLAYING NEAR YOU")
+                .font(.caption2)
+                .fontWeight(.bold)
+                .kerning(1.6)
+                .foregroundStyle(colors.accentInkColor)
             Spacer(minLength: 8)
             if let pill = presenter.statusPillText {
                 statusPill(pill)

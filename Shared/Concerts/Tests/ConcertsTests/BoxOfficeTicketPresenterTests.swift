@@ -374,6 +374,38 @@ struct BoxOfficeTicketPresenterTests {
         #expect(presenter.heroCreditLine == "SAT AUG 1 · Carrboro")
     }
 
+    // MARK: - City label
+
+    /// The backend fills a venue whose city it couldn't resolve with the literal
+    /// string `"Unknown"` (seen on "Cat's Cradle Presents at 107 Brewer Lane"), so
+    /// the ticket must treat that sentinel like an empty city rather than print it.
+    @Test("City label hides a missing or placeholder city", arguments: [
+        ("Carrboro", "Carrboro"),
+        ("Unknown", nil),
+        ("unknown", nil),
+        (" Unknown ", nil),
+        ("", nil),
+        ("   ", nil),
+    ] as [(String, String?)])
+    func cityLabel(city: String, expected: String?) {
+        let presenter = BoxOfficeTicketPresenter(.stub(venue: .stub(city: city)))
+        #expect(presenter.cityLabel == expected)
+    }
+
+    @Test("Hero credit line drops a placeholder city")
+    func heroCreditLineWithoutCity() {
+        let presenter = BoxOfficeTicketPresenter(.stub(venue: .stub(city: "Unknown")))
+        #expect(presenter.heroCreditLine == "SAT AUG 1")
+    }
+
+    @Test("Directions query drops a placeholder city")
+    func directionsWithoutPlaceholderCity() {
+        let presenter = BoxOfficeTicketPresenter(
+            .stub(venue: .stub(name: "Cat's Cradle", city: "Unknown", state: "NC", address: nil))
+        )
+        #expect(mapsQuery(presenter.directionsURL) == "Cat's Cradle, NC")
+    }
+
     // MARK: - Directions URL
 
     /// Extracts the `q` query item from a directions URL, decoded back to plain
