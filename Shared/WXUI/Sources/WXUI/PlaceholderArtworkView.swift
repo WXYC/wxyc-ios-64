@@ -52,11 +52,10 @@ public struct PlaceholderArtworkView: View {
                     )
                     .shadow(radius: 2, x: 0, y: shadowYOffset)
 
-                WXYCLogo()
-                    .glassEffectClearIfAvailable(in: WXYCLogoShape())
-                    .background(
-                        meshGradient.opacity(0.6)
-                    )
+                // The logo is drawn flat — no glass — so it reads as a mark on
+                // the glass card behind it rather than a second glass layer.
+                meshGradient
+                    .opacity(0.6)
                     .clipShape(WXYCLogoShape())
                     .shadow(radius: 2, x: 0, y: shadowYOffset)
             }
