@@ -57,6 +57,8 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         var headline: NowPlayingHeadline?
         /// The program's logo decoded no larger than the family needs; `nil` draws the tile.
         var logo: CGImage?
+        /// The lead line for the station-line layout: who is on the air, or the tune-in line.
+        var stationLine: String
     }
 
     /// The longest side, in pixels, of the logo the family draws: its tile or badge, never the full-size file.
@@ -98,7 +100,8 @@ final class Provider: AppIntentTimelineProvider, Sendable {
             whosOn: playlist.nowPlayingSpotlight,
             recents: leadItem == nil ? items : Array(items.dropFirst()),
             headline: headline,
-            logo: logo
+            logo: logo,
+            stationLine: playlist.widgetStationLine
         )
     }
 
@@ -118,7 +121,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
         case .whosOn:
             items.whosOn.map { NowPlayingTimelineEntry.whosOn($0, recentItems: items.recents, family: family) }
         case .stationLine:
-            .stationLine(recentItems: items.recents, family: family)
+            .stationLine(items.stationLine, recentItems: items.recents, family: family)
         case .empty:
             nil
         }
@@ -157,7 +160,7 @@ final class Provider: AppIntentTimelineProvider, Sendable {
 
     func timeline(for configuration: NowPlayingWidgetIntent, in context: Context) async -> Timeline<NowPlayingTimelineEntry> {
         let family = context.family
-        var items = WidgetItems(lead: .nothing, leadItem: nil, whosOn: nil, recents: [], headline: nil, logo: nil)
+        var items = WidgetItems(lead: .nothing, leadItem: nil, whosOn: nil, recents: [], headline: nil, logo: nil, stationLine: Playlist.tuneInLine)
         // A failing fetch is swallowed into an empty playlist by
         // `PlaylistFetcher`, so an empty timeline and a broken one are
         // indistinguishable from the return value alone. The delta on the
@@ -178,7 +181,8 @@ final class Provider: AppIntentTimelineProvider, Sendable {
                 whosOn: nil,
                 recents: [.placeholder, .placeholder, .placeholder],
                 headline: nil,
-                logo: nil
+                logo: nil,
+                stationLine: Playlist.tuneInLine
             )
         } else {
             let errorsBefore = await playlistService.fetchErrorCount()

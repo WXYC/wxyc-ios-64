@@ -74,14 +74,16 @@ struct NowPlayingTimelineEntry: TimelineEntry {
         )
     }
     
-    /// The station line the widget shows when it has no song to name.
-    private static let stationLineText = "Tune in to WXYC 89.3 FM"
+    /// The line the widget falls back to when it has no song and nobody to name.
+    private static let stationLineText = Playlist.tuneInLine
 
     /// Creates an entry for when no song leads (automation, or a show with no song yet) but
-    /// recents exist: the station line takes the bold lead line and the recents follow it.
-    static func stationLine(recentItems: [NowPlayingItem], family: WidgetFamily) -> Self {
+    /// recents exist: `line` takes the bold lead line and the recents follow it. The line is
+    /// ``Playlist/widgetStationLine`` — who is on the air, so the widget names the Auto DJ or the
+    /// live DJ the app's banner names instead of the generic tune-in copy.
+    static func stationLine(_ line: String, recentItems: [NowPlayingItem], family: WidgetFamily) -> Self {
         NowPlayingTimelineEntry(
-            artist: stationLineText,
+            artist: line,
             songTitle: "",
             artwork: nil,
             recentItems: recentItems,

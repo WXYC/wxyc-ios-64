@@ -44,6 +44,18 @@ public extension WidgetContent {
 }
 
 public extension Playlist {
+    /// The widget's lead line when no song leads and nobody has to be named on a guess.
+    static let tuneInLine = "Tune in to WXYC 89.3 FM"
+
+    /// The line the widget leads with when no song leads: whoever the on-air banner names, so the
+    /// widget never says less than the app does two inches away. A named DJ's handle while one is
+    /// live, "Auto DJ" under confirmed automation, and ``tuneInLine`` when the backend reports no
+    /// on-air status at all — the one state where naming anybody would be a guess, which is exactly
+    /// why ``OnAir/bannerTitle`` is `nil` there rather than "Auto DJ".
+    var widgetStationLine: String {
+        onAir.bannerTitle ?? Self.tuneInLine
+    }
+
     /// The rows that open a section, keyed by playcut id.
     ///
     /// Only a leading song or who's-on entry opens "now playing". "Recently played" opens on the first

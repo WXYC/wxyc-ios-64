@@ -79,6 +79,15 @@ struct PlaylistSectionTests {
         #expect(Playlist.widgetContent(lead: lead, hasRecents: hasRecents, program: program) == expected)
     }
 
+    @Test("The widget's station line names whoever the banner names, and falls back to the tune-in line", arguments: [
+        (OnAir.automation, "Auto DJ"),
+        (.dj("Cat Power Hour"), "Cat Power Hour"),
+        (.unknown, "Tune in to WXYC 89.3 FM"),
+    ])
+    func widgetStationLine(onAir: OnAir, expected: String) {
+        #expect(Playlist.stub(onAir: onAir).widgetStationLine == expected)
+    }
+
     @Test("A specialty show's layouts show two recents; every other layout allows three", arguments: [
         (WidgetContent.leadInProgram, 2), (.program, 2), (.lead, 3), (.whosOn, 3), (.stationLine, 3), (.empty, 3),
     ])
