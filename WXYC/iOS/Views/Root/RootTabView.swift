@@ -24,8 +24,13 @@ struct RootTabView: View {
     @Environment(Singletonia.self) private var appState
     @Environment(\.themeAppearance) private var appearance
 
+    /// LCD active brightness, moved by the theme's accent brightness offset.
+    ///
+    /// `accentColor` and `lcdAccentColor` differ only by that offset, so a theme with
+    /// no offset keeps a tab tint that matches the LCD.
     static func tabTintBrightness(for appearance: ThemeAppearance) -> Double {
-        appearance.lcdActiveBrightness
+        let accentOffset = appearance.accentColor.brightness - appearance.lcdAccentColor.brightness
+        return max(0, appearance.lcdActiveBrightness + accentOffset)
     }
 
     var body: some View {
@@ -79,8 +84,9 @@ struct RootTabView: View {
             }
             .accessibilityIdentifier(AppSection.station.accessibilityIdentifier)
         }
-        // Selected tab item uses the LCD accent hue/saturation at the active
-        // segment brightness rather than the system default tint.
+        // Selected tab item uses the accent hue/saturation at the active LCD
+        // segment brightness (plus the accent's brightness offset) rather than
+        // the system default tint.
         .tint(appearance.accentColor.color(brightness: Self.tabTintBrightness(for: appearance)))
         // The playcut detail is presented like the On Tour concert detail: a
         // full-screen cover the tapped row zooms into, rather than the old

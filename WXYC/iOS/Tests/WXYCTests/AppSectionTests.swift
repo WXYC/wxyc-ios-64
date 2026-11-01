@@ -60,21 +60,31 @@ struct AppSectionTests {
 
 @Suite("RootTabView tint")
 struct RootTabViewTintTests {
-    @Test("The tab tint uses LCD active brightness")
-    func tabTintBrightnessUsesLCDActiveBrightness() {
+    /// LCD active brightness, plus whatever the theme's accent offset adds: the accent
+    /// and the LCD accent differ by exactly that offset.
+    @Test(
+        "The tab tint is LCD active brightness moved by the accent offset",
+        arguments: [
+            // No offset: the tint matches the LCD whatever the accent's own brightness.
+            (accent: 0.35, lcdAccent: 0.35, lcdActive: 1.42, expected: 1.42),
+            (accent: 0.8, lcdAccent: 0.5, lcdActive: 1.0, expected: 1.3),
+            (accent: 0.5, lcdAccent: 0.8, lcdActive: 1.0, expected: 0.7),
+            // A large negative offset stops at black.
+            (accent: 0.0, lcdAccent: 1.0, lcdActive: 0.6, expected: 0.0),
+        ]
+    )
+    func tabTintBrightness(accent: Double, lcdAccent: Double, lcdActive: Double, expected: Double) {
         // Seeded from the environment default rather than the memberwise
         // initializer: `ThemeAppearance` is a submodule type with 13 stored
         // properties, and keyword-constructing it here would make every field
         // this test does not care about a host-side source break the moment
-        // Wallpaper adds one or drops a default. Mutating the two fields under
+        // Wallpaper adds one or drops a default. Mutating the fields under
         // test keeps the host immune to both without a gitlink bump.
         var appearance = EnvironmentValues().themeAppearance
-        // A discriminating foil, not dead setup: brightness 0.35 differs from
-        // the asserted 1.42, so the expectation fails if `tabTintBrightness`
-        // ever reads the accent's brightness instead of the LCD's.
-        appearance.accentColor = AccentColor(hue: 120, saturation: 0.4, brightness: 0.35)
-        appearance.lcdActiveBrightness = 1.42
+        appearance.accentColor = AccentColor(hue: 120, saturation: 0.4, brightness: accent)
+        appearance.lcdAccentColor = AccentColor(hue: 120, saturation: 0.4, brightness: lcdAccent)
+        appearance.lcdActiveBrightness = lcdActive
 
-        #expect(RootTabView.tabTintBrightness(for: appearance) == 1.42)
+        #expect(abs(RootTabView.tabTintBrightness(for: appearance) - expected) < 0.000_001)
     }
 }
