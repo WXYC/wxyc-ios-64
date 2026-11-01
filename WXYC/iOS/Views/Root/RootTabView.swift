@@ -28,9 +28,16 @@ struct RootTabView: View {
     ///
     /// `accentColor` and `lcdAccentColor` differ only by that offset, so a theme with
     /// no offset keeps a tab tint that matches the LCD.
+    ///
+    /// LCD brightness usually sits above 1, the top of the color range, so a negative
+    /// offset starts from 1: otherwise a small drag stays above 1 and changes nothing
+    /// visible. A positive offset starts from the LCD value, so raising brightness
+    /// never looks dimmer than no offset.
     static func tabTintBrightness(for appearance: ThemeAppearance) -> Double {
+        let lcdBrightness = appearance.lcdActiveBrightness
         let accentOffset = appearance.accentColor.brightness - appearance.lcdAccentColor.brightness
-        return max(0, appearance.lcdActiveBrightness + accentOffset)
+        guard accentOffset < 0 else { return lcdBrightness + accentOffset }
+        return max(0, min(1, lcdBrightness) + accentOffset)
     }
 
     var body: some View {
@@ -84,9 +91,8 @@ struct RootTabView: View {
             }
             .accessibilityIdentifier(AppSection.station.accessibilityIdentifier)
         }
-        // Selected tab item uses the accent hue/saturation at the active LCD
-        // segment brightness (plus the accent's brightness offset) rather than
-        // the system default tint.
+        // Selected tab item uses the accent hue/saturation at the brightness from
+        // `tabTintBrightness(for:)` rather than the system default tint.
         .tint(appearance.accentColor.color(brightness: Self.tabTintBrightness(for: appearance)))
         // The playcut detail is presented like the On Tour concert detail: a
         // full-screen cover the tapped row zooms into, rather than the old

@@ -69,6 +69,11 @@ struct RootTabViewTintTests {
             (accent: 0.35, lcdAccent: 0.35, lcdActive: 1.42, expected: 1.42),
             (accent: 0.8, lcdAccent: 0.5, lcdActive: 1.0, expected: 1.3),
             (accent: 0.5, lcdAccent: 0.8, lcdActive: 1.0, expected: 0.7),
+            // Lowering starts from the top of the range, not from an over-range LCD
+            // value, or a small drag would land above 1 and change nothing visible.
+            (accent: 0.6, lcdAccent: 0.8, lcdActive: 1.5, expected: 0.8),
+            // Raising starts from the LCD value, so it never looks dimmer than no offset.
+            (accent: 1.0, lcdAccent: 0.8, lcdActive: 1.24, expected: 1.44),
             // A large negative offset stops at black.
             (accent: 0.0, lcdAccent: 1.0, lcdActive: 0.6, expected: 0.0),
         ]
