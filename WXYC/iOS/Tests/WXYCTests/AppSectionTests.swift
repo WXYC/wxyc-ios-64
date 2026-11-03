@@ -69,10 +69,9 @@ struct RootTabViewTintTests {
             (accent: 0.35, lcdAccent: 0.35, lcdActive: 1.42, expected: 1.42),
             (accent: 0.8, lcdAccent: 0.5, lcdActive: 1.0, expected: 1.3),
             (accent: 0.5, lcdAccent: 0.8, lcdActive: 1.0, expected: 0.7),
-            // Lowering starts from the top of the range, not from an over-range LCD
-            // value, or a small drag would land above 1 and change nothing visible.
-            (accent: 0.6, lcdAccent: 0.8, lcdActive: 1.5, expected: 0.8),
-            // Raising starts from the LCD value, so it never looks dimmer than no offset.
+            // Lowering scales the LCD value, so -0.2 takes 20% off it.
+            (accent: 0.6, lcdAccent: 0.8, lcdActive: 1.5, expected: 1.2),
+            // Raising adds to the LCD value.
             (accent: 1.0, lcdAccent: 0.8, lcdActive: 1.24, expected: 1.44),
             // A large negative offset stops at black.
             (accent: 0.0, lcdAccent: 1.0, lcdActive: 0.6, expected: 0.0),
@@ -91,5 +90,28 @@ struct RootTabViewTintTests {
         appearance.lcdActiveBrightness = lcdActive
 
         #expect(abs(RootTabView.tabTintBrightness(for: appearance) - expected) < 0.000_001)
+    }
+
+    /// Sweeps the slider from top to bottom: the tint must only ever get darker, and
+    /// by no more than one slider step's worth, so there is no jump anywhere,
+    /// including where the offset crosses zero.
+    @Test("The tab tint changes smoothly across the whole offset range", arguments: [0.6, 1.0, 1.24, 1.5004])
+    func tabTintBrightnessIsContinuous(lcdActive: Double) {
+        var appearance = EnvironmentValues().themeAppearance
+        appearance.lcdAccentColor = AccentColor(hue: 120, saturation: 0.4, brightness: 1.0)
+        appearance.lcdActiveBrightness = lcdActive
+
+        let step = 0.01
+        let largestAllowedChange = step * max(lcdActive, 1) + 0.000_001
+        var previous: Double?
+        for offset in stride(from: 1.0, through: -1.0, by: -step) {
+            appearance.accentColor = AccentColor(hue: 120, saturation: 0.4, brightness: 1.0 + offset)
+            let brightness = RootTabView.tabTintBrightness(for: appearance)
+            if let previous {
+                #expect(brightness <= previous)
+                #expect(previous - brightness <= largestAllowedChange)
+            }
+            previous = brightness
+        }
     }
 }

@@ -29,15 +29,14 @@ struct RootTabView: View {
     /// `accentColor` and `lcdAccentColor` differ only by that offset, so a theme with
     /// no offset keeps a tab tint that matches the LCD.
     ///
-    /// LCD brightness usually sits above 1, the top of the color range, so a negative
-    /// offset starts from 1: otherwise a small drag stays above 1 and changes nothing
-    /// visible. A positive offset starts from the LCD value, so raising brightness
-    /// never looks dimmer than no offset.
+    /// A negative offset scales the LCD value instead of subtracting from it, so the
+    /// tint fades evenly from the LCD brightness toward black. There is no cap at 1,
+    /// because a cap would jump the tint as soon as the offset left zero.
     static func tabTintBrightness(for appearance: ThemeAppearance) -> Double {
         let lcdBrightness = appearance.lcdActiveBrightness
         let accentOffset = appearance.accentColor.brightness - appearance.lcdAccentColor.brightness
         guard accentOffset < 0 else { return lcdBrightness + accentOffset }
-        return max(0, min(1, lcdBrightness) + accentOffset)
+        return max(0, lcdBrightness * (1 + accentOffset))
     }
 
     var body: some View {
