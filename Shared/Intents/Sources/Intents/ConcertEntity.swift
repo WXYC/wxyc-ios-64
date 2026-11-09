@@ -106,7 +106,7 @@ public struct ConcertEntity: AppEntity {
         guard let id = ConcertID(concertID: concert.id) else { return nil }
         self.id = id
         self.startsOn = concert.startsOn
-        self.subtitleText = "\(concert.venue.name) — \(concert.venue.city), \(concert.venue.state)"
+        self.subtitleText = "\(concert.venue.name) — \(concert.venue.cityAndState)"
         self.imageURL = concert.imageURL
         self.headlinerName = concert.headlineName
         self.venueName = concert.venue.name

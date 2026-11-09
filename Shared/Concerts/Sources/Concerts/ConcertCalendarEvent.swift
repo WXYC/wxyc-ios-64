@@ -97,7 +97,7 @@ public struct ConcertCalendarEvent: Sendable, Equatable {
     private static func location(for venue: Venue) -> String? {
         var parts = [venue.name]
         if let address = venue.address, !address.isEmpty { parts.append(address) }
-        if !venue.city.isEmpty { parts.append(venue.city) }
+        if let city = venue.displayCity { parts.append(city) }
         if !venue.state.isEmpty { parts.append(venue.state) }
         let line = parts.joined(separator: ", ")
         return line.isEmpty ? nil : line

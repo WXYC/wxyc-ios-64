@@ -76,6 +76,19 @@ public struct Venue: Codable, Sendable, Equatable, Hashable, Identifiable {
         }
         return trimmed
     }
+
+    /// `"Carrboro, NC"`, or just the state when there is no ``displayCity``,
+    /// so a missing city never leaves a dangling comma.
+    public var cityAndState: String {
+        [displayCity, state.isEmpty ? nil : state].compactMap(\.self).joined(separator: ", ")
+    }
+
+    /// `leading`, followed by `separator` and ``displayCity`` when there is one.
+    /// Without a city, `leading` alone, so no separator dangles.
+    public func appendingCity(to leading: String, separator: String) -> String {
+        guard let displayCity else { return leading }
+        return leading + separator + displayCity
+    }
 }
 
 /// One affinity neighbor of a resolved concert headliner, drawn from the

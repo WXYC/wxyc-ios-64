@@ -153,7 +153,7 @@ struct ConcertRow: View {
     }
 
     private var venueLine: String {
-        "\(concert.venue.name) · \(concert.venue.city)"
+        concert.venue.appendingCity(to: concert.venue.name, separator: " · ")
     }
 
     /// Time and/or price, joined, or `nil` when neither is known.

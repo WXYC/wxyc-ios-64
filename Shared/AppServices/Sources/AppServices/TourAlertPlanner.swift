@@ -62,7 +62,8 @@ public enum TourAlertPlanner {
 
     private static func body(for show: Concert) -> String {
         let day = dayFormatter.string(from: show.startsOn)
-        return "Playing on WXYC now — \(show.venue.name), \(show.venue.city) on \(day)"
+        let venue = show.venue.appendingCity(to: show.venue.name, separator: ", ")
+        return "Playing on WXYC now — \(venue) on \(day)"
     }
 
     /// `startsOn` is a date-only instant anchored to the station zone; format it

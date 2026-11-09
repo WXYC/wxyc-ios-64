@@ -99,6 +99,14 @@ struct ConcertEntityTests {
         #expect(entity.subtitleText == "Cat's Cradle — Carrboro, NC")
     }
 
+    @Test("leaves a city that carries no real place out of the subtitle", arguments: ["", "Unknown"])
+    func subtitleOmitsMissingCity(city: String) throws {
+        let concert = Concert.stub(venue: .stub(name: "Cat's Cradle", city: city, state: "NC"))
+        let entity = try #require(ConcertEntity(concert: concert))
+
+        #expect(entity.subtitleText == "Cat's Cradle — NC")
+    }
+
     @Test("uses the headliner name as the display representation title")
     func displayRepresentationUsesHeadlinerName() throws {
         let concert = Concert.stub(headliningArtistRaw: "Chuquimamani-Condori")

@@ -275,4 +275,16 @@ struct ConcertFilterStateTests {
         // An unlisted city still appears (alphabetically after the preferred set) rather than vanishing.
         #expect(groups.map(\.region) == ["Chapel Hill–Carrboro", "Pittsboro"])
     }
+
+    @Test("Grouping puts venues with no real city in a trailing Other section", arguments: ["", "Unknown"])
+    func venueGroupingPutsCitylessVenuesInOther(city: String) {
+        let cradle = Venue.stub(id: 3, city: "Carrboro")
+        let ritz = Venue.stub(id: 2554, slug: "the-ritz-raleigh", name: "The Ritz Raleigh", city: city)
+        let pittsboro = Venue.stub(id: 11, slug: "haw-river-ballroom", name: "The Plant", city: "Pittsboro")
+
+        let groups = VenueGrouping.groupedByRegion([ritz, cradle, pittsboro])
+
+        #expect(groups.map(\.region) == ["Chapel Hill–Carrboro", "Pittsboro", "Other"])
+        #expect(groups.last?.venues.map(\.name) == ["The Ritz Raleigh"])
+    }
 }

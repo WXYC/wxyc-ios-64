@@ -755,4 +755,33 @@ struct ConcertTests {
         #expect(Concert.stub(id: 90210).shareURL == URL(string: "https://wxyc.org/shows/90210"))
         #expect(Concert.stub(id: 1).shareURL != Concert.stub(id: 2).shareURL)
     }
+
+    // MARK: - Venue city formatting
+
+    @Test(
+        "cityAndState drops the city when it carries no real place",
+        arguments: [
+            ("Carrboro", "NC", "Carrboro, NC"),
+            ("", "NC", "NC"),
+            ("  ", "NC", "NC"),
+            ("Unknown", "NC", "NC"),
+            ("Durham", "", "Durham"),
+            ("", "", ""),
+        ]
+    )
+    func cityAndState(city: String, state: String, expected: String) {
+        #expect(Venue.stub(city: city, state: state).cityAndState == expected)
+    }
+
+    @Test(
+        "appendingCity adds the city after a separator, or nothing when there is no real city",
+        arguments: [
+            ("Carrboro", "Cat's Cradle · Carrboro"),
+            ("", "Cat's Cradle"),
+            ("Unknown", "Cat's Cradle"),
+        ]
+    )
+    func appendingCity(city: String, expected: String) {
+        #expect(Venue.stub(city: city).appendingCity(to: "Cat's Cradle", separator: " · ") == expected)
+    }
 }
