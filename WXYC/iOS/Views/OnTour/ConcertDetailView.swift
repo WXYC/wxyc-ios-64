@@ -299,9 +299,9 @@ struct ConcertDetailView: View {
     /// Street address when the venue carries one, else the city and state.
     private var venueAddressLine: String {
         if let address = concert.venue.address, !address.isEmpty {
-            return "\(address) · \(concert.venue.city)"
+            return concert.venue.appendingCity(to: address, separator: " · ")
         }
-        return "\(concert.venue.city), \(concert.venue.state)"
+        return concert.venue.cityAndState
     }
 
     // MARK: - About the Artist

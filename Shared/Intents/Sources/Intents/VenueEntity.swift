@@ -88,7 +88,7 @@ public struct VenueEntity: AppEntity {
     public init?(venue: Venue) {
         guard let id = VenueID(venueID: venue.id) else { return nil }
         self.id = id
-        self.subtitleText = "\(venue.city), \(venue.state)"
+        self.subtitleText = venue.cityAndState
         self.slug = venue.slug
         self.name = venue.name
     }

@@ -105,6 +105,20 @@ struct TourAlertPlannerTests {
         #expect(alert.body.contains("Carrboro"))
     }
 
+    @Test("the body leaves out a city that carries no real place", arguments: ["", "Unknown"])
+    func bodyWithoutCity(city: String) throws {
+        let alert = try #require(
+            TourAlertPlanner.plan(
+                isPlaying: true,
+                playcut: playcut(artistName: "Jessica Pratt"),
+                upcomingShow: show(venueName: "Cat's Cradle", city: city),
+                alreadyNotified: []
+            )
+        )
+
+        #expect(alert.body.hasPrefix("Playing on WXYC now — Cat's Cradle on "))
+    }
+
     @Test("the body's day label is rendered in the station zone, not the device zone")
     func dayLabelUsesStationZone() throws {
         // 2026-08-01 at midnight US Eastern. A device in Los Angeles reading this

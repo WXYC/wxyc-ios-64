@@ -35,8 +35,12 @@ public struct VenueRegionGroup: Sendable, Equatable, Identifiable {
 /// Groups venues by region for the filter sheet.
 public enum VenueGrouping {
 
+    /// The section for venues with no ``Venue/displayCity``. It sorts last.
+    public static let otherRegion = "Other"
+
     /// The Triangle regions in the order the sheet lists them. Regions not in
-    /// this list (e.g. Pittsboro, Hillsborough) sort alphabetically after these.
+    /// this list (e.g. Pittsboro, Hillsborough) sort alphabetically after these,
+    /// and ``otherRegion`` comes last.
     private static let preferredRegionOrder = [
         "Chapel Hill–Carrboro",
         "Durham",
@@ -60,7 +64,7 @@ public enum VenueGrouping {
         var seen = Set<Int>()
         let distinct = venues.filter { seen.insert($0.id).inserted }
 
-        return Dictionary(grouping: distinct) { region(forCity: $0.city) }
+        return Dictionary(grouping: distinct) { $0.displayCity.map(region(forCity:)) ?? otherRegion }
             .map { region, venues in
                 VenueRegionGroup(region: region, venues: venues.sorted { $0.name < $1.name })
             }
@@ -68,8 +72,11 @@ public enum VenueGrouping {
     }
 
     /// Orders regions: those in ``preferredRegionOrder`` first (in that order),
-    /// then any others alphabetically.
+    /// then any others alphabetically, then ``otherRegion``.
     private static func regionOrdering(_ lhs: VenueRegionGroup, _ rhs: VenueRegionGroup) -> Bool {
+        if (lhs.region == otherRegion) != (rhs.region == otherRegion) {
+            return rhs.region == otherRegion
+        }
         let lhsIndex = preferredRegionOrder.firstIndex(of: lhs.region)
         let rhsIndex = preferredRegionOrder.firstIndex(of: rhs.region)
         switch (lhsIndex, rhsIndex) {

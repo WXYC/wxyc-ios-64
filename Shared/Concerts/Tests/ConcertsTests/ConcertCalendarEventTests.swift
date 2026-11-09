@@ -61,6 +61,12 @@ struct ConcertCalendarEventTests {
         #expect(event.location == "Cat's Cradle, Carrboro, NC")
     }
 
+    @Test("The location omits a city that carries no real place", arguments: ["", "Unknown"])
+    func locationWithoutCity(city: String) {
+        let event = ConcertCalendarEvent(.stub(venue: .stub(city: city)))
+        #expect(event.location == "Cat's Cradle, 300 E Main St, NC")
+    }
+
     // MARK: - Doors note
 
     @Test("The doors time rides in the notes when known")

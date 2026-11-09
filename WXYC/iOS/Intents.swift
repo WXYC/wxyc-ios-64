@@ -375,7 +375,7 @@ private struct ToursNearMeConcertRow: View {
                     .font(.headline)
                     .foregroundStyle(.foreground)
 
-                Text("\(concert.venue.name) — \(concert.venue.city), \(concert.venue.state)")
+                Text("\(concert.venue.name) — \(concert.venue.cityAndState)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
